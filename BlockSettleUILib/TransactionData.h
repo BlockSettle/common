@@ -109,7 +109,7 @@ public:
    void clear();
    std::vector<UTXO> inputs() const;
 
-   void setMaxSpendAmount(bool maxAmount = true);
+   void setMaxSpendAmount(bool maxAmount = true) { maxSpendAmount_ = maxAmount; }
    bool maxSpendAmount() const { return maxSpendAmount_; }
 
 private:
