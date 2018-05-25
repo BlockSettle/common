@@ -1,8 +1,8 @@
-////////////////////////////////////////////////////////////////////////////////
+﻿////////////////////////////////////////////////////////////////////////////////
 //                                                                            //
 //  Copyright (C) 2016, goatpig.                                              //
 //  Distributed under the MIT license                                         //
-//  See LICENSE-MIT or https://opensource.org/licenses/MIT                    //                                      
+//  See LICENSE-MIT or https://opensource.org/licenses/MIT                    //
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -177,6 +177,10 @@ FcgiMessage FcgiMessage::makePacket(const char *msg)
    //terminate fcgi_param
    auto& paramterminator = fcgiMsg.getNewPacket();
    paramterminator.buildHeader(FCGI_PARAMS, requestID);
+
+   //terminate fcgi_body
+   auto& bodyterminator = fcgiMsg.getNewPacket();
+   bodyterminator.buildHeader(FCGI_RESPONDER, UINT16_MAX);
 
    //data
    auto msglen = strlen(msg);
