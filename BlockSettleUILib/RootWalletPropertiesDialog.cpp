@@ -313,7 +313,7 @@ void RootWalletPropertiesDialog::onRescanBlockchain()
    MessageBoxQuestion msg(tr("Wallet Re-scan"), tr("DO YOU WISH TO RE-SCAN YOUR WALLET?"),
       tr("This operation will rescan the balance of your wallet and typically takes about "
          "10 minutes when connected to a supernode and up to 30 minutes connected to a "
-         "fullnode. Do you wish to force a balance rescan?"));
+         "fullnode. Do you wish to force a balance rescan?"), this);
 
    if (msg.exec() == QDialog::Accepted) {
       ui_->buttonBar->setEnabled(false);
