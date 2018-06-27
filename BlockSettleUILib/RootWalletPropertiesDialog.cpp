@@ -310,22 +310,29 @@ void RootWalletPropertiesDialog::startWalletScan()
 
 void RootWalletPropertiesDialog::onRescanBlockchain()
 {
-   ui_->buttonBar->setEnabled(false);
+   MessageBoxQuestion msg(tr("Wallet Re-scan"), tr("DO YOU WISH TO RE-SCAN YOUR WALLET?"),
+      tr("This operation will rescan the balance of your wallet and typically takes about "
+         "10 minutes when connected to a supernode and up to 30 minutes connected to a "
+         "fullnode. Do you wish to force a balance rescan?"));
 
-   if (wallet_->isPrimary()) {
-      for (const auto &cc : assetMgr_->privateShares(true)) {
-         bs::hd::Path path;
-         path.append(bs::hd::purpose, true);
-         path.append(bs::hd::CoinType::BlockSettle_CC, true);
-         path.append(cc, true);
-         const auto reqId = signingContainer_->CreateHDLeaf(wallet_, path);
-         if (reqId) {
-            createCCWalletReqs_[reqId] = cc;
+   if (msg.exec() == QDialog::Accepted) {
+      ui_->buttonBar->setEnabled(false);
+
+      if (wallet_->isPrimary()) {
+         for (const auto &cc : assetMgr_->privateShares(true)) {
+            bs::hd::Path path;
+            path.append(bs::hd::purpose, true);
+            path.append(bs::hd::CoinType::BlockSettle_CC, true);
+            path.append(cc, true);
+            const auto reqId = signingContainer_->CreateHDLeaf(wallet_, path);
+            if (reqId) {
+               createCCWalletReqs_[reqId] = cc;
+            }
          }
       }
-   }
-   else {
-      startWalletScan();
+      else {
+         startWalletScan();
+      }
    }
 }
 
