@@ -27,6 +27,7 @@ void HttpSocket::setupHeaders()
    addrHeader << "Host: " << addr_;
    addHeader(addrHeader.str());
    addHeader("Content-type: text/html; charset=UTF-8");
+   addHeader("Connection: Keep-Alive");
 }
 
 ///////////////////////////////////////////////////////////////////////////////
