@@ -13,7 +13,6 @@
 #include <QStyle>
 #include <QStyleOptionProgressBar>
 
-
 //
 // DoNotDrawSelectionDelegate
 //
@@ -257,36 +256,29 @@ void QuoteRequestsWidget::onRowsInserted(const QModelIndex &parent, int first, i
 	const auto opt = ui_->treeViewQuoteRequests->viewOptions();
 	for (int row = first; row <= last; row++)
 	{
-      const auto &index = model_->index(row, 0, parent);
+		const auto &index = model_->index(row, 0, parent);
 		if (index.data(static_cast<int>(QuoteRequestsModel::Role::ReqId)).isNull())
 		{
-			std::thread([this]()
-			{
-         expandIfNeeded();
-			}).detach();
-      }
+			expandIfNeeded();
+		}
 		else
 		{
 			for (int i = 0; i < sortModel_->columnCount(); ++i)
 			{
 				const auto &index2 = model_->index(row, i, parent);
 				auto str = index2.data(static_cast<int>(Qt::DisplayRole)).toString();
-				LOG(INFO) << "index data = " << str.toStdString();
 				if (i != static_cast<int>(QuoteRequestsModel::Column::Status))
 				{
 					if (!str.isEmpty())
 					{
 						const auto width = opt.fontMetrics.boundingRect(str).width() + 10;
 						if (width > ui_->treeViewQuoteRequests->columnWidth (i))
-							std::thread([this, i]()
-							{
-               ui_->treeViewQuoteRequests->resizeColumnToContents(i);
-							}).detach();
+							ui_->treeViewQuoteRequests->resizeColumnToContents(i);
 					}
-            }
-         }
-      }
-   }
+				}
+			}
+		}
+	}
 }
 
 void QuoteRequestsWidget::onRowsRemoved(const QModelIndex &, int, int)
