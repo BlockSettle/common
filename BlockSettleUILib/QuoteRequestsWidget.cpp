@@ -107,13 +107,13 @@ void QuoteRequestsWidget::init(std::shared_ptr<spdlog::logger> logger, const std
       width);
 
    ui_->treeViewQuoteRequests->setColumnWidth(0, 110);
-   ui_->treeViewQuoteRequests->setColumnWidth(1, opt.fontMetrics.boundingRect(tr("Product_")).width() + 10);
-   ui_->treeViewQuoteRequests->setColumnWidth(2, opt.fontMetrics.boundingRect(tr("Side_")).width() + 10);
-   ui_->treeViewQuoteRequests->setColumnWidth(3, opt.fontMetrics.boundingRect(tr("Quantity_")).width() + 10);
-   ui_->treeViewQuoteRequests->setColumnWidth(4, opt.fontMetrics.boundingRect(tr("Party_")).width() + 10);
-   ui_->treeViewQuoteRequests->setColumnWidth(6, opt.fontMetrics.boundingRect(tr("Quoted_Price_")).width() + 10);
-   ui_->treeViewQuoteRequests->setColumnWidth(7, opt.fontMetrics.boundingRect(tr("Indicative_Px_")).width() + 10);
-   ui_->treeViewQuoteRequests->setColumnWidth(8, opt.fontMetrics.boundingRect(tr("Best_Quoted_Px_")).width() + 10);
+   ui_->treeViewQuoteRequests->setColumnWidth(static_cast<int>(QuoteRequestsModel::Column::Product, opt.fontMetrics.boundingRect(tr("Product_")).width() + 10);
+   ui_->treeViewQuoteRequests->setColumnWidth(static_cast<int>(QuoteRequestsModel::Column::Side, opt.fontMetrics.boundingRect(tr("Side_")).width() + 10);
+   ui_->treeViewQuoteRequests->setColumnWidth(static_cast<int>(QuoteRequestsModel::Column::Quantity, opt.fontMetrics.boundingRect(tr("Quantity_")).width() + 10);
+   ui_->treeViewQuoteRequests->setColumnWidth(static_cast<int>(QuoteRequestsModel::Column::Party, opt.fontMetrics.boundingRect(tr("Party_")).width() + 10);
+   ui_->treeViewQuoteRequests->setColumnWidth(static_cast<int>(QuoteRequestsModel::Column::QuotedPx, opt.fontMetrics.boundingRect(tr("Quoted_Price_")).width() + 10);
+   ui_->treeViewQuoteRequests->setColumnWidth(static_cast<int>(QuoteRequestsModel::Column::IndicPx, opt.fontMetrics.boundingRect(tr("Indicative_Px_")).width() + 10);
+   ui_->treeViewQuoteRequests->setColumnWidth(static_cast<int>(QuoteRequestsModel::Column::BestPx, opt.fontMetrics.boundingRect(tr("Best_Quoted_Px_")).width() + 10);
 }
 
 void QuoteRequestsWidget::onQuoteReqNotifSelected(const QModelIndex& index)
