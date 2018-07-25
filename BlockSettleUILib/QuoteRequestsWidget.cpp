@@ -13,7 +13,6 @@
 #include <QStyle>
 #include <QStyleOptionProgressBar>
 
-
 //
 // DoNotDrawSelectionDelegate
 //
@@ -106,6 +105,15 @@ void QuoteRequestsWidget::init(std::shared_ptr<spdlog::logger> logger, const std
    ui_->treeViewQuoteRequests->header()->resizeSection(
       static_cast<int>(QuoteRequestsModel::Column::Status),
       width);
+
+   ui_->treeViewQuoteRequests->setColumnWidth(0, 110);
+   ui_->treeViewQuoteRequests->setColumnWidth(static_cast<int>(QuoteRequestsModel::Column::Product, opt.fontMetrics.boundingRect(tr("Product_")).width() + 10);
+   ui_->treeViewQuoteRequests->setColumnWidth(static_cast<int>(QuoteRequestsModel::Column::Side, opt.fontMetrics.boundingRect(tr("Side_")).width() + 10);
+   ui_->treeViewQuoteRequests->setColumnWidth(static_cast<int>(QuoteRequestsModel::Column::Quantity, opt.fontMetrics.boundingRect(tr("Quantity_")).width() + 10);
+   ui_->treeViewQuoteRequests->setColumnWidth(static_cast<int>(QuoteRequestsModel::Column::Party, opt.fontMetrics.boundingRect(tr("Party_")).width() + 10);
+   ui_->treeViewQuoteRequests->setColumnWidth(static_cast<int>(QuoteRequestsModel::Column::QuotedPx, opt.fontMetrics.boundingRect(tr("Quoted_Price_")).width() + 10);
+   ui_->treeViewQuoteRequests->setColumnWidth(static_cast<int>(QuoteRequestsModel::Column::IndicPx, opt.fontMetrics.boundingRect(tr("Indicative_Px_")).width() + 10);
+   ui_->treeViewQuoteRequests->setColumnWidth(static_cast<int>(QuoteRequestsModel::Column::BestPx, opt.fontMetrics.boundingRect(tr("Best_Quoted_Px_")).width() + 10);
 }
 
 void QuoteRequestsWidget::onQuoteReqNotifSelected(const QModelIndex& index)
@@ -245,20 +253,32 @@ void QuoteRequestsWidget::onRowsChanged()
 
 void QuoteRequestsWidget::onRowsInserted(const QModelIndex &parent, int first, int last)
 {
-   for (int row = first; row <= last; row++) {
-      const auto &index = model_->index(row, 0, parent);
-      if (index.data(static_cast<int>(QuoteRequestsModel::Role::ReqId)).isNull()) {
-         expandIfNeeded();
-         ui_->treeViewQuoteRequests->resizeColumnToContents(0);
-      }
-      else {
-         for (int i = 0; i < sortModel_->columnCount(); ++i) {
-            if (i != static_cast<int>(QuoteRequestsModel::Column::Status)) {
-               ui_->treeViewQuoteRequests->resizeColumnToContents(i);
-            }
-         }
-      }
-   }
+	const auto opt = ui_->treeViewQuoteRequests->viewOptions();
+	for (int row = first; row <= last; row++)
+	{
+		const auto &index = model_->index(row, 0, parent);
+		if (index.data(static_cast<int>(QuoteRequestsModel::Role::ReqId)).isNull())
+		{
+			expandIfNeeded();
+		}
+		else
+		{
+			for (int i = 0; i < sortModel_->columnCount(); ++i)
+			{
+				const auto &index2 = model_->index(row, i, parent);
+				auto str = index2.data(static_cast<int>(Qt::DisplayRole)).toString();
+				if (i != static_cast<int>(QuoteRequestsModel::Column::Status))
+				{
+					if (!str.isEmpty())
+					{
+						const auto width = opt.fontMetrics.boundingRect(str).width() + 10;
+						if (width > ui_->treeViewQuoteRequests->columnWidth (i))
+							ui_->treeViewQuoteRequests->resizeColumnToContents(i);
+					}
+				}
+			}
+		}
+	}
 }
 
 void QuoteRequestsWidget::onRowsRemoved(const QModelIndex &, int, int)
