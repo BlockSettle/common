@@ -13,10 +13,10 @@ class QtSettings(Configurator):
         Configurator.__init__(self, settings)
         self.jom = JomSettings(settings)
         self.openssl = OpenSslSettings(settings)
-        self._release = '5.11'
-        self._version = self._release + '.2'
+        self._release = '5.12'
+        self._version = self._release + '.0'
         self._package_name = 'qt-everywhere-src-' + self._version
-        self._script_revision = '3'
+        self._script_revision = '4'
 
         if self._project_settings.on_windows():
             self._package_url = 'https://download.qt.io/official_releases/qt/' + self._release + '/' + self._version + '/single/' + self._package_name + '.zip'
