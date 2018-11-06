@@ -404,6 +404,7 @@ void BSTerminalMainWindow::InitPortfolioView()
 {
    portfolioModel_ = std::make_shared<CCPortfolioModel>(walletsManager_, assetManager_, this);
    ui->widgetPortfolio->init(applicationSettings_, mdProvider_, portfolioModel_, signContainer_, armory_, walletsManager_);
+   ui->widgetChart->init(applicationSettings_, mdProvider_, armory_);
 }
 
 void BSTerminalMainWindow::InitWalletsView()
