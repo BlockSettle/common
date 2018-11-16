@@ -1079,12 +1079,6 @@ bool WalletsManager::estimatedFeePerByte(unsigned int blocksToWait, std::functio
          return;
       }
 
-      if (blocks > 3) {
-         feePerByte_[blocks] = 50;
-      }
-      else if (blocks >= 2) {
-         feePerByte_[blocks] = 100;
-      }
       invokeFeeCallbacks(blocks, feePerByte_[blocks]);
    };
    armory_->estimateFee(blocks, cbFee);
