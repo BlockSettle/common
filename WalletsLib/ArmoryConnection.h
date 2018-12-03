@@ -17,7 +17,7 @@
 #include "ArmorySettings.h"
 #include "AsyncClient.h"
 #include "CacheFile.h"
-
+#include "BlockObj.h"
 
 class ArmoryConnection;
 class QProcess;
@@ -60,7 +60,8 @@ public:
    using ReqIdType = unsigned int;
 
 public:
-   ArmoryConnection(const std::shared_ptr<spdlog::logger> &, const std::string &txCacheFN);
+   ArmoryConnection(const std::shared_ptr<spdlog::logger> &, const std::string &txCacheFN
+      , bool cbInMainThread = false);
    ~ArmoryConnection() noexcept;
 
    State state() const { return state_; }
@@ -78,14 +79,20 @@ public:
    bool getWalletsHistory(const std::vector<std::string> &walletIDs
       , std::function<void (std::vector<ClientClasses::LedgerEntry>)>);
 
+   // If context is not null and cbInMainThread is true then the callback will be called
+   // on main thread only if context is still alive.
    bool getLedgerDelegateForAddress(const std::string &walletId, const bs::Address &
-      , std::function<void(AsyncClient::LedgerDelegate)>);
+      , std::function<void(AsyncClient::LedgerDelegate)>, QObject *context = nullptr);
    bool getLedgerDelegatesForAddresses(const std::string &walletId, const std::vector<bs::Address>
       , std::function<void(std::map<bs::Address, AsyncClient::LedgerDelegate>)>);
    bool getWalletsLedgerDelegate(std::function<void(AsyncClient::LedgerDelegate)>);
 
    bool getTxByHash(const BinaryData &hash, std::function<void(Tx)>);
    bool getTXsByHash(const std::set<BinaryData> &hashes, std::function<void(std::vector<Tx>)>);
+   bool getRawHeaderForTxHash(const BinaryData& inHash,
+                              std::function<void(BinaryData)> callback);
+   bool getHeaderByHeight(const unsigned& inHeight,
+                          std::function<void(BinaryData)> callback);
 
    bool estimateFee(unsigned int nbBlocks, std::function<void(float)>);
 
@@ -94,6 +101,8 @@ public:
    bool isTransactionConfirmed(const ClientClasses::LedgerEntry &) const;
    unsigned int getConfirmationsNumber(const ClientClasses::LedgerEntry &item) const;
    unsigned int getConfirmationsNumber(uint32_t blockNum) const;
+
+   bool isOnline() const { return isOnline_; }
 
 signals:
    void stateChanged(ArmoryConnection::State) const;
@@ -127,6 +136,8 @@ private:
    std::atomic<State>   state_ = { State::Unknown };
    std::atomic_uint     topBlock_ = { 0 };
    TxCacheFile    txCache_;
+   const bool     cbInMainThread_;
+   std::shared_ptr<BlockHeader> getTxBlockHeader_;
 
    std::atomic_bool  regThreadRunning_;
    std::atomic_bool  connThreadRunning_;
@@ -142,6 +153,7 @@ private:
    };
    std::unordered_map<ReqIdType, ZCData>  zcData_;
    mutable std::atomic_flag      zcLock_ = ATOMIC_FLAG_INIT;
+   std::thread                   zcThread_;
    std::condition_variable       zcMaintCV_;
    mutable std::mutex            zcMaintMutex_;
 

@@ -32,12 +32,19 @@ void EnterWalletPassword::init(const std::string &walletId, bs::wallet::KeyRank 
       setWindowTitle(title);
    }
 
-   if (encTypes.size() == 1 && encTypes[0] == bs::wallet::EncryptionType::Auth) {
+   bool isAuthOnly = true;
+   for (auto encType : encTypes) {
+      if (encType != bs::wallet::EncryptionType::Auth) {
+         isAuthOnly = false;
+      }
+   }
+   if (isAuthOnly) {
       ui_->widgetSubmitKeys->setFlags(WalletKeysSubmitWidget::HideAuthConnectButton
          | WalletKeysSubmitWidget::HideAuthCombobox
          | WalletKeysSubmitWidget::HideGroupboxCaption
          | WalletKeysSubmitWidget::AuthProgressBarFixed
-         | WalletKeysSubmitWidget::AuthIdVisible);
+         | WalletKeysSubmitWidget::AuthIdVisible
+         | WalletKeysSubmitWidget::HidePasswordWarning);
 
       connect(ui_->widgetSubmitKeys, &WalletKeysSubmitWidget::keyChanged, this, &EnterWalletPassword::accept);
       connect(ui_->widgetSubmitKeys, &WalletKeysSubmitWidget::failed, this, &EnterWalletPassword::reject);
@@ -80,12 +87,12 @@ void EnterWalletPassword::reject()
    QDialog::reject();
 }
 
-SecureBinaryData EnterWalletPassword::GetPassword() const
+std::string EnterWalletPassword::getEncKey(int index) const
 {
-   return ui_->widgetSubmitKeys->key();
+   return ui_->widgetSubmitKeys->encKey(index);
 }
 
-string EnterWalletPassword::getDeviceId() const
+SecureBinaryData EnterWalletPassword::getPassword() const
 {
-   return ui_->widgetSubmitKeys->getDeviceId();
+   return ui_->widgetSubmitKeys->key();
 }

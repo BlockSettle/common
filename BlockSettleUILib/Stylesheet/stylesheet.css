@@ -87,7 +87,14 @@ a {
 
 *[infoMessage="true"] {
   color: #f7b03a; }
+  
+*[whiteText="true"] {
+  color: #ffffff; }
 
+*[largeText="true"] {
+  font-size: 20px; }
+
+  
 *[statusBox="true"] {
   border: 1px solid rgba(255, 255, 255, 0.8);
   border-radius: 20px;
@@ -140,6 +147,8 @@ QWidget {
     /* leave space at the top for the title */
     padding-top: 10px;
     background-color: transparent; }
+    QWidget QGroupBox[h1="true"] { /* leave space at the top for the title when using h1 */
+       margin-top: 20px; }
     QWidget QGroupBox[wellGroupBox="true"] {
       border: 1px solid rgba(255, 255, 255, 0.15);
       padding: 10px; }
@@ -218,6 +227,8 @@ QMenuBar {
   position: absolute;
   top: 10px; }
   QMenuBar::item {
+    /* Used to center QMenuBar items vertically*/
+    padding: 7px;
     background: #1b2a2f;
     background-color: #1b2a2f; }
     QMenuBar::item:selected {
@@ -406,7 +417,6 @@ QTabBar::tab {
   border-bottom-color: #C2C7CB;
   /* same as the pane color */
   padding: 20px 15px 5px 15px;
-  font-family: 'Open Sans';
   background-color: transparent;
   subcontrol-origin: content;
 }
@@ -739,6 +749,14 @@ QPushButton, QToolButton, *[buttonImportant="true"], *[buttonSuccess="true"], *[
   padding: 0px 10px;
   min-height: 20px;
   qproperty-iconSize: 22px; }
+
+QToolButton#deviceDeleteButton {
+  border: 0px solid;
+  border-color: #ff0000;
+  padding: 0px 0px;
+  min-width: 32px;
+  min-height: 32px;
+}
 
 QPushButton:hover, QToolButton:hover, [buttonImportant="true"]:hover, [buttonSuccess="true"]:hover, [buttonWarning="true"]:hover {
   border: 1px solid #5097bd;
@@ -1109,7 +1127,8 @@ QSpinBox::down-arrow {
   width: 10px;
   height: auto; }
 
-QDoubleSpinBox::down-button {
+QDoubleSpinBox::down-button
+QSpinBox::down-button {
   border-top: 1px solid #81888f; }
 
 QDoubleSpinBox:disabled,
@@ -1149,6 +1168,10 @@ QFrame[frameShape="5"] {
     border: none;
     height: 1px;
     background: #247dac; }
+
+QFrame[darkFrame="true"] {
+    background-color: #1c2835;
+}
 
 QRadioButton::indicator {
   width: 16px;
@@ -1361,3 +1384,29 @@ QLabel#loginVersionLabel {
 *[forgotPassword="true"] {
   color: #81888f;
   font-size: 10px; }
+
+ToggleSwitch::groove:horizontal {
+    border: 1px solid #81888f;
+    border-radius: 9px;
+    background: transparent;
+    margin: 0;
+    height: 16px; }
+    
+ToggleSwitch::groove:horizontal[enabled=false] {
+    border: 1px solid #535b63; }
+
+ToggleSwitch::handle:horizontal {
+    background: #81888f;
+    border: 1px solid #81888f;       
+    width: 16px;
+    margin: -1px -1px -1px -1px;
+    border-radius: 8px; }
+  
+ToggleSwitch::handle:horizontal[enabled=false] {
+    background: #535b63;
+    border: 1px solid #535b63;       
+}
+ 
+ ToggleSwitch::handle:horizontal[toggleOn=true][enabled=true] {
+    background: #247dac;
+    border: 1px solid #247dac; }

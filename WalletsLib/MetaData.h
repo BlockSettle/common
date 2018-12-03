@@ -7,7 +7,7 @@
 #include <unordered_map>
 #include <QObject>
 #include <QMutex>
-#include <QThreadPool>
+#include <QPointer>
 #include "Address.h"
 #include "ArmoryConnection.h"
 #include "AsyncClient.h"
@@ -135,7 +135,7 @@ namespace bs {
          bool isValid() const noexcept;
          BinaryData serializeState() const { return getSigner().serializeState(); }
          BinaryData txId() const { return getSigner().getTxId(); }
-         size_t estimateTxSize() const;
+         size_t estimateTxVirtSize() const;
 
       private:
          Signer   getSigner() const;
@@ -150,7 +150,7 @@ namespace bs {
          BinaryData  prevState;
 
          bool isValid() const noexcept;
-         size_t estimateTxSize() const;
+         size_t estimateTxVirtSize() const;
          void addInput(const UTXO &utxo, const std::shared_ptr<bs::Wallet> &wallet) { inputs[utxo] = wallet; }
       };
 
@@ -212,6 +212,7 @@ namespace bs {
 
    public:
       Wallet();
+      Wallet(const std::shared_ptr<spdlog::logger> &logger);
       ~Wallet() override;
 
       virtual std::string GetWalletId() const = 0;
@@ -221,8 +222,19 @@ namespace bs {
       virtual void SetDescription(const std::string &) = 0;
       virtual wallet::Type GetType() const { return wallet::Type::Bitcoin; }
 
+      virtual void setData(const std::string &) {}
+      virtual void setData(uint64_t) {}
+      virtual void setLogger(const std::shared_ptr<spdlog::logger> &logger) {
+         logger_ = logger;
+      }
+
+
       bool operator ==(const Wallet &w) const { return (w.GetWalletId() == GetWalletId()); }
       bool operator !=(const Wallet &w) const { return (w.GetWalletId() != GetWalletId()); }
+
+      // NB: We really shouldn't expose Armory's ReturnMessage<> this far out in
+      // the API. However, because the callback has to interact directly with a
+      // BtcWallet object, it is necessary in the case below.
 
       virtual bool containsAddress(const bs::Address &addr) = 0;
       virtual bool containsHiddenAddress(const bs::Address &) const { return false; }
@@ -230,9 +242,10 @@ namespace bs {
       virtual bool getAddrBalance(const bs::Address &addr, std::function<void(std::vector<uint64_t>)>) const;
       virtual bool getAddrTxN(const bs::Address &addr) const;
       virtual bool getAddrTxN(const bs::Address &addr, std::function<void(uint32_t)>) const;
+      virtual std::shared_ptr<spdlog::logger> getLogger() const { return logger_; }
       virtual BinaryData getRootId() const = 0;
-      virtual bool getSpendableTxOutList(std::function<void(std::vector<UTXO>)>, QObject *obj = nullptr, uint64_t val = UINT64_MAX);
-      virtual bool getSpendableZCList(std::function<void(std::vector<UTXO>)>, QObject *obj = nullptr);
+      virtual bool getSpendableTxOutList(std::function<void(std::vector<UTXO>)>, QObject *obj, uint64_t val = UINT64_MAX);
+      virtual bool getSpendableZCList(std::function<void(std::vector<UTXO>)>, QObject *obj);
       virtual bool getUTXOsToSpend(uint64_t val, std::function<void(std::vector<UTXO>)>) const;
       virtual bool getRBFTxOutList(std::function<void(std::vector<UTXO>)>) const;
       virtual std::string RegisterWallet(const std::shared_ptr<ArmoryConnection> &armory = nullptr
@@ -248,7 +261,7 @@ namespace bs {
       virtual BTCNumericTypes::balance_type GetSpendableBalance() const;
       virtual BTCNumericTypes::balance_type GetUnconfirmedBalance() const;
       virtual BTCNumericTypes::balance_type GetTotalBalance() const;
-      virtual void firstInit();
+      virtual void firstInit(bool force = false);
 
       virtual void AddUnconfirmedBalance(BTCNumericTypes::balance_type delta);
       virtual bool isInitialized() const { return inited_; }
@@ -270,6 +283,7 @@ namespace bs {
       virtual size_t GetExtAddressCount() const { return usedAddresses_.size(); }
       virtual size_t GetIntAddressCount() const { return usedAddresses_.size(); }
       virtual size_t GetWalletAddressCount() const { return addrCount_; }
+      virtual bool GetActiveAddressCount(const std::function<void(size_t)> &) const;
       virtual bs::Address GetNewExtAddress(AddressEntryType aet = AddressEntryType_Default) = 0;
       virtual bs::Address GetNewIntAddress(AddressEntryType aet = AddressEntryType_Default) = 0;
       virtual bs::Address GetNewChangeAddress(AddressEntryType aet = AddressEntryType_Default) { return GetNewExtAddress(aet); }
@@ -290,7 +304,8 @@ namespace bs {
 
       virtual wallet::TXSignRequest CreateTXRequest(const std::vector<UTXO> &
          , const std::vector<std::shared_ptr<ScriptRecipient>> &
-         , const uint64_t fee = 0, bool isRBF = false, bs::Address changeAddress = {});
+         , const uint64_t fee = 0, bool isRBF = false
+         , bs::Address changeAddress = {}, const uint64_t& origFee = 0);
       virtual BinaryData SignTXRequest(const wallet::TXSignRequest &,
                                        const SecureBinaryData &password = {},
                                        bool keepDuplicatedRecipients = false);
@@ -340,6 +355,7 @@ namespace bs {
       std::string    walletRegId_;
       std::shared_ptr<ArmoryConnection>      armory_;
       std::shared_ptr<AsyncClient::BtcWallet>   btcWallet_;
+      std::shared_ptr<spdlog::logger>   logger_; // May need to be set manually.
       mutable std::vector<bs::Address>       usedAddresses_;
       mutable std::set<BinaryData>           addrPrefixedHashes_, addressHashes_;
       mutable QMutex    addrMapsMtx_;
@@ -363,15 +379,11 @@ namespace bs {
       };
       std::shared_ptr<UtxoFilterAdapter>  utxoAdapter_;
 
-      std::map<QObject *, std::vector<std::function<void(std::vector<UTXO>)>>>   spendableCallbacks_;
-      std::map<QObject *, std::vector<std::function<void(std::vector<UTXO>)>>>   zcListCallbacks_;
+      std::map<QPointer<QObject>, std::vector<std::function<void(std::vector<UTXO>)>>>   spendableCallbacks_;
+      std::map<QPointer<QObject>, std::vector<std::function<void(std::vector<UTXO>)>>>   zcListCallbacks_;
 
       mutable std::map<uint32_t, std::vector<ClientClasses::LedgerEntry>>  historyCache_;
       std::atomic_bool  heartbeatRunning_ = { false };
-
-   private slots:
-      void onZCListObjDestroyed();
-      void onSpendableObjDestroyed();
    };
 
 

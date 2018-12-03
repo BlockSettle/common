@@ -28,10 +28,11 @@ class CCFileManager;
 class CCPortfolioModel;
 class CelerClient;
 class ConnectionManager;
-class HeadlessAddressSyncer;
 class CelerMarketDataProvider;
+class HeadlessAddressSyncer;
 class OTPManager;
 class QSystemTrayIcon;
+class RequestReplyCommand;
 class SignContainer;
 class StatusBarView;
 class StatusViewBlockListener;
@@ -77,6 +78,13 @@ private:
    bool isMDLicenseAccepted() const;
    void saveUserAcceptedMDLicense();
 
+   enum NetworkSettingType {  // Direct protobuf value mapping
+      Celer = 1,
+      MarketData = 2,
+      MDHistory = 3
+   };
+   void GetNetworkSettingsFromPuB(const std::function<void(std::map<NetworkSettingType, std::pair<std::string, unsigned int>>)> &);
+
 private slots:
    void InitTransactionsView();
    void ArmoryIsOffline();
@@ -94,7 +102,9 @@ private slots:
 
    bool createWallet(bool primary, bool reportSuccess = true);
 
-   void acceptMDAgreement();
+   void acceptMDAgreement(const std::string &host, const std::string &port);
+   void updateControlEnabledState();
+   void onButtonUserClicked();
 
 private:
    QAction *action_send_;
@@ -110,6 +120,9 @@ private:
    std::shared_ptr<WalletsManager>        walletsManager_;
    std::shared_ptr<AuthAddressManager>    authManager_;
    std::shared_ptr<ArmoryConnection>      armory_;
+
+   std::shared_ptr<RequestReplyCommand>   cmdPuBSettings_;
+   std::map<NetworkSettingType, std::pair<std::string, unsigned int>>   networkSettings_;
 
    std::shared_ptr<StatusBarView>            statusBarView_;
    std::shared_ptr<QSystemTrayIcon>          sysTrayIcon_;

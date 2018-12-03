@@ -8,9 +8,7 @@
 #include "CCFileManager.h"
 #include "HDLeaf.h"
 #include "HDWallet.h"
-#include "MessageBoxCritical.h"
-#include "MessageBoxInfo.h"
-#include "MessageBoxQuestion.h"
+#include "BSMessageBox.h"
 #include "SignContainer.h"
 #include "WalletsManager.h"
 
@@ -34,6 +32,8 @@ CCTokenEntryDialog::CCTokenEntryDialog(const std::shared_ptr<WalletsManager> &wa
 
    connect(signingContainer_.get(), &SignContainer::HDLeafCreated, this, &CCTokenEntryDialog::onWalletCreated);
    connect(signingContainer_.get(), &SignContainer::Error, this, &CCTokenEntryDialog::onWalletFailed);
+
+   ccFileMgr_->LoadCCDefinitionsFromPub();
 
    switch (ccFileMgr_->GetOtpEncType()) {
    case bs::wallet::EncryptionType::Auth:
@@ -161,7 +161,7 @@ void CCTokenEntryDialog::accept()
    const auto &cbPasswordQuery = [this] { return otpPassword_; };
    if (!ccFileMgr_->SubmitAddressToPuB(address, seed_, cbPasswordQuery)) {
       reject();
-      MessageBoxCritical(tr("CC Token submit failure")
+      BSMessageBox(BSMessageBox::critical, tr("CC Token submit failure")
          , tr("Failed to submit Private Market token to BlockSettle"), this).exec();
    }
    else {
@@ -177,9 +177,9 @@ void CCTokenEntryDialog::reject()
 void CCTokenEntryDialog::onCCAddrSubmitted(const QString addr)
 {
    QDialog::accept();
-   MessageBoxInfo(tr("Successful Submission")
+   BSMessageBox(BSMessageBox::info, tr("Submission Successful")
       , tr("The token has been submitted, please note that it might take a while before the"
-         " transaction is broadcasted in the Terminal")).exec();
+         " transaction is broadcast in the Terminal")).exec();
 }
 
 void CCTokenEntryDialog::onAuthSucceeded(SecureBinaryData password)

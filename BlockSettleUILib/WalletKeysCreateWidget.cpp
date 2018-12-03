@@ -69,7 +69,7 @@ void WalletKeysCreateWidget::addKey(bool password)
       widget->setPasswordLabelAsNew();
    }
 
-   if (flags_ & HidePubKeyFingerprint) {
+   if (flags_ & HidePubKeyFingerprint || true) {
       ui_->labelPubKeyFP->hide();
    }
    else {
@@ -160,6 +160,7 @@ bool WalletKeysCreateWidget::isValid() const
    if (pwdData_.empty()) {
       return false;
    }
+
    std::set<SecureBinaryData> encKeys;
    for (const auto &pwd : pwdData_) {
       if (pwd.encType == bs::wallet::EncryptionType::Auth) {
@@ -170,21 +171,12 @@ bool WalletKeysCreateWidget::isValid() const
             return false;
          }
          encKeys.insert(pwd.encKey);
-      } else if (pwd.password.isNull()) {
+      } else if (pwd.password.getSize() < 6) {
+         // Password must be at least 6 chars long.
          return false;
       }
    }
    return true;
-}
-
-std::string WalletKeysCreateWidget::getDeviceId() const
-{
-   for (const auto &keyWidget : widgets_) {
-      if (!keyWidget->deviceId().empty()) {
-         return keyWidget->deviceId();
-      }
-   }
-   return {};
 }
 
 void WalletKeysCreateWidget::cancel()

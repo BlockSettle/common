@@ -30,6 +30,8 @@ public:
    OfflineSigner(OfflineSigner&&) = delete;
    OfflineSigner& operator = (OfflineSigner&&) = delete;
 
+   void SetTargetDir(const QString& targetDir);
+
    bool Start() override;
    bool Stop() override { return true; }
    bool Connect() override { return true; }
@@ -71,12 +73,12 @@ public:
    void SetLimits(const std::shared_ptr<bs::hd::Wallet> &, const SecureBinaryData &password, bool autoSign) override {}
    RequestId ChangePassword(const std::shared_ptr<bs::hd::Wallet> &, const std::vector<bs::wallet::PasswordData> &newPass
       , bs::wallet::KeyRank, const SecureBinaryData &oldPass
-      , bool addNew, bool dryRun) override { return 0; }
+      , bool addNew, bool removeOld, bool dryRun) override { return 0; }
 
    bool isReady() const override { return true; }
 
 private:
-   const QString  targetDir_;
+   QString        targetDir_;
    RequestId      seqId_ = 1;
 };
 

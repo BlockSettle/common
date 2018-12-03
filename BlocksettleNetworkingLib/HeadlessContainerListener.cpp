@@ -10,6 +10,21 @@
 
 using namespace Blocksettle::Communication;
 
+class NetConfigScopedChange
+{
+public:
+   explicit NetConfigScopedChange(NetworkType netType) : prevMode_(NetworkConfig::getMode()) {
+      NetworkConfig::selectNetwork(netType == NetworkType::TestNet ? NETWORK_MODE_TESTNET : NETWORK_MODE_MAINNET);
+   }
+   ~NetConfigScopedChange() {
+      NetworkConfig::selectNetwork(prevMode_);
+   }
+
+private:
+   const NETWORK_MODE   prevMode_;
+};
+
+
 HeadlessContainerListener::HeadlessContainerListener(const std::shared_ptr<ServerConnection> &conn
    , const std::shared_ptr<spdlog::logger> &logger
    , const std::shared_ptr<WalletsManager> &walletsMgr
@@ -20,7 +35,7 @@ HeadlessContainerListener::HeadlessContainerListener(const std::shared_ptr<Serve
    , logger_(logger)
    , walletsMgr_(walletsMgr)
    , walletsPath_(walletsPath)
-   , backupPath_(walletsPath + "../backup")
+   , backupPath_(walletsPath + "/../backup")
    , pwHash_(pwHash)
    , hasUI_(hasUI)
    , backupEnabled_{backupEnabled}
@@ -751,6 +766,7 @@ bool HeadlessContainerListener::onSyncAddress(const std::string &clientId, headl
       }
    }
 
+   logger_->debug("[HeadlessContainerListener] creating {} new addresses", newAddresses.size());
    std::vector<std::pair<std::string, std::string>> failedAddresses;
    for (const auto &tuple : newAddresses) {
       const auto &wallet = std::get<0>(tuple);
@@ -829,13 +845,15 @@ bool HeadlessContainerListener::CreateHDLeaf(const std::string &clientId, unsign
          logger_->error("[HeadlessContainerListener] no password for encrypted wallet");
          CreateHDWalletResponse(clientId, id, "password required, but empty received");
       }
-      const auto &rootNode = hdWallet->getRootNode(pass);
-      if (rootNode) {
-         leafNode = rootNode->derive(path);
-      }
-      else {
-         logger_->error("[HeadlessContainerListener] failed to decrypt root node");
-         CreateHDWalletResponse(clientId, id, "root node decryption failed");
+      {
+         NetConfigScopedChange netChange(hdWallet->networkType());
+         const auto &rootNode = hdWallet->getRootNode(pass);
+         if (rootNode) {
+            leafNode = rootNode->derive(path);
+         } else {
+            logger_->error("[HeadlessContainerListener] failed to decrypt root node");
+            CreateHDWalletResponse(clientId, id, "root node decryption failed");
+         }
       }
 
       if (leafNode) {
@@ -884,6 +902,7 @@ bool HeadlessContainerListener::CreateHDWallet(const std::string &clientId, unsi
    , NetworkType netType, const std::vector<bs::wallet::PasswordData> &pwdData, bs::wallet::KeyRank keyRank)
 {
    std::shared_ptr<bs::hd::Wallet> wallet;
+   NetConfigScopedChange netChange(netType);
    try {
       auto seed = request.privatekey().empty() ? bs::wallet::Seed(request.seed(), netType)
          : bs::wallet::Seed(netType, request.privatekey());
@@ -973,7 +992,7 @@ void HeadlessContainerListener::CreateHDWalletResponse(const std::string &client
       wlt->set_name(wallet->getName());
       wlt->set_description(wallet->getDesc());
       wlt->set_walletid(wallet->getWalletId());
-      wlt->set_nettype((wallet->getXBTGroupType() == bs::hd::CoinType::Bitcoin_test) ? headless::TestNetType : headless::MainNetType);
+      wlt->set_nettype((wallet->networkType() == NetworkType::TestNet) ? headless::TestNetType : headless::MainNetType);
       for (const auto &group : wallet->getGroups()) {
          auto grp = wlt->add_groups();
          grp->set_path(group->getPath().toString());
@@ -1096,6 +1115,7 @@ bool HeadlessContainerListener::onGetRootKey(const std::string &clientId, headle
    }
 
    logger_->info("Requested private key for wallet {}", request.rootwalletid());
+   NetConfigScopedChange netChange(wallet->networkType());
    const auto &decrypted = wallet->getRootNode(BinaryData::CreateFromHex(request.password()));
    if (!decrypted) {
       logger_->error("[HeadlessContainerListener] failed to get/decrypt root node for {}", request.rootwalletid());
@@ -1197,9 +1217,9 @@ bool HeadlessContainerListener::onChangePassword(const std::string &clientId
    }
    bs::wallet::KeyRank keyRank = {request.rankm(), request.rankn()};
 
-   bool result = wallet->changePassword(logger_, pwdData, keyRank
+   bool result = wallet->changePassword(pwdData, keyRank
       , BinaryData::CreateFromHex(request.oldpassword())
-      , request.addnew(), request.dryrun());
+      , request.addnew(), request.removeold(), request.dryrun());
 
    if (!result) {
       logger_->error("[HeadlessContainerListener] failed to change password for wallet {}", request.rootwalletid());
@@ -1299,6 +1319,7 @@ void HeadlessContainerListener::activateAutoSign(const std::string &walletId, co
          deactivateAutoSign(walletId, "empty password");
          return;
       }
+      NetConfigScopedChange netChange(wallet->networkType());
       const auto decrypted = wallet->getRootNode(password);
       if (!decrypted) {
          deactivateAutoSign(walletId, "failed to decrypt root node");

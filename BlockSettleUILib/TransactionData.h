@@ -28,6 +28,9 @@ public:
       // usedTransactions - count of utxo that will be used in transaction
       size_t   usedTransactions;
 
+      // outputsCount - number of recipients ( without change )
+      size_t   outputsCount;
+
       // availableBalance - total available balance. in case of manual selection - same as selectedBalance
       double   availableBalance;
 
@@ -35,9 +38,9 @@ public:
       double   selectedBalance;
 
       // balanceToSpent - total amount received by recipients
-      double   balanceToSpent;
+      double   balanceToSpend;
 
-      size_t   transactionSize;
+      size_t   txVirtSize;
       uint64_t totalFee;
       double   feePerByte;
 
@@ -58,11 +61,13 @@ public:
    TransactionData(TransactionData&&) = delete;
    TransactionData& operator = (TransactionData&&) = delete;
 
-   bool SetWallet(const std::shared_ptr<bs::Wallet> &, uint32_t topBlock);
+   bool SetWallet(const std::shared_ptr<bs::Wallet> &, uint32_t topBlock
+      , bool resetInputs = false, const std::function<void()> &cbInputsReset = nullptr);
+   bool SetWalletAndInputs(const std::shared_ptr<bs::Wallet> &, const std::vector<UTXO> &, uint32_t topBlock);
    void SetSigningWallet(const std::shared_ptr<bs::Wallet>& wallet) { signWallet_ = wallet; }
    std::shared_ptr<bs::Wallet> GetWallet() const { return wallet_; }
    std::shared_ptr<bs::Wallet> GetSigningWallet() const { return signWallet_; }
-   bool SetFeePerByte(float feePerByte);
+   void SetFeePerByte(float feePerByte);
    float FeePerByte() const { return feePerByte_; }
    void SetTotalFee(uint64_t fee);
 
@@ -79,6 +84,8 @@ public:
    bool UpdateRecipient(unsigned int recipientId, double amount, const bs::Address &);
    void RemoveRecipient(unsigned int recipientId);
 
+   void ClearAllRecipients();
+
    void SetFallbackRecvAddress(const bs::Address &addr) { fallbackRecvAddress_ = addr; }
    bs::Address GetFallbackRecvAddress();
 
@@ -89,7 +96,9 @@ public:
    bs::wallet::TXSignRequest CreateUnsignedTransaction(bool isRBF = false, const bs::Address &changeAddr = {});
    bs::wallet::TXSignRequest GetSignTXRequest() const;
 
-   bs::wallet::TXSignRequest CreateTXRequest(bool isRBF = false, const bs::Address &changeAddr = {}) const;
+   bs::wallet::TXSignRequest CreateTXRequest(bool isRBF = false
+                                             , const bs::Address &changeAddr = {}
+                                             , const uint64_t& origFee = 0) const;
    bs::wallet::TXSignRequest CreatePartialTXRequest(uint64_t spendVal, float feePerByte
       , const std::vector<std::shared_ptr<ScriptRecipient>> &, const BinaryData &prevData
       , const std::vector<UTXO> &inputs = {});

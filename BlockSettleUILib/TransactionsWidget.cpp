@@ -7,7 +7,9 @@
 
 #include "ui_TransactionsWidget.h"
 
+#include "CreateTransactionDialogAdvanced.h"
 #include "HDWallet.h"
+#include "BSMessageBox.h"
 #include "TransactionsViewModel.h"
 #include "TransactionDetailDialog.h"
 #include "WalletsManager.h"
@@ -92,20 +94,25 @@ public:
          }
       }
 
-      if (!searchString.isEmpty()) {
-         QModelIndex index = src->index(source_row, static_cast<int>(TransactionsViewModel::Columns::Comment));
-         if (!src->data(index, TransactionsViewModel::FilterRole).toString().contains(searchString, Qt::CaseInsensitive)) {
-            return false;
-         }
-      }
+      bool result = true;
 
       if ((startDate > 0) && (endDate > 0)) {
          QModelIndex index = src->index(source_row, static_cast<int>(TransactionsViewModel::Columns::Date));
          uint32_t txDate = src->data(index, TransactionsViewModel::FilterRole).toUInt();
-         return (startDate <= txDate) && (txDate <= endDate);
+         result = (startDate <= txDate) && (txDate <= endDate);
       }
 
-      return true;
+      if (result && !searchString.isEmpty()) {     // more columns can be added later
+         for (const auto &col : { TransactionsViewModel::Columns::Comment, TransactionsViewModel::Columns::Address }) {
+            QModelIndex index = src->index(source_row, static_cast<int>(col));
+            if (src->data(index, TransactionsViewModel::FilterRole).toString().contains(searchString, Qt::CaseInsensitive)) {
+               return true;
+            }
+         }
+         return false;
+      }
+
+      return result;
    }
 
    bool filterAcceptsColumn(int source_column, const QModelIndex &source_parent) const override
@@ -156,17 +163,48 @@ TransactionsWidget::TransactionsWidget(QWidget* parent)
    ui->setupUi(this);
    connect(ui->treeViewTransactions, &QAbstractItemView::doubleClicked, this, &TransactionsWidget::showTransactionDetails);
    ui->treeViewTransactions->setContextMenuPolicy(Qt::CustomContextMenu);
+
+   actionCopyAddr_ = new QAction(tr("&Copy Address"));
+   connect(actionCopyAddr_, &QAction::triggered, [this]() {
+      qApp->clipboard()->setText(curAddress_);
+   });
+
+   actionRBF_ = new QAction(tr("Replace-By-Fee (RBF)"), this);
+   connect(actionRBF_, &QAction::triggered, this, &TransactionsWidget::onCreateRBFDialog);
+
+   actionCPFP_ = new QAction(tr("Child-Pays-For-Parent (CPFP)"), this);
+   connect(actionCPFP_, &QAction::triggered, this, &TransactionsWidget::onCreateCPFPDialog);
+
    connect(ui->treeViewTransactions, &QAbstractItemView::customContextMenuRequested, [=](const QPoint& p) {
       auto index = sortFilterModel_->mapToSource(ui->treeViewTransactions->indexAt(p));
       auto addressIndex = transactionsModel_->index(index.row(), static_cast<int>(TransactionsViewModel::Columns::Address));
-      auto address = transactionsModel_->data(addressIndex).toString();
+      curAddress_ = transactionsModel_->data(addressIndex).toString();
 
-      QMenu* menu = new QMenu(this);
-      QAction* copyAction = menu->addAction(tr("&Copy Address"));
-      connect(copyAction, &QAction::triggered, [=]() {
-         qApp->clipboard()->setText(address);
-      });
-      menu->popup(ui->treeViewTransactions->mapToGlobal(p));
+      contextMenu_.clear();
+      contextMenu_.addAction(actionCopyAddr_);
+
+      if (sortFilterModel_) {
+         const auto sourceIndex = sortFilterModel_->mapToSource(ui->treeViewTransactions->indexAt(p));
+         const auto txItem = transactionsModel_->getItem(sourceIndex.row());
+         if (txItem.initialized) {
+            if (txItem.isRBFeligible()) {
+               contextMenu_.addAction(actionRBF_);
+               actionRBF_->setData(sourceIndex.row());
+            }
+            else {
+               actionRBF_->setData(-1);
+            }
+
+            if (txItem.isCPFPeligible()) {
+               contextMenu_.addAction(actionCPFP_);
+               actionCPFP_->setData(sourceIndex.row());
+            }
+            else {
+               actionCPFP_->setData(-1);
+            }
+         }
+      }
+      contextMenu_.popup(ui->treeViewTransactions->mapToGlobal(p));
    });
    ui->treeViewTransactions->setUniformRowHeights(true);
    ui->treeViewTransactions->header()->setSectionResizeMode(QHeaderView::ResizeToContents);
@@ -201,10 +239,15 @@ TransactionsWidget::TransactionsWidget(QWidget* parent)
 TransactionsWidget::~TransactionsWidget() = default;
 
 void TransactionsWidget::init(const std::shared_ptr<WalletsManager> &walletsMgr
-   , const std::shared_ptr<ArmoryConnection> &armory)
+                              , const std::shared_ptr<ArmoryConnection> &armory
+                              , const std::shared_ptr<SignContainer> &signContainer
+                              , const std::shared_ptr<spdlog::logger> &logger)
+
 {
    walletsManager_ = walletsMgr;
    armory_ = armory;
+   signContainer_ = signContainer;
+   logger_ = logger;
 
    connect(walletsManager_.get(), &WalletsManager::walletChanged, this, &TransactionsWidget::walletsChanged);
 }
@@ -404,4 +447,54 @@ void TransactionsWidget::updateResultCount()
    ui->labelResultCount->setText(tr("Displaying %L1 transactions (of %L2 total).")
       .arg(shown).arg(total));
    ui->labelResultCount->show();
+}
+
+void TransactionsWidget::onCreateRBFDialog()
+{
+   auto txItem = transactionsModel_->getItem(actionRBF_->data().toInt());
+
+   const auto &cbDialog = [this](const TransactionsViewItem *txItem) {
+      try {
+         auto dlg = CreateTransactionDialogAdvanced::CreateForRBF(armory_
+            , walletsManager_, signContainer_, logger_, txItem->tx
+            , txItem->wallet, this);
+         dlg->exec();
+      }
+      catch (const std::exception &e) {
+         BSMessageBox(BSMessageBox::critical, tr("RBF Transaction"), tr("Failed to create RBF transaction")
+            , QLatin1String(e.what()), this).exec();
+      }
+   };
+
+   if (txItem.initialized) {
+      cbDialog(&txItem);
+   }
+   else {
+      txItem.initialize(armory_, walletsManager_, cbDialog);
+   }
+}
+
+void TransactionsWidget::onCreateCPFPDialog()
+{
+   auto txItem = transactionsModel_->getItem(actionCPFP_->data().toInt());
+
+   const auto &cbDialog = [this](const TransactionsViewItem *txItem) {
+      try {
+         auto dlg = CreateTransactionDialogAdvanced::CreateForCPFP(armory_
+            , walletsManager_, signContainer_, txItem->wallet
+            , logger_, txItem->tx, this);
+         dlg->exec();
+      }
+      catch (const std::exception &e) {
+         BSMessageBox(BSMessageBox::critical, tr("CPFP Transaction"), tr("Failed to create CPFP transaction")
+            , QLatin1String(e.what()), this).exec();
+      }
+   };
+
+   if (txItem.initialized) {
+      cbDialog(&txItem);
+   }
+   else {
+      txItem.initialize(armory_, walletsManager_, cbDialog);
+   }
 }

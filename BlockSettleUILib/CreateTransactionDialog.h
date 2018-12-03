@@ -35,10 +35,11 @@ public:
    CreateTransactionDialog(const std::shared_ptr<ArmoryConnection> &
       , const std::shared_ptr<WalletsManager> &
       , const std::shared_ptr<SignContainer> &
-      , bool loadFeeSuggestions, QWidget* parent);
+      , bool loadFeeSuggestions, const std::shared_ptr<spdlog::logger>& logger
+      , QWidget* parent);
    ~CreateTransactionDialog() noexcept override;
 
-   void SelectWallet(const std::string& walletId);
+   int SelectWallet(const std::string& walletId);
    void setOfflineDir(const QString &dir) { offlineDir_ = dir; }
 
 protected:
@@ -86,12 +87,15 @@ signals:
 protected slots:
    virtual void onFeeSuggestionsLoaded(const std::map<unsigned int, float> &);
    virtual void feeSelectionChanged(int);
-   virtual void selectedWalletChanged(int);
+   virtual void selectedWalletChanged(int, bool resetInputs = false
+      , const std::function<void()> &cbInputsReset = nullptr);
    virtual void onMaxPressed();
    void onTXSigned(unsigned int id, BinaryData signedTX, std::string error, bool cancelledByUser);
 
-private:
+protected:
    void populateFeeList();
+
+private:
    void loadFees();
    void populateWalletsList();
    void startBroadcasting();
@@ -102,6 +106,7 @@ protected:
    std::shared_ptr<WalletsManager>  walletsManager_;
    std::shared_ptr<SignContainer>   signingContainer_;
    std::shared_ptr<TransactionData> transactionData_;
+   std::shared_ptr<spdlog::logger> logger_;
 
    XbtAmountValidator * xbtValidator_ = nullptr;
 
@@ -111,6 +116,7 @@ protected:
    unsigned int   pendingTXSignId_ = 0;
    bool           broadcasting_ = false;
    uint64_t       originalFee_ = 0;
+   float          originalFeePerByte_ = 0.0f;
 
    QString        offlineDir_;
    BinaryData     importedSignedTX_;

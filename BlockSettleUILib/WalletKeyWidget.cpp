@@ -55,8 +55,6 @@ WalletKeyWidget::WalletKeyWidget(MobileClientRequest requestType, const std::str
 
    timer_.setInterval(500);
    connect(&timer_, &QTimer::timeout, this, &WalletKeyWidget::onTimer);
-
-
 }
 
 void WalletKeyWidget::init(const std::shared_ptr<ApplicationSettings> &appSettings, const QString& username)
@@ -84,6 +82,8 @@ void WalletKeyWidget::onTypeChanged()
    ui_->lineEditPassword->setVisible(password_);
    ui_->labelPasswordConfirm->setVisible(password_ && !encryptionKeysSet_);
    ui_->lineEditPasswordConfirm->setVisible(password_ && !encryptionKeysSet_);
+   ui_->labelPasswordInfo->setVisible(password_);
+   ui_->labelPasswordWarning->setVisible(password_ && !hidePasswordWarning_);
 
    ui_->labelAuthId->setVisible(!password_ && showAuthId_);
    ui_->widgetAuthLayout->setVisible(!password_);
@@ -106,6 +106,32 @@ void WalletKeyWidget::onPasswordChanged()
    else {
       emit keyChanged(index_, {});
    }
+
+   QString msg;
+   bool bGreen = false;
+   if (ui_->lineEditPasswordConfirm->isVisible()) {
+      auto pwd = ui_->lineEditPassword->text();
+      auto pwdCf = ui_->lineEditPasswordConfirm->text();
+      if (!pwd.isEmpty() && !pwdCf.isEmpty()) {
+         if (pwd == pwdCf) {
+            if (pwd.length() < 6) {
+               msg = tr("Passwords match but are too short!");
+            }
+            else {
+               msg = tr("Passwords match!");
+               bGreen = true;
+            }
+         }
+         else if (pwd.length() < pwdCf.length()) {
+            msg = tr("Confirmation Password is too long!");
+         }
+         else {
+            msg = tr("Passwords do not match!");
+         }
+      }
+   }
+   ui_->labelPasswordInfo->setStyleSheet(tr("QLabel { color : %1; }").arg(bGreen ? tr("#38C673") : tr("#EE2249")));
+   ui_->labelPasswordInfo->setText(msg);
 }
 
 void WalletKeyWidget::onAuthIdChanged(const QString &text)
@@ -124,11 +150,14 @@ void WalletKeyWidget::onAuthSignClicked()
    }
    timeLeft_ = 120;
    ui_->progressBar->setMaximum(timeLeft_ * 100);
-   ui_->progressBar->show();
+   if (!hideProgressBar_) {
+      ui_->progressBar->show();
+   }
    timer_.start();
    authRunning_ = true;
-//      prompt_.isEmpty() ? tr("Activate Auth eID signing") : prompt_, walletId_);
-   mobileClient_->start(requestType_, ui_->comboBoxAuthId->currentText().toStdString(), walletId_);
+
+   mobileClient_->start(requestType_, ui_->comboBoxAuthId->currentText().toStdString()
+      , walletId_, knownDeviceIds_);
    ui_->pushButtonAuth->setText(tr("Cancel Auth request"));
    ui_->comboBoxAuthId->setEnabled(false);
 
@@ -137,17 +166,16 @@ void WalletKeyWidget::onAuthSignClicked()
    }
 }
 
-void WalletKeyWidget::onAuthSucceeded(const std::string &deviceId, const SecureBinaryData &password)
+void WalletKeyWidget::onAuthSucceeded(const std::string &encKey, const SecureBinaryData &password)
 {
-   deviceId_ = deviceId;
-
    stop();
    ui_->pushButtonAuth->setText(tr("Successfully signed"));
    ui_->pushButtonAuth->setEnabled(false);
    ui_->widgetAuthLayout->show();
 
    QPropertyAnimation *a = startAuthAnimation(true);
-   connect(a, &QPropertyAnimation::finished, [this, password]() {
+   connect(a, &QPropertyAnimation::finished, [this, encKey, password]() {
+      emit encKeyChanged(index_, encKey);
       emit keyChanged(index_, password);
    });
 }
@@ -222,8 +250,14 @@ void WalletKeyWidget::setEncryptionKeys(const std::vector<SecureBinaryData> &enc
       return;
    }
    ui_->comboBoxAuthId->setEditable(false);
+
+   knownDeviceIds_.clear();
    for (const auto &encKey : encKeys) {
-      ui_->comboBoxAuthId->addItem(QString::fromStdString(encKey.toBinStr()));
+      auto deviceInfo = MobileClient::getDeviceInfo(encKey.toBinStr());
+      if (!deviceInfo.deviceId.empty()) {
+         knownDeviceIds_.push_back(deviceInfo.deviceId);
+      }
+      ui_->comboBoxAuthId->addItem(QString::fromStdString(deviceInfo.userId));
    }
    if ((index >= 0) && (index < encKeys.size())) {
       ui_->comboBoxAuthId->setCurrentIndex(index);
@@ -290,14 +324,20 @@ void WalletKeyWidget::setHideAuthEmailLabel(bool value)
    onTypeChanged();
 }
 
+void WalletKeyWidget::setHidePasswordWarning(bool value)
+{
+   hidePasswordWarning_ = value;
+   onTypeChanged();
+}
+
 void WalletKeyWidget::setHideAuthControlsOnSignClicked(bool value)
 {
    hideAuthControlsOnSignClicked_ = value;
 }
 
-const string &WalletKeyWidget::deviceId() const
+void WalletKeyWidget::setHideProgressBar(bool value)
 {
-   return deviceId_;
+   hideProgressBar_ = value;
 }
 
 QPropertyAnimation* WalletKeyWidget::startAuthAnimation(bool success)

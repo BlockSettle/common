@@ -49,12 +49,15 @@ public:
 private slots:
    void onContinueClicked();
    void onTabChanged(int index);
-   void onSubmitKeysKeyChanged2(int, SecureBinaryData);
-   void onSubmitKeysFailed2();
-   void onCreateKeysKeyChanged2(int, SecureBinaryData);
-   void onCreateKeysFailed2();
+
+   void onOldDeviceKeyChanged(int, SecureBinaryData);
+   void onOldDeviceFailed();
+
+   void onNewDeviceEncKeyChanged(int index, SecureBinaryData encKey);
+   void onNewDeviceKeyChanged(int index, SecureBinaryData password);
+   void onNewDeviceFailed();
+
    void onPasswordChanged(const std::string &walletId, bool ok);
-   void onUpdateServerFinished(bool success);
 
 protected:
    void accept() override;
@@ -66,7 +69,7 @@ private:
    void continueAddDevice();
    void changePassword();
    void resetKeys();
-   void updateServer();
+   void deleteDevice(const std::string &deviceId);
 
    std::unique_ptr<Ui::ChangeWalletPasswordDialog> ui_;
    std::shared_ptr<spdlog::logger> logger_;
@@ -78,9 +81,7 @@ private:
    std::vector<bs::wallet::PasswordData> newPasswordData_;
    // Init variables in resetKeys method so they always valid when we restart process
    bool addNew_;
-   bool dryRun_;
-   std::string newDeviceId_;
-   std::string deleteAllDeviceId_;
+   bool removeOld_;
    SecureBinaryData oldKey_;
    State state_ = State::Idle;
    WalletKeyWidget *deviceKeyOld_ = nullptr;
@@ -89,7 +90,6 @@ private:
    bool deviceKeyNewValid_;
    bool isLatestChangeAddDevice_;
    std::shared_ptr<ApplicationSettings> appSettings_;
-   MobileClient updateServerClient_;
 };
 
 #endif // __CHANGE_WALLET_PASSWORD_DIALOG_H__

@@ -1,7 +1,6 @@
 #include "AddressListModel.h"
 #include "WalletsManager.h"
 #include "UiUtils.h"
-#include <QtConcurrent/QtConcurrentRun>
 
 
 bool AddressListModel::AddressRow::isMultiLineComment() const
@@ -134,43 +133,53 @@ void AddressListModel::updateWallet(const std::shared_ptr<bs::Wallet> &wallet)
 
 void AddressListModel::updateWalletData()
 {
-   auto nbTxNs = new int(addressRows_.size());
-   auto nbBalances = new int(addressRows_.size());
+   auto nbTxNs = std::make_shared<int>(addressRows_.size());
+   auto nbBalances = std::make_shared<int>(addressRows_.size());
+
+   auto addrTxNs = std::make_shared<std::vector<uint32_t>>();
+   addrTxNs->resize(addressRows_.size());
+   auto addrBalances = std::make_shared<std::vector<uint64_t>>();
+   addrBalances->resize(addressRows_.size());
+
    for (size_t i = 0; i < addressRows_.size(); ++i) {
-      auto &addrRow = addressRows_[i];
-      const auto &cbTxN = [this, &addrRow, i, nbTxNs](uint32_t txn) {
+      const auto &cbTxN = [this, addrTxNs, i, nbTxNs](uint32_t txn) {
          --(*nbTxNs);
          if (i >= addressRows_.size()) {
             return;
          }
-         addrRow.transactionCount = txn;
+         (*addrTxNs)[i] = txn;
          if (*nbTxNs <= 0) {
-            delete nbTxNs;
+            for (size_t i = 0; i < std::min(addressRows_.size(), addrTxNs->size()); ++i) {
+               addressRows_[i].transactionCount = (*addrTxNs)[i];
+            }
             emit dataChanged(index(0, ColumnTxCount), index(addressRows_.size()-1, ColumnTxCount));
             emit updated();
          }
       };
 
-      const auto &cbBalance = [this, &addrRow, i, nbBalances](std::vector<uint64_t> balances) {
+      const auto &cbBalance = [this, addrBalances, i, nbBalances](std::vector<uint64_t> balances) {
          --(*nbBalances);
          if (i >= addressRows_.size()) {
             return;
          }
-         addrRow.balance = balances[0];
+         (*addrBalances)[i] = balances[0];
          if (*nbBalances <= 0) {
-            delete nbBalances;
+            for (size_t i = 0; i < std::min(addressRows_.size(), addrBalances->size()); ++i) {
+               addressRows_[i].balance = (*addrBalances)[i];
+            }
             emit dataChanged(index(0, ColumnBalance), index(addressRows_.size() - 1, ColumnBalance));
             emit updated();
          }
       };
-      if (!addrRow.wallet->getAddrTxN(addrRow.address, cbTxN)) {
-         delete nbTxNs;
-         delete nbBalances;
-         return;
-      }
-      if (!addrRow.wallet->getAddrBalance(addrRow.address, cbBalance)) {
-         delete nbBalances;
-         return;
+      const auto &wallet = addressRows_[i].wallet;
+      const auto &address = addressRows_[i].address;
+      if (wallet) {
+         if (!wallet->getAddrTxN(address, cbTxN)) {
+            return;
+         }
+         if (!wallet->getAddrBalance(address, cbBalance)) {
+            return;
+         }
       }
    }
 }

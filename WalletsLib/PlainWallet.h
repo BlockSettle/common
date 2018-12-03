@@ -56,15 +56,20 @@ namespace bs {
       mutable SecureBinaryData   pubKey_;
    };
 
-
+   // A base wallet that can be used by other wallets, or for very basic
+   // functionality (e.g., creating a bare wallet that can be registered and get
+   // info on addresses added to the wallet). The wallet may or may not be able
+   // to access the wallet DB.
    class PlainWallet : public Wallet
    {
       Q_OBJECT
 
    public:
-      PlainWallet(const std::string &name, const std::string &desc);
-      PlainWallet(const std::string &filename);
-      PlainWallet() {}
+      PlainWallet(const std::string &name, const std::string &desc
+                  , const std::shared_ptr<spdlog::logger> &logger = nullptr);
+      PlainWallet(const std::string &filename
+                  , const std::shared_ptr<spdlog::logger> &logger = nullptr);
+      PlainWallet(const std::shared_ptr<spdlog::logger> &logger = nullptr);
       ~PlainWallet() override;
 
       PlainWallet(const PlainWallet&) = delete;
@@ -75,6 +80,9 @@ namespace bs {
       static std::string fileNamePrefix(bool) { return "plain_"; }
       void saveToDir(const std::string &targetDir);
       void saveToFile(const std::string &filename);
+      void setLogger(const std::shared_ptr<spdlog::logger> &logger) {
+         logger_ = logger;
+      }
 
       virtual int addAddress(const bs::Address &, std::shared_ptr<GenericAsset> asset = nullptr);
       bool containsAddress(const bs::Address &addr) override;
@@ -90,12 +98,13 @@ namespace bs {
       std::shared_ptr<ResolverFeed> GetPublicKeyResolver() override;
 
       bs::Address GetNewExtAddress(AddressEntryType) override { return {}; }
+      bs::Address GetNewIntAddress(AddressEntryType) override { return {}; }
 
       size_t GetUsedAddressCount() const override { return usedAddresses_.size(); }
       std::shared_ptr<AddressEntry> getAddressEntryForAddr(const BinaryData &addr) override;
       std::string GetAddressIndex(const bs::Address &) override;
       bool AddressIndexExists(const std::string &index) const override;
-      bs::Address CreateAddressWithIndex(const std::string &index, AddressEntryType, bool signal = true) override { return {}; }
+      bs::Address CreateAddressWithIndex(const std::string &, AddressEntryType, bool) override { return {}; }
 
       SecureBinaryData GetPublicKeyFor(const bs::Address &) override;
       KeyPair GetKeyPairFor(const bs::Address &, const SecureBinaryData &password) override;

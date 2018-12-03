@@ -133,7 +133,7 @@
        <enum>Qt::NoFocus</enum>
       </property>
       <property name="currentIndex">
-       <number>0</number>
+       <number>3</number>
       </property>
       <property name="movable">
        <bool>false</bool>
@@ -178,6 +178,11 @@
        </property>
        <attribute name="title">
         <string>TRANSACTIONS</string>
+       </attribute>
+      </widget>
+      <widget class="ExplorerWidget" name="widgetExplorer">
+       <attribute name="title">
+        <string>EXPLORER</string>
        </attribute>
       </widget>
      </widget>
@@ -592,6 +597,12 @@
    <class>RFQReplyWidget</class>
    <extends>QWidget</extends>
    <header>RFQReplyWidget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>ExplorerWidget</class>
+   <extends>QWidget</extends>
+   <header>ExplorerWidget.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>

@@ -9,7 +9,7 @@ QString getMobileClientRequestText(MobileClientRequest requestType)
 
    switch (requestType) {
    case MobileClientRequest::ActivateWallet:
-      return app->tr("Activate wallet");
+      return app->tr("Activate Auth eID Signing");
    case MobileClientRequest::DeactivateWallet:
       return app->tr("Deactivate wallet");
    case MobileClientRequest::SignWallet:
@@ -20,8 +20,14 @@ QString getMobileClientRequestText(MobileClientRequest requestType)
       return app->tr("Activate wallet (existing device)");
    case MobileClientRequest::ActivateWalletNewDevice:
       return app->tr("Activate wallet (new device)");
+   case MobileClientRequest::DeactivateWalletDevice:
+      return app->tr("Deactivate wallet device");
    case MobileClientRequest::VerifyWalletKey:
-      return app->tr("Verify wallet key");
+      return app->tr("Confirm Auth eID Signing");
+   case MobileClientRequest::ActivateOTP:
+      return app->tr("Activate OTP");
+   case MobileClientRequest::SettlementTransaction:
+      return app->tr("Sign transaction");
    default:
       throw std::logic_error("Invalid MobileClientRequest value");
    }
@@ -32,8 +38,19 @@ bool isMobileClientNewDeviceNeeded(MobileClientRequest requestType)
    switch (requestType) {
    case MobileClientRequest::ActivateWallet:
    case MobileClientRequest::ActivateWalletNewDevice:
+   case MobileClientRequest::ActivateOTP:
       return true;
+   default:
+      return false;
    }
+}
 
-   return false;
+int getMobileClientTimeout(MobileClientRequest requestType)
+{
+   switch (requestType) {
+   case MobileClientRequest::SettlementTransaction:
+      return 30;
+   default:
+      return 120;
+   }
 }

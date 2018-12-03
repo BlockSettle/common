@@ -4,8 +4,6 @@
 #include "Address.h"
 #include "ArmoryConnection.h"
 #include "CoinControlDialog.h"
-#include "FixedFeeValidator.h"
-#include "MessageBoxInfo.h"
 #include "OfflineSigner.h"
 #include "SelectAddressDialog.h"
 #include "SelectedTransactionInputs.h"
@@ -17,21 +15,21 @@
 #include "WalletsManager.h"
 #include "XbtAmountValidator.h"
 
-#include <QDebug>
 #include <QEvent>
 #include <QKeyEvent>
 #include <QFile>
 #include <QFileDialog>
 #include <QPushButton>
-#include <QIntValidator>
 
 #include <stdexcept>
 
 
 CreateTransactionDialogAdvanced::CreateTransactionDialogAdvanced(const std::shared_ptr<ArmoryConnection> &armory
    , const std::shared_ptr<WalletsManager>& walletManager
-   , const std::shared_ptr<SignContainer> &container, bool loadFeeSuggestions, QWidget* parent)
- : CreateTransactionDialog(armory, walletManager, container, loadFeeSuggestions, parent)
+   , const std::shared_ptr<SignContainer> &container, bool loadFeeSuggestions
+   , const std::shared_ptr<spdlog::logger>& logger, QWidget* parent)
+ : CreateTransactionDialog(armory, walletManager, container, loadFeeSuggestions
+    , logger, parent)
  , ui_(new Ui::CreateTransactionDialogAdvanced)
 {
    ui_->setupUi(this);
@@ -47,14 +45,19 @@ std::shared_ptr<CreateTransactionDialogAdvanced> CreateTransactionDialogAdvanced
         const std::shared_ptr<ArmoryConnection> &armory
       , const std::shared_ptr<WalletsManager>& walletManager
       , const std::shared_ptr<SignContainer>& container
+      , const std::shared_ptr<spdlog::logger>& logger
       , const Tx &tx
       , const std::shared_ptr<bs::Wallet>& wallet
       , QWidget* parent)
 {
-   auto dlg = std::make_shared<CreateTransactionDialogAdvanced>(armory, walletManager, container, true, parent);
+   auto dlg = std::make_shared<CreateTransactionDialogAdvanced>(armory,
+                                                                walletManager,
+                                                                container,
+                                                                false,
+                                                                logger,
+                                                                parent);
 
    dlg->setWindowTitle(tr("Replace-By-Fee"));
-   dlg->SetFixedWallet(wallet->GetWalletId());
 
    dlg->ui_->checkBoxRBF->setChecked(true);
    dlg->ui_->checkBoxRBF->setEnabled(false);
@@ -69,13 +72,18 @@ std::shared_ptr<CreateTransactionDialogAdvanced> CreateTransactionDialogAdvanced
       , const std::shared_ptr<WalletsManager>& walletManager
       , const std::shared_ptr<SignContainer>& container
       , const std::shared_ptr<bs::Wallet>& wallet
+      , const std::shared_ptr<spdlog::logger>& logger
       , const Tx &tx
       , QWidget* parent)
 {
-   auto dlg = std::make_shared<CreateTransactionDialogAdvanced>(armory, walletManager, container, true, parent);
+   auto dlg = std::make_shared<CreateTransactionDialogAdvanced>(armory,
+                                                                walletManager,
+                                                                container,
+                                                                false,
+                                                                logger,
+                                                                parent);
 
    dlg->setWindowTitle(tr("Child-Pays-For-Parent"));
-   dlg->SetFixedWallet(wallet->GetWalletId());
    dlg->ui_->pushButtonImport->setEnabled(false);
 
    dlg->setCPFPinputs(tx, wallet);
@@ -84,20 +92,19 @@ std::shared_ptr<CreateTransactionDialogAdvanced> CreateTransactionDialogAdvanced
 
 void CreateTransactionDialogAdvanced::setCPFPinputs(const Tx &tx, const std::shared_ptr<bs::Wallet> &wallet)
 {
-   auto selInputs = transactionData_->GetSelectedInputs();
-   selInputs->SetUseAutoSel(false);
-
    std::set<BinaryData> txHashSet;
    std::map<BinaryData, std::set<uint32_t>> txOutIndices;
-   for (int i = 0; i < tx.getNumTxIn(); i++) {
+   for (size_t i = 0; i < tx.getNumTxIn(); i++) {
       const auto txin = tx.getTxInCopy(i);
       const auto outpoint = txin.getOutPoint();
       txHashSet.insert(outpoint.getTxHash());
       txOutIndices[outpoint.getTxHash()].insert(outpoint.getTxOutIndex());
    }
 
-   const auto &cbTXs = [this, tx, wallet, selInputs, txOutIndices](std::vector<Tx> txs) {
-      int64_t totalVal = 0;
+   const auto &cbTXs = [this, tx, wallet, txOutIndices](std::vector<Tx> txs) {
+      auto selInputs = transactionData_->GetSelectedInputs();
+      selInputs->SetUseAutoSel(false);
+      int64_t origFee = 0;
       for (const auto &prevTx : txs) {
          const auto &txHash = prevTx.getThisHash();
          const auto &itTxOut = txOutIndices.find(txHash);
@@ -107,68 +114,82 @@ void CreateTransactionDialogAdvanced::setCPFPinputs(const Tx &tx, const std::sha
          for (const auto &txOutIdx : itTxOut->second) {
             if (prevTx.isInitialized()) {
                TxOut prevOut = prevTx.getTxOutCopy(txOutIdx);
-               totalVal += prevOut.getValue();
+               origFee += prevOut.getValue();
             }
          }
 
          unsigned int cntOutputs = 0;
-         for (int i = 0; i < tx.getNumTxOut(); i++) {
+         for (size_t i = 0; i < tx.getNumTxOut(); i++) {
             auto out = tx.getTxOutCopy(i);
             const auto addr = bs::Address::fromTxOut(out);
             if (wallet->containsAddress(addr)) {
-               if (selInputs->SetUTXOSelection(out.getParentHash(), out.getIndex())) {
+               if (selInputs->SetUTXOSelection(tx.getThisHash(),
+                                               out.getIndex())) {
                   cntOutputs++;
                }
             }
-            totalVal -= out.getValue();
+            origFee -= out.getValue();
          }
 
          if (!cntOutputs) {
             //!throw std::runtime_error("No input[s] found");
             return;
          }
-         if (totalVal < 0) {
+         if (origFee < 0) {
             //!throw std::runtime_error("negative TX balance");
             return;
          }
 
-         const auto &cbFee = [this, tx, totalVal](float fee) {
-            const auto txSize = tx.serializeNoWitness().getSize();
-            const float feePerByte = (float)totalVal / txSize;
-            originalFee_ = totalVal;
-            const size_t projectedTxSize = 85;  // 1 input and 1 output bech32
-            float totalFee = std::abs(txSize * (fee - feePerByte) + projectedTxSize * fee);
-            SetMinimumFee(totalFee, std::ceil(totalFee / (txSize + projectedTxSize)));
+         const auto &cbFee = [this, tx, origFee](float fee) {
+            const auto txSize = tx.getTxWeight();
+            const float feePerByte = (float)origFee / txSize;
+            originalFee_ = origFee;
+            originalFeePerByte_ = feePerByte;
 
+            // CPFP has no enforced rules for fees. We use the following
+            // algorithm for determining the fee/byte. If the current 2-block
+            // fee is less than the fee used by the parent, stick to the current
+            // 2-block fee. If not, add the difference to the 2-block fee and
+            // use the result for the child fee. Simple but it should work. A
+            // little tinkering may be worthwhile later.
+            const float feeDiff = fee - originalFee_;
+            float newFPB = fee;
+            if (std::signbit(feeDiff) == false) { // Is the diff positive?
+               newFPB += feeDiff;
+            }
+
+            // SetMinimumFee() may need to be re-thought. RBF is the only
+            // scenario where we really need to enforce a minimum fee in concert
+            // with the minimum fee/byte. For now, the minimum fee will be set
+            // to 0, with the fee/byte enforced elsewhere. Attempting to enforce
+            // a value that won't always be accurate is a bad idea.
+            SetMinimumFee(0, newFPB);
             onTransactionUpdated();
+            populateFeeList();
          };
          walletsManager_->estimatedFeePerByte(2, cbFee, this);
       }
    };
+
+   SetFixedWallet(wallet->GetWalletId(), [this, txHashSet, cbTXs] {
+      armory_->getTXsByHash(txHashSet, cbTXs);
+   });
 }
 
 void CreateTransactionDialogAdvanced::setRBFinputs(const Tx &tx, const std::shared_ptr<bs::Wallet> &wallet)
 {
-   auto selInputs = transactionData_->GetSelectedInputs();
-   selInputs->SetUseAutoSel(false);
-
-   const auto &cbRBFInputs = [this, selInputs](std::vector<UTXO> utxos) {
-      selInputs->SetFixedInputs(utxos);
-   };
-   if (!wallet->getRBFTxOutList(cbRBFInputs)) {
-      return;
-   }
+   isRBF_ = true;
 
    std::set<BinaryData> txHashSet;
    std::map<BinaryData, std::set<uint32_t>> txOutIndices;
-   for (int i = 0; i < tx.getNumTxIn(); i++) {
+   for (size_t i = 0; i < tx.getNumTxIn(); i++) {
       const auto txin = tx.getTxInCopy(i);
       const auto outpoint = txin.getOutPoint();
       txHashSet.insert(outpoint.getTxHash());
       txOutIndices[outpoint.getTxHash()].insert(outpoint.getTxOutIndex());
    }
 
-   const auto &cbTXs = [this, tx, wallet, selInputs, txOutIndices](std::vector<Tx> txs) {
+   const auto &cbTXs = [this, tx, wallet, txOutIndices](std::vector<Tx> txs) {
       int64_t totalVal = 0;
       for (const auto &prevTx : txs) {
          const auto &txHash = prevTx.getThisHash();
@@ -181,25 +202,26 @@ void CreateTransactionDialogAdvanced::setRBFinputs(const Tx &tx, const std::shar
                TxOut prevOut = prevTx.getTxOutCopy(txOutIdx);
                totalVal += prevOut.getValue();
             }
-            if (!selInputs->SetUTXOSelection(txHash, txOutIdx)) {
+            if (!transactionData_->GetSelectedInputs()->SetUTXOSelection(txHash, txOutIdx)) {
                //!throw std::runtime_error("No input[s] found");
-               return;
+               continue;
             }
          }
       }
 
       QString  changeAddress;
-      double   changeAmount;
+      double   changeAmount = 0;
 
       // set outputs
-      for (int i = 0; i < tx.getNumTxOut(); i++) {
+      for (size_t i = 0; i < tx.getNumTxOut(); i++) {
          TxOut out = tx.getTxOutCopy(i);
          const auto addr = bs::Address::fromTxOut(out);
 
          const auto addressString = addr.display();
          const auto amount = UiUtils::amountToBtc(out.getValue());
 
-         // use last output as change addres
+         // We will assume that the last wallet address found in the TX is the
+         // change address.
          if (wallet->containsAddress(addr)) {
             if (!changeAddress.isEmpty()) {
                AddRecipient(changeAddress, changeAmount);
@@ -215,27 +237,69 @@ void CreateTransactionDialogAdvanced::setRBFinputs(const Tx &tx, const std::shar
          totalVal -= out.getValue();
       }
 
-      SetFixedChangeAddress(changeAddress);
-
-      // set fee
+      // Error check.
       if (totalVal < 0) {
          //!throw std::runtime_error("Negative amount");
          return;
       }
 
+      // If we did find a change address, set it in place in this TX.
+      else if (!changeAddress.isEmpty()) {
+         // If the original TX didn't use up the original inputs, force the
+         // original change address to be used. It may be desirable to change
+         // this eventually.
+         SetFixedChangeAddress(changeAddress);
+      }
+
+      // RBF minimum amounts are a little tricky. The rules/policies are:
+      //
+      // - RULE: Calculate based not on the absolute TX size, but on the virtual
+      //   size, which is ceil(TX weight / 4) (e.g., 32.2 -> 33). For reference,
+      //   TX weight = Total_TX_Size + (3 * Base_TX_Size).
+      //   (Base_TX_Size = TX size w/o witness data)
+      // - RULE: The new fee/KB must meet or exceed the old one. (If replacing
+      //   multiple TXs, Core seems to calculate based on the sum of fees and
+      //   TX sizes for the old TXs.)
+      // - RULE: The new fee must be at least 1 satoshi higher than the sum of
+      //   the fees of the replaced TXs.
+      // - POLICY: The new fee must be bumped by, at a minimum, the incremental
+      //   relay fee (IRL) * the new TX's virtual size. The fee can be adjusted
+      //   in Core by the incrementalrelayfee config option. By default, the fee
+      //   is 1000 sat/KB (1 sat/B), which is what we will assume is being used.
+      //   (This may need to be a terminal config option later.)
+      //
+      // It's impossible to calculate the minimum required fee, as the user can
+      // do many different things. We'll just start by setting the minimum fee
+      // to the amount required by the RBF/IRL policy, and keep the minimum
+      // fee/byte where it is.
       originalFee_ = totalVal;
-      const auto &txSize = tx.serializeNoWitness().getSize();
-      const float feePerByte = std::ceil((float)totalVal / txSize);
-      SetMinimumFee(totalVal, feePerByte + minRelayFeePerByte_);
+      const auto &txVirtSize = std::ceil(tx.getTxWeight() / 4);
+      const float feePerByte = (float)totalVal / txVirtSize;
+      originalFeePerByte_ = feePerByte;
+      const auto &newMinFee = originalFee_ + txVirtSize;
+      SetMinimumFee(newMinFee, originalFeePerByte_);
+      populateFeeList();
 
-      disableInputSelection();
       onTransactionUpdated();
+   };
 
-      if (changeAddress.isNull()) {
-         setUnchangeableTx();
+   const auto &cbRBFInputs = [this, wallet, txHashSet, cbTXs](ReturnMessage<std::vector<UTXO>> utxos) {
+      try {
+         auto inUTXOs = utxos.get();
+         QMetaObject::invokeMethod(this, [this, wallet, txHashSet, inUTXOs, cbTXs] {
+            SetFixedWalletAndInputs(wallet, inUTXOs);
+
+            armory_->getTXsByHash(txHashSet, cbTXs);
+         });
+      }
+      catch (const std::exception &e) {
+         if (logger_ != nullptr) {
+            logger_->error("[CreateTransactionDialogAdvanced::setRBFinputs] " \
+               "Return data error - {}", e.what());
+         }
       }
    };
-   armory_->getTXsByHash(txHashSet, cbTXs);
+   wallet->getRBFTxOutList(cbRBFInputs);
 }
 
 void CreateTransactionDialogAdvanced::initUI()
@@ -254,6 +318,7 @@ void CreateTransactionDialogAdvanced::initUI()
    ui_->treeViewOutputs->header()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
    ui_->treeViewOutputs->header()->setSectionResizeMode(0, QHeaderView::Stretch);
 
+   // QModelIndex isn't used. We should use it or lose it.
    connect(outputsModel_, &TransactionOutputsModel::rowsInserted, [this](const QModelIndex &parent, int first, int last)
    {
       for (int i = first; i <= last; i++) {
@@ -282,6 +347,7 @@ void CreateTransactionDialogAdvanced::initUI()
 
    ui_->pushButtonAddOutput->setEnabled(false);
    ui_->line->hide();
+   ui_->pushButtonSelectInputs->setEnabled(ui_->comboBoxWallets->count() > 0);
 
    connect(ui_->comboBoxWallets, SIGNAL(currentIndexChanged(int)), this, SLOT(selectedWalletChanged(int)));
 
@@ -309,6 +375,13 @@ void CreateTransactionDialogAdvanced::initUI()
    contextMenu_.addAction(removeOutputAction_);
 
    connect(ui_->treeViewOutputs, &QTreeView::customContextMenuRequested, this, &CreateTransactionDialogAdvanced::showContextMenu);
+
+   connect(ui_->doubleSpinBoxFeesManualPerByte, QOverload<double>::of(&QDoubleSpinBox::valueChanged)
+      , this, &CreateTransactionDialogAdvanced::setTxFees);
+   connect(ui_->spinBoxFeesManualTotal, QOverload<int>::of(&QSpinBox::valueChanged)
+      , this, &CreateTransactionDialogAdvanced::setTxFees);
+
+   updateManualFeeControls();
 }
 
 void CreateTransactionDialogAdvanced::clear()
@@ -459,9 +532,9 @@ void CreateTransactionDialogAdvanced::RemoveOutputByRow(int row)
    ui_->comboBoxFeeSuggestions->setEnabled(true);
 }
 
-void CreateTransactionDialogAdvanced::selectedWalletChanged(int index)
+void CreateTransactionDialogAdvanced::selectedWalletChanged(int index, bool resetInputs, const std::function<void()> &cbInputsReset)
 {
-   CreateTransactionDialog::selectedWalletChanged(index);
+   CreateTransactionDialog::selectedWalletChanged(index, resetInputs, cbInputsReset);
 
    ui_->radioButtonNewAddrNative->setChecked(true);
 }
@@ -470,20 +543,24 @@ void CreateTransactionDialogAdvanced::onTransactionUpdated()
 {
    CreateTransactionDialog::onTransactionUpdated();
 
-   usedInputsModel_->updateInputs(transactionData_->inputs());
+   // If RBF is active, prevent the inputs from being changed. It may be
+   // desirable to change this one day. RBF TXs can change inputs but only if
+   // all other inputs are RBF-enabled. Properly refactored, the user could
+   // select only RBF-enabled inputs that are waiting for a conf.
+   if(!isRBF_) {
+      usedInputsModel_->updateInputs(transactionData_->inputs());
+   }
 
    const auto &summary = transactionData_->GetTransactionSummary();
 
    if (!changeAddressFixed_) {
-      bool changeSelectionEnabled = summary.hasChange || (summary.transactionSize == 0);
+      bool changeSelectionEnabled = summary.hasChange || (summary.txVirtSize == 0);
       ui_->changeAddrGroupBox->setEnabled(changeSelectionEnabled);
       showExistingChangeAddress(changeSelectionEnabled);
    }
 
-   if (originalFee_) {
-      SetMinimumFee(originalFee_ + minRelayFeePerByte_ * summary.transactionSize, minFeePerByte_);
-   }
-   QMetaObject::invokeMethod(this, "validateCreateButton", Qt::QueuedConnection);
+   QMetaObject::invokeMethod(this, &CreateTransactionDialogAdvanced::validateCreateButton
+      , Qt::QueuedConnection);
 }
 
 void CreateTransactionDialogAdvanced::preSetAddress(const QString& address)
@@ -545,6 +622,7 @@ void CreateTransactionDialogAdvanced::onAddOutput()
    ui_->pushButtonAddOutput->setEnabled(false);
 }
 
+// Nothing is being done with isMax right now. We should use it or lose it.
 void CreateTransactionDialogAdvanced::AddRecipient(const bs::Address &address, double amount, bool isMax)
 {
    auto recipientId = transactionData_->RegisterNewRecipient();
@@ -567,7 +645,7 @@ void CreateTransactionDialogAdvanced::validateCreateButton()
 {
    const bool isSignerReady = signingContainer_ && ((signingContainer_->opMode() == SignContainer::OpMode::Offline)
       || !signingContainer_->isOffline());
-   const bool isTxValid = transactionData_->IsTransactionValid() && transactionData_->GetTransactionSummary().transactionSize;
+   const bool isTxValid = transactionData_->IsTransactionValid() && transactionData_->GetTransactionSummary().txVirtSize;
 
    ui_->pushButtonCreate->setEnabled(isTxValid
       && isSignerReady
@@ -578,8 +656,10 @@ void CreateTransactionDialogAdvanced::validateCreateButton()
 
 void CreateTransactionDialogAdvanced::AddManualFeeEntries(float feePerByte, float totalFee)
 {
-   ui_->comboBoxFeeSuggestions->addItem(tr("Manual Fee Selection"), feePerByte);
-   ui_->comboBoxFeeSuggestions->addItem(tr("Total Network Fee"), totalFee);
+   ui_->doubleSpinBoxFeesManualPerByte->setValue(feePerByte);
+   ui_->spinBoxFeesManualTotal->setValue(qRound(totalFee));
+   ui_->comboBoxFeeSuggestions->addItem(tr("Manual Fee Selection"));
+   ui_->comboBoxFeeSuggestions->addItem(tr("Total Network Fee"));
 }
 
 void CreateTransactionDialogAdvanced::onFeeSuggestionsLoaded(const std::map<unsigned int, float> &feeValues)
@@ -600,42 +680,20 @@ void CreateTransactionDialogAdvanced::onFeeSuggestionsLoaded(const std::map<unsi
    }
 }
 
-void CreateTransactionDialogAdvanced::onManualFeeChanged(int fee)
-{
-   if (ui_->comboBoxFeeSuggestions->currentIndex() == (ui_->comboBoxFeeSuggestions->count() - 2)) {
-      transactionData_->SetFeePerByte(fee);
-   }
-   else {
-      transactionData_->SetTotalFee(fee);
-   }
-}
-
 void CreateTransactionDialogAdvanced::SetMinimumFee(float totalFee, float feePerByte)
 {
    minTotalFee_ = totalFee;
    minFeePerByte_ = feePerByte;
 
-   if (loadFeeSuggestions_ && (ui_->comboBoxFeeSuggestions->count() >= 2)) {
-      ui_->comboBoxFeeSuggestions->setItemData(ui_->comboBoxFeeSuggestions->count() - 2, feePerByte);
-      ui_->comboBoxFeeSuggestions->setItemData(ui_->comboBoxFeeSuggestions->count() - 1, totalFee);
-   }
+   ui_->doubleSpinBoxFeesManualPerByte->setMinimum(feePerByte);
+   ui_->spinBoxFeesManualTotal->setMinimum(qRound(totalFee));
 }
 
+// currentIndex isn't being used. We should use it or lose it.
 void CreateTransactionDialogAdvanced::feeSelectionChanged(int currentIndex)
 {
-   if (currentIndex < (ui_->comboBoxFeeSuggestions->count() - 2)) {
-      CreateTransactionDialog::feeSelectionChanged(currentIndex);
-
-      ui_->comboBoxFeeSuggestions->setEditable(false);
-   } else {
-      const auto &feeVal = ui_->comboBoxFeeSuggestions->currentData().toFloat();
-      if (currentIndex == (ui_->comboBoxFeeSuggestions->count() - 2)) {
-         setFixedFee(feeVal, true);
-      }
-      else {
-         setFixedFee(feeVal, false);
-      }
-   }
+   setTxFees();
+   updateManualFeeControls();
 }
 
 bs::Address CreateTransactionDialogAdvanced::getChangeAddress() const
@@ -814,11 +872,19 @@ void CreateTransactionDialogAdvanced::onExistingAddressSelectedForChange()
    }
 }
 
-void CreateTransactionDialogAdvanced::SetFixedWallet(const std::string& walletId)
+void CreateTransactionDialogAdvanced::SetFixedWallet(const std::string& walletId, const std::function<void()> &cbInputsReset)
 {
-   SelectWallet(walletId);
-   selectedWalletChanged(0);
+   const int idx = SelectWallet(walletId);
+   selectedWalletChanged(idx, true, cbInputsReset);
    ui_->comboBoxWallets->setEnabled(false);
+}
+
+void CreateTransactionDialogAdvanced::SetFixedWalletAndInputs(const std::shared_ptr<bs::Wallet> &wallet, const std::vector<UTXO> &inputs)
+{
+   SelectWallet(wallet->GetWalletId());
+   ui_->comboBoxWallets->setEnabled(false);
+   disableInputSelection();
+   transactionData_->SetWalletAndInputs(wallet, inputs, armory_->topBlock());
 }
 
 void CreateTransactionDialogAdvanced::disableOutputsEditing()
@@ -840,8 +906,9 @@ void CreateTransactionDialogAdvanced::disableInputSelection()
 void CreateTransactionDialogAdvanced::disableFeeChanging()
 {
    feeChangeDisabled_ = true;
-   ui_->comboBoxFeeSuggestions->setEditable(false);
    ui_->comboBoxFeeSuggestions->setEnabled(false);
+   ui_->doubleSpinBoxFeesManualPerByte->setEnabled(false);
+   ui_->spinBoxFeesManualTotal->setEnabled(false);
 }
 
 void CreateTransactionDialogAdvanced::SetFixedChangeAddress(const QString& changeAddress)
@@ -864,30 +931,9 @@ void CreateTransactionDialogAdvanced::SetPredefinedFee(const int64_t& manualFee)
    transactionData_->SetTotalFee(manualFee);
 }
 
-void CreateTransactionDialogAdvanced::setFixedFee(const int64_t& manualFee, bool perByte)
-{
-   ui_->comboBoxFeeSuggestions->setEditable(true);
-
-   auto lineEdit = new QLineEdit(this);
-   ui_->comboBoxFeeSuggestions->setLineEdit(lineEdit);
-
-   auto feeValidator = new FixedFeeValidator(manualFee, perByte ? tr(" s/b") :  tr(" satoshi")
-      , ui_->comboBoxFeeSuggestions);
-   feeValidator->setMinValue(perByte ? minFeePerByte_ : minTotalFee_);
-   connect(feeValidator, &FixedFeeValidator::feeUpdated, this, &CreateTransactionDialogAdvanced::onManualFeeChanged);
-
-   if (perByte) {
-      transactionData_->SetFeePerByte(manualFee);
-   } else {
-      transactionData_->SetTotalFee(manualFee);
-   }
-
-   ui_->comboBoxFeeSuggestions->setFocus();
-}
-
+// Set a TX such that it can't be altered.
 void CreateTransactionDialogAdvanced::setUnchangeableTx()
 {
-   ui_->comboBoxFeeSuggestions->setEditable(false);
    ui_->comboBoxFeeSuggestions->setEnabled(false);
    ui_->treeViewOutputs->setEnabled(false);
    ui_->lineEditAddress->setEnabled(false);
@@ -908,4 +954,27 @@ void CreateTransactionDialogAdvanced::showExistingChangeAddress(bool show)
 void CreateTransactionDialogAdvanced::disableChangeAddressSelecting()
 {
    ui_->widgetChangeAddress->setEnabled(false);
+}
+
+void CreateTransactionDialogAdvanced::updateManualFeeControls()
+{
+   int itemIndex = ui_->comboBoxFeeSuggestions->currentIndex();
+   int itemCount = ui_->comboBoxFeeSuggestions->count();
+
+   ui_->doubleSpinBoxFeesManualPerByte->setVisible(itemCount > 2 && itemIndex == itemCount - 2);
+   ui_->spinBoxFeesManualTotal->setVisible(itemCount > 2 && itemIndex == itemCount - 1);
+}
+
+void CreateTransactionDialogAdvanced::setTxFees()
+{
+   int itemIndex = ui_->comboBoxFeeSuggestions->currentIndex();
+   int itemCount = ui_->comboBoxFeeSuggestions->count();
+
+   if (itemIndex < (ui_->comboBoxFeeSuggestions->count() - 2)) {
+      CreateTransactionDialog::feeSelectionChanged(itemIndex);
+   } else if (itemIndex == itemCount - 2) {
+      transactionData_->SetFeePerByte(float(ui_->doubleSpinBoxFeesManualPerByte->value()));
+   } else if (itemIndex == itemCount - 1) {
+      transactionData_->SetTotalFee(ui_->spinBoxFeesManualTotal->value());
+   }
 }
