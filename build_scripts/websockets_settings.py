@@ -34,7 +34,7 @@ class WebsocketsSettings(Configurator):
         command = ['cmake',
                    os.path.join(self._project_settings.get_sources_dir(), self._package_name + '-' + self._version),
                    '-DLWS_WITH_SHARED=OFF',
-                   '-DLWS_WITHOUT_SERVER=ON',
+                   '-DLWS_WITHOUT_SERVER=OFF',
                    '-DLWS_WITHOUT_TESTAPPS=ON',
                    '-DLWS_WITHOUT_TEST_SERVER=ON',
                    '-DLWS_WITHOUT_TEST_PING=ON',

@@ -30,7 +30,7 @@ class BotanSettings(Configurator):
         return True
 
     def config(self):
-        command = ['python',
+        command = ['python3',
                    self.get_unpacked_sources_dir() + '/configure.py',
                    '--disable-modules=pkcs11',
                    '--without-documentation',
