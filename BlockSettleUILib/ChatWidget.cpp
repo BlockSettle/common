@@ -95,7 +95,7 @@ ChatWidget::ChatWidget(QWidget *parent, const std::string &host, const int &port
            n = lws_service(context, 100);
        forcestop = true;
     });
-    addLine("Websocket run.");
+    addLine(tr("Websocket run"));
 }
 
 ChatWidget::~ChatWidget()
@@ -103,7 +103,7 @@ ChatWidget::~ChatWidget()
     if(!forcestop) {
         forcestop = true;
         mainloop.join();
-        addLine("Websocket error.");
+        addLine(tr("Websocket error"));
     }
     delete ui;
     if(context) lws_context_destroy(context);
