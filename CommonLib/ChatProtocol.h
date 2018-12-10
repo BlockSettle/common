@@ -24,7 +24,7 @@ class CommandBase {
 public:
 
     enum class TypeCommand: int{
-        ERROR = 0,
+        ErROR = 0,
         LOGIN,
         LOGOUT,
         MESSAGE,
@@ -52,20 +52,20 @@ protected:
 public:
     virtual void parse(picojson::object &obj);
     static CommandBase parse(int from_id, const std::string &from_name, const std::string &command);
-    CommandBase(int from_id, const std::string &from_name, TypeCommand type = TypeCommand::ERROR)
+    CommandBase(int from_id, const std::string &from_name, TypeCommand type = TypeCommand::ErROR)
         : cmd_type(type), err(""), from_id(from_id), from_name(from_name) {}
-    CommandBase(int from_id, const std::string &from_name, const std::string &error, TypeCommand type = TypeCommand::ERROR)
+    CommandBase(int from_id, const std::string &from_name, const std::string &error, TypeCommand type = TypeCommand::ErROR)
         : cmd_type(type), err(error), from_id(from_id), from_name(from_name) {}
-    CommandBase(int from_id, TypeCommand type = TypeCommand::ERROR)
+    CommandBase(int from_id, TypeCommand type = TypeCommand::ErROR)
         : CommandBase(from_id, "", type) {}
-    CommandBase(TypeCommand type = TypeCommand::ERROR)
+    CommandBase(TypeCommand type = TypeCommand::ErROR)
         : CommandBase(-1, "", type) {}
     virtual ~CommandBase() {}
     void set_from(int from_id, const std::string &from_name) { this->from_id = from_id; this->from_name = from_name; }
     void set_error(const std::string &err);
     std::string request();
     std::string response();
-    bool valid() { return cmd_type != TypeCommand::ERROR; }
+    bool valid() { return cmd_type != TypeCommand::ErROR; }
     bool is(TypeCommand type) { return type == cmd_type; }
     const std::string& error() { return err; }
     const std::string type() { return std::to_string(static_cast<int>(cmd_type)); }

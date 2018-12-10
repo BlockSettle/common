@@ -184,7 +184,7 @@ bool Command::self_test()
     for(auto i = std::begin(CmdNames); i != std::end(CmdNames); ++i) {
         CommandBase::TypeCommand type = static_cast<CommandBase::TypeCommand>(typeindx);
         switch (type) {
-        case CommandBase::TypeCommand::ERROR:
+        case CommandBase::TypeCommand::ErROR:
             cmd_from_req = Command(CommandError(from_id, from_name, "Error string").request());
             break;
         case CommandBase::TypeCommand::LOGIN:
@@ -253,7 +253,7 @@ Command::Command(int from_id, const std::string &from_name, const std::string &j
         }
         CommandBase::TypeCommand cmd_type = static_cast<CommandBase::TypeCommand>(typeindx);
         switch (cmd_type) {
-        case CommandBase::TypeCommand::ERROR:
+        case CommandBase::TypeCommand::ErROR:
             cmd = std::shared_ptr<CommandBase>(new CommandError(from_id, from_name));
             break;
         case CommandBase::TypeCommand::LOGIN:
