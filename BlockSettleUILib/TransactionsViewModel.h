@@ -58,7 +58,7 @@ struct TransactionsViewItem
    std::string id() const;
 
 private:
-   std::set<BinaryData>       txHashes;
+   bool     txHashesReceived{ false };
    std::map<BinaryData, Tx>   txIns;
    mutable std::string        id_;
 };
@@ -152,6 +152,7 @@ private slots:
 
    void onArmoryStateChanged(ArmoryConnection::State);
    void onNewTransactions(std::vector<bs::TXEntry>);
+   void onItemConfirmed(const TransactionPtr);
 
 private:
    void init();
@@ -205,7 +206,6 @@ private:
    mutable QMutex                      updateMutex_;
    std::shared_ptr<bs::Wallet>         defaultWallet_;
    std::vector<bs::TXEntry>            pendingNewItems_;
-   std::unordered_set<std::string>     newTxKeys_;
    std::atomic_bool  signalOnEndLoading_{ false };
    const bool        allWallets_;
    std::atomic_bool  stopped_;

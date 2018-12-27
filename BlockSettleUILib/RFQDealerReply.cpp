@@ -11,7 +11,6 @@
 #include "ApplicationSettings.h"
 #include "AssetManager.h"
 #include "AuthAddressManager.h"
-#include "CelerSubmitQuoteNotifSequence.h"
 #include "CoinControlDialog.h"
 #include "CoinControlWidget.h"
 #include "CurrencyPair.h"
@@ -224,7 +223,7 @@ void RFQDealerReply::onHDWalletInfo(unsigned int id
       return;
    }
 
-   EnterWalletPassword passwordDialog(MobileClient::SettlementTransaction, this);
+   EnterWalletPassword passwordDialog(AutheIDClient::SettlementTransaction, this);
    passwordDialog.init(autoSignWalletId_, keyRank
       , encTypes, encKeys, appSettings_
       , tr("Activate Auto-Sign"));
@@ -1118,21 +1117,25 @@ void RFQDealerReply::onAQReply(const bs::network::QuoteReqNotification &qrn, dou
    };
 
    std::shared_ptr<TransactionData> transData;
+
    if (qrn.assetType != bs::network::Asset::SpotFX) {
       auto wallet = getCurrentWallet();
       if (!wallet) {
          wallet = walletsManager_->GetDefaultWallet();
       }
-      transData = std::make_shared<TransactionData>();
+
+      transData = std::make_shared<TransactionData>(TransactionData::onTransactionChanged{}, true, true);
+
+      transData->disableTransactionUpdate();
       transData->SetWallet(wallet, armory_->topBlock());
+
       if (qrn.assetType == bs::network::Asset::PrivateMarket) {
          const auto &cc = qrn.product;
          const auto& ccWallet = getCCWallet(cc);
          if (qrn.side == bs::network::Side::Buy) {
             transData->SetSigningWallet(ccWallet);
             curWallet_ = wallet;
-         }
-         else {
+         } else {
             if (!ccWallet) {
                ui_->checkBoxAQ->setChecked(false);
                BSMessageBox(BSMessageBox::critical, tr("Auto Quoting")
@@ -1145,11 +1148,30 @@ void RFQDealerReply::onAQReply(const bs::network::QuoteReqNotification &qrn, dou
          }
       }
 
-      const auto &cbFee = [this, qrn, price, transData, cbSubmit](float feePerByte) {
-         transData->SetFeePerByte(feePerByte);
-         aq_->setTxData(qrn.quoteRequestId, transData);
-         submitReply(transData, qrn, price, cbSubmit);
+      const auto txUpdated = [this, qrn, price, cbSubmit, transData]()
+      {
+         logger_->debug("[RFQDealerReply::onAQReply TX CB] : tx updated for {} - {}"
+            , qrn.quoteRequestId, (transData->InputsLoadedFromArmory() ? "inputs loaded" : "inputs not loaded"));
+
+         if (transData->InputsLoadedFromArmory()) {
+            aq_->setTxData(qrn.quoteRequestId, transData);
+            // submit reply will change transData, but we should not get this notifications
+            transData->disableTransactionUpdate();
+            submitReply(transData, qrn, price, cbSubmit);
+            // remove circular reference in CB.
+            transData->SetCallback({});
+         }
       };
+
+      const auto &cbFee = [this, qrn, price, transData, cbSubmit, txUpdated](float feePerByte) {
+         transData->SetFeePerByte(feePerByte);
+         transData->SetCallback(txUpdated);
+         // should force update
+         transData->enableTransactionUpdate();
+      };
+
+      logger_->debug("[RFQDealerReply::onAQReply] start fee estimation for quote: {}"
+         , qrn.quoteRequestId);
       walletsManager_->estimatedFeePerByte(2, cbFee, this);
       return;
    }

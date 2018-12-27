@@ -61,14 +61,14 @@ ArmoryConnection::ArmoryConnection(const std::shared_ptr<spdlog::logger> &logger
             }
          }
          if (!zcToDelete.empty()) {
-            logger_->debug("[{}] erasing {} ZC entries", __func__
-               , zcToDelete.size());
+            logger_->debug("[ArmoryConnection] erasing {} ZC entries"
+                           , zcToDelete.size());
             for (const auto &reqId : zcToDelete) {
                zcData_.erase(reqId);
             }
          }
       }
-      logger_->debug("[{}] stopped", __func__);
+      logger_->debug("[ArmoryConnection] stopped");
    };
    zcThread_ = std::thread(cbZCMaintenance);
 }
@@ -503,9 +503,10 @@ bool ArmoryConnection::getTxByHash(const BinaryData &hash, std::function<void(Tx
          txCache_.put(hash, retTx);
          callGetTxCallbacks(hash, retTx);
       }
-      catch(std::exception& e) {
+      catch (const std::exception &e) {
          logger_->error("[{}] Return data error - {} - hash {}", __func__
                         , e.what(), hash.toHexStr());
+         callGetTxCallbacks(hash, {});
       }
    };
    bdv_->getTxByHash(hash, cbUpdateCache);
@@ -560,17 +561,17 @@ bool ArmoryConnection::getTXsByHash(const std::set<BinaryData> &hashes, std::fun
       }
       else {
          if (addGetTxCallback(hash, cbUpdateTx)) {
-            return true;
+            continue;
          }
          bdv_->getTxByHash(hash, [this, hash](ReturnMessage<Tx> tx)->void {
             try {
                auto retTx = tx.get();
                callGetTxCallbacks(hash, retTx);
             }
-            catch(std::exception& e) {
-               // Switch endian on print to RPC byte order
+            catch (const std::exception &e) {
                logger_->error("[{}] Return data error - {} - Hash {}", __func__
                               , e.what(), hash.toHexStr(true));
+               callGetTxCallbacks(hash, {});
             }
          });
       }

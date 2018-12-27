@@ -451,7 +451,7 @@ static bool isChildOf(TransactionPtr child, TransactionPtr parent)
          return true;
       }
    }
-   if (child->isRBFeligible() && parent->isRBFeligible()) {
+   if (!child->confirmations && child->txEntry.isRBF && !parent->confirmations && parent->txEntry.isRBF) {
       std::set<BinaryData> childInputs, parentInputs;
       for (int i = 0; i < child->tx.getNumTxIn(); i++) {
          childInputs.insert(child->tx.getTxInCopy(i).serialize());
@@ -468,8 +468,10 @@ static bool isChildOf(TransactionPtr child, TransactionPtr parent)
 
 std::pair<size_t, size_t> TransactionsViewModel::updateTransactionsPage(const std::vector<bs::TXEntry> &page)
 {
-   auto newItems = std::make_shared<std::unordered_map<std::string, std::pair<TransactionPtr, TXNode *>>>();
+   auto newItems = new std::unordered_map<std::string, std::pair<TransactionPtr, TXNode *>>;
    auto updatedItems = std::make_shared<std::vector<TransactionPtr>>();
+   auto newTxKeys = new std::unordered_set<std::string>();
+   auto keysMutex = std::make_shared<QMutex>();
 
    for (const auto &entry : page) {
       const auto item = itemFromTransaction(entry);
@@ -487,21 +489,23 @@ std::pair<size_t, size_t> TransactionsViewModel::updateTransactionsPage(const st
             oldestItem_ = *item;
          }
       }
-      newTxKeys_.insert(item->id());
+      newTxKeys->insert(item->id());
       (*newItems)[item->id()] = { item, new TXNode(item) };
    }
 
-   const auto &cbInited = [this, newItems, updatedItems](const TransactionsViewItem *itemPtr) {
+   const auto &cbInited = [this, newItems, newTxKeys, keysMutex, updatedItems]
+         (const TransactionsViewItem *itemPtr) {
       if (!itemPtr || !itemPtr->initialized) {
          logger_->error("item is not inited");
          return;
       }
-      if (newTxKeys_.empty()) {  // avoid jitter
-         logger_->debug("TX keys are already empty");
+      if (newTxKeys->empty()) {
+         logger_->warn("TX keys already empty");
          return;
       }
-      newTxKeys_.erase(itemPtr->id());
-      if (newTxKeys_.empty()) {
+      QMutexLocker locker(keysMutex.get());
+      newTxKeys->erase(itemPtr->id());
+      if (newTxKeys->empty()) {
          std::unordered_set<std::string> deletedItems;
          if (rootNode_->hasChildren()) {
             std::set<int> delRows;
@@ -565,15 +569,22 @@ std::pair<size_t, size_t> TransactionsViewModel::updateTransactionsPage(const st
          }
       }
    };
+
+   const auto sizeNew = newItems->size();
    if (!newItems->empty()) {
       for (auto &item : *newItems) {
          updateTransactionDetails(item.second.first, cbInited);
       }
    }
+   else {
+      delete newItems;
+      delete newTxKeys;
+   }
+
    if (!updatedItems->empty()) {
       updateBlockHeight(*updatedItems);
    }
-   return { newItems->size(), updatedItems->size() };
+   return { sizeNew, updatedItems->size() };
 }
 
 void TransactionsViewModel::updateBlockHeight(const std::vector<std::shared_ptr<TransactionsViewItem>> &updItems)
@@ -602,11 +613,24 @@ void TransactionsViewModel::updateBlockHeight(const std::vector<std::shared_ptr<
          if (newBlockNum != UINT32_MAX) {
             item->confirmations = armory_->getConfirmationsNumber(newBlockNum);
             item->txEntry.blockNum = newBlockNum;
+            onItemConfirmed(item);
          }
       }
    }
    emit dataChanged(index(0, static_cast<int>(Columns::Amount))
    , index(rootNode_->nbChildren() - 1, static_cast<int>(Columns::Status)));
+}
+
+void TransactionsViewModel::onItemConfirmed(const TransactionPtr item)
+{
+   if (item->txEntry.isRBF && (item->confirmations == 1)) {
+      const auto node = rootNode_->find(item->id());
+      if (node && node->hasChildren()) {
+         beginRemoveRows(index(node->row(), 0), 0, node->nbChildren() - 1);
+         node->clear();
+         endRemoveRows();
+      }
+   }
 }
 
 void TransactionsViewModel::loadLedgerEntries()
@@ -711,8 +735,10 @@ void TransactionsViewItem::initialize(const std::shared_ptr<ArmoryConnection> &a
    , const std::shared_ptr<WalletsManager> &walletsMgr
    , std::function<void(const TransactionsViewItem *)> userCB)
 {
-   const auto cbCheckIfInitializationCompleted = [this, userCB]()
-   {
+   const auto cbCheckIfInitializationCompleted = [this, userCB] {
+      if (initialized) {
+         return;
+      }
       if (!dirStr.isEmpty() && !mainAddress.isEmpty() && !amountStr.isEmpty()) {
          initialized = true;
          userCB(this);
@@ -725,25 +751,27 @@ void TransactionsViewItem::initialize(const std::shared_ptr<ArmoryConnection> &a
       cbCheckIfInitializationCompleted();
    };
 
-   const auto cbInit = [this, walletsMgr, cbMainAddr, cbCheckIfInitializationCompleted] {
-      if (amountStr.isEmpty() && txHashes.empty()) {
+   const auto cbInit = [this, walletsMgr, cbMainAddr, cbCheckIfInitializationCompleted, userCB] {
+      if (amountStr.isEmpty() && txHashesReceived) {
          calcAmount(walletsMgr);
-         if (mainAddress.isEmpty()) {
-            walletsMgr->GetTransactionMainAddress(tx, wallet, (amount > 0), cbMainAddr);
+      }
+      if (mainAddress.isEmpty()) {
+         if (!walletsMgr->GetTransactionMainAddress(tx, wallet, (amount > 0), cbMainAddr)) {
+            userCB(nullptr);
          }
       }
-      cbCheckIfInitializationCompleted();
+      else {
+         cbCheckIfInitializationCompleted();
+      }
    };
 
-   const auto cbTXs = [this, cbInit](std::vector<Tx> txs) {
+   const auto cbTXs = [this, cbInit, userCB](std::vector<Tx> txs) {
       for (const auto &tx : txs) {
          const auto &txHash = tx.getThisHash();
-         txHashes.erase(txHash);
          txIns[txHash] = tx;
-         if (txHashes.empty()) {
-            cbInit();
-         }
       }
+      txHashesReceived = true;
+      cbInit();
    };
    const auto &cbDir = [this, cbInit](bs::Transaction::Direction dir, std::vector<bs::Address> inAddrs) {
       direction = dir;
@@ -802,8 +830,9 @@ void TransactionsViewItem::initialize(const std::shared_ptr<ArmoryConnection> &a
       cbInit();
    };
 
-   const auto cbTX = [this, armory, walletsMgr, cbTXs, cbInit, cbDir, cbMainAddr](Tx newTx) {
+   const auto cbTX = [this, armory, walletsMgr, cbTXs, cbInit, cbDir, cbMainAddr, userCB](Tx newTx) {
       if (!newTx.isInitialized()) {
+         userCB(nullptr);
          return;
       }
       if (comment.isEmpty()) {
@@ -826,16 +855,27 @@ void TransactionsViewItem::initialize(const std::shared_ptr<ArmoryConnection> &a
             }
          }
          if (txHashSet.empty()) {
-            cbInit();
+            txHashesReceived = true;
          }
          else {
-            txHashes = txHashSet;
-            armory->getTXsByHash(txHashSet, cbTXs);
+            if (!armory->getTXsByHash(txHashSet, cbTXs)) {
+               userCB(nullptr);
+            }
          }
+      }
+      else {
+         txHashesReceived = true;
       }
 
       if (dirStr.isEmpty()) {
-         walletsMgr->GetTransactionDirection(tx, wallet, cbDir);
+         if (!walletsMgr->GetTransactionDirection(tx, wallet, cbDir)) {
+            userCB(nullptr);
+         }
+      }
+      else {
+         if (txHashesReceived) {
+            cbInit();
+         }
       }
    };
 
@@ -845,7 +885,9 @@ void TransactionsViewItem::initialize(const std::shared_ptr<ArmoryConnection> &a
       if (tx.isInitialized()) {
          cbTX(tx);
       } else {
-         armory->getTxByHash(txEntry.txHash, cbTX);
+         if (!armory->getTxByHash(txEntry.txHash, cbTX)) {
+            userCB(nullptr);
+         }
       }
    }
 }
@@ -866,10 +908,7 @@ static bool isSpecialWallet(const std::shared_ptr<bs::Wallet> &wallet)
 
 void TransactionsViewItem::calcAmount(const std::shared_ptr<WalletsManager> &walletsManager)
 {
-   if (wallet) {
-      if (!tx.isInitialized()) {
-         return;
-      }
+   if (wallet && tx.isInitialized()) {
       bool hasSpecialAddr = false;
       int64_t outputVal = 0;
       for (size_t i = 0; i < tx.getNumTxOut(); ++i) {
