@@ -9,11 +9,12 @@
 #include "MetaData.h"
 #include "UtxoReservation.h"
 
-
 class CoinSelection;
 class RecipientContainer;
 class ScriptRecipient;
 class SelectedTransactionInputs;
+struct UtxoSelection;
+struct PaymentStruct;
 
 namespace bs {
    class Wallet;
@@ -61,6 +62,9 @@ public:
    TransactionData(TransactionData&&) = delete;
    TransactionData& operator = (TransactionData&&) = delete;
 
+   // should be used only if you could not set CB in ctor
+   void SetCallback(onTransactionChanged changedCallback);
+
    bool SetWallet(const std::shared_ptr<bs::Wallet> &, uint32_t topBlock
       , bool resetInputs = false, const std::function<void()> &cbInputsReset = nullptr);
    bool SetWalletAndInputs(const std::shared_ptr<bs::Wallet> &, const std::vector<UTXO> &, uint32_t topBlock);
@@ -72,6 +76,7 @@ public:
    void SetTotalFee(uint64_t fee);
 
    bool IsTransactionValid() const;
+   bool InputsLoadedFromArmory() const;
 
    size_t GetRecipientsCount() const;
    std::vector<unsigned int> GetRecipientIdList() const;
@@ -130,6 +135,12 @@ private:
    void InvalidateTransactionData();
    bool UpdateTransactionData();
    bool RecipientsReady() const;
+   std::vector<UTXO> decorateUTXOs() const;
+   UtxoSelection computeSizeAndFee(const std::vector<UTXO>& inUTXOs
+      , const PaymentStruct& inPS);
+
+   // Temporary function until some Armory changes are accepted upstream.
+   size_t getVirtSize(const UtxoSelection& inUTXOSel);
 
    std::vector<std::shared_ptr<ScriptRecipient>> GetRecipientList() const;
 
@@ -164,6 +175,8 @@ private:
 
    bool transactionUpdateEnabled_ = true;
    bool transactionUpdateRequired_ = false;
+
+   bool inputsLoaded_ = false;
 };
 
 #endif // __TRANSACTION_DATA_H__

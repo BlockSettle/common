@@ -755,7 +755,7 @@ static bool nextCombi(std::vector<int> &a , const int n, const int m)
 bool hd::Wallet::changePassword(const std::vector<wallet::PasswordData> &newPass, wallet::KeyRank keyRank
    , const SecureBinaryData &oldPass, bool addNew, bool removeOld, bool dryRun)
 {
-   int newPassSize = newPass.size();
+   unsigned int newPassSize = (unsigned int)newPass.size();
    if (addNew) {
       newPassSize += rootNodes_.rank().second;
 
@@ -824,7 +824,7 @@ bool hd::Wallet::changePassword(const std::vector<wallet::PasswordData> &newPass
          }
       });
    } else {
-      const auto &addNode = [&rootNodes, decrypted, newPass, keyRank](const std::vector<int> &combi) {
+      const auto &addNode = [this, &rootNodes, decrypted, newPass, keyRank](const std::vector<int> &combi) {
          if (keyRank.first == 1) {
             const auto &passData = newPass[combi[0]];
             rootNodes.emplace_back(decrypted->encrypt(passData.password, { passData.encType }
@@ -851,18 +851,28 @@ bool hd::Wallet::changePassword(const std::vector<wallet::PasswordData> &newPass
             for (const auto &encKey : encKeys) {
                mergedEncKeys.emplace_back(encKey);
             }
-            rootNodes.emplace_back(decrypted->encrypt(xorPass, mergedEncTypes, mergedEncKeys));
+            const auto &encrypted = decrypted->encrypt(xorPass, mergedEncTypes, mergedEncKeys);
+            if (!encrypted) {
+               LOG(logger_, error, "Wallet::changePassword: failed to encrypt node");
+               return false;
+            }
+            rootNodes.emplace_back(encrypted);
          }
+         return true;
       };
 
       std::vector<int> combiIndices;
       combiIndices.reserve(keyRank.second);
-      for (int i = 0; i < keyRank.second; ++i) {
+      for (unsigned int i = 0; i < keyRank.second; ++i) {
          combiIndices.push_back(i);
       }
-      addNode(combiIndices);
+      if (!addNode(combiIndices)) {
+         return false;
+      }
       while (nextCombi(combiIndices, keyRank.second, keyRank.first)) {
-         addNode(combiIndices);
+         if (!addNode(combiIndices)) {
+            return false;
+         }
       }
    }
 
@@ -874,6 +884,7 @@ bool hd::Wallet::changePassword(const std::vector<wallet::PasswordData> &newPass
 
    updatePersistence();
    LOG(logger_, info, "Wallet::changePassword: success");
+   emit metaDataChanged();
    return true;
 }
 

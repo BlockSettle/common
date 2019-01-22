@@ -132,11 +132,18 @@ void CreateTransactionDialogAdvanced::setCPFPinputs(const Tx &tx, const std::sha
          }
 
          if (!cntOutputs) {
-            //!throw std::runtime_error("No input[s] found");
+            if (logger_ != nullptr) {
+               logger_->error("[{}] No input(s) found for TX {}.", __func__
+                              , tx.getThisHash().toHexStr(true));
+            }
             return;
          }
          if (origFee < 0) {
-            //!throw std::runtime_error("negative TX balance");
+            if (logger_ != nullptr) {
+               logger_->error("[{}] Negative TX balance ({}) for TX {}."
+                              , __func__, origFee
+                              , tx.getThisHash().toHexStr(true));
+            }
             return;
          }
 
@@ -203,7 +210,10 @@ void CreateTransactionDialogAdvanced::setRBFinputs(const Tx &tx, const std::shar
                totalVal += prevOut.getValue();
             }
             if (!transactionData_->GetSelectedInputs()->SetUTXOSelection(txHash, txOutIdx)) {
-               //!throw std::runtime_error("No input[s] found");
+               if (logger_ != nullptr) {
+                  logger_->error("[{}] No input(s) found for TX {}."
+                                 , __func__, txHash.toHexStr(true));
+               }
                continue;
             }
          }
@@ -239,7 +249,11 @@ void CreateTransactionDialogAdvanced::setRBFinputs(const Tx &tx, const std::shar
 
       // Error check.
       if (totalVal < 0) {
-         //!throw std::runtime_error("Negative amount");
+         if (logger_ != nullptr) {
+            logger_->error("[{}] Negative TX balance ({}) for TX {}."
+                           , __func__, totalVal
+                           , tx.getThisHash().toHexStr(true));
+         }
          return;
       }
 
@@ -628,7 +642,7 @@ void CreateTransactionDialogAdvanced::AddRecipient(const bs::Address &address, d
    auto recipientId = transactionData_->RegisterNewRecipient();
 
    transactionData_->UpdateRecipientAddress(recipientId, address);
-   transactionData_->UpdateRecipientAmount(recipientId, amount);
+   transactionData_->UpdateRecipientAmount(recipientId, amount, isMax);
 
    // add to the model
    outputsModel_->AddRecipient(recipientId, address.display(), amount);
@@ -643,12 +657,10 @@ void CreateTransactionDialogAdvanced::validateAddOutputButton()
 
 void CreateTransactionDialogAdvanced::validateCreateButton()
 {
-   const bool isSignerReady = signingContainer_ && ((signingContainer_->opMode() == SignContainer::OpMode::Offline)
-      || !signingContainer_->isOffline());
    const bool isTxValid = transactionData_->IsTransactionValid() && transactionData_->GetTransactionSummary().txVirtSize;
 
+   updateCreateButtonText();
    ui_->pushButtonCreate->setEnabled(isTxValid
-      && isSignerReady
       && !broadcasting_
       && (ui_->radioButtonNewAddrNative->isChecked() || ui_->radioButtonNewAddrNested->isChecked()
          || (selectedChangeAddress_.isValid())));

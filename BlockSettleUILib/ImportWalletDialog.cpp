@@ -81,7 +81,7 @@ ImportWalletDialog::ImportWalletDialog(const std::shared_ptr<WalletsManager> &wa
 
    ui_->widgetCreateKeys->setFlags(WalletKeysCreateWidget::HideWidgetContol 
       | WalletKeysCreateWidget::HideAuthConnectButton);
-   ui_->widgetCreateKeys->init(MobileClientRequest::ActivateWallet, walletId_, username, appSettings);
+   ui_->widgetCreateKeys->init(AutheIDClient::ActivateWallet, walletId_, username, appSettings);
 
    adjustSize();
    setMinimumSize(size());
@@ -158,7 +158,7 @@ bool abortWalletImportQuestionDialog(QWidget* parent)
    BSMessageBox messageBox(BSMessageBox::question, QObject::tr("Warning"), QObject::tr("Do you want to abort Wallet Import?")
       , QObject::tr("The Wallet will not be imported if you don't complete the procedure.\n\n"
          "Are you sure you want to abort the Wallet Import process?"), parent);
-   messageBox.setConfirmButtonText(QObject::tr("Abort\nWallet Import"));
+   messageBox.setConfirmButtonText(QObject::tr("Abort"));
    messageBox.setCancelButtonText(QObject::tr("Back"));
 
    int result = messageBox.exec();

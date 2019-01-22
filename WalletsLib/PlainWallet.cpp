@@ -15,7 +15,7 @@ PlainWallet::PlainWallet(const std::string &name, const std::string &desc
    : Wallet(logger), desc_(desc)
 {
    walletName_ = name;
-   walletId_ = BtcUtils::computeID(SecureBinaryData().GenerateRandom(32)).toBinStr();
+   walletId_ = wallet::computeID(CryptoPRNG::generateRandom(32)).toBinStr();
 }
 
 PlainWallet::PlainWallet(const std::string &filename
@@ -28,7 +28,7 @@ PlainWallet::PlainWallet(const std::string &filename
 PlainWallet::PlainWallet(const std::shared_ptr<spdlog::logger> &logger)
    : Wallet(logger)
 {
-   walletId_ = BtcUtils::computeID(SecureBinaryData().GenerateRandom(32)).toBinStr();
+   walletId_ = wallet::computeID(CryptoPRNG::generateRandom(32)).toBinStr();
 }
 
 PlainWallet::~PlainWallet()
@@ -361,11 +361,11 @@ int PlainWallet::addAddress(const bs::Address &addr, std::shared_ptr<GenericAsse
 {
    int id = 0;
    if (asset) {
-      if (asset->getIndex() < 0) {
+      if (asset->id() < 0) {
          id = lastAssetIndex_++;
       }
       else {
-         id = asset->getIndex();
+         id = asset->id();
       }
       asset->setId(id);
    }
@@ -663,7 +663,7 @@ SecureBinaryData PlainAsset::publicKey() const
 
 std::pair<bs::Address, std::shared_ptr<PlainAsset>> PlainAsset::GenerateRandom(AddressEntryType addrType)
 {
-   const auto &privKey = SecureBinaryData().GenerateRandom(32);
+   const auto &privKey = CryptoPRNG::generateRandom(32);
    const auto &pubKey = CryptoECDSA().ComputePublicKey(privKey);
    BinaryData hash;
    switch (addrType) {
