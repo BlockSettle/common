@@ -22,6 +22,7 @@
 #include "NewWalletDialog.h"
 #include "NewWalletSeedDialog.h"
 #include "RootWalletPropertiesDialog.h"
+#include "ManageEncryption/RootWalletPropertiesNewDialog.h"
 #include "SelectAddressDialog.h"
 #include "SignContainer.h"
 #include "VerifyWalletBackupDialog.h"
@@ -297,7 +298,10 @@ void WalletsWidget::showWalletProperties(const QModelIndex& index)
 
    const auto &hdWallet = node->hdWallet();
    if (hdWallet != nullptr) {
-      RootWalletPropertiesDialog(logger_, hdWallet, walletsManager_, armory_, signingContainer_
+//      RootWalletPropertiesDialog(logger_, hdWallet, walletsManager_, armory_, signingContainer_
+//         , walletsModel_, appSettings_, assetManager_, this).exec();
+
+      RootWalletPropertiesNewDialog(logger_, hdWallet, walletsManager_, armory_, signingContainer_
          , walletsModel_, appSettings_, assetManager_, this).exec();
    }
 }

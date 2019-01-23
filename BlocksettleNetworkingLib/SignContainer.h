@@ -9,6 +9,7 @@
 
 #include "HDNode.h"
 #include "MetaData.h"
+#include "QWalletInfo.h"
 
 namespace spdlog {
    class logger;
@@ -121,6 +122,7 @@ signals:
       , std::string walletId);
    void HDWalletInfo(unsigned int id, std::vector<bs::wallet::EncryptionType>
       , std::vector<SecureBinaryData> &encKeys, bs::wallet::KeyRank);
+   void QWalletInfo(unsigned int id, const bs::hd::WalletInfo &);
    void MissingWallets(const std::vector<std::string> &);
    void AddressSyncFailed(const std::vector<std::pair<std::string, std::string>> &failedAddresses);
    void AddressSyncComplete();

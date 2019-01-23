@@ -25,6 +25,12 @@ QLabel {
   color: #81888f;
   font-family: 'Open Sans', sans-serif; }
 
+QLabel[headerLabel="true"] {
+  color: #ffffff;
+  font-size: 12px;
+  text-transform: uppercase;
+  font-family: 'Open Sans', sans-serif; }
+
 *[signInput="true"] {
   border-width: 1px;
   border-color: #F03B5D; }
@@ -32,6 +38,7 @@ QLabel {
 *[wrongState="true"] {
   color: #CF292E;
 }
+
 
 a {
   font-family: 'Open Sans', sans-serif; }

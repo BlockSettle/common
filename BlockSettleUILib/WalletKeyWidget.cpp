@@ -10,6 +10,7 @@
 #include <spdlog/spdlog.h>
 #include "ApplicationSettings.h"
 #include "AutheIDClient.h"
+#include <QDebug>
 
 namespace
 {
@@ -33,6 +34,8 @@ WalletKeyWidget::WalletKeyWidget(AutheIDClient::RequestType requestType, const s
    , autheIDClient_(new AutheIDClient(spdlog::get(""), authKeys, this))
    , requestType_(requestType)
 {
+   qDebug() << "WalletKeyWidget::WalletKeyWidget";
+
    ui_->setupUi(this);
    ui_->radioButtonPassword->setChecked(password);
    ui_->radioButtonAuth->setChecked(!password);
@@ -59,6 +62,8 @@ WalletKeyWidget::WalletKeyWidget(AutheIDClient::RequestType requestType, const s
 
 void WalletKeyWidget::init(const std::shared_ptr<ApplicationSettings> &appSettings, const QString& username)
 {
+   qDebug() << "WalletKeyWidget::init";
+
    const auto &serverPubKey = appSettings->get<std::string>(ApplicationSettings::authServerPubKey);
    const auto &serverHost = appSettings->get<std::string>(ApplicationSettings::authServerHost);
    const auto &serverPort = appSettings->get<std::string>(ApplicationSettings::authServerPort);

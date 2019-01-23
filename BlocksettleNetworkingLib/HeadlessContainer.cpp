@@ -327,6 +327,7 @@ void HeadlessContainer::ProcessGetHDWalletInfoResponse(unsigned int id, const st
       }
       bs::wallet::KeyRank keyRank = { response.rankm(), response.rankn() };
       emit HDWalletInfo(id, encTypes, encKeys, keyRank);
+      emit QWalletInfo(id, bs::hd::WalletInfo(QString(), encTypes, encKeys, keyRank));
    }
    else {
       missingWallets_.insert(response.rootwalletid());
