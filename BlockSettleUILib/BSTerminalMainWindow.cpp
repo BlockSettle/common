@@ -122,6 +122,7 @@ BSTerminalMainWindow::BSTerminalMainWindow(const std::shared_ptr<ApplicationSett
    splashScreen.SetProgress(100);
 
    InitPortfolioView();
+   InitChartsView();
 
    ui->widgetRFQ->initWidgets(mdProvider_, applicationSettings_);
 
@@ -545,9 +546,9 @@ void BSTerminalMainWindow::InitPortfolioView()
 {
    portfolioModel_ = std::make_shared<CCPortfolioModel>(walletsManager_, assetManager_, this);
    ui->widgetPortfolio->init(applicationSettings_, mdProvider_, portfolioModel_,
-                             signContainer_, armory_, logMgr_->logger("ui"),
-                             walletsManager_);
-   ui->widgetChart->init(applicationSettings_, mdProvider_, armory_);
+                             signContainer_, armory_, logMgr_->logger("ui")
+                             , walletsManager_);
+
 }
 
 void BSTerminalMainWindow::InitWalletsView()
@@ -561,6 +562,12 @@ void BSTerminalMainWindow::InitChatView()
    ui->widgetChat->init(connectionManager_, applicationSettings_, logMgr_->logger("chat"));
 
    connect(ui->widgetChat, &ChatWidget::LoginFailed, this, &BSTerminalMainWindow::onAutheIDFailed);
+}
+
+void BSTerminalMainWindow::InitChartsView()
+{
+    ui->widgetChart->init(applicationSettings_, mdProvider_, armory_
+                          , logMgr_->logger("ui"));
 }
 
 // Initialize widgets related to transactions.
