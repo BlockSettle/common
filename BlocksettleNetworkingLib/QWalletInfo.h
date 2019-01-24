@@ -6,6 +6,7 @@
 #include "HDWallet.h"
 #include "MetaData.h"
 #include "WalletEncryption.h"
+#include "headless.pb.h"
 
 
 namespace bs {
@@ -52,6 +53,12 @@ class QPasswordData : public QObject, public PasswordData {
 
 public:
    QPasswordData(QObject *parent = nullptr) : QObject(parent), PasswordData() {}
+
+   // copy constructors and operator= uses parent implementation
+   QPasswordData(const PasswordData &pwData) : PasswordData(pwData){}
+   QPasswordData(const QPasswordData &other) : PasswordData(static_cast<PasswordData>(other)) {}
+   QPasswordData& operator= (const QPasswordData &other) { PasswordData::operator=(other); return *this;}
+
    QString q_textPassword() { return QString::fromStdString(password.toBinStr()); }
    SecureBinaryData q_binaryPassword() { return password; }
    QEncryptionType q_encType() { return static_cast<QEncryptionType>(encType); }
@@ -136,9 +143,14 @@ class WalletInfo : public QObject
 
 public:
    WalletInfo(QObject *parent = nullptr) : QObject(parent) {}
-   WalletInfo(QString walletId, std::vector<bs::wallet::EncryptionType> encTypes
-              , std::vector<SecureBinaryData> &encKeys, bs::wallet::KeyRank keyRank);
 
+   // used in headless container
+   WalletInfo(const QString &rootId, const std::vector<bs::wallet::EncryptionType> &encTypes
+              , const std::vector<SecureBinaryData> &encKeys, const bs::wallet::KeyRank &keyRank);
+
+   WalletInfo(const Blocksettle::Communication::headless::GetHDWalletInfoResponse &response);
+
+   // used in signer
    WalletInfo(std::shared_ptr<bs::hd::Wallet> hdWallet, QObject *parent = nullptr);
    WalletInfo(std::shared_ptr<bs::Wallet> wallet, std::shared_ptr<bs::hd::Wallet> rootHdWallet, QObject *parent = nullptr);
 

@@ -16,13 +16,27 @@ namespace bs {
 
 using namespace bs::hd;
 using namespace bs::wallet;
+using namespace Blocksettle::Communication;
 
-WalletInfo::WalletInfo(QString walletId, std::vector<EncryptionType> encTypes, std::vector<SecureBinaryData> &encKeys, KeyRank keyRank)
+WalletInfo::WalletInfo(const QString &rootId, const std::vector<EncryptionType> &encTypes
+                       , const std::vector<SecureBinaryData> &encKeys, const KeyRank &keyRank)
 {
-   walletId_ = walletId;
+   rootId_ = rootId;
    keyRank_ = keyRank;
    setEncKeys(encKeys);
    setEncTypes(encTypes);
+}
+
+WalletInfo::WalletInfo(const headless::GetHDWalletInfoResponse &response)
+{
+   rootId_ = QString::fromStdString(response.rootwalletid());
+   for (int i = 0; i < response.enctypes_size(); ++i) {
+      encTypes_.push_back(static_cast<bs::wallet::QEncryptionType>(response.enctypes(i)));
+   }
+   for (int i = 0; i < response.enckeys_size(); ++i) {
+      encKeys_.push_back(QString::fromStdString(response.enckeys(i)));
+   }
+   keyRank_ = { response.rankm(), response.rankn() };
 }
 
 WalletInfo::WalletInfo(std::shared_ptr<bs::hd::Wallet> hdWallet, QObject *parent)
@@ -50,7 +64,7 @@ WalletInfo::WalletInfo(std::shared_ptr<bs::Wallet> wallet, std::shared_ptr<bs::h
 WalletInfo::WalletInfo(const WalletInfo &other)
    : walletId_(other.walletId_), rootId_(other.rootId_)
    , name_(other.name_), desc_(other.desc_)
-   , encKeys_(other.encKeys_), encTypes_(other.encTypes_)
+   , encKeys_(other.encKeys_), encTypes_(other.encTypes_), keyRank_(other.keyRank_)
 {
 }
 
@@ -62,6 +76,7 @@ WalletInfo &bs::hd::WalletInfo::WalletInfo::operator =(const WalletInfo &other)
    desc_ = other.desc_;
    encKeys_ = other.encKeys_;
    encTypes_ = other.encTypes_;
+   keyRank_ = other.keyRank_;
 
    return *this;
 }

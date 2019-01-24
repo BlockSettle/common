@@ -1,5 +1,5 @@
-#ifndef __MANAGE_ENCRYPTION_DIALOG_H__
-#define __MANAGE_ENCRYPTION_DIALOG_H__
+#ifndef __MANAGE_ENCRYPTION_NEW_DIALOG_H__
+#define __MANAGE_ENCRYPTION_NEW_DIALOG_H__
 
 #include <memory>
 #include <QDialog>
@@ -17,7 +17,7 @@ namespace bs {
    }
 }
 
-class WalletKeyWidget;
+class WalletKeyNewWidget;
 class ApplicationSettings;
 class SignContainer;
 
@@ -39,8 +39,8 @@ public:
 
    ManageEncryptionDialog(const std::shared_ptr<spdlog::logger> &logger
       , std::shared_ptr<SignContainer> signingContainer
-      , const std::shared_ptr<bs::hd::Wallet> &
-      , const bs::hd::WalletInfo &
+      , const std::shared_ptr<bs::hd::Wallet> &wallet
+      , const bs::hd::WalletInfo &walletInfo
       , const std::shared_ptr<ApplicationSettings> &appSettings
       , QWidget* parent = nullptr);
    ~ManageEncryptionDialog() override;
@@ -83,8 +83,8 @@ private:
    bool removeOld_;
    SecureBinaryData oldKey_;
    State state_ = State::Idle;
-//   WalletKeyWidget *deviceKeyOld_ = nullptr;
-//   WalletKeyWidget *deviceKeyNew_ = nullptr;
+//   WalletKeyNewWidget *deviceKeyOld_ = nullptr;
+//   WalletKeyNewWidget *deviceKeyNew_ = nullptr;
    bool deviceKeyOldValid_;
    bool deviceKeyNewValid_;
    bool isLatestChangeAddDevice_;
@@ -92,4 +92,4 @@ private:
    bs::hd::WalletInfo walletInfo_;
 };
 
-#endif // __MANAGE_ENCRYPTION_DIALOG_H__
+#endif // __MANAGE_ENCRYPTION_NEW_DIALOG_H__
