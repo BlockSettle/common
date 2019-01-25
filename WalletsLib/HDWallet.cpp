@@ -686,8 +686,14 @@ void hd::Wallet::putDataToDB(LMDB* db, const BinaryData& key, const BinaryData& 
 {
    CharacterArrayRef keyRef(key.getSize(), key.getPtr());
    CharacterArrayRef dataRef(data.getSize(), data.getPtr());
-   LMDBEnv::Transaction tx(dbEnv_.get(), LMDB::ReadWrite);
-   db->insert(keyRef, dataRef);
+   try {
+      LMDBEnv::Transaction tx(dbEnv_.get(), LMDB::ReadWrite);
+      db->insert(keyRef, dataRef);
+   }
+   catch (const std::exception& e) {
+      LOG(logger_, info, "[{}] Wallet LMDB error - {}", __func__, e.what());
+      return;
+   }
 }
 
 void hd::Wallet::rescanBlockchain(const hd::Wallet::cb_scan_notify &cb, const cb_scan_read_last &cbr
