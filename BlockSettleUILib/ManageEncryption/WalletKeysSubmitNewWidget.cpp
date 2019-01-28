@@ -17,6 +17,10 @@ WalletKeysSubmitNewWidget::WalletKeysSubmitNewWidget(QWidget* parent)
    , suspended_(false)
 {
    ui_->setupUi(this);
+
+   // currently we dont using m of n
+   ui_->groupBox->hide();
+   layout()->removeWidget(ui_->groupBox);
 }
 
 WalletKeysSubmitNewWidget::~WalletKeysSubmitNewWidget() = default;
@@ -122,20 +126,20 @@ void WalletKeysSubmitNewWidget::addKey(int encKeyIndex, bool isFixed, const QStr
    if (!widgets_.empty()) {
       const auto separator = new QFrame(this);
       separator->setFrameShape(QFrame::HLine);
-      ui_->groupBox->layout()->addWidget(separator);
+      layout()->addWidget(separator);
    }
 
    //auto widget = new WalletKeyNewWidget(requestType_, walletId_, pwdData_.size(), password, authKeys, this);
    auto widget = new WalletKeyNewWidget(requestType_, walletInfo_, encKeyIndex, appSettings_, logger_, this);
+   widget->setUseType(WalletKeyNewWidget::UseType::RequestAuth);
+   widget->hideInWidgetAuthControls();
+
    widgets_.push_back(widget);
    pwdData_.push_back(QPasswordData());
 
    //widget->init(appSettings_, QString());
 
    connect(widget, &WalletKeyNewWidget::passwordDataChanged, this, &WalletKeysSubmitNewWidget::onPasswordDataChanged);
-//   connect(widget, &WalletKeyNewWidget::keyTypeChanged, this, &WalletKeysSubmitNewWidget::onKeyTypeChanged);
-//   connect(widget, &WalletKeyNewWidget::keyChanged, this, &WalletKeysSubmitNewWidget::onKeyChanged);
-//   connect(widget, &WalletKeyNewWidget::encKeyChanged, this, &WalletKeysSubmitNewWidget::onEncKeyChanged);
    connect(widget, &WalletKeyNewWidget::failed, this, &WalletKeysSubmitNewWidget::failed);
 
 //   if (flags_ & HideAuthConnectButton) {
@@ -165,11 +169,11 @@ void WalletKeysSubmitNewWidget::addKey(int encKeyIndex, bool isFixed, const QStr
 //   if (flags_ & HidePasswordWarning) {
 //      widget->setHidePasswordWarning(true);
 //   }
-   ui_->groupBox->layout()->addWidget(widget);
+   layout()->addWidget(widget);
 
    emit keyCountChanged();
    //widget->setEncryptionKeys(encKeys, encKeyIndex);
-   widget->setFixedType(isFixed);
+   //widget->setFixedType(isFixed);
    if (isFixed && !suspended_) {
       widget->start();
    }
@@ -277,5 +281,10 @@ void WalletKeysSubmitNewWidget::resume()
    for (const auto &widget : widgets_) {
       widget->start();
    }
+}
+
+QPasswordData WalletKeysSubmitNewWidget::passwordData(int keyIndex) const
+{
+   return pwdData_.at(keyIndex);
 }
 

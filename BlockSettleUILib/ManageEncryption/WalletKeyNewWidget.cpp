@@ -81,7 +81,10 @@ WalletKeyNewWidget::WalletKeyNewWidget(AutheIDClient::RequestType requestType
    ui_->setupUi(this);
 
    // Default view
-   setUseType(UseType::RequestAuth);
+   //setUseType(UseType::RequestAuth);
+
+   // todo: dont needed anymore?
+   ui_->labelAuthId->setMaximumHeight(0);
 
    qDebug() << "WalletKeyNewWidget::WalletKeyNewWidget";
 
@@ -93,7 +96,7 @@ WalletKeyNewWidget::WalletKeyNewWidget(AutheIDClient::RequestType requestType
          if (!deviceInfo.deviceId.empty()) {
             knownDeviceIds_.push_back(deviceInfo.deviceId);
          }
-          {
+         {
             ui_->comboBoxAuthId->addItem(QString::fromStdString(deviceInfo.userId));
          }
          if (deviceInfo.userId.empty()) {
@@ -112,7 +115,7 @@ WalletKeyNewWidget::WalletKeyNewWidget(AutheIDClient::RequestType requestType
 
    ui_->radioButtonPassword->setChecked(passwordData_.encType == EncryptionType::Password);
    ui_->radioButtonAuth->setChecked(passwordData_.encType == EncryptionType::Auth);
-   ui_->pushButtonAuth->setEnabled(false);
+   //ui_->pushButtonAuth->setEnabled(false);
    ui_->progressBar->hide();
    ui_->progressBar->setValue(0);
 
@@ -125,9 +128,6 @@ WalletKeyNewWidget::WalletKeyNewWidget(AutheIDClient::RequestType requestType
    connect(ui_->comboBoxAuthId, &QComboBox::editTextChanged, this, &WalletKeyNewWidget::onAuthIdChanged);
    connect(ui_->comboBoxAuthId, SIGNAL(currentIndexChanged(QString)), this, SLOT(onAuthIdChanged(QString)));
    connect(ui_->pushButtonAuth, &QPushButton::clicked, this, &WalletKeyNewWidget::onAuthSignClicked);
-
-   connect(autheIDClient_, &AutheIDClient::succeeded, this, &WalletKeyNewWidget::onAuthSucceeded);
-   connect(autheIDClient_, &AutheIDClient::failed, this, &WalletKeyNewWidget::onAuthFailed);
 
    timer_.setInterval(500);
    connect(&timer_, &QTimer::timeout, this, &WalletKeyNewWidget::onTimer);
@@ -159,14 +159,18 @@ void WalletKeyNewWidget::onTypeChanged()
    if (ui_->radioButtonPassword->isChecked()) {
       passwordData_.encType = EncryptionType::Password;
       ui_->stackedWidget->setCurrentWidget(ui_->pagePassword);
+      ui_->pageEid->setMaximumHeight(0);
+      ui_->pagePassword->setMaximumHeight(SHRT_MAX);
    }
    else {
       passwordData_.encType = EncryptionType::Auth;
       ui_->stackedWidget->setCurrentWidget(ui_->pageEid);
+      ui_->pageEid->setMaximumHeight(SHRT_MAX);
+      ui_->pagePassword->setMaximumHeight(0);
    }
    emit passwordDataChanged(keyIndex_, passwordData_);
 
-//   ui_->labelPassword->setVisible(passwordData_.encType == EncryptionType::Password);
+   //   ui_->labelPassword->setVisible(passwordData_.encType == EncryptionType::Password);
 //   ui_->lineEditPassword->setVisible(passwordData_.encType == EncryptionType::Password);
 //   ui_->labelPasswordConfirm->setVisible(passwordData_.encType == EncryptionType::Password);
 //   ui_->lineEditPasswordConfirm->setVisible(passwordData_.encType == EncryptionType::Password);
@@ -191,11 +195,9 @@ void WalletKeyNewWidget::onPasswordChanged()
       }
       passwordData_.q_setTextPassword(ui_->lineEditPassword->text());
       emit passwordDataChanged(keyIndex_, passwordData_);
-      //emit keyChanged(keyIndex_, ui_->lineEditPassword->text().toStdString());
    }
    else {
       emit passwordDataChanged(keyIndex_, QPasswordData());
-      //emit keyChanged(keyIndex_, {});
    }
 
    QString msg;
@@ -246,10 +248,13 @@ void WalletKeyNewWidget::onAuthSignClicked()
       const auto &serverHost = appSettings_->get<std::string>(ApplicationSettings::authServerHost);
       const auto &serverPort = appSettings_->get<std::string>(ApplicationSettings::authServerPort);
 
+      connect(autheIDClient_, &AutheIDClient::succeeded, this, &WalletKeyNewWidget::onAuthSucceeded);
+      connect(autheIDClient_, &AutheIDClient::failed, this, &WalletKeyNewWidget::onAuthFailed);
+
       try {
          autheIDClient_->connect(serverPubKey, serverHost, serverPort);
       }
-      catch (const std::exception &) {
+      catch (const std::exception &e) {
          // TODO display error
          ui_->pushButtonAuth->setEnabled(false);
       }
@@ -257,7 +262,7 @@ void WalletKeyNewWidget::onAuthSignClicked()
       //ui_->comboBoxAuthId->setEditText(username);
    }
    timeLeft_ = 120;
-   ui_->progressBar->setMaximum(timeLeft_ * 100);
+   ui_->progressBar->setMaximum(timeLeft_ * 2);
    //if (!hideProgressBar_) {
       ui_->progressBar->show();
    //}
@@ -296,7 +301,7 @@ void WalletKeyNewWidget::onAuthFailed(const QString &text)
 {
    
    stop();
-   ui_->pushButtonAuth->setEnabled(autheIDClient_->isConnected());
+   ui_->pushButtonAuth->setEnabled(true);
    ui_->pushButtonAuth->setText(tr("Auth failed: %1 - retry").arg(text));
    ui_->widgetAuthLayout->show();
    
@@ -316,8 +321,10 @@ void WalletKeyNewWidget::onTimer()
       onAuthFailed(tr("Timeout"));
    }
    else {
-      ui_->progressBar->setFormat(tr("%1 seconds left").arg((int)timeLeft_));
-      ui_->progressBar->setValue(timeLeft_ * 100);
+      //ui_->progressBar->setFormat(tr("%1 seconds left").arg((int)timeLeft_));
+      ui_->progressBar->setValue(timeLeft_ * 2);
+      ui_->labelProgress->setText(tr("%1 seconds left").arg((int)timeLeft_));
+      ui_->progressBar->repaint();
    }
 }
 
@@ -326,6 +333,10 @@ void WalletKeyNewWidget::stop()
    ui_->lineEditPassword->clear();
    ui_->lineEditPasswordConfirm->clear();
    authRunning_ = false;
+   if (autheIDClient_) {
+      autheIDClient_->deleteLater();
+      autheIDClient_ = nullptr;
+   }
    timer_.stop();
    //if (!progressBarFixed_) {
       ui_->progressBar->hide();
@@ -336,18 +347,20 @@ void WalletKeyNewWidget::stop()
 
 void WalletKeyNewWidget::cancel()
 {
-   if (!isPassword_) {
-      autheIDClient_->cancel();
+   if (passwordData_.encType == EncryptionType::Auth) {
+      if (autheIDClient_) {
+         autheIDClient_->cancel();
+      }
       stop();
    }
 }
 
 void WalletKeyNewWidget::start()
 {
-   if (!isPassword_ && !authRunning_ && !ui_->comboBoxAuthId->currentText().isEmpty()) {
+   if (passwordData_.encType == EncryptionType::Auth && !authRunning_ && !ui_->comboBoxAuthId->currentText().isEmpty()) {
       onAuthSignClicked();
       ui_->progressBar->setValue(0);
-      ui_->pushButtonAuth->setEnabled(autheIDClient_->isConnected());
+      //ui_->pushButtonAuth->setEnabled(true);
    }
 }
 
@@ -377,15 +390,15 @@ void WalletKeyNewWidget::start()
 //   }
 //}
 
-void WalletKeyNewWidget::setFixedType(bool on)
-{
-   if (ui_->comboBoxAuthId->count() > 0) {
-      //ui_->comboBoxAuthId->setEnabled(!on);
-      ui_->comboBoxAuthId->setEditable(!on);
-   }
-   ui_->radioButtonPassword->setVisible(!on);
-   ui_->radioButtonAuth->setVisible(!on);
-}
+//void WalletKeyNewWidget::setFixedType(bool on)
+//{
+//   if (ui_->comboBoxAuthId->count() > 0) {
+//      //ui_->comboBoxAuthId->setEnabled(!on);
+//      ui_->comboBoxAuthId->setEditable(!on);
+//   }
+//   ui_->radioButtonPassword->setVisible(!on);
+//   ui_->radioButtonAuth->setVisible(!on);
+//}
 
 void WalletKeyNewWidget::setFocus()
 {
@@ -453,13 +466,48 @@ void WalletKeyNewWidget::setFocus()
 //   hideProgressBar_ = value;
 //}
 
-void WalletKeyNewWidget::setUseType(WalletKeyNewWidget::UseType type)
+void WalletKeyNewWidget::setUseType(WalletKeyNewWidget::UseType useType)
 {
-   ui_->lineEditPasswordConfirm->setVisible(type == UseType::ChangeAuth);
-   ui_->labelPasswordConfirm->setVisible(type == UseType::ChangeAuth);
-   ui_->labelPasswordInfo->setVisible(type == UseType::ChangeAuth);
-   ui_->labelPasswordWarning->setVisible(type == UseType::ChangeAuth);
-   ui_->labelPassword->setText(type == UseType::ChangeAuth ? tr("New Password") : tr("Enter Password"));
+   ui_->labelPassword->setText(useType == UseType::ChangeAuth ? tr("New Password") : tr("Password"));
+   ui_->comboBoxAuthId->setEditable(useType == UseType::ChangeAuth);
+
+   ui_->widgetEncTypeSelect->setVisible(useType == UseType::ChangeAuth);
+   ui_->labelPasswordConfirm->setVisible(useType == UseType::ChangeAuth);
+   ui_->lineEditPasswordConfirm->setVisible(useType == UseType::ChangeAuth);
+   ui_->labelPasswordInfo->setVisible(useType == UseType::ChangeAuth);
+   ui_->labelPasswordWarning->setVisible(useType == UseType::ChangeAuth);
+
+
+//   ui_->labelPassword->setVisible(useType == UseType::ChangeAuth);
+//   ui_->lineEditPassword->setVisible(useType == UseType::ChangeAuth);
+
+   if (useType == UseType::RequestAuth) {
+      ui_->widgetEncTypeSelect->setMaximumHeight(0);
+
+      //layout()->removeWidget(ui_->widgetEncTypeSelect);
+      //layout()->removeWidget(ui_->stackedWidget);
+//      ui_->pagePassword->layout()->removeWidget(ui_->labelPasswordConfirm);
+//      ui_->pagePassword->layout()->removeWidget(ui_->lineEditPasswordConfirm);
+//      ui_->pagePassword->layout()->removeWidget(ui_->labelPasswordInfo);
+//      ui_->pagePassword->layout()->removeWidget(ui_->labelPasswordWarning);
+
+
+//      ui_->widgetEncTypeSelect->deleteLater();
+//      ui_->labelPasswordConfirm->deleteLater();
+//      ui_->lineEditPasswordConfirm->deleteLater();
+//      ui_->labelPasswordInfo->deleteLater();
+//      ui_->labelPasswordWarning->deleteLater();
+//      ui_->widgetEncTypeSelect->deleteLater();
+   }
+}
+
+void WalletKeyNewWidget::hideInWidgetAuthControls()
+{
+   ui_->pushButtonAuth->setMaximumHeight(0);
+   ui_->progressBar->setMaximumHeight(0);
+
+   ui_->pushButtonAuth->hide();
+   ui_->progressBar->hide();
 }
 
 QPropertyAnimation* WalletKeyNewWidget::startAuthAnimation(bool success)
@@ -477,3 +525,13 @@ QPropertyAnimation* WalletKeyNewWidget::startAuthAnimation(bool success)
 
    return a;
 }
+
+//bs::wallet::QPasswordData WalletKeyNewWidget::passwordData() const
+//{
+//   return passwordData_;
+//}
+
+//void WalletKeyNewWidget::setPasswordData(const bs::wallet::QPasswordData &passwordData)
+//{
+//   passwordData_ = passwordData;
+//}

@@ -18,7 +18,7 @@ Text {
 
 * {
   font-family: 'Open Sans', arial, sans-serif;
-  font-size: 11px;
+  font-size: 12px;
   color: #81888f; }
 
 QLabel {
@@ -153,6 +153,8 @@ QWidget {
     margin-top: 16px;
     /* leave space at the top for the title */
     padding-top: 10px;
+    padding: 0px;
+    margin: 0px;
     background-color: transparent; }
     QWidget QGroupBox[h1="true"] { /* leave space at the top for the title when using h1 */
        margin-top: 20px; }
@@ -174,13 +176,12 @@ QWidget {
       QWidget QGroupBox[wellGroupBoxWithButtonBar="true"] QTableView,
       QWidget QGroupBox[wellGroupBoxWithButtonBar="true"] QTreeView {
         border: 1px solid transparent; }
-  QWidget QGroupBox::title {
+QWidget QGroupBox::title {
     subcontrol-origin: margin;
     subcontrol-position: top left;
     /* position at the top center */
     padding: 0;
-    color: #e7e8e9;
-    text-transform: uppercase; }
+    color: #e7e8e9;}
 
 QWidget QGroupBox::title:disabled {
    color: #586266;

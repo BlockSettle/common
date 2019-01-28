@@ -38,6 +38,7 @@ public:
    void cancel();
 
    bool isValid() const;
+   bs::wallet::QPasswordData passwordData(int keyIndex) const { return pwdData_.at(keyIndex); }
    std::vector<bs::wallet::QPasswordData> keys() const { return pwdData_; }
    bs::wallet::KeyRank keyRank() const { return keyRank_; }
 
@@ -72,6 +73,7 @@ private:
    AutheIDClient::RequestType requestType_{};
    bs::hd::WalletInfo walletInfo_;
    std::shared_ptr<spdlog::logger> logger_;
+
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(WalletKeysCreateNewWidget::Flags)

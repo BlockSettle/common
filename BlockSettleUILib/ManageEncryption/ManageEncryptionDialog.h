@@ -76,8 +76,8 @@ private:
    std::shared_ptr<bs::hd::Wallet>  wallet_;
    //const bs::wallet::KeyRank oldKeyRank_;
    bs::wallet::KeyRank newKeyRank_;
-   std::vector<bs::wallet::PasswordData> oldPasswordData_;
-   std::vector<bs::wallet::PasswordData> newPasswordData_;
+   std::vector<bs::wallet::QPasswordData> oldPasswordData_;
+   std::vector<bs::wallet::QPasswordData> newPasswordData_;
    // Init variables in resetKeys method so they always valid when we restart process
    bool addNew_;
    bool removeOld_;

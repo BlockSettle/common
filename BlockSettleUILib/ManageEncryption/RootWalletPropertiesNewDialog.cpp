@@ -96,9 +96,7 @@ RootWalletPropertiesNewDialog::RootWalletPropertiesNewDialog(const std::shared_p
    ui_->rescanButton->setEnabled(armory->state() == ArmoryConnection::State::Ready);
    ui_->manageEncryptionButton->setEnabled(false);
    if (!wallet_->isWatchingOnly()) {
-      walletInfo_.setEncTypes(wallet_->encryptionTypes());
-      walletInfo_.setEncKeys(wallet_->encryptionKeys());
-      walletInfo_.setKeyRank(wallet_->encryptionRank());
+      walletInfo_ = bs::hd::WalletInfo(wallet_);
    }
 
    if (signingContainer_) {
@@ -216,7 +214,13 @@ void RootWalletPropertiesNewDialog::onHDWalletInfo(unsigned int id, const bs::hd
       return;
    }
    infoReqId_ = 0;
+
+   // walletInfo arrived from sign container signal
    walletInfo_ = walletInfo;
+
+   // but wallet name is from bs::hd::Wallet
+   walletInfo_.setName(QString::fromStdString(wallet_->getName()));
+
    ui_->manageEncryptionButton->setEnabled(true);
 
    if (walletInfo.keyRank().first == 1 && walletInfo.keyRank().second == 1) {

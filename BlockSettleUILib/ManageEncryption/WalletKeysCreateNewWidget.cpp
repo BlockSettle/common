@@ -15,6 +15,10 @@ WalletKeysCreateNewWidget::WalletKeysCreateNewWidget(QWidget* parent)
    ui_->pushButtonDelKey->setEnabled(false);
    ui_->labelRankN->clear();
 
+   // currently we dont using m of n
+   ui_->groupBox->hide();
+   layout()->removeWidget(ui_->groupBox);
+
    connect(ui_->pushButtonAddKey, &QPushButton::clicked, this, &WalletKeysCreateNewWidget::onAddClicked);
    connect(ui_->pushButtonDelKey, &QPushButton::clicked, this, &WalletKeysCreateNewWidget::onDelClicked);
    connect(ui_->spinBoxRankM, SIGNAL(valueChanged(int)), this, SLOT(updateKeyRank(int)));
@@ -58,6 +62,8 @@ void WalletKeysCreateNewWidget::addKey()
    const auto &authKeys = appSettings_->GetAuthKeys();
    auto widget = new WalletKeyNewWidget(requestType_, walletInfo_, widgets_.size(), appSettings_, logger_, this);
    widget->setUseType(WalletKeyNewWidget::UseType::ChangeAuth);
+   widget->hideInWidgetAuthControls();
+
 //   widget->init(appSettings_, username_);
 //   if (flags_ & HideAuthConnectButton) {
 //      widget->setHideAuthConnect(true);
@@ -74,11 +80,10 @@ void WalletKeysCreateNewWidget::addKey()
       ui_->labelPubKeyFP->setText(QString::fromStdString(pubKeyFP));
    }
 
-//   connect(widget, &WalletKeyNewWidget::keyTypeChanged, this, &WalletKeysCreateNewWidget::onKeyTypeChanged);
-//   connect(widget, &WalletKeyNewWidget::keyChanged, this, &WalletKeysCreateNewWidget::onKeyChanged);
-//   connect(widget, &WalletKeyNewWidget::encKeyChanged, this, &WalletKeysCreateNewWidget::onEncKeyChanged);
+   connect(widget, &WalletKeyNewWidget::passwordDataChanged, this, &WalletKeysCreateNewWidget::onPasswordDataChanged);
    connect(widget, &WalletKeyNewWidget::failed, this, &WalletKeysCreateNewWidget::failed);
-   ui_->groupBox->layout()->addWidget(widget);
+
+   layout()->addWidget(widget);
    ui_->pushButtonDelKey->setEnabled(true);
    widgets_.emplace_back(widget);
    pwdData_.push_back(bs::wallet::QPasswordData());

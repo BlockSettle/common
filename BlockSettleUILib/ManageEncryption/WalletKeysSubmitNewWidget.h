@@ -36,13 +36,6 @@ public:
    ~WalletKeysSubmitNewWidget() override;
 
    void setFlags(Flags flags);
-//   void init(AutheIDClient::RequestType requestType
-//      , const std::string &walletId
-//      , bs::wallet::KeyRank
-//      , const std::vector<bs::wallet::EncryptionType> &
-//      , const std::vector<SecureBinaryData> &encKeys
-//      , const std::shared_ptr<ApplicationSettings> &appSettings
-//      , const QString &prompt = QString());
 
    void init(AutheIDClient::RequestType requestType
              , const bs::hd::WalletInfo &walletInfo
@@ -60,6 +53,8 @@ public:
    void setFocus();
    void suspend() { suspended_ = true; }
    void resume();
+
+   bs::wallet::QPasswordData passwordData(int keyIndex) const;
 
 signals:
    void keyChanged();

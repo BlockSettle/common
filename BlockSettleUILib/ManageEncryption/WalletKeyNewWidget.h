@@ -44,7 +44,7 @@ public:
    void start();
 
    //void setEncryptionKeys(const std::vector<SecureBinaryData> &encKeys, int index = 0);
-   void setFixedType(bool on = true);
+   //void setFixedType(bool on = true);
    void setFocus();
 
 //   void setHideAuthConnect(bool value);
@@ -59,15 +59,20 @@ public:
 //   void setHideAuthControlsOnSignClicked(bool value);
 //   void setHideProgressBar(bool value);
 
-   void setUseType(UseType type);
+   void setUseType(UseType useType);
+
+   // initially WalletKeyWidget designed to embed it to another widgets, not for using as popup dialog
+   // this function enables possibility to show another dialog for eid signing
+   // it just hides all active controls - sigining button and progress bar
+   void hideInWidgetAuthControls();
+
+//   bs::wallet::QPasswordData passwordData() const;
+//   void setPasswordData(const bs::wallet::QPasswordData &passwordData);
 
 signals:
    // emitted when password entered or eid auth recieved
    void passwordDataChanged(int keyIndex, const bs::wallet::QPasswordData &passwordData);
 
-//   void keyChanged(int index, SecureBinaryData);  // used for change password
-//   void encKeyChanged(int index, SecureBinaryData); // used for eid email changed via onAuthIdChanged
-//   void keyTypeChanged(int index, bool password); // used for auth type changed when radio button toggled
    // Signals that Auth was denied or timed out
    void failed();
 
@@ -91,7 +96,7 @@ private:
    std::unique_ptr<Ui::WalletKeyNewWidget> ui_;
    //std::string walletId_;
    int         keyIndex_;
-   bool        isPassword_;
+   //bool        isPassword_;
    bool        authRunning_ = false;
    //bool        encryptionKeysSet_ = false;
 
