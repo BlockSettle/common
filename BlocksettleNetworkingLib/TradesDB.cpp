@@ -315,7 +315,7 @@ const std::vector<TradesDB::DataPoint *> TradesDB::getDataPoints(
 {
     std::vector<TradesDB::DataPoint *> result;
     if (interval == Interval::Unknown) {
-        interval = Interval::FifteenMinutes;
+        interval = Interval::OneHour;
     }
 //    QDateTime timeTill = QDateTime::currentDateTimeUtc();
     db_.transaction();
