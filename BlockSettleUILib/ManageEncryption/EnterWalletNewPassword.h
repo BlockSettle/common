@@ -25,15 +25,16 @@ public:
                                    , QWidget* parent = nullptr);
    ~EnterWalletNewPassword() override;
 
-   enum class UseType {
-      RequestPassword,
-      RequestEid,
-      ChangeToPassword,  // not used
-      ChangeToEid
-   };
+//   enum class UseType {
+//      RequestPassword,
+//      RequestEid,
+//      ChangeToPassword,  // not used
+//      ChangeToEid
+//   };
 
    void init(const bs::hd::WalletInfo &walletInfo
       , const std::shared_ptr<ApplicationSettings> &appSettings
+      , WalletKeyNewWidget::UseType useType
       , const QString &prompt
       , const std::shared_ptr<spdlog::logger> &logger
       , const QString &title = QString());
@@ -43,8 +44,6 @@ public:
 //      , const std::vector<bs::wallet::PasswordData> &keys
 //      , const std::shared_ptr<ApplicationSettings> &appSettings
 //      , const QString &prompt, const QString &title = QString());
-
-   void setUseType(UseType useType);
 
    bs::wallet::QPasswordData passwordData(int keyIndex) const;
    SecureBinaryData resultingKey() const;

@@ -5,6 +5,7 @@
 #include "WalletEncryption.h"
 #include "AutheIDClient.h"
 #include "QWalletInfo.h"
+#include "WalletKeyNewWidget.h"
 
 namespace Ui {
     class WalletKeysSubmitNewWidget;
@@ -39,6 +40,7 @@ public:
 
    void init(AutheIDClient::RequestType requestType
              , const bs::hd::WalletInfo &walletInfo
+             , WalletKeyNewWidget::UseType useType
              , const std::shared_ptr<ApplicationSettings> &appSettings
              , const std::shared_ptr<spdlog::logger> &logger
              , const QString &prompt = QString());
@@ -86,6 +88,7 @@ private:
    bool isKeyFinal_{false};
    bs::hd::WalletInfo walletInfo_;
    std::shared_ptr<spdlog::logger> logger_;
+   WalletKeyNewWidget::UseType useType_;
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(WalletKeysSubmitNewWidget::Flags)

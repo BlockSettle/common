@@ -84,7 +84,7 @@ WalletKeyNewWidget::WalletKeyNewWidget(AutheIDClient::RequestType requestType
    //setUseType(UseType::RequestAuth);
 
    // todo: dont needed anymore?
-   ui_->labelAuthId->setMaximumHeight(0);
+   //ui_->labelAuthId->setMaximumHeight(0);
 
    qDebug() << "WalletKeyNewWidget::WalletKeyNewWidget";
 
@@ -110,6 +110,7 @@ WalletKeyNewWidget::WalletKeyNewWidget(AutheIDClient::RequestType requestType
    }
    if ((keyIndex >= 0) && (keyIndex < walletInfo.encKeys().size())) {
       ui_->comboBoxAuthId->setCurrentIndex(keyIndex);
+      ui_->labelAuthId->setText(ui_->comboBoxAuthId->currentText());
    }
 
 
@@ -410,104 +411,53 @@ void WalletKeyNewWidget::setFocus()
    }
 }
 
-//void WalletKeyNewWidget::setHideAuthConnect(bool value)
-//{
-//   hideAuthConnect_ = value;
-//   onTypeChanged();
-//}
-
-//void WalletKeyNewWidget::setHideAuthCombobox(bool value)
-//{
-//   hideAuthCombobox_ = value;
-//   onTypeChanged();
-//}
-
-//void WalletKeyNewWidget::setProgressBarFixed(bool value)
-//{
-//   progressBarFixed_ = value;
-//   onTypeChanged();
-//}
-
-//void WalletKeyNewWidget::setShowAuthId(bool value)
-//{
-//   showAuthId_ = value;
-//   onTypeChanged();
-//}
-
-//void WalletKeyNewWidget::setPasswordLabelAsNew()
-//{
-//   ui_->labelPassword->setText(tr("New Password"));
-//}
-
-//void WalletKeyNewWidget::setPasswordLabelAsOld()
-//{
-//   ui_->labelPassword->setText(tr("Old Password"));
-//}
-
-//void WalletKeyNewWidget::setHideAuthEmailLabel(bool value)
-//{
-//   hideAuthEmailLabel_ = value;
-//   onTypeChanged();
-//}
-
-//void WalletKeyNewWidget::setHidePasswordWarning(bool value)
-//{
-//   hidePasswordWarning_ = value;
-//   onTypeChanged();
-//}
-
-//void WalletKeyNewWidget::setHideAuthControlsOnSignClicked(bool value)
-//{
-//   hideAuthControlsOnSignClicked_ = value;
-//}
-
-//void WalletKeyNewWidget::setHideProgressBar(bool value)
-//{
-//   hideProgressBar_ = value;
-//}
 
 void WalletKeyNewWidget::setUseType(WalletKeyNewWidget::UseType useType)
 {
-   ui_->labelPassword->setText(useType == UseType::ChangeAuth ? tr("New Password") : tr("Password"));
-   ui_->comboBoxAuthId->setEditable(useType == UseType::ChangeAuth);
+   bool changeAuthType = (useType == UseType::ChangeAuthInParent || useType == UseType::ChangeAuthForDialog);
+   bool requestAuthType = (useType == UseType::RequestAuthInParent || useType == UseType::RequestAuthAsDialog);
 
-   ui_->widgetEncTypeSelect->setVisible(useType == UseType::ChangeAuth);
-   ui_->labelPasswordConfirm->setVisible(useType == UseType::ChangeAuth);
-   ui_->lineEditPasswordConfirm->setVisible(useType == UseType::ChangeAuth);
-   ui_->labelPasswordInfo->setVisible(useType == UseType::ChangeAuth);
-   ui_->labelPasswordWarning->setVisible(useType == UseType::ChangeAuth);
+   ui_->labelPassword->setText(changeAuthType ? tr("New Password") : tr("Password"));
+   ui_->comboBoxAuthId->setEditable(changeAuthType);
+
+   ui_->widgetEncTypeSelect->setVisible(changeAuthType);
+   ui_->labelPasswordConfirm->setVisible(changeAuthType);
+   ui_->lineEditPasswordConfirm->setVisible(changeAuthType);
+   ui_->labelPasswordInfo->setVisible(changeAuthType);
+   ui_->labelPasswordWarning->setVisible(changeAuthType);
 
 
-//   ui_->labelPassword->setVisible(useType == UseType::ChangeAuth);
-//   ui_->lineEditPassword->setVisible(useType == UseType::ChangeAuth);
-
-   if (useType == UseType::RequestAuth) {
+   if (requestAuthType) {
       ui_->widgetEncTypeSelect->setMaximumHeight(0);
-
-      //layout()->removeWidget(ui_->widgetEncTypeSelect);
-      //layout()->removeWidget(ui_->stackedWidget);
-//      ui_->pagePassword->layout()->removeWidget(ui_->labelPasswordConfirm);
-//      ui_->pagePassword->layout()->removeWidget(ui_->lineEditPasswordConfirm);
-//      ui_->pagePassword->layout()->removeWidget(ui_->labelPasswordInfo);
-//      ui_->pagePassword->layout()->removeWidget(ui_->labelPasswordWarning);
-
-
-//      ui_->widgetEncTypeSelect->deleteLater();
-//      ui_->labelPasswordConfirm->deleteLater();
-//      ui_->lineEditPasswordConfirm->deleteLater();
-//      ui_->labelPasswordInfo->deleteLater();
-//      ui_->labelPasswordWarning->deleteLater();
-//      ui_->widgetEncTypeSelect->deleteLater();
    }
-}
 
-void WalletKeyNewWidget::hideInWidgetAuthControls()
-{
-   ui_->pushButtonAuth->setMaximumHeight(0);
-   ui_->progressBar->setMaximumHeight(0);
+   ///
 
-   ui_->pushButtonAuth->hide();
-   ui_->progressBar->hide();
+   if (useType == UseType::RequestAuthAsDialog
+       || useType == UseType::ChangeToEidAsDialog
+       || useType == UseType::ChangeToPasswordAsDialog) {
+      ui_->widgetCombo->setMaximumHeight(0);
+      ui_->widgetCombo->setMaximumWidth(0);
+      ui_->labelProgress->setMaximumHeight(0);
+      ui_->progressBar->setMaximumHeight(0);
+   }
+
+   if (useType == UseType::RequestAuthInParent
+       || useType == UseType::ChangeAuthInParent) {
+      ui_->labelAuthId->setMaximumHeight(0);
+      ui_->labelAuthId->hide();
+      ui_->progressBar->setMaximumHeight(0);
+      ui_->progressBar->hide();
+      ui_->labelProgress->setMaximumHeight(0);
+   }
+
+   if (useType == UseType::ChangeAuthForDialog) {
+      ui_->pushButtonAuth->hide();
+
+      ui_->progressBar->setMaximumHeight(0);
+      ui_->labelProgress->setMaximumHeight(0);
+      ui_->labelAuthId->setMaximumHeight(0);
+   }
 }
 
 QPropertyAnimation* WalletKeyNewWidget::startAuthAnimation(bool success)

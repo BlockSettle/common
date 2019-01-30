@@ -5,7 +5,6 @@
 #include <QtConcurrent/QtConcurrentRun>
 #include "ApplicationSettings.h"
 #include "MobileUtils.h"
-#include "WalletKeyNewWidget.h"
 
 using namespace bs::wallet;
 using namespace bs::hd;
@@ -32,6 +31,7 @@ void WalletKeysSubmitNewWidget::setFlags(Flags flags)
 
 void WalletKeysSubmitNewWidget::init(AutheIDClient::RequestType requestType
                                      , const bs::hd::WalletInfo &walletInfo
+                                     , WalletKeyNewWidget::UseType useType
                                      , const std::shared_ptr<ApplicationSettings> &appSettings
                                      , const std::shared_ptr<spdlog::logger> &logger
                                      , const QString &prompt)
@@ -40,6 +40,7 @@ void WalletKeysSubmitNewWidget::init(AutheIDClient::RequestType requestType
    walletInfo_ = walletInfo;
    logger_ = logger;
    appSettings_ = appSettings;
+   useType_ = useType;
 
    qDeleteAll(widgets_.cbegin(), widgets_.cend());
    widgets_.clear();
@@ -131,8 +132,7 @@ void WalletKeysSubmitNewWidget::addKey(int encKeyIndex, bool isFixed, const QStr
 
    //auto widget = new WalletKeyNewWidget(requestType_, walletId_, pwdData_.size(), password, authKeys, this);
    auto widget = new WalletKeyNewWidget(requestType_, walletInfo_, encKeyIndex, appSettings_, logger_, this);
-   widget->setUseType(WalletKeyNewWidget::UseType::RequestAuth);
-   widget->hideInWidgetAuthControls();
+   widget->setUseType(useType_);
 
    widgets_.push_back(widget);
    pwdData_.push_back(QPasswordData());

@@ -25,10 +25,16 @@ EnterWalletNewPassword::~EnterWalletNewPassword() = default;
 
 void EnterWalletNewPassword::init(const WalletInfo &walletInfo
                                   , const std::shared_ptr<ApplicationSettings> &appSettings
+                                  , WalletKeyNewWidget::UseType useType
                                   , const QString &prompt
                                   , const std::shared_ptr<spdlog::logger> &logger
                                   , const QString &title)
 {
+   assert (useType == WalletKeyNewWidget::UseType::RequestAuthAsDialog
+           || useType == WalletKeyNewWidget::UseType::ChangeToPasswordAsDialog
+           || useType == WalletKeyNewWidget::UseType::ChangeToEidAsDialog);
+
+
    walletInfo_ = walletInfo;
    appSettings_ = appSettings;
    logger_ = logger;
@@ -41,27 +47,21 @@ void EnterWalletNewPassword::init(const WalletInfo &walletInfo
       setWindowTitle(title);
    }
 
-//   bool isAuthOnly = true;
-//   for (auto encType : walletInfo_.encTypes()) {
-//      if (encType != QEncryptionType::Auth) {
-//         isAuthOnly = false;
-//      }
-//   }
-//   if (isAuthOnly) {
-//      ui_->widgetSubmitKeys->setFlags(WalletKeysSubmitNewWidget::HideAuthConnectButton
-//         | WalletKeysSubmitNewWidget::HideAuthCombobox
-//         | WalletKeysSubmitNewWidget::HideGroupboxCaption
-//         | WalletKeysSubmitNewWidget::AuthProgressBarFixed
-//         | WalletKeysSubmitNewWidget::AuthIdVisible
-//         | WalletKeysSubmitNewWidget::HidePasswordWarning);
+   bool isAuthOnly = true;
+   for (auto encType : walletInfo_.encTypes()) {
+      if (encType != QEncryptionType::Auth) {
+         isAuthOnly = false;
+      }
+   }
+   if (isAuthOnly || useType == WalletKeyNewWidget::UseType::ChangeToEidAsDialog) {
+      connect(ui_->widgetSubmitKeys, &WalletKeysSubmitNewWidget::keyChanged, this, &EnterWalletNewPassword::accept);
+      connect(ui_->widgetSubmitKeys, &WalletKeysSubmitNewWidget::failed, this, &EnterWalletNewPassword::reject);
 
-//      connect(ui_->widgetSubmitKeys, &WalletKeysSubmitNewWidget::keyChanged, this, &EnterWalletNewPassword::accept);
-//      connect(ui_->widgetSubmitKeys, &WalletKeysSubmitNewWidget::failed, this, &EnterWalletNewPassword::reject);
+      ui_->pushButtonOk->hide();
+      ui_->spacerLeft->changeSize(1,1, QSizePolicy::Expanding, QSizePolicy::Preferred);
+   }
 
-//      ui_->pushButtonOk->hide();
-//   }
-
-   ui_->widgetSubmitKeys->init(requestType_, walletInfo_, appSettings_, logger_, prompt);
+   ui_->widgetSubmitKeys->init(requestType_, walletInfo_, useType, appSettings_, logger_, prompt);
    ui_->widgetSubmitKeys->setFocus();
    ui_->widgetSubmitKeys->resume();
 
@@ -69,11 +69,11 @@ void EnterWalletNewPassword::init(const WalletInfo &walletInfo
 
    adjustSize();
    setMinimumSize(size());
-}
 
-void EnterWalletNewPassword::setUseType(EnterWalletNewPassword::UseType useType)
-{
-   if (useType == UseType::ChangeToEid || useType == UseType::RequestEid) {
+
+
+
+   if (useType == WalletKeyNewWidget::UseType::ChangeToEidAsDialog) {
       connect(ui_->widgetSubmitKeys, &WalletKeysSubmitNewWidget::keyChanged, this, &EnterWalletNewPassword::accept);
       connect(ui_->widgetSubmitKeys, &WalletKeysSubmitNewWidget::failed, this, &EnterWalletNewPassword::reject);
 
@@ -87,8 +87,8 @@ void EnterWalletNewPassword::setUseType(EnterWalletNewPassword::UseType useType)
    //                                      | WalletKeysSubmitNewWidget::AuthProgressBarFixed
    //                                      | WalletKeysSubmitNewWidget::AuthIdVisible
    //                                      | WalletKeysSubmitNewWidget::HidePasswordWarning);
-
 }
+
 
 //void EnterWalletNewPassword::init(const std::string &walletId, bs::wallet::KeyRank keyRank
 //   , const std::vector<bs::wallet::PasswordData> &keys

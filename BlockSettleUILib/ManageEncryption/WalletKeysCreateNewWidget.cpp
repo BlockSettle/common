@@ -4,7 +4,6 @@
 #include <QSpinBox>
 #include "ApplicationSettings.h"
 #include "MobileUtils.h"
-#include "WalletKeyNewWidget.h"
 
 
 WalletKeysCreateNewWidget::WalletKeysCreateNewWidget(QWidget* parent)
@@ -33,6 +32,7 @@ void WalletKeysCreateNewWidget::setFlags(Flags flags)
 
 void WalletKeysCreateNewWidget::init(AutheIDClient::RequestType requestType
                                      , const bs::hd::WalletInfo &walletInfo
+                                     , WalletKeyNewWidget::UseType useType
                                      , const std::shared_ptr<ApplicationSettings>& appSettings
                                      , const std::shared_ptr<spdlog::logger> &logger)
 {
@@ -40,6 +40,7 @@ void WalletKeysCreateNewWidget::init(AutheIDClient::RequestType requestType
    walletInfo_ = walletInfo;
    appSettings_ = appSettings;
    logger_ = logger;
+   useType_ = useType;
 
    widgets_.clear();
    pwdData_.clear();
@@ -61,8 +62,7 @@ void WalletKeysCreateNewWidget::addKey()
    assert(!walletInfo_.rootId().isEmpty());
    const auto &authKeys = appSettings_->GetAuthKeys();
    auto widget = new WalletKeyNewWidget(requestType_, walletInfo_, widgets_.size(), appSettings_, logger_, this);
-   widget->setUseType(WalletKeyNewWidget::UseType::ChangeAuth);
-   widget->hideInWidgetAuthControls();
+   widget->setUseType(useType_);
 
 //   widget->init(appSettings_, username_);
 //   if (flags_ & HideAuthConnectButton) {

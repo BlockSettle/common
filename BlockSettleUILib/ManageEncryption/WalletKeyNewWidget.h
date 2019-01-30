@@ -32,8 +32,13 @@ public:
                       , QWidget* parent = nullptr);
 
    enum class UseType {
-      RequestAuth,
-      ChangeAuth
+      RequestAuthInParent,       // requests password or eid (depends of walletInfo) in parent widget
+      RequestAuthAsDialog,       // requests password or eid (depends of walletInfo) in popup dialog
+      ChangeAuthInParent,        // change password or eid (depends of user select) in parent widget
+      ChangeToPasswordAsDialog,  // requests password to change as dialog (currently not used)
+      ChangeToEidAsDialog,       // requests eid to change as dialog
+      ChangeAuthForDialog        // requests password to change or email for eid (depends of user select) in parent widget
+                                 // ChangeToEidAsDialog should be opened if eid selected
    };
    Q_ENUMS(UseType)
 
@@ -59,12 +64,13 @@ public:
 //   void setHideAuthControlsOnSignClicked(bool value);
 //   void setHideProgressBar(bool value);
 
-   void setUseType(UseType useType);
+
 
    // initially WalletKeyWidget designed to embed it to another widgets, not for using as popup dialog
-   // this function enables possibility to show another dialog for eid signing
-   // it just hides all active controls - sigining button and progress bar
-   void hideInWidgetAuthControls();
+   // ChangeAuthAsDialog and RequestAuthAsDialog flags enables possibility to show popup dialog for authorization
+   void setUseType(UseType useType);
+
+
 
 //   bs::wallet::QPasswordData passwordData() const;
 //   void setPasswordData(const bs::wallet::QPasswordData &passwordData);

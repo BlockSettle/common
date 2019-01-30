@@ -5,6 +5,7 @@
 #include "WalletEncryption.h"
 #include "AutheIDClient.h"
 #include "QWalletInfo.h"
+#include "WalletKeyNewWidget.h"
 
 namespace Ui {
     class WalletKeysCreateNewWidget;
@@ -32,6 +33,7 @@ public:
    void setFlags(Flags flags);
    void init(AutheIDClient::RequestType requestType
              , const bs::hd::WalletInfo &walletInfo
+             , WalletKeyNewWidget::UseType useType
              , const std::shared_ptr<ApplicationSettings>& appSettings
              , const std::shared_ptr<spdlog::logger> &logger);
 
@@ -73,6 +75,7 @@ private:
    AutheIDClient::RequestType requestType_{};
    bs::hd::WalletInfo walletInfo_;
    std::shared_ptr<spdlog::logger> logger_;
+   WalletKeyNewWidget::UseType useType_;
 
 };
 
