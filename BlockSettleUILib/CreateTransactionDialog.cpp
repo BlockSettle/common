@@ -320,7 +320,6 @@ void CreateTransactionDialog::onTXSigned(unsigned int id, BinaryData signedTX, s
          }
 
          const auto wallet = transactionData_->GetWallet();
-         BTCNumericTypes::balance_type unconfAddin = 0;
          for (const auto &input : txReq_.inputs) {
             const auto inputAddr = bs::Address::fromUTXO(input);
             if (!wallet->IsExternalAddress(inputAddr)) {
