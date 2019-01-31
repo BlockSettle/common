@@ -953,9 +953,11 @@ void WalletsManager::updateTxDescCache(const std::string &txKey, const QString &
    cb(desc, addrCount);
 }
 
-WalletsManager::hd_wallet_type WalletsManager::CreateWallet(const std::string& name, const std::string& description
+WalletsManager::hd_wallet_type WalletsManager::CreateWallet(
+   const std::string& name, const std::string& description
    , bs::wallet::Seed seed, const QString &walletsPath, bool primary
-   , const std::vector<bs::wallet::PasswordData> &pwdData, bs::wallet::KeyRank keyRank)
+   , const std::vector<bs::wallet::PasswordData> &pwdData
+   , bs::wallet::KeyRank keyRank, const bool& deleteDuplicate)
 {
    if (preferWatchingOnly_) {
       throw std::runtime_error("Can't create wallets in watching-only mode");
@@ -965,7 +967,17 @@ WalletsManager::hd_wallet_type WalletsManager::CreateWallet(const std::string& n
                                                            , seed, logger_);
 
    if (hdWallets_.find(newWallet->getWalletId()) != hdWallets_.end()) {
-      throw std::runtime_error("HD wallet with id " + newWallet->getWalletId() + " already exists");
+      if (deleteDuplicate) {
+         logger_->warn("[{}] - HD wallet with ID {} already exists. Deleting "
+            "the old wallet and replacing with a duplicate.", __func__
+            , newWallet->getWalletId());
+         DeleteWalletFile(newWallet);
+      }
+      else {
+         throw std::runtime_error("HD wallet with ID "
+            + newWallet->getWalletId() + " already exists. Wallet creation "
+            + "canceled.");
+      }
    }
 
    newWallet->createStructure();
@@ -1052,10 +1064,10 @@ void WalletsManager::onZeroConfReceived(ArmoryConnection::ReqIdType reqId)
    for (const auto led : armory_->getZCentries(reqId)) {
       auto wallet = GetWalletById(led.getID());
       if (wallet != nullptr) {
+         // We have an affected wallet. Update it.
          logger_->debug("[WalletsManager::onZeroConfReceived] ZC entry in wallet {}"
                         , wallet->GetWalletName());
 
-         // We have an affected wallet. Update it!
          ourZCentries.push_back(bs::convertTXEntry(led));
          wallet->UpdateBalances();
       } // if
@@ -1065,7 +1077,7 @@ void WalletsManager::onZeroConfReceived(ArmoryConnection::ReqIdType reqId)
       }
    } // for
 
-     // Emit signals for the wallet and TX view models.
+  // Emit signals for the wallet and TX view models.
    emit blockchainEvent();
    if (!ourZCentries.empty()) {
       emit newTransactions(ourZCentries);
