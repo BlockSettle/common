@@ -49,12 +49,12 @@ private slots:
    void onContinueClicked();
    void onTabChanged(int index);
 
-   void onOldDeviceKeyChanged(int, SecureBinaryData);
-   void onOldDeviceFailed();
+//   void onOldDeviceKeyChanged(int, SecureBinaryData);
+//   void onOldDeviceFailed();
 
-   void onNewDeviceEncKeyChanged(int index, SecureBinaryData encKey);
-   void onNewDeviceKeyChanged(int index, SecureBinaryData password);
-   void onNewDeviceFailed();
+//   void onNewDeviceEncKeyChanged(int index, SecureBinaryData encKey);
+//   void onNewDeviceKeyChanged(int index, SecureBinaryData password);
+//   void onNewDeviceFailed();
 
    void onPasswordChanged(const std::string &walletId, bool ok);
 

@@ -48,11 +48,9 @@ public:
    void cancel();
 
    bool isValid() const;
-   std::string encKey(int index) const;
    SecureBinaryData key() const;
    bool isKeyFinal() const;
 
-   void setFocus();
    void suspend() { suspended_ = true; }
    void resume();
 
@@ -62,23 +60,18 @@ signals:
    void keyChanged();
    void keyCountChanged();
    void failed();
+   void returnPressed();
 
-private slots:
+public slots:
+   void setFocus();
    void onPasswordDataChanged(int index, bs::wallet::QPasswordData passwordData);
 
-//   void onKeyChanged(int index, SecureBinaryData);
-//   void onKeyTypeChanged(int index, bool password);
-//   void onEncKeyChanged(int index, SecureBinaryData);
-
 private:
-//   void addKey(bool password, const std::vector<SecureBinaryData> &encKeys
-//      , int encKeyIndex = 0, bool isFixed = false, const QString &prompt = QString());
    void addKey(int encKeyIndex, bool isFixed, const QString &prompt = QString());
 
 
 private:
    std::unique_ptr<Ui::WalletKeysSubmitNewWidget> ui_;
-   //std::string walletId_;
    std::vector<WalletKeyNewWidget *> widgets_;
    std::vector<bs::wallet::QPasswordData> pwdData_;
    std::atomic_bool suspended_;

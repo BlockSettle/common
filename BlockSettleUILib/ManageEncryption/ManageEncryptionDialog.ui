@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>397</width>
-    <height>309</height>
+    <width>400</width>
+    <height>330</height>
    </rect>
   </property>
   <property name="maximumSize">
@@ -47,6 +47,9 @@
      </property>
      <property name="currentIndex">
       <number>0</number>
+     </property>
+     <property name="usesScrollButtons">
+      <bool>false</bool>
      </property>
      <widget class="QWidget" name="tabSimple">
       <attribute name="title">
@@ -189,7 +192,7 @@
         </widget>
        </item>
        <item>
-        <widget class="QGroupBox" name="groupBox_2">
+        <widget class="QGroupBox" name="groupBoxCurrentEncryption">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
            <horstretch>0</horstretch>
@@ -232,7 +235,7 @@
         </widget>
        </item>
        <item>
-        <widget class="QGroupBox" name="groupBox_3">
+        <widget class="QGroupBox" name="groupBoxNewEncryption">
          <property name="styleSheet">
           <string notr="true"/>
          </property>
@@ -488,11 +491,14 @@
       </item>
       <item>
        <widget class="QPushButton" name="pushButtonOk">
+        <property name="focusPolicy">
+         <enum>Qt::TabFocus</enum>
+        </property>
         <property name="text">
          <string>Continue</string>
         </property>
         <property name="default">
-         <bool>true</bool>
+         <bool>false</bool>
         </property>
        </widget>
       </item>

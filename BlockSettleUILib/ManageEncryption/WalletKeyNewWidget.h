@@ -19,11 +19,6 @@ class WalletKeyNewWidget : public QWidget
 {
    Q_OBJECT
 public:
-//   WalletKeyNewWidget(AutheIDClient::RequestType requestType, const std::string &walletId
-//      , int index, bool password
-//      , const std::pair<autheid::PrivateKey, autheid::PublicKey> &
-//      , QWidget* parent = nullptr);
-
    WalletKeyNewWidget(AutheIDClient::RequestType requestType
                       , const bs::hd::WalletInfo &walletInfo
                       , int keyIndex
@@ -37,45 +32,27 @@ public:
       ChangeAuthInParent,        // change password or eid (depends of user select) in parent widget
       ChangeToPasswordAsDialog,  // requests password to change as dialog (currently not used)
       ChangeToEidAsDialog,       // requests eid to change as dialog
+
+      RequestAuthForDialog,      // just show only eid email to request auth in dialog (used in manage encryption only for eid)
       ChangeAuthForDialog        // requests password to change or email for eid (depends of user select) in parent widget
                                  // ChangeToEidAsDialog should be opened if eid selected
    };
    Q_ENUMS(UseType)
 
-   ~WalletKeyNewWidget() override;
+   ~WalletKeyNewWidget() override = default;
 
-   //void init(const std::shared_ptr<ApplicationSettings>& appSettings, const QString& username);
    void cancel();
    void start();
 
-   //void setEncryptionKeys(const std::vector<SecureBinaryData> &encKeys, int index = 0);
-   //void setFixedType(bool on = true);
    void setFocus();
-
-//   void setHideAuthConnect(bool value);
-//   void setHideAuthCombobox(bool value);
-//   void setProgressBarFixed(bool value);
-//   void setShowAuthId(bool value);
-//   void setShowAuthIdLabel(bool value);
-//   void setPasswordLabelAsNew();
-//   void setPasswordLabelAsOld();
-//   void setHideAuthEmailLabel(bool value);
-//   void setHidePasswordWarning(bool value);
-//   void setHideAuthControlsOnSignClicked(bool value);
-//   void setHideProgressBar(bool value);
-
-
 
    // initially WalletKeyWidget designed to embed it to another widgets, not for using as popup dialog
    // ChangeAuthAsDialog and RequestAuthAsDialog flags enables possibility to show popup dialog for authorization
    void setUseType(UseType useType);
 
-
-
-//   bs::wallet::QPasswordData passwordData() const;
-//   void setPasswordData(const bs::wallet::QPasswordData &passwordData);
-
 signals:
+   void returnPressed(int keyIndex);
+
    // emitted when password entered or eid auth recieved
    void passwordDataChanged(int keyIndex, const bs::wallet::QPasswordData &passwordData);
 
@@ -100,24 +77,13 @@ private:
    std::shared_ptr<ApplicationSettings> appSettings_;
 
    std::unique_ptr<Ui::WalletKeyNewWidget> ui_;
-   //std::string walletId_;
    int         keyIndex_;
-   //bool        isPassword_;
    bool        authRunning_ = false;
-   //bool        encryptionKeysSet_ = false;
 
    QTimer      timer_;
    float       timeLeft_;
-   AutheIDClient *autheIDClient_{};
 
-//   bool        hideAuthConnect_ = false;
-//   bool        hideAuthCombobox_ = false;
-//   bool        progressBarFixed_ = false;
-//   bool        showAuthId_ = false;
-//   bool        hideAuthEmailLabel_ = false;
-//   bool        hideAuthControlsOnSignClicked_ = false;
-//   bool        hideProgressBar_ = false;
-//   bool        hidePasswordWarning_ = false;
+   AutheIDClient *autheIDClient_{};
    AutheIDClient::RequestType requestType_{};
    std::vector<std::string> knownDeviceIds_; // will contain only device id for key with index keyIndex
 

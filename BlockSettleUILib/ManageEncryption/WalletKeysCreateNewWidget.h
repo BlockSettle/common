@@ -44,11 +44,15 @@ public:
    std::vector<bs::wallet::QPasswordData> keys() const { return pwdData_; }
    bs::wallet::KeyRank keyRank() const { return keyRank_; }
 
+public slots:
+   void setFocus();
+
 signals:
    void keyChanged();
    void keyCountChanged();
    void failed();
    void keyTypeChanged(bool password);
+   void returnPressed();
 
 private slots:
    void onAddClicked();

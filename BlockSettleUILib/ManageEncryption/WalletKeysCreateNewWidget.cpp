@@ -64,13 +64,6 @@ void WalletKeysCreateNewWidget::addKey()
    auto widget = new WalletKeyNewWidget(requestType_, walletInfo_, widgets_.size(), appSettings_, logger_, this);
    widget->setUseType(useType_);
 
-//   widget->init(appSettings_, username_);
-//   if (flags_ & HideAuthConnectButton) {
-//      widget->setHideAuthConnect(true);
-//   }
-//   if (flags_ & SetPasswordLabelAsNew) {
-//      widget->setPasswordLabelAsNew();
-//   }
 
    if (flags_ & HidePubKeyFingerprint || true) {
       ui_->labelPubKeyFP->hide();
@@ -82,6 +75,14 @@ void WalletKeysCreateNewWidget::addKey()
 
    connect(widget, &WalletKeyNewWidget::passwordDataChanged, this, &WalletKeysCreateNewWidget::onPasswordDataChanged);
    connect(widget, &WalletKeyNewWidget::failed, this, &WalletKeysCreateNewWidget::failed);
+
+   // propagate focus to next widget
+   connect(widget, &WalletKeyNewWidget::returnPressed, this, [this](int keyIndex){
+      if (widgets_.size() > keyIndex + 1)
+         widgets_.at(keyIndex + 1)->setFocus();
+      else
+         emit returnPressed();
+   });
 
    layout()->addWidget(widget);
    ui_->pushButtonDelKey->setEnabled(true);
@@ -185,6 +186,14 @@ bool WalletKeysCreateNewWidget::isValid() const
       }
    }
    return true;
+}
+
+void WalletKeysCreateNewWidget::setFocus()
+{
+   if (widgets_.empty()) {
+      return;
+   }
+   widgets_.front()->setFocus();
 }
 
 void WalletKeysCreateNewWidget::cancel()

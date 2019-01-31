@@ -46,10 +46,10 @@ NetworkType fromQNetworkType(bs::wallet::QNetworkType netType);
 class QPasswordData : public QObject, public PasswordData {
    Q_OBJECT
 
-   Q_PROPERTY(QString textPassword READ q_textPassword WRITE q_setTextPassword NOTIFY passwordChanged)
-   Q_PROPERTY(SecureBinaryData binaryPassword READ q_binaryPassword WRITE q_setBinaryPassword NOTIFY passwordChanged)
-   Q_PROPERTY(QEncryptionType encType READ q_encType WRITE q_setEncType NOTIFY encTypeChanged)
-   Q_PROPERTY(QString encKey READ q_encKey WRITE q_setEncKey NOTIFY encKeyChanged)
+   Q_PROPERTY(QString textPassword READ qTextPassword WRITE qSetTextPassword NOTIFY passwordChanged)
+   Q_PROPERTY(SecureBinaryData binaryPassword READ qBinaryPassword WRITE qSetBinaryPassword NOTIFY passwordChanged)
+   Q_PROPERTY(QEncryptionType encType READ qEncType WRITE qSetEncType NOTIFY encTypeChanged)
+   Q_PROPERTY(QString encKey READ qEncKey WRITE qSetEncKey NOTIFY encKeyChanged)
 
 public:
    QPasswordData(QObject *parent = nullptr) : QObject(parent), PasswordData() {}
@@ -59,18 +59,18 @@ public:
    QPasswordData(const QPasswordData &other) : PasswordData(static_cast<PasswordData>(other)) {}
    QPasswordData& operator= (const QPasswordData &other) { PasswordData::operator=(other); return *this;}
 
-   QString q_textPassword() { return QString::fromStdString(password.toBinStr()); }
-   SecureBinaryData q_binaryPassword() { return password; }
-   QEncryptionType q_encType() { return static_cast<QEncryptionType>(encType); }
-   QString q_encKey() { return QString::fromStdString(encKey.toBinStr()); }
+   QString qTextPassword() { return QString::fromStdString(password.toBinStr()); }
+   SecureBinaryData qBinaryPassword() { return password; }
+   QEncryptionType qEncType() { return static_cast<QEncryptionType>(encType); }
+   QString qEncKey() { return QString::fromStdString(encKey.toBinStr()); }
 
-   void q_setTextPassword(const QString &pw) { password =  SecureBinaryData(pw.toStdString());
+   void qSetTextPassword(const QString &pw) { password =  SecureBinaryData(pw.toStdString());
                                              emit passwordChanged(); }
-   void q_setBinaryPassword(const SecureBinaryData &data) { password =  data;
+   void qSetBinaryPassword(const SecureBinaryData &data) { password =  data;
                                              emit passwordChanged(); }
-   void q_setEncType(QEncryptionType e) { encType =  static_cast<EncryptionType>(e);
+   void qSetEncType(QEncryptionType e) { encType =  static_cast<EncryptionType>(e);
                                              emit encTypeChanged(e); }
-   void q_setEncKey(const QString &e) { encKey =  SecureBinaryData(e.toStdString());
+   void qSetEncKey(const QString &e) { encKey =  SecureBinaryData(e.toStdString());
                                       emit encKeyChanged(e); }
 
 signals:
