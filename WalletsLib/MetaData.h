@@ -263,9 +263,7 @@ namespace bs {
       virtual BTCNumericTypes::balance_type GetTotalBalance() const;
       virtual void firstInit(bool force = false);
 
-      virtual void AddUnconfirmedBalance(const BTCNumericTypes::balance_type& delta
-         , const BTCNumericTypes::balance_type& inFees
-         , const BTCNumericTypes::balance_type& inChgAmt);
+      void addInternalSpentUtxo(const UTXO &);
       virtual bool isInitialized() const { return inited_; }
       virtual bool isWatchingOnly() const { return false; }
       virtual std::vector<wallet::EncryptionType> encryptionTypes() const { return {}; }

@@ -483,24 +483,6 @@ BTCNumericTypes::balance_type bs::Wallet::GetUnconfirmedBalance() const
    return unconfirmedBalance_;
 }
 
-// Add an unconfirmed delta to the wallet balance. Assume that a negative delta
-// indicates spent coins (fees and coins actually sent outside the wallet). A
-// positive delta indicates received coins.
-void bs::Wallet::AddUnconfirmedBalance(const BTCNumericTypes::balance_type& delta
-                                       , const BTCNumericTypes::balance_type& inFees
-                                       , const BTCNumericTypes::balance_type& inChgAmt)
-{
-   if(delta < 0) {
-      spendableBalance_ += (delta + inFees + inChgAmt);
-      unconfirmedBalance_ += inChgAmt;
-   }
-   else {
-      spendableBalance_ += delta;
-      unconfirmedBalance_ += delta;
-   }
-   totalBalance_ += delta;
-}
-
 BTCNumericTypes::balance_type bs::Wallet::GetTotalBalance() const
 {
    if (!isBalanceAvailable()) {
@@ -1512,6 +1494,12 @@ void bs::Wallet::processNewBalances(const std::vector<uint64_t> inBV
       // Get all the UTXOs and process them.
       btcWallet_->getSpendableTxOutListForValue(UINT64_MAX, cbWrap);
    }
+}
+
+void bs::Wallet::addInternalSpentUtxo(const UTXO &utxo)
+{
+   const auto key = utxo.script_.toHexStr();
+   youngIntUTXOs_.erase(key);
 }
 
 bool operator ==(const bs::Wallet &a, const bs::Wallet &b)

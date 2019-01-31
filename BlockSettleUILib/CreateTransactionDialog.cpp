@@ -318,6 +318,17 @@ void CreateTransactionDialog::onTXSigned(unsigned int id, BinaryData signedTX, s
             const auto &comment = textEditComment()->document()->toPlainText().toStdString();
             transactionData_->GetWallet()->SetTransactionComment(signedTX, comment);
          }
+
+         const auto wallet = transactionData_->GetWallet();
+         BTCNumericTypes::balance_type unconfAddin = 0;
+         for (const auto &input : txReq_.inputs) {
+            const auto inputAddr = bs::Address::fromUTXO(input);
+            if (!wallet->IsExternalAddress(inputAddr)) {
+               wallet->addInternalSpentUtxo(input);
+            }
+         }
+         wallet->UpdateBalances();
+
          accept();
          return;
       }
@@ -394,7 +405,7 @@ bool CreateTransactionDialog::CreateTransaction()
 
       // We shouldn't hit this case since the request checks the incremental
       // relay fee requirement for RBF. But, in case we
-      if(txReq_.fee <= originalFee_) {
+      if (txReq_.fee <= originalFee_) {
          BSMessageBox(BSMessageBox::info, tr("Error"), tr("Fee is too low"),
             tr("Due to RBF requirements, the current fee (%1) will be " \
                "increased 1 satoshi above the original transaction fee (%2)")
@@ -404,7 +415,7 @@ bool CreateTransactionDialog::CreateTransaction()
       }
 
       const float newFeePerByte = (float)txReq_.fee / (float)txReq_.estimateTxVirtSize();
-      if(newFeePerByte < originalFeePerByte_) {
+      if (newFeePerByte < originalFeePerByte_) {
          BSMessageBox(BSMessageBox::info, tr("Error"), tr("Fee per byte is too low"),
             tr("Due to RBF requirements, the current fee per byte (%1) will " \
                "be increased to the original transaction fee rate (%2)")
