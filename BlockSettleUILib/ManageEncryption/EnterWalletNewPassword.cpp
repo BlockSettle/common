@@ -47,13 +47,8 @@ void EnterWalletNewPassword::init(const WalletInfo &walletInfo
       setWindowTitle(title);
    }
 
-   bool isAuthOnly = true;
-   for (auto encType : walletInfo_.encTypes()) {
-      if (encType != QEncryptionType::Auth) {
-         isAuthOnly = false;
-      }
-   }
-   if (isAuthOnly || useType == WalletKeyNewWidget::UseType::ChangeToEidAsDialog) {
+
+   if (walletInfo_.isEidAuthOnly() || useType == WalletKeyNewWidget::UseType::ChangeToEidAsDialog) {
       connect(ui_->widgetSubmitKeys, &WalletKeysSubmitNewWidget::keyChanged, this, &EnterWalletNewPassword::accept);
       connect(ui_->widgetSubmitKeys, &WalletKeysSubmitNewWidget::failed, this, &EnterWalletNewPassword::reject);
 

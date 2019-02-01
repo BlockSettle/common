@@ -67,7 +67,7 @@ public slots:
    void onPasswordDataChanged(int index, bs::wallet::QPasswordData passwordData);
 
 private:
-   void addKey(int encKeyIndex, bool isFixed, const QString &prompt = QString());
+   void addKey(int encKeyIndex, const QString &prompt = QString());
 
 
 private:

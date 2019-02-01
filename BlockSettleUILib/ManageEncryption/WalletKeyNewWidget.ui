@@ -304,6 +304,9 @@
          <property name="textVisible">
           <bool>false</bool>
          </property>
+         <property name="simpleProgressBar" stdset="0">
+          <bool>true</bool>
+         </property>
         </widget>
        </item>
        <item row="5" column="0" colspan="2">

@@ -212,9 +212,7 @@ void WalletKeyNewWidget::onAuthSignClicked()
    ui_->pushButtonAuth->setText(tr("Cancel Auth request"));
    ui_->comboBoxAuthId->setEnabled(false);
 
-   //if (hideAuthControlsOnSignClicked_) {
-      ui_->widgetAuthLayout->hide();
-   //}
+   ui_->widgetAuthLayout->hide();
 }
 
 void WalletKeyNewWidget::onAuthSucceeded(const std::string &encKey, const SecureBinaryData &password)

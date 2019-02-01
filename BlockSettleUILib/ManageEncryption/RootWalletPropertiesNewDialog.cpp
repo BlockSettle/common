@@ -12,6 +12,7 @@
 #include "ApplicationSettings.h"
 #include "AssetManager.h"
 #include "ChangeWalletPasswordDialog.h"
+#include "WalletBackupNewDialog.h"
 #include "HDWallet.h"
 #include "BSMessageBox.h"
 #include "SignContainer.h"
@@ -125,7 +126,7 @@ void RootWalletPropertiesNewDialog::onDeleteWallet()
 
 void RootWalletPropertiesNewDialog::onBackupWallet()
 {
-   WalletBackupAndVerify(wallet_, signingContainer_, appSettings_, logger_
+   WalletBackupAndNewVerify(wallet_, signingContainer_, appSettings_, logger_
                          , this);
 }
 

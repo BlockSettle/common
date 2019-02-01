@@ -13,6 +13,7 @@
 #include "WalletKeysSubmitNewWidget.h"
 #include "WalletKeysCreateNewWidget.h"
 
+#include <QDebug>
 
 ManageEncryptionDialog::ManageEncryptionDialog(const std::shared_ptr<spdlog::logger> &logger
       , std::shared_ptr<SignContainer> signingContainer
@@ -305,10 +306,6 @@ void ManageEncryptionDialog::continueAddDevice()
    std::vector<bs::wallet::QPasswordData> newKeys = ui_->widgetCreateKeys->keys();
 
    // Request eid auth to decrypt wallet
-//   if (oldPasswordData_[0].password.isNull()) {
-
-//   }
-
    {
       EnterWalletNewPassword enterWalletOldPassword(AutheIDClient::ActivateWalletOldDevice, this);
       enterWalletOldPassword.init(walletInfo_, appSettings_, WalletKeyNewWidget::UseType::RequestAuthAsDialog, tr("Change Encryption"), logger_);
@@ -336,42 +333,16 @@ void ManageEncryptionDialog::continueAddDevice()
       newKeys[0] = enterWalletNewPassword.passwordData(0);
    }
 
-
-
    // Add device
-   bs::wallet::KeyRank encryptionRank = walletInfo_.keyRank();
-   encryptionRank.second++;
-
-   // TODO add to bs::hd::wallet overload for QPasswordData
-   bool result = wallet_->changePassword({ newKeys[0] }, encryptionRank
-      , oldKey_, true, false, false);
-
-   if (!result) {
-      BSMessageBox messageBox(BSMessageBox::critical, tr("Add Device")
-         , tr("Failed to add new device"), this);
-      messageBox.exec();
-      return;
-   }
-   else {
-      BSMessageBox messageBox(BSMessageBox::success, tr("Add Device")
-         , tr("Device successfully added"), this);
-      messageBox.exec();
-   }
-
-
-//   if (!deviceKeyOldValid_) {
-//      deviceKeyOld_->start();
-//      state_ = State::AddDeviceWaitOld;
-//   } else {
-//      deviceKeyNew_->start();
-//      state_ = State::AddDeviceWaitNew;
-//   }
-
-   updateState();
+   newPasswordData_ = newKeys;
+   newKeyRank_ = walletInfo_.keyRank();
+   newKeyRank_.second++;
+   changePassword();
 }
 
 void ManageEncryptionDialog::changePassword()
 {
+   //   TODO add to bs::hd::wallet overload for QPasswordData
    std::vector<bs::wallet::PasswordData> pwData;
    pwData.assign(newPasswordData_.cbegin(), newPasswordData_.cend());
    if (wallet_->isWatchingOnly()) {

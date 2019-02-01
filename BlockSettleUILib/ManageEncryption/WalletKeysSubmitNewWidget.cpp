@@ -76,43 +76,37 @@ void WalletKeysSubmitNewWidget::init(AutheIDClient::RequestType requestType
       });
    }
 
-   bool isAuthOnly = true;
-   for (auto encType : walletInfo.encTypes()) {
-      if (encType != QEncryptionType::Auth) {
-         isAuthOnly = false;
-      }
-   }
 
    int encKeyIndex = 0;
-   if (isAuthOnly) {
-      addKey(0, true, prompt);
+   if (walletInfo.isEidAuthOnly()) {
+      addKey(0, prompt);
    }
    else if (walletInfo.encTypes().size() == walletInfo.keyRank().first) {
       for (const auto &encType : walletInfo.encTypes()) {
          const bool isPassword = (encType == QEncryptionType::Password);
-         addKey(isPassword ? 0 : encKeyIndex++, true, prompt);
+         addKey(isPassword ? 0 : encKeyIndex++, prompt);
       }
    }
    else {
       if ((walletInfo.encTypes().size() > 1) && (walletInfo.keyRank().first == 1)) {
-         addKey(0, false, prompt);
+         addKey(0, prompt);
       }
       else {
          if ((walletInfo.encTypes().size() == 1) && (walletInfo.encTypes()[0] == QEncryptionType::Auth)
              && (walletInfo.encKeys().size() == walletInfo.keyRank().first)) {
             for (unsigned int i = 0; i < walletInfo.keyRank().first; ++i) {
-               addKey(encKeyIndex++, true, prompt);
+               addKey(encKeyIndex++, prompt);
             }
          }
          else if ((walletInfo.encTypes().size() == 1) && (walletInfo.encTypes()[0] == QEncryptionType::Password)) {
             for (unsigned int i = 0; i < walletInfo.keyRank().first; ++i) {
-               addKey(0, true, prompt);
+               addKey(0, prompt);
             }
          }
          else {
             for (unsigned int i = 0; i < walletInfo.keyRank().first; ++i) {
                const bool isPassword = !(encKeyIndex < walletInfo.encKeys().size());
-               addKey(isPassword ? 0 : encKeyIndex++, false, prompt);
+               addKey(isPassword ? 0 : encKeyIndex++, prompt);
             }
          }
       }
@@ -120,7 +114,7 @@ void WalletKeysSubmitNewWidget::init(AutheIDClient::RequestType requestType
 }
 
 
-void WalletKeysSubmitNewWidget::addKey(int encKeyIndex, bool isFixed, const QString &prompt)
+void WalletKeysSubmitNewWidget::addKey(int encKeyIndex, const QString &prompt)
 {
    assert(!walletInfo_.rootId().isEmpty());
    if (!widgets_.empty()) {
@@ -151,10 +145,6 @@ void WalletKeysSubmitNewWidget::addKey(int encKeyIndex, bool isFixed, const QStr
    layout()->addWidget(widget);
 
    emit keyCountChanged();
-
-   if (isFixed && !suspended_) {
-      widget->start();
-   }
 }
 
 void WalletKeysSubmitNewWidget::setFocus()

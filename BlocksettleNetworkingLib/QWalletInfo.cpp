@@ -156,7 +156,7 @@ QEncryptionType WalletInfo::encType()
    return encTypes_.isEmpty() ? bs::wallet::QEncryptionType::Unencrypted : encTypes_.at(0);
 }
 
-QString WalletInfo::email()
+QString WalletInfo::email() const
 {
    if (encKeys_.isEmpty())
       return QString();
@@ -172,6 +172,16 @@ bs::wallet::KeyRank WalletInfo::keyRank() const
 void WalletInfo::setKeyRank(const bs::wallet::KeyRank &keyRank)
 {
    keyRank_ = keyRank;
+}
+
+bool WalletInfo::isEidAuthOnly() const
+{
+   for (auto encType : encTypes()) {
+      if (encType != QEncryptionType::Auth) {
+         return false;
+      }
+   }
+   return true;
 }
 
 void WalletInfo::setEncKeys(const std::vector<SecureBinaryData> &encKeys)

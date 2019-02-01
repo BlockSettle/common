@@ -18,17 +18,27 @@ Text {
 
 * {
   font-family: 'Open Sans', arial, sans-serif;
-  font-size: 12px;
+  font-size: 11px;
   color: #81888f; }
 
 QLabel {
   color: #81888f;
   font-family: 'Open Sans', sans-serif; }
 
+QLabel[whiteLabel="true"] {
+  color: #ffffff;
+  font-size: 12px;
+  font-family: 'Open Sans', sans-serif; }
+
 QLabel[headerLabel="true"] {
   color: #ffffff;
   font-size: 12px;
   text-transform: uppercase;
+  font-family: 'Open Sans', sans-serif; }
+
+QLabel[progressLabel="true"] {
+  color: #22C064;
+  font-size: 12px;
   font-family: 'Open Sans', sans-serif; }
 
 *[signInput="true"] {
@@ -147,18 +157,24 @@ QWidget {
   border: none; }
   QWidget:focus {
     outline: 0; }
-  QWidget QGroupBox {
+  QGroupBox {
     border-top: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 0;
-    margin-top: 16px;
+
     /* leave space at the top for the title */
-    padding-top: 10px;
     padding: 0px;
     margin: 0px;
+    margin-top: 16px;
+    padding-top: 10px;
+
     background-color: transparent; }
+	QGroupBox QWidget1 {
+	padding: 0px;
+    margin: 0px;
+	}
     QWidget QGroupBox[h1="true"] { /* leave space at the top for the title when using h1 */
        margin-top: 20px; }
-    QWidget QGroupBox[wellGroupBox="true"] {
+*    QWidget QGroupBox[wellGroupBox="true"] {
       border: 1px solid rgba(255, 255, 255, 0.15);
       padding: 10px; }
       QWidget QGroupBox[wellGroupBox="true"] QTableView,
@@ -176,6 +192,7 @@ QWidget {
       QWidget QGroupBox[wellGroupBoxWithButtonBar="true"] QTableView,
       QWidget QGroupBox[wellGroupBoxWithButtonBar="true"] QTreeView {
         border: 1px solid transparent; }
+
 QWidget QGroupBox::title {
     subcontrol-origin: margin;
     subcontrol-position: top left;
@@ -613,6 +630,7 @@ QScrollBar::up-arrow:vertical {
 QScrollBar::down-arrow:vertical {
   background-image: url(":/resources/down-arrow.png"); }
 
+
 QProgressBar {
   border: 1px solid #1c2835;
   border-width: 0 0 20px 0;
@@ -627,23 +645,23 @@ QProgressBar::chunk {
   background-image: url(":resources/progress-bar-pattern.png");
   border-radius: 4px; }
 
+
 *[quoteLabel="true"] {
   color: #ffffff;
   font-size: 12px;
   font-weight: 400; }
 
-*[simpleProgressBar="true"] QProgressBar {
-  border: 1px solid #1c2835;
-  border-radius: 0px;
-  background-color: rgba(0, 0, 0, 0.3);
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 9px;
-  font-weight: bold;
-  text-align: right; }
 
-*[simpleProgressBar="true"] QProgressBar::chunk {
+QProgressBar[simpleProgressBar="true"] {
+border-width: 0 0 20px 0;
+  border: 1px solid black;
+  border-radius: 2px;
+  background-color: black;
+  color: #22C064; }
+QProgressBar::chunk[simpleProgressBar="true"] {
   background-color: #22C064;
   border-radius: 2px; }
+
 
 QCalendarWidget {
   padding: 0;
