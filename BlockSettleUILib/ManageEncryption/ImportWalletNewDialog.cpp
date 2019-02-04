@@ -9,6 +9,7 @@
 #include "WalletPasswordVerifyDialog.h"
 #include "WalletsManager.h"
 #include "UiUtils.h"
+#include "QWalletInfo.h"
 
 #include <spdlog/spdlog.h>
 
@@ -19,6 +20,7 @@ ImportWalletNewDialog::ImportWalletNewDialog(const std::shared_ptr<WalletsManage
       , const EasyCoDec::Data& seedData
       , const EasyCoDec::Data& chainCodeData
       , const std::shared_ptr<ApplicationSettings> &appSettings
+      , const std::shared_ptr<spdlog::logger> &logger
       , const QString& username
       , const std::string &walletName, const std::string &walletDesc
       , QWidget *parent)
@@ -26,6 +28,7 @@ ImportWalletNewDialog::ImportWalletNewDialog(const std::shared_ptr<WalletsManage
    , ui_(new Ui::ImportWalletNewDialog)
    , walletsMgr_(walletsManager)
    , appSettings_(appSettings)
+   , logger_(logger)
    , armory_(armory)
    , walletSeed_(bs::wallet::Seed::fromEasyCodeChecksum(seedData, chainCodeData
       , appSettings->get<NetworkType>(ApplicationSettings::netType)))
@@ -79,9 +82,15 @@ ImportWalletNewDialog::ImportWalletNewDialog(const std::shared_ptr<WalletsManage
 
    //connect(ui_->widgetCreateKeys, &WalletKeysCreateNewWidget::keyCountChanged, [this] { adjustSize(); });
 
-   ui_->widgetCreateKeys->setFlags(WalletKeysCreateNewWidget::HideWidgetContol 
-      | WalletKeysCreateNewWidget::HideAuthConnectButton);
-   ui_->widgetCreateKeys->init(AutheIDClient::ActivateWallet, walletId_, username, appSettings);
+//   ui_->widgetCreateKeys->setFlags(WalletKeysCreateNewWidget::HideWidgetContol
+//      | WalletKeysCreateNewWidget::HideAuthConnectButton);
+   //ui_->widgetCreateKeys->init(AutheIDClient::ActivateWallet, walletId_, username, appSettings);
+
+   bs::hd::WalletInfo walletInfo;
+   walletInfo.setRootId(QString::fromStdString(walletId_));
+
+   ui_->widgetCreateKeys->init(AutheIDClient::ActivateWallet
+      , walletInfo, WalletKeyNewWidget::UseType::ChangeAuthForDialog, appSettings, logger);
 
    adjustSize();
    setMinimumSize(size());
@@ -153,7 +162,7 @@ void ImportWalletNewDialog::onImportAccepted()
    }
 }
 
-bool abortWalletImportQuestionDialog(QWidget* parent)
+bool abortWalletImportQuestionNewDialog(QWidget* parent)
 {
    BSMessageBox messageBox(BSMessageBox::question, QObject::tr("Warning"), QObject::tr("Do you want to abort Wallet Import?")
       , QObject::tr("The Wallet will not be imported if you don't complete the procedure.\n\n"
@@ -167,7 +176,7 @@ bool abortWalletImportQuestionDialog(QWidget* parent)
 
 void ImportWalletNewDialog::reject()
 {
-   bool result = abortWalletImportQuestionDialog(this);
+   bool result = abortWalletImportQuestionNewDialog(this);
    if (!result) {
       return;
    }

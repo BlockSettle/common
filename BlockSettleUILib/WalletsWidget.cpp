@@ -34,6 +34,7 @@
 #include "WalletWarningDialog.h"
 #include "TreeViewWithEnterKey.h"
 #include "NewWalletSeedConfirmDialog.h"
+#include "ManageEncryption/CreateWalletNewDialog.h"
 
 
 class AddressSortFilterModel : public QSortFilterProxyModel
@@ -443,8 +444,10 @@ bool WalletsWidget::CreateNewWallet(bool report)
       return false;
    }
    std::shared_ptr<bs::hd::Wallet> newWallet;
-   CreateWalletDialog createWalletDialog(walletsManager_, signingContainer_
-      , appSettings_->GetHomeDir(), walletSeed, walletId, username_, appSettings_, this);
+//   CreateWalletDialog createWalletDialog(walletsManager_, signingContainer_
+//      , appSettings_->GetHomeDir(), walletSeed, walletId, username_, appSettings_, this);
+   CreateWalletNewDialog createWalletDialog(walletsManager_, signingContainer_
+      , appSettings_->GetHomeDir(), walletSeed, walletId, username_, appSettings_, logger_, this);
    if (createWalletDialog.exec() == QDialog::Accepted) {
       if (createWalletDialog.walletCreated()) {
          newWallet = walletsManager_->GetHDWalletById(walletId);

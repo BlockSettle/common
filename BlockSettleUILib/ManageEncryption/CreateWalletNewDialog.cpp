@@ -21,6 +21,7 @@ CreateWalletNewDialog::CreateWalletNewDialog(const std::shared_ptr<WalletsManage
    , const std::string& walletId
    , const QString& username
    , const std::shared_ptr<ApplicationSettings> &appSettings
+   , const std::shared_ptr<spdlog::logger> &logger
    , QWidget *parent)
 
    : QDialog(parent)
@@ -31,6 +32,7 @@ CreateWalletNewDialog::CreateWalletNewDialog(const std::shared_ptr<WalletsManage
    , walletsPath_(walletsPath)
    , walletSeed_(walletSeed)
    , walletId_(walletId)
+   , logger_(logger)
 {
    ui_->setupUi(this);
 
@@ -60,8 +62,16 @@ CreateWalletNewDialog::CreateWalletNewDialog(const std::shared_ptr<WalletsManage
       this, &CreateWalletNewDialog::onKeyTypeChanged);
 
    ui_->widgetCreateKeys->setFlags(WalletKeysCreateNewWidget::HideWidgetContol | WalletKeysCreateNewWidget::HideAuthConnectButton);
+
+   // for eid wallet signing suggest email used for login into app
+   bs::hd::WalletInfo walletInfo;
+   walletInfo.setRootId(QString::fromStdString(walletId_));
+
+//   ui_->widgetCreateKeys->init(AutheIDClient::ActivateWallet
+//      , walletId_, username, appSettings);
+
    ui_->widgetCreateKeys->init(AutheIDClient::ActivateWallet
-      , walletId_, username, appSettings);
+      , walletInfo, WalletKeyNewWidget::UseType::ChangeAuthForDialog, appSettings, logger);
 
    connect(ui_->lineEditWalletName, &QLineEdit::returnPressed, this, &CreateWalletNewDialog::CreateWallet);
    connect(ui_->lineEditDescription, &QLineEdit::returnPressed, this, &CreateWalletNewDialog::CreateWallet);
@@ -165,7 +175,9 @@ bool checkNewWalletValidity(WalletsManager* walletsManager
    , const std::shared_ptr<ApplicationSettings> &appSettings
    , QWidget* parent)
 {
-   *keys = widgetCreateKeys->keys();
+   //*keys = widgetCreateKeys->keys();
+   const auto k = widgetCreateKeys->keys();
+   keys->assign(k.cbegin(), k.cend());
 
    if (walletsManager->WalletNameExists(walletName.toStdString())) {
       BSMessageBox messageBox(BSMessageBox::critical, QObject::tr("Invalid wallet name")

@@ -36,6 +36,7 @@ public:
       , const std::string& walletId
       , const QString& username
       , const std::shared_ptr<ApplicationSettings> &appSettings
+      , const std::shared_ptr<spdlog::logger> &logger
       , QWidget *parent = nullptr);
    ~CreateWalletNewDialog() override;
 
@@ -59,6 +60,7 @@ private:
    std::shared_ptr<WalletsManager>  walletsManager_;
    std::shared_ptr<SignContainer>   signingContainer_;
    const std::shared_ptr<ApplicationSettings> appSettings_;
+   std::shared_ptr<spdlog::logger> logger_;
    const QString     walletsPath_;
    const bs::wallet::Seed walletSeed_;
    const std::string walletId_;
@@ -67,7 +69,6 @@ private:
    SecureBinaryData  walletPassword_;
    bool              createdAsPrimary_ = false;
    bool              authNoticeWasShown_ = false;
-   bs::hd::WalletInfo walletInfo_;
 };
 
 // Common function for CreateWalletNewDialog and ImportWalletNewDialog.
@@ -77,7 +78,7 @@ bool checkNewWalletValidity(WalletsManager* walletsManager
    , const QString& walletName
    , const std::string& walletId
    , WalletKeysCreateNewWidget* widgetCreateKeys
-   , std::vector<bs::wallet::PasswordData>* keys
+   , std::vector<bs::wallet::PasswordData> *keys
    , const std::shared_ptr<ApplicationSettings> &appSettings
    , QWidget* parent);
 

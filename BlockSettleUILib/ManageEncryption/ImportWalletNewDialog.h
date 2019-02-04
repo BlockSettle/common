@@ -29,6 +29,7 @@ public:
       , const std::shared_ptr<ArmoryConnection> &
       , const EasyCoDec::Data& walletData, const EasyCoDec::Data& chainCodeData
       , const std::shared_ptr<ApplicationSettings> &
+      , const std::shared_ptr<spdlog::logger> &logger
       , const QString& username
       , const std::string &walletName = {}, const std::string &walletDesc = {}
       , QWidget *parent = nullptr);
@@ -56,6 +57,7 @@ private:
    std::shared_ptr<ApplicationSettings>   appSettings_;
    std::shared_ptr<ArmoryConnection>      armory_;
    std::shared_ptr<WalletImporter>  walletImporter_;
+   std::shared_ptr<spdlog::logger> logger_;
    bs::wallet::Seed  walletSeed_;
    std::string walletId_;
    QString     walletName_;
