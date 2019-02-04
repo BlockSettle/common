@@ -410,12 +410,12 @@ void WalletsWidget::onNewWallet()
       }
 
       if (newWalletDialog.isCreate()) {
-         CreateNewWallet(false);
+         CreateNewWallet();
       } else if (newWalletDialog.isImport()) {
-         ImportNewWallet(false);
+         ImportNewWallet();
       }
    } else {
-      ImportNewWallet(false);
+      ImportNewWallet();
    }
 }
 
