@@ -801,7 +801,7 @@ QPushButton:flat, QToolButton:flat, [buttonImportant="true"]:flat, [buttonSucces
     background-color: #5097bd; }
   QPushButton:flat:pressed, QToolButton:flat:pressed, [buttonImportant="true"]:flat:pressed, [buttonSuccess="true"]:flat:pressed, [buttonWarning="true"]:flat:pressed {
     background-color: #247dac; }
-  QPushButton:flat:disabled, QToolButton:flat:disabled, [buttonImportant="true"]:flat:disabled, [buttonSuccess="true"]:flat:disabled, [buttonWarning="true"]:flat:disabled {
+  QPushButton:flat:disabled, QToolButton:flat:disabled, [buttonImportant="true"]:flat:disabled, [buttonSuccess="true"]:flat:disabled, [buttonWarning="true"]:flat:disabled, QPushButton#signWithEidButton:disabled {
     border: none;
     color: rgba(255, 255, 255, 0.5);
     background-color: rgba(255, 255, 255, 0.1); }
@@ -874,6 +874,26 @@ QToolButton[right_button=true],
   [right_button=true][buttonWarning="true"]:disabled {
     background-color: #0b1619;
     color: #3f4c50; }
+
+QWidget#signDialogMainPage {
+  background-color: #0a1a2a; }
+
+QPushButton#signWithEidButton {
+  background-color: #20709a;
+  text-transform: none;
+  border: 1px solid #20709a;
+  border-radius: 3px;
+  font-size: 14px;
+  color: #ffffff;
+  font-family: "Open Sans";
+  font-weight: 700;
+  min-width: 52;
+  min-height: 52; }
+
+QPushButton#signWithEidButton:hover {
+  background-color: #3080aa; }
+QPushButton#signWithEidButton:pressed {
+  background-color: #4090ba; }
 
 QPushButton[left_button=true], QToolButton[left_button=true], [left_button=true][buttonImportant="true"], [left_button=true][buttonSuccess="true"], [left_button=true][buttonWarning="true"] {
   border-width: 1px 0px 1px 1px;
@@ -1391,12 +1411,6 @@ QLabel#loginCompanyLabel {
   font-size: 14px;
   height: auto; }
 
-QLabel#loginVersionLabel {
-  height: auto;
-  color: #17262b;
-  font-style: italic;
-  font-size: 11px; }
-
 *[loginInput="true"] {
   border-width: 0 0 1px 0;
   border-color: rgba(129, 136, 143, 0.3);
@@ -1436,3 +1450,48 @@ ToggleSwitch::handle:horizontal[enabled=false] {
  ToggleSwitch::handle:horizontal[toggleOn=true][enabled=true] {
     background: #247dac;
     border: 1px solid #247dac; }
+
+QLineEdit#chatSearchLineEdit {
+    background-color: #1c2835;
+    alternate-background-color: #18202b;
+    color: #e7e8e9;
+    background-image: url(":resources/search.png");
+    background-repeat: no-repeat;
+    background-position: left;
+    font-family: 'Open Sans', arial, sans-serif;
+    font-size: 11px;
+    padding: 2 2 2 20;
+    text-indent: 20;
+    border: 1px solid #81888f;
+    border-radius: 10px;
+    height: 18px;
+    max-height: 18px; 
+    selection-background-color: #3a8ab4;
+    selection-color: #e7e8e9; }
+  
+QLineEdit#chatSearchLineEdit:focus {
+    border: 1px solid #247dac; }
+QLineEdit#chatSearchLineEdit:disabled {
+    color: #586266; }
+
+QFrame#roomsFrame {
+    background-color: #1c2835; }
+    
+QFrame#chatSearchPopupFrame {
+    background-color: #1c2835; }
+    
+QLabel#chatSearchPopupLabel {
+    background-color: #1c2835;
+    font-family: 'Open Sans', arial, sans-serif;
+    font-size: 11px;
+    padding: 2 2 2 20;
+    border: 1px solid #81888f; }
+    
+QSpacerItem#chatUsersVerticalSpacer {
+    background-color: #1c2835;
+    min-height: 30px;
+    max-height: 30px;
+    height: 30px;
+    margin-right: 5px;
+    margin-top: 4px;
+    margin-bottom: 4px; }
