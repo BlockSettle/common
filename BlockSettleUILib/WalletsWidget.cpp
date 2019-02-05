@@ -16,8 +16,8 @@
 #include "AssetManager.h"
 #include "CreateWalletDialog.h"
 #include "HDWallet.h"
-#include "ImportWalletDialog.h"
-#include "ImportWalletTypeDialog.h"
+#include "ManageEncryption/ImportWalletNewDialog.h"
+#include "ManageEncryption/ImportWalletTypeDialog.h"
 #include "BSMessageBox.h"
 #include "NewWalletDialog.h"
 #include "NewWalletSeedDialog.h"
@@ -492,11 +492,24 @@ bool WalletsWidget::ImportNewWallet(bool report)
 
    if (importWalletDialog.exec() == QDialog::Accepted) {
       if (importWalletDialog.type() == ImportWalletTypeDialog::Full) {
-         ImportWalletDialog createImportedWallet(walletsManager_, signingContainer_
-            , assetManager_, authMgr_, armory_, importWalletDialog.GetSeedData()
-            , importWalletDialog.GetChainCodeData(), appSettings_
-            , username_, importWalletDialog.GetName(), importWalletDialog.GetDescription()
-            , this);
+//         ImportWalletDialog createImportedWallet(walletsManager_, signingContainer_
+//            , assetManager_, authMgr_, armory_, importWalletDialog.GetSeedData()
+//            , importWalletDialog.GetChainCodeData(), appSettings_
+//            , username_, importWalletDialog.GetName(), importWalletDialog.GetDescription()
+//            , this);
+
+         ImportWalletNewDialog createImportedWallet(walletsManager_
+                                                    , signingContainer_
+                                                    , assetManager_
+                                                    , authMgr_, armory_
+                                                    , importWalletDialog.GetSeedData()
+                                                    , importWalletDialog.GetChainCodeData()
+                                                    , appSettings_
+                                                    , logger_
+                                                    , username_
+                                                    , importWalletDialog.GetName()
+                                                    , importWalletDialog.GetDescription()
+                                                    , this);
 
          if (createImportedWallet.exec() == QDialog::Accepted) {
             const auto &importer = createImportedWallet.getWalletImporter();

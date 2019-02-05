@@ -71,10 +71,10 @@ CreateWalletNewDialog::CreateWalletNewDialog(const std::shared_ptr<WalletsManage
    ui_->widgetCreateKeys->init(AutheIDClient::ActivateWallet
       , walletInfo_, WalletKeyNewWidget::UseType::ChangeAuthForDialog, appSettings, logger);
 
-   connect(ui_->lineEditWalletName, &QLineEdit::returnPressed, this, &CreateWalletNewDialog::CreateWallet);
-   connect(ui_->lineEditDescription, &QLineEdit::returnPressed, this, &CreateWalletNewDialog::CreateWallet);
+   connect(ui_->lineEditWalletName, &QLineEdit::returnPressed, this, &CreateWalletNewDialog::createWallet);
+   connect(ui_->lineEditDescription, &QLineEdit::returnPressed, this, &CreateWalletNewDialog::createWallet);
 
-   connect(ui_->pushButtonContinue, &QPushButton::clicked, this, &CreateWalletNewDialog::CreateWallet);
+   connect(ui_->pushButtonContinue, &QPushButton::clicked, this, &CreateWalletNewDialog::createWallet);
    connect(ui_->pushButtonCancel, &QPushButton::clicked, this, &CreateWalletNewDialog::reject);
 
    connect(signingContainer_.get(), &SignContainer::HDWalletCreated, this, &CreateWalletNewDialog::onWalletCreated);
@@ -92,7 +92,7 @@ void CreateWalletNewDialog::updateAcceptButtonState()
       !ui_->lineEditWalletName->text().isEmpty());
 }
 
-void CreateWalletNewDialog::CreateWallet()
+void CreateWalletNewDialog::createWallet()
 {
    // currently {1,1} key created on wallet creation
    walletInfo_.setName(ui_->lineEditWalletName->text());

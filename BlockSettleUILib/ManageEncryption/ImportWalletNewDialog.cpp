@@ -7,6 +7,8 @@
 #include "SignContainer.h"
 #include "WalletImporter.h"
 #include "WalletPasswordVerifyNewDialog.h"
+#include "WalletKeysCreateNewWidget.h"
+#include "EnterWalletNewPassword.h"
 #include "WalletsManager.h"
 #include "UiUtils.h"
 #include "QWalletInfo.h"
@@ -26,20 +28,20 @@ ImportWalletNewDialog::ImportWalletNewDialog(const std::shared_ptr<WalletsManage
       , QWidget *parent)
    : QDialog(parent)
    , ui_(new Ui::ImportWalletNewDialog)
-   , walletsMgr_(walletsManager)
+   , walletsManager_(walletsManager)
    , appSettings_(appSettings)
    , logger_(logger)
    , armory_(armory)
    , walletSeed_(bs::wallet::Seed::fromEasyCodeChecksum(seedData, chainCodeData
       , appSettings->get<NetworkType>(ApplicationSettings::netType)))
 {
-   walletId_ = bs::hd::Node(walletSeed_).getId();
+   walletInfo_.setRootId(QString::fromStdString(bs::hd::Node(walletSeed_).getId()));
 
    ui_->setupUi(this);
 
    ui_->lineEditDescription->setValidator(new UiUtils::WalletDescriptionValidator(this));
    
-   ui_->labelWalletId->setText(QString::fromStdString(walletId_));
+   ui_->labelWalletId->setText(walletInfo_.rootId());
 
    ui_->checkBoxPrimaryWallet->setEnabled(!walletsManager->HasPrimaryWallet());
 
@@ -70,8 +72,8 @@ ImportWalletNewDialog::ImportWalletNewDialog(const std::shared_ptr<WalletsManage
    connect(walletImporter_.get(), &WalletImporter::walletCreated, this, &ImportWalletNewDialog::onWalletCreated);
    connect(walletImporter_.get(), &WalletImporter::error, this, &ImportWalletNewDialog::onError);
 
-   connect(ui_->lineEditWalletName, &QLineEdit::returnPressed, this, &ImportWalletNewDialog::onImportAccepted);
-   connect(ui_->pushButtonImport, &QPushButton::clicked, this, &ImportWalletNewDialog::onImportAccepted);
+   connect(ui_->lineEditWalletName, &QLineEdit::returnPressed, this, &ImportWalletNewDialog::importWallet);
+   connect(ui_->pushButtonImport, &QPushButton::clicked, this, &ImportWalletNewDialog::importWallet);
 
    connect(ui_->widgetCreateKeys, &WalletKeysCreateNewWidget::keyTypeChanged,
       this, &ImportWalletNewDialog::onKeyTypeChanged);
@@ -86,11 +88,8 @@ ImportWalletNewDialog::ImportWalletNewDialog(const std::shared_ptr<WalletsManage
 //      | WalletKeysCreateNewWidget::HideAuthConnectButton);
    //ui_->widgetCreateKeys->init(AutheIDClient::ActivateWallet, walletId_, username, appSettings);
 
-   bs::hd::WalletInfo walletInfo;
-   walletInfo.setRootId(QString::fromStdString(walletId_));
-
    ui_->widgetCreateKeys->init(AutheIDClient::ActivateWallet
-      , walletInfo, WalletKeyNewWidget::UseType::ChangeAuthForDialog, appSettings, logger);
+      , walletInfo_, WalletKeyNewWidget::UseType::ChangeAuthForDialog, appSettings, logger);
 
    adjustSize();
    setMinimumSize(size());
@@ -124,10 +123,10 @@ void ImportWalletNewDialog::onKeyTypeChanged(bool password)
 void ImportWalletNewDialog::onWalletCreated(const std::string &walletId)
 {
    if (armory_->state() == ArmoryConnection::State::Ready) {
-      emit walletsMgr_->walletImportStarted(walletId);
+      emit walletsManager_->walletImportStarted(walletId);
    }
    else {
-      const auto &rootWallet = walletsMgr_->GetHDWalletById(walletId);
+      const auto &rootWallet = walletsManager_->GetHDWalletById(walletId);
       if (rootWallet) {
          for (const auto &leaf : rootWallet->getLeaves()) {
             appSettings_->SetWalletScanIndex(leaf->GetWalletId(), 0);
@@ -137,11 +136,57 @@ void ImportWalletNewDialog::onWalletCreated(const std::string &walletId)
    accept();
 }
 
-void ImportWalletNewDialog::onImportAccepted()
+void ImportWalletNewDialog::importWallet()
 {
-   walletName_ = ui_->lineEditWalletName->text();
-   const QString &walletDescription = ui_->lineEditDescription->text();
-   std::vector<bs::wallet::PasswordData> keys;
+   // currently {1,1} key created on wallet creation
+   walletInfo_.setName(ui_->lineEditWalletName->text());
+   walletInfo_.setDesc(ui_->lineEditDescription->text());
+   walletInfo_.setPasswordData(ui_->widgetCreateKeys->passwordData());
+   walletInfo_.setKeyRank({1,1});
+
+
+   // check wallet name
+   if (walletsManager_->WalletNameExists(walletInfo_.name().toStdString())) {
+      BSMessageBox messageBox(BSMessageBox::critical, QObject::tr("Invalid wallet name")
+         , QObject::tr("Wallet with this name already exists"), this);
+      messageBox.exec();
+      return;
+   }
+
+   std::vector<bs::wallet::QPasswordData> pwData = ui_->widgetCreateKeys->passwordData();
+
+   // request eid auth if it's selected
+   if (ui_->widgetCreateKeys->passwordData()[0].encType == bs::wallet::EncryptionType::Auth) {
+      if (ui_->widgetCreateKeys->passwordData()[0].encKey.isNull()) {
+         BSMessageBox messageBox(BSMessageBox::critical, QObject::tr("Invalid Auth eID")
+            , QObject::tr("Please check Auth eID Email"), this);
+         messageBox.exec();
+         return;
+      }
+
+      EnterWalletNewPassword dialog(AutheIDClient::ActivateWallet, this);
+
+      dialog.init(walletInfo_, appSettings_, WalletKeyNewWidget::UseType::ChangeToEidAsDialog
+         , QObject::tr("Activate Auth eID Signing"), logger_, QObject::tr("Auth eID"));
+      int result = dialog.exec();
+      if (!result) {
+         return;
+      }
+      //walletInfo_.setEncKeys(QList<QString>() << ui_->widgetCreateKeys->passwordData().at(0).qEncKey());
+
+      walletInfo_.setPasswordData(dialog.passwordData());
+      pwData = dialog.passwordData();
+   }
+   else if (!ui_->widgetCreateKeys->isValid()) {
+      BSMessageBox messageBox(BSMessageBox::critical, QObject::tr("Invalid password")
+         , QObject::tr("Please check the password"), this);
+      messageBox.exec();
+   }
+
+
+//   walletName_ = ui_->lineEditWalletName->text();
+//   const QString &walletDescription = ui_->lineEditDescription->text();
+//   std::vector<bs::wallet::PasswordData> keys;
 
 //   bool result = checkNewWalletValidity(walletsMgr_.get(), walletName_, walletId_
 //      , ui_->widgetCreateKeys, &keys, appSettings_, this);
@@ -149,17 +194,22 @@ void ImportWalletNewDialog::onImportAccepted()
 //      return;
 //   }
 
-//   try {
-//      importedAsPrimary_ = ui_->checkBoxPrimaryWallet->isChecked();
 
-//      ui_->pushButtonImport->setEnabled(false);
 
-//      walletImporter_->Import(walletName_.toStdString(), walletDescription.toStdString(), walletSeed_
-//         , importedAsPrimary_, keys, ui_->widgetCreateKeys->keyRank());
-//   }
-//   catch (...) {
-//      onError(tr("Invalid backup data"));
-//   }
+   try {
+      importedAsPrimary_ = ui_->checkBoxPrimaryWallet->isChecked();
+
+      ui_->pushButtonImport->setEnabled(false);
+
+      std::vector<bs::wallet::PasswordData> vectorPwData;
+      vectorPwData.assign(pwData.cbegin(), pwData.cend());
+
+      walletImporter_->Import(walletInfo_.name().toStdString(), walletInfo_.desc().toStdString(), walletSeed_
+         , importedAsPrimary_, vectorPwData, ui_->widgetCreateKeys->keyRank());
+   }
+   catch (...) {
+      onError(tr("Invalid backup data"));
+   }
 }
 
 bool abortWalletImportQuestionNewDialog(QWidget* parent)

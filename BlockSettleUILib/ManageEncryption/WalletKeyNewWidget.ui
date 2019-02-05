@@ -190,6 +190,9 @@
           </size>
          </property>
          <layout class="QHBoxLayout" name="horizontalLayout_2">
+          <property name="spacing">
+           <number>6</number>
+          </property>
           <property name="leftMargin">
            <number>0</number>
           </property>
@@ -406,7 +409,7 @@
         <number>0</number>
        </property>
        <property name="horizontalSpacing">
-        <number>0</number>
+        <number>6</number>
        </property>
        <property name="verticalSpacing">
         <number>5</number>
