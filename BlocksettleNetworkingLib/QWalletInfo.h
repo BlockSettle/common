@@ -149,6 +149,7 @@ public:
               , const std::vector<SecureBinaryData> &encKeys, const bs::wallet::KeyRank &keyRank);
 
    WalletInfo(const Blocksettle::Communication::headless::GetHDWalletInfoResponse &response);
+   WalletInfo(const Blocksettle::Communication::headless::PasswordRequest &request);
 
    // used in signer
    WalletInfo(std::shared_ptr<bs::hd::Wallet> hdWallet, QObject *parent = nullptr);
@@ -170,9 +171,11 @@ public:
 
    QString name() const { return name_; }
    void setName(const QString &);
+   void setName(const std::string &name) { setName(QString::fromStdString(name)); }
 
    QString rootId() const { return rootId_; }
    void setRootId(const QString &);
+   void setRootId(const std::string &rootId) { setRootId(QString::fromStdString(rootId)); }
 
    QList<QString> encKeys() const { return encKeys_; }
    void setEncKeys(const QList<QString> &encKeys);

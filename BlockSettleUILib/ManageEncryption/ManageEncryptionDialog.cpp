@@ -4,14 +4,14 @@
 #include <spdlog/spdlog.h>
 #include <QToolButton>
 #include "ApplicationSettings.h"
-#include "EnterWalletNewPassword.h"
+#include "EnterWalletPassword.h"
 #include "HDWallet.h"
 #include "BSMessageBox.h"
 #include "SignContainer.h"
-#include "WalletKeyNewWidget.h"
+#include "WalletKeyWidget.h"
 #include "WalletKeysDeleteDevice.h"
-#include "WalletKeysSubmitNewWidget.h"
-#include "WalletKeysCreateNewWidget.h"
+#include "WalletKeysSubmitWidget.h"
+#include "WalletKeysCreateWidget.h"
 
 #include <QDebug>
 
@@ -44,14 +44,14 @@ ManageEncryptionDialog::ManageEncryptionDialog(const std::shared_ptr<spdlog::log
 
    connect(signingContainer_.get(), &SignContainer::PasswordChanged, this, &ManageEncryptionDialog::onPasswordChanged);
 
-//   deviceKeyOld_ = new WalletKeyNewWidget(AutheIDClient::ActivateWalletOldDevice
+//   deviceKeyOld_ = new WalletKeyWidget(AutheIDClient::ActivateWalletOldDevice
 //      , wallet->getWalletId(), 0, false, appSettings->GetAuthKeys(), this);
 //   deviceKeyOld_->setFixedType(true);
 //   deviceKeyOld_->setEncryptionKeys(encKeys);
 //   deviceKeyOld_->setHideAuthConnect(true);
 //   deviceKeyOld_->setHideAuthCombobox(true);
 
-//   deviceKeyNew_ = new WalletKeyNewWidget(AutheIDClient::ActivateWalletNewDevice
+//   deviceKeyNew_ = new WalletKeyWidget(AutheIDClient::ActivateWalletNewDevice
 //      , wallet->getWalletId(), 0, false, appSettings->GetAuthKeys(), this);
 //   deviceKeyNew_->setFixedType(true);
 //   deviceKeyNew_->setEncryptionKeys(encKeys);
@@ -62,15 +62,15 @@ ManageEncryptionDialog::ManageEncryptionDialog(const std::shared_ptr<spdlog::log
 //   deviceLayout->insertWidget(deviceLayout->indexOf(ui_->labelDeviceOldInfo) + 1, deviceKeyOld_);
 //   deviceLayout->insertWidget(deviceLayout->indexOf(ui_->labelDeviceNewInfo) + 1, deviceKeyNew_);
 
-//   //connect(ui_->widgetSubmitKeys, &WalletKeysSubmitNewWidget::keyChanged, [this] { updateState(); });
-//   //connect(ui_->widgetCreateKeys, &WalletKeysCreateNewWidget::keyCountChanged, [this] { adjustSize(); });
-//   //connect(ui_->widgetCreateKeys, &WalletKeysCreateNewWidget::keyChanged, [this] { updateState(); });
-//   connect(deviceKeyOld_, &WalletKeyNewWidget::keyChanged, this, &ManageEncryptionDialog::onOldDeviceKeyChanged);
-//   connect(deviceKeyOld_, &WalletKeyNewWidget::failed, this, &ManageEncryptionDialog::onOldDeviceFailed);
+//   //connect(ui_->widgetSubmitKeys, &WalletKeysSubmitWidget::keyChanged, [this] { updateState(); });
+//   //connect(ui_->widgetCreateKeys, &WalletKeysCreateWidget::keyCountChanged, [this] { adjustSize(); });
+//   //connect(ui_->widgetCreateKeys, &WalletKeysCreateWidget::keyChanged, [this] { updateState(); });
+//   connect(deviceKeyOld_, &WalletKeyWidget::keyChanged, this, &ManageEncryptionDialog::onOldDeviceKeyChanged);
+//   connect(deviceKeyOld_, &WalletKeyWidget::failed, this, &ManageEncryptionDialog::onOldDeviceFailed);
 
-//   connect(deviceKeyNew_, &WalletKeyNewWidget::encKeyChanged, this, &ManageEncryptionDialog::onNewDeviceEncKeyChanged);
-//   connect(deviceKeyNew_, &WalletKeyNewWidget::keyChanged, this, &ManageEncryptionDialog::onNewDeviceKeyChanged);
-//   connect(deviceKeyNew_, &WalletKeyNewWidget::failed, this, &ManageEncryptionDialog::onNewDeviceFailed);
+//   connect(deviceKeyNew_, &WalletKeyWidget::encKeyChanged, this, &ManageEncryptionDialog::onNewDeviceEncKeyChanged);
+//   connect(deviceKeyNew_, &WalletKeyWidget::keyChanged, this, &ManageEncryptionDialog::onNewDeviceKeyChanged);
+//   connect(deviceKeyNew_, &WalletKeyWidget::failed, this, &ManageEncryptionDialog::onNewDeviceFailed);
 
    QString usernameAuthApp;
    int authCount = 0;
@@ -127,25 +127,25 @@ ManageEncryptionDialog::ManageEncryptionDialog(const std::shared_ptr<spdlog::log
 
    //////////////
 
-   ui_->widgetSubmitKeys->setFlags(WalletKeysSubmitNewWidget::HideGroupboxCaption
-      | WalletKeysSubmitNewWidget::SetPasswordLabelAsOld
-      | WalletKeysSubmitNewWidget::HideAuthConnectButton
-      | WalletKeysSubmitNewWidget::HidePasswordWarning);
+   ui_->widgetSubmitKeys->setFlags(WalletKeysSubmitWidget::HideGroupboxCaption
+      | WalletKeysSubmitWidget::SetPasswordLabelAsOld
+      | WalletKeysSubmitWidget::HideAuthConnectButton
+      | WalletKeysSubmitWidget::HidePasswordWarning);
    ui_->widgetSubmitKeys->suspend();
-   ui_->widgetSubmitKeys->init(AutheIDClient::DeactivateWallet, walletInfo, WalletKeyNewWidget::UseType::RequestAuthForDialog, appSettings, logger_);
+   ui_->widgetSubmitKeys->init(AutheIDClient::DeactivateWallet, walletInfo, WalletKeyWidget::UseType::RequestAuthForDialog, appSettings, logger_);
 
-   ui_->widgetCreateKeys->setFlags(WalletKeysCreateNewWidget::HideGroupboxCaption
-      | WalletKeysCreateNewWidget::SetPasswordLabelAsNew
-      | WalletKeysCreateNewWidget::HideAuthConnectButton
-      | WalletKeysCreateNewWidget::HideWidgetContol);
-   ui_->widgetCreateKeys->init(AutheIDClient::ActivateWallet, walletInfo_, WalletKeyNewWidget::UseType::ChangeAuthForDialog, appSettings, logger_);
+   ui_->widgetCreateKeys->setFlags(WalletKeysCreateWidget::HideGroupboxCaption
+      | WalletKeysCreateWidget::SetPasswordLabelAsNew
+      | WalletKeysCreateWidget::HideAuthConnectButton
+      | WalletKeysCreateWidget::HideWidgetContol);
+   ui_->widgetCreateKeys->init(AutheIDClient::ActivateWallet, walletInfo_, WalletKeyWidget::UseType::ChangeAuthForDialog, appSettings, logger_);
 
    ui_->widgetSubmitKeys->setFocus();
 
    ui_->tabWidget->setCurrentIndex(int(Pages::Basic));
 
-   connect(ui_->widgetSubmitKeys, &WalletKeysSubmitNewWidget::returnPressed, ui_->widgetCreateKeys, &WalletKeysCreateNewWidget::setFocus);
-   connect(ui_->widgetCreateKeys, &WalletKeysCreateNewWidget::returnPressed, this, &ManageEncryptionDialog::onContinueClicked);
+   connect(ui_->widgetSubmitKeys, &WalletKeysSubmitWidget::returnPressed, ui_->widgetCreateKeys, &WalletKeysCreateWidget::setFocus);
+   connect(ui_->widgetCreateKeys, &WalletKeysCreateWidget::returnPressed, this, &ManageEncryptionDialog::onContinueClicked);
 
    updateState();
 }
@@ -236,8 +236,8 @@ void ManageEncryptionDialog::continueBasic()
       showAuthUsageInfo = false;
 
       if (oldPasswordData_[0].password.isNull()) {
-         EnterWalletNewPassword enterWalletPassword(AutheIDClient::DeactivateWallet, this);
-         enterWalletPassword.init(walletInfo_, appSettings_, WalletKeyNewWidget::UseType::RequestAuthAsDialog, tr("Change Encryption"), logger_);
+         EnterWalletPassword enterWalletPassword(AutheIDClient::DeactivateWallet, this);
+         enterWalletPassword.init(walletInfo_, appSettings_, WalletKeyWidget::UseType::RequestAuthAsDialog, tr("Change Encryption"), logger_);
          int result = enterWalletPassword.exec();
          if (result != QDialog::Accepted) {
             return;
@@ -259,13 +259,13 @@ void ManageEncryptionDialog::continueBasic()
          }
       }
 
-      EnterWalletNewPassword enterWalletPassword(AutheIDClient::ActivateWallet, this);
+      EnterWalletPassword enterWalletPassword(AutheIDClient::ActivateWallet, this);
       // overwrite encKeys
       bs::hd::WalletInfo wi = walletInfo_;
       wi.setEncTypes(QList<bs::wallet::QEncryptionType>() << ui_->widgetCreateKeys->passwordData(0).qEncType());
       wi.setEncKeys(QList<QString>() << ui_->widgetCreateKeys->passwordData(0).qEncKey());
 
-      enterWalletPassword.init(wi, appSettings_, WalletKeyNewWidget::UseType::ChangeToEidAsDialog, tr("Activate Auth eID signing"), logger_);
+      enterWalletPassword.init(wi, appSettings_, WalletKeyWidget::UseType::ChangeToEidAsDialog, tr("Activate Auth eID signing"), logger_);
       int result = enterWalletPassword.exec();
       if (result != QDialog::Accepted) {
          return;
@@ -307,8 +307,8 @@ void ManageEncryptionDialog::continueAddDevice()
 
    // Request eid auth to decrypt wallet
    {
-      EnterWalletNewPassword enterWalletOldPassword(AutheIDClient::ActivateWalletOldDevice, this);
-      enterWalletOldPassword.init(walletInfo_, appSettings_, WalletKeyNewWidget::UseType::RequestAuthAsDialog, tr("Change Encryption"), logger_);
+      EnterWalletPassword enterWalletOldPassword(AutheIDClient::ActivateWalletOldDevice, this);
+      enterWalletOldPassword.init(walletInfo_, appSettings_, WalletKeyWidget::UseType::RequestAuthAsDialog, tr("Change Encryption"), logger_);
       int result = enterWalletOldPassword.exec();
       if (result != QDialog::Accepted) {
          return;
@@ -319,13 +319,13 @@ void ManageEncryptionDialog::continueAddDevice()
 
    // Request eid activate new device
    {
-      EnterWalletNewPassword enterWalletNewPassword(AutheIDClient::ActivateWalletNewDevice, this);
+      EnterWalletPassword enterWalletNewPassword(AutheIDClient::ActivateWalletNewDevice, this);
       // overwrite encKeys
       bs::hd::WalletInfo wi = walletInfo_;
       //wi.setEncTypes(QList<bs::wallet::QEncryptionType>() << ui_->widgetCreateKeys->passwordData(0).qEncType());
       //wi.setEncKeys(QList<QString>() << ui_->widgetCreateKeys->passwordData(0).qEncKey());
 
-      enterWalletNewPassword.init(walletInfo_, appSettings_, WalletKeyNewWidget::UseType::ChangeToEidAsDialog, tr("Activate Auth eID signing"), logger_);
+      enterWalletNewPassword.init(walletInfo_, appSettings_, WalletKeyWidget::UseType::ChangeToEidAsDialog, tr("Activate Auth eID signing"), logger_);
       int result = enterWalletNewPassword.exec();
       if (result != QDialog::Accepted) {
          return;
@@ -496,7 +496,7 @@ void ManageEncryptionDialog::deleteDevice(const string &deviceId)
 //      return;
 //   }
 
-//   EnterWalletNewPassword enterWalletPassword(AutheIDClient::DeactivateWalletDevice, this);
+//   EnterWalletPassword enterWalletPassword(AutheIDClient::DeactivateWalletDevice, this);
 //   enterWalletPassword.init(wallet_->getWalletId(), newKeyRank_
 //      , newPasswordData_, appSettings_, tr("Deactivate device"));
 //   int result = enterWalletPassword.exec();

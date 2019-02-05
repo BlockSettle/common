@@ -1,5 +1,5 @@
-#ifndef __MANAGE_ENCRYPTION_NEW_DIALOG_H__
-#define __MANAGE_ENCRYPTION_NEW_DIALOG_H__
+#ifndef __MANAGE_ENCRYPTION_DIALOG_H__
+#define __MANAGE_ENCRYPTION_DIALOG_H__
 
 #include <memory>
 #include <QDialog>
@@ -17,7 +17,7 @@ namespace bs {
    }
 }
 
-class WalletKeyNewWidget;
+class WalletKeyWidget;
 class ApplicationSettings;
 class SignContainer;
 
@@ -83,8 +83,8 @@ private:
    bool removeOld_;
    SecureBinaryData oldKey_;
    State state_ = State::Idle;
-//   WalletKeyNewWidget *deviceKeyOld_ = nullptr;
-//   WalletKeyNewWidget *deviceKeyNew_ = nullptr;
+//   WalletKeyWidget *deviceKeyOld_ = nullptr;
+//   WalletKeyWidget *deviceKeyNew_ = nullptr;
    bool deviceKeyOldValid_;
    bool deviceKeyNewValid_;
    bool isLatestChangeAddDevice_;
@@ -92,4 +92,4 @@ private:
    bs::hd::WalletInfo walletInfo_;
 };
 
-#endif // __MANAGE_ENCRYPTION_NEW_DIALOG_H__
+#endif // __MANAGE_ENCRYPTION_DIALOG_H__

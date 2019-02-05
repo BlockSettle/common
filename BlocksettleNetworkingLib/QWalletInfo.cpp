@@ -39,6 +39,18 @@ WalletInfo::WalletInfo(const headless::GetHDWalletInfoResponse &response)
    keyRank_ = { response.rankm(), response.rankn() };
 }
 
+WalletInfo::WalletInfo(const headless::PasswordRequest &request)
+{
+   setRootId(request.walletid());
+   for (int i = 0; i < request.enctypes_size(); ++i) {
+      encTypes_.push_back(static_cast<bs::wallet::QEncryptionType>(request.enctypes(i)));
+   }
+   for (int i = 0; i < request.enckeys_size(); ++i) {
+      encKeys_.push_back(QString::fromStdString(request.enckeys(i)));
+   }
+   keyRank_ = { request.rankm(), 0 };
+}
+
 WalletInfo::WalletInfo(std::shared_ptr<bs::hd::Wallet> hdWallet, QObject *parent)
 {
    initFromRootWallet(hdWallet);

@@ -14,19 +14,13 @@
 #include "AddressListModel.h"
 #include "ApplicationSettings.h"
 #include "AssetManager.h"
-#include "CreateWalletDialog.h"
 #include "HDWallet.h"
-#include "ManageEncryption/ImportWalletNewDialog.h"
-#include "ManageEncryption/ImportWalletTypeDialog.h"
 #include "BSMessageBox.h"
 #include "NewWalletDialog.h"
 #include "NewWalletSeedDialog.h"
-#include "RootWalletPropertiesDialog.h"
-#include "ManageEncryption/RootWalletPropertiesNewDialog.h"
 #include "SelectAddressDialog.h"
 #include "SignContainer.h"
 #include "VerifyWalletBackupDialog.h"
-#include "WalletBackupDialog.h"
 #include "WalletDeleteDialog.h"
 #include "WalletImporter.h"
 #include "WalletsManager.h"
@@ -34,8 +28,12 @@
 #include "WalletWarningDialog.h"
 #include "TreeViewWithEnterKey.h"
 #include "NewWalletSeedConfirmDialog.h"
-#include "ManageEncryption/CreateWalletNewDialog.h"
-
+#include "ManageEncryption/CreateWalletDialog.h"
+#include "ManageEncryption/CreateWalletDialog.h"
+#include "ManageEncryption/ImportWalletDialog.h"
+#include "ManageEncryption/ImportWalletTypeDialog.h"
+#include "ManageEncryption/WalletBackupDialog.h"
+#include "ManageEncryption/RootWalletPropertiesDialog.h"
 
 class AddressSortFilterModel : public QSortFilterProxyModel
 {
@@ -296,7 +294,7 @@ void WalletsWidget::showWalletProperties(const QModelIndex& index)
 //      RootWalletPropertiesDialog(logger_, hdWallet, walletsManager_, armory_, signingContainer_
 //         , walletsModel_, appSettings_, assetManager_, this).exec();
 
-      RootWalletPropertiesNewDialog(logger_, hdWallet, walletsManager_, armory_, signingContainer_
+      RootWalletPropertiesDialog(logger_, hdWallet, walletsManager_, armory_, signingContainer_
          , walletsModel_, appSettings_, assetManager_, this).exec();
    }
 }
@@ -446,7 +444,7 @@ bool WalletsWidget::CreateNewWallet(bool report)
    std::shared_ptr<bs::hd::Wallet> newWallet;
 //   CreateWalletDialog createWalletDialog(walletsManager_, signingContainer_
 //      , appSettings_->GetHomeDir(), walletSeed, walletId, username_, appSettings_, this);
-   CreateWalletNewDialog createWalletDialog(walletsManager_, signingContainer_
+   CreateWalletDialog createWalletDialog(walletsManager_, signingContainer_
       , appSettings_->GetHomeDir(), walletSeed, walletId, username_, appSettings_, logger_, this);
    if (createWalletDialog.exec() == QDialog::Accepted) {
       if (createWalletDialog.walletCreated()) {
@@ -498,7 +496,7 @@ bool WalletsWidget::ImportNewWallet(bool report)
 //            , username_, importWalletDialog.GetName(), importWalletDialog.GetDescription()
 //            , this);
 
-         ImportWalletNewDialog createImportedWallet(walletsManager_
+         ImportWalletDialog createImportedWallet(walletsManager_
                                                     , signingContainer_
                                                     , assetManager_
                                                     , authMgr_, armory_
@@ -746,7 +744,7 @@ bool WalletBackupAndVerify(const std::shared_ptr<bs::hd::Wallet> &wallet
    if (!wallet) {
       return false;
    }
-   WalletBackupDialog walletBackupDialog(wallet, container, appSettings, parent);
+   WalletBackupDialog walletBackupDialog(wallet, container, appSettings, logger, parent);
    if (walletBackupDialog.exec() == QDialog::Accepted) {
       BSMessageBox(BSMessageBox::success, QObject::tr("Backup"), QObject::tr("%1 Backup successfully created")
          .arg(walletBackupDialog.isDigitalBackup() ? QObject::tr("Digital") : QObject::tr("Paper"))

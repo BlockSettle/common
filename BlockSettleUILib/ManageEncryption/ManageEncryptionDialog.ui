@@ -222,7 +222,7 @@
            <number>0</number>
           </property>
           <item>
-           <widget class="WalletKeysSubmitNewWidget" name="widgetSubmitKeys" native="true">
+           <widget class="WalletKeysSubmitWidget" name="widgetSubmitKeys" native="true">
             <property name="minimumSize">
              <size>
               <width>0</width>
@@ -262,7 +262,7 @@
            <number>0</number>
           </property>
           <item>
-           <widget class="WalletKeysCreateNewWidget" name="widgetCreateKeys" native="true">
+           <widget class="WalletKeysCreateWidget" name="widgetCreateKeys" native="true">
             <property name="minimumSize">
              <size>
               <width>0</width>
@@ -515,15 +515,15 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>WalletKeysSubmitNewWidget</class>
+   <class>WalletKeysSubmitWidget</class>
    <extends>QWidget</extends>
-   <header>WalletKeysSubmitNewWidget.h</header>
+   <header>WalletKeysSubmitWidget.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>WalletKeysCreateNewWidget</class>
+   <class>WalletKeysCreateWidget</class>
    <extends>QWidget</extends>
-   <header>WalletKeysCreateNewWidget.h</header>
+   <header>WalletKeysCreateWidget.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
