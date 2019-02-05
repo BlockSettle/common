@@ -41,7 +41,7 @@ public:
 
    bool isValid() const;
    bs::wallet::QPasswordData passwordData(int keyIndex) const { return pwdData_.at(keyIndex); }
-   std::vector<bs::wallet::QPasswordData> keys() const { return pwdData_; }
+   std::vector<bs::wallet::QPasswordData> passwordData() const { return pwdData_; }
    bs::wallet::KeyRank keyRank() const { return keyRank_; }
 
 public slots:

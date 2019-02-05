@@ -59,10 +59,10 @@ public:
    QPasswordData(const QPasswordData &other) : PasswordData(static_cast<PasswordData>(other)) {}
    QPasswordData& operator= (const QPasswordData &other) { PasswordData::operator=(other); return *this;}
 
-   QString qTextPassword() { return QString::fromStdString(password.toBinStr()); }
-   SecureBinaryData qBinaryPassword() { return password; }
-   QEncryptionType qEncType() { return static_cast<QEncryptionType>(encType); }
-   QString qEncKey() { return QString::fromStdString(encKey.toBinStr()); }
+   QString qTextPassword() const { return QString::fromStdString(password.toBinStr()); }
+   SecureBinaryData qBinaryPassword() const { return password; }
+   QEncryptionType qEncType() const { return static_cast<QEncryptionType>(encType); }
+   QString qEncKey() const { return QString::fromStdString(encKey.toBinStr()); }
 
    void qSetTextPassword(const QString &pw) { password =  SecureBinaryData(pw.toStdString());
                                              emit passwordChanged(); }
@@ -181,6 +181,9 @@ public:
    Q_INVOKABLE QList<bs::wallet::QEncryptionType> encTypes() const { return encTypes_; }
    void setEncTypes(const QList<bs::wallet::QEncryptionType> &encTypes);
    void setEncTypes(const std::vector<wallet::EncryptionType> &encTypes);
+
+   //void setPasswordData(const QList<bs::wallet::QPasswordData> &passwordData);
+   void setPasswordData(const std::vector<wallet::QPasswordData> &passwordData);
 
    // currently we supports only single enc type for whole wallet: either Password or eID Auth
    // this function returns encType based on first passwordDataList_ value

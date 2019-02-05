@@ -202,6 +202,57 @@ void WalletInfo::setEncTypes(const std::vector<EncryptionType> &encTypes)
    emit walletChanged();
 }
 
+//void WalletInfo::setPasswordData(const QList<QPasswordData> &passwordData)
+//{
+//   std::vector<PasswordData> pwData;
+//   pwData.assign(passwordData.constBegin(), passwordData.constEnd());
+//   setPasswordData(pwData);
+////   encKeys_.clear();
+////   encTypes_.clear();
+
+////   bool isAuth = false;
+////   bool isPassword = false;
+////   for (const QPasswordData &pw : passwordData) {
+////      encKeys_.push_back(pw.qEncKey());
+////      if (pw.qEncType() == QEncryptionType::Auth)
+////         isAuth = true;
+////      if (pw.qEncType() == QEncryptionType::Password)
+////         isPassword = true;
+////   }
+
+////   if (isAuth)
+////      encTypes_.append(QEncryptionType::Auth);
+
+////   if (isPassword)
+////      encTypes_.append(QEncryptionType::Password);
+
+////   emit walletChanged();
+//}
+
+void WalletInfo::setPasswordData(const std::vector<QPasswordData> &passwordData)
+{
+   encKeys_.clear();
+   encTypes_.clear();
+
+   bool isAuth = false;
+   bool isPassword = false;
+   for (const PasswordData &pw : passwordData) {
+      encKeys_.push_back(QString::fromStdString(pw.encKey.toBinStr()));
+      if (pw.encType == EncryptionType::Auth)
+         isAuth = true;
+      if (pw.encType == EncryptionType::Password)
+         isPassword = true;
+   }
+
+   if (isAuth)
+      encTypes_.append(QEncryptionType::Auth);
+
+   if (isPassword)
+      encTypes_.append(QEncryptionType::Password);
+
+   emit walletChanged();
+}
+
 void WalletInfo::setEncKeys(const QList<QString> &encKeys)
 {
    encKeys_ = encKeys;

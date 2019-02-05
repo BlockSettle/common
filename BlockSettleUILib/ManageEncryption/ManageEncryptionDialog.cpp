@@ -182,7 +182,7 @@ void ManageEncryptionDialog::onContinueClicked()
 // Change the wallet's password.
 void ManageEncryptionDialog::continueBasic()
 {
-   std::vector<bs::wallet::QPasswordData> newKeys = ui_->widgetCreateKeys->keys();
+   std::vector<bs::wallet::QPasswordData> newKeys = ui_->widgetCreateKeys->passwordData();
 
    bool isOldAuth = !oldPasswordData_.empty() && oldPasswordData_[0].encType == bs::wallet::EncryptionType::Auth;
    bool isNewAuth = !newKeys.empty() && newKeys[0].encType == bs::wallet::EncryptionType::Auth;
@@ -303,7 +303,7 @@ void ManageEncryptionDialog::continueAddDevice()
       return;
    }
 
-   std::vector<bs::wallet::QPasswordData> newKeys = ui_->widgetCreateKeys->keys();
+   std::vector<bs::wallet::QPasswordData> newKeys = ui_->widgetCreateKeys->passwordData();
 
    // Request eid auth to decrypt wallet
    {

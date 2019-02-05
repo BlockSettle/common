@@ -10,10 +10,11 @@
 #include "AutheIDClient.h"
 #include "QWalletInfo.h"
 #include "WalletKeyNewWidget.h"
+#include "ui_EnterWalletNewPassword.h"
 
 namespace Ui {
     class EnterWalletNewPassword;
-};
+}
 class ApplicationSettings;
 
 class EnterWalletNewPassword : public QDialog
@@ -45,8 +46,9 @@ public:
 //      , const std::shared_ptr<ApplicationSettings> &appSettings
 //      , const QString &prompt, const QString &title = QString());
 
-   bs::wallet::QPasswordData passwordData(int keyIndex) const;
+   bs::wallet::QPasswordData passwordData(int keyIndex) const { return ui_->widgetSubmitKeys->passwordData(keyIndex); }
    SecureBinaryData resultingKey() const;
+   std::vector<bs::wallet::QPasswordData> passwordData() const { return ui_->widgetSubmitKeys->passwordData(); }
 
 private slots:
    void updateState();

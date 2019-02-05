@@ -1,7 +1,6 @@
 #include <QSpacerItem>
 #include "EnterWalletNewPassword.h"
 #include "WalletKeysSubmitNewWidget.h"
-#include "ui_EnterWalletNewPassword.h"
 #include <spdlog/spdlog.h>
 
 using namespace bs::wallet;
@@ -34,6 +33,10 @@ void EnterWalletNewPassword::init(const WalletInfo &walletInfo
            || useType == WalletKeyNewWidget::UseType::ChangeToPasswordAsDialog
            || useType == WalletKeyNewWidget::UseType::ChangeToEidAsDialog);
 
+   assert (!walletInfo.encTypes().isEmpty());
+
+   if (useType == WalletKeyNewWidget::UseType::ChangeToEidAsDialog)
+      assert (!walletInfo.encKeys().isEmpty());
 
    walletInfo_ = walletInfo;
    appSettings_ = appSettings;
@@ -111,10 +114,7 @@ void EnterWalletNewPassword::reject()
    QDialog::reject();
 }
 
-QPasswordData EnterWalletNewPassword::passwordData(int keyIndex) const
-{
-   return ui_->widgetSubmitKeys->passwordData(keyIndex);
-}
+
 
 SecureBinaryData EnterWalletNewPassword::resultingKey() const
 {

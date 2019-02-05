@@ -63,10 +63,9 @@ private:
    std::shared_ptr<spdlog::logger> logger_;
    const QString     walletsPath_;
    const bs::wallet::Seed walletSeed_;
-   const std::string walletId_;
+   bs::hd::WalletInfo walletInfo_;
    unsigned int      createReqId_ = 0;
    bool              walletCreated_ = false;
-   SecureBinaryData  walletPassword_;
    bool              createdAsPrimary_ = false;
    bool              authNoticeWasShown_ = false;
 };
@@ -75,11 +74,10 @@ private:
 // Checks validity and returns updated keys in keys output argument if succeeds.
 // Shows error messages if needed.
 bool checkNewWalletValidity(WalletsManager* walletsManager
-   , const QString& walletName
-   , const std::string& walletId
-   , WalletKeysCreateNewWidget* widgetCreateKeys
-   , std::vector<bs::wallet::PasswordData> *keys
-   , const std::shared_ptr<ApplicationSettings> &appSettings
-   , QWidget* parent);
+                            , const bs::hd::WalletInfo &walletInfo
+                            , WalletKeysCreateNewWidget* widgetCreateKeys
+                            , std::vector<bs::wallet::PasswordData>* keys
+                            , const std::shared_ptr<ApplicationSettings> &appSettings
+                            , QWidget* parent);
 
 #endif // __CREATE_WALLET_NEW_DIALOG_H__

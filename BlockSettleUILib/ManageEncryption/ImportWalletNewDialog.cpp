@@ -6,7 +6,7 @@
 #include "BSMessageBox.h"
 #include "SignContainer.h"
 #include "WalletImporter.h"
-#include "WalletPasswordVerifyDialog.h"
+#include "WalletPasswordVerifyNewDialog.h"
 #include "WalletsManager.h"
 #include "UiUtils.h"
 #include "QWalletInfo.h"
@@ -143,23 +143,23 @@ void ImportWalletNewDialog::onImportAccepted()
    const QString &walletDescription = ui_->lineEditDescription->text();
    std::vector<bs::wallet::PasswordData> keys;
 
-   bool result = checkNewWalletValidity(walletsMgr_.get(), walletName_, walletId_
-      , ui_->widgetCreateKeys, &keys, appSettings_, this);
-   if (!result) {
-      return;
-   }
+//   bool result = checkNewWalletValidity(walletsMgr_.get(), walletName_, walletId_
+//      , ui_->widgetCreateKeys, &keys, appSettings_, this);
+//   if (!result) {
+//      return;
+//   }
 
-   try {
-      importedAsPrimary_ = ui_->checkBoxPrimaryWallet->isChecked();
+//   try {
+//      importedAsPrimary_ = ui_->checkBoxPrimaryWallet->isChecked();
 
-      ui_->pushButtonImport->setEnabled(false);
+//      ui_->pushButtonImport->setEnabled(false);
 
-      walletImporter_->Import(walletName_.toStdString(), walletDescription.toStdString(), walletSeed_
-         , importedAsPrimary_, keys, ui_->widgetCreateKeys->keyRank());
-   }
-   catch (...) {
-      onError(tr("Invalid backup data"));
-   }
+//      walletImporter_->Import(walletName_.toStdString(), walletDescription.toStdString(), walletSeed_
+//         , importedAsPrimary_, keys, ui_->widgetCreateKeys->keyRank());
+//   }
+//   catch (...) {
+//      onError(tr("Invalid backup data"));
+//   }
 }
 
 bool abortWalletImportQuestionNewDialog(QWidget* parent)

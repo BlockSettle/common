@@ -214,8 +214,5 @@ void WalletKeysSubmitNewWidget::resume()
    }
 }
 
-QPasswordData WalletKeysSubmitNewWidget::passwordData(int keyIndex) const
-{
-   return pwdData_.at(keyIndex);
-}
+
 

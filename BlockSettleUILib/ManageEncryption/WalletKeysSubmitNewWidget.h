@@ -54,7 +54,8 @@ public:
    void suspend() { suspended_ = true; }
    void resume();
 
-   bs::wallet::QPasswordData passwordData(int keyIndex) const;
+   bs::wallet::QPasswordData passwordData(int keyIndex) const { return pwdData_.at(keyIndex); }
+   std::vector<bs::wallet::QPasswordData> passwordData() const { return pwdData_; }
 
 signals:
    void keyChanged();
