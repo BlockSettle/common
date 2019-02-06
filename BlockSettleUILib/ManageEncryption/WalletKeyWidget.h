@@ -85,7 +85,7 @@ private:
 
    AutheIDClient *autheIDClient_{};
    AutheIDClient::RequestType requestType_{};
-   std::vector<std::string> knownDeviceIds_; // will contain only device id for key with index keyIndex
+   std::vector<std::string> knownDeviceIds_; // contains only device id for key with index keyIndex
 
    bs::hd::WalletInfo walletInfo_;
    bs::wallet::QPasswordData passwordData_;

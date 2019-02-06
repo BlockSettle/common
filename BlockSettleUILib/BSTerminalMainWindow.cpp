@@ -1250,7 +1250,7 @@ void BSTerminalMainWindow::setLoginButtonText(const QString& text)
 #endif
 }
 
-void BSTerminalMainWindow::onPasswordRequested(bs::hd::WalletInfo walletInfo, std::string prompt)
+void BSTerminalMainWindow::onPasswordRequested(const bs::hd::WalletInfo &walletInfo, std::string prompt)
 {
    SignContainer::PasswordType password;
    bool cancelledByUser = true;
@@ -1268,15 +1268,17 @@ void BSTerminalMainWindow::onPasswordRequested(bs::hd::WalletInfo walletInfo, st
          walletName = QString::fromStdString(hdWallet->getName());
       }
 
+      // pass to dialog root wallet id and root name
+      bs::hd::WalletInfo walletInfoCopy = walletInfo;
       if (!walletName.isEmpty()) {
          const auto &rootWallet = walletsManager_->GetHDRootForLeaf(walletInfo.rootId().toStdString());
          if (rootWallet) {
-            walletInfo.setRootId(rootWallet->getWalletId());
-            walletInfo.setName(rootWallet->getName());
+            walletInfoCopy.setRootId(rootWallet->getWalletId());
+            walletInfoCopy.setName(rootWallet->getName());
          }
 
          EnterWalletPassword passwordDialog(AutheIDClient::SignWallet, this);
-         passwordDialog.init(walletInfo, applicationSettings_, WalletKeyWidget::UseType::RequestAuthAsDialog
+         passwordDialog.init(walletInfoCopy, applicationSettings_, WalletKeyWidget::UseType::RequestAuthAsDialog
                              , QString::fromStdString(prompt), logMgr_->logger("ui"));
 
          if (passwordDialog.exec() == QDialog::Accepted) {

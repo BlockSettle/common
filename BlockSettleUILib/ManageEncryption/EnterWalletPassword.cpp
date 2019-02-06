@@ -50,13 +50,12 @@ void EnterWalletPassword::init(const WalletInfo &walletInfo
       setWindowTitle(title);
    }
 
-
    if (walletInfo_.isEidAuthOnly() || useType == WalletKeyWidget::UseType::ChangeToEidAsDialog) {
       connect(ui_->widgetSubmitKeys, &WalletKeysSubmitWidget::keyChanged, this, &EnterWalletPassword::accept);
       connect(ui_->widgetSubmitKeys, &WalletKeysSubmitWidget::failed, this, &EnterWalletPassword::reject);
 
       ui_->pushButtonOk->hide();
-      ui_->spacerLeft->changeSize(1,1, QSizePolicy::Expanding, QSizePolicy::Preferred);
+      ui_->spacerLeft->changeSize(1, 1, QSizePolicy::Expanding, QSizePolicy::Preferred);
    }
 
    ui_->widgetSubmitKeys->init(requestType_, walletInfo_, useType, appSettings_, logger_, prompt);
@@ -69,8 +68,6 @@ void EnterWalletPassword::init(const WalletInfo &walletInfo
    setMinimumSize(size());
 
 
-
-
    if (useType == WalletKeyWidget::UseType::ChangeToEidAsDialog) {
       connect(ui_->widgetSubmitKeys, &WalletKeysSubmitWidget::keyChanged, this, &EnterWalletPassword::accept);
       connect(ui_->widgetSubmitKeys, &WalletKeysSubmitWidget::failed, this, &EnterWalletPassword::reject);
@@ -78,30 +75,7 @@ void EnterWalletPassword::init(const WalletInfo &walletInfo
       ui_->pushButtonOk->hide();
       ui_->spacerLeft->changeSize(1,1, QSizePolicy::Expanding, QSizePolicy::Preferred);
    }
-
-   //      ui_->widgetSubmitKeys->setFlags(WalletKeysSubmitWidget::HideAuthConnectButton
-   //                                      | WalletKeysSubmitWidget::HideAuthCombobox
-   //                                      | WalletKeysSubmitWidget::HideGroupboxCaption
-   //                                      | WalletKeysSubmitWidget::AuthProgressBarFixed
-   //                                      | WalletKeysSubmitWidget::AuthIdVisible
-   //                                      | WalletKeysSubmitWidget::HidePasswordWarning);
 }
-
-
-//void EnterWalletPassword::init(const std::string &walletId, bs::wallet::KeyRank keyRank
-//   , const std::vector<bs::wallet::PasswordData> &keys
-//   , const std::shared_ptr<ApplicationSettings> &appSettings
-//   , const QString &prompt, const QString &title)
-//{
-//   std::vector<bs::wallet::EncryptionType> encTypes;
-//   std::vector<SecureBinaryData> encKeys;
-//   for (const bs::wallet::PasswordData& key : keys) {
-//      encTypes.push_back(key.encType);
-//      encKeys.push_back(key.encKey);
-//   }
-
-//   init(walletId, keyRank, encTypes, encKeys, appSettings, prompt, title);
-//}
 
 void EnterWalletPassword::updateState()
 {
@@ -113,8 +87,6 @@ void EnterWalletPassword::reject()
    ui_->widgetSubmitKeys->cancel();
    QDialog::reject();
 }
-
-
 
 SecureBinaryData EnterWalletPassword::resultingKey() const
 {

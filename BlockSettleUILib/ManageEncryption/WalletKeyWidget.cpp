@@ -7,7 +7,6 @@
 #include <QPropertyAnimation>
 #include <QPushButton>
 #include <QRadioButton>
-#include <QDebug>
 #include <spdlog/spdlog.h>
 #include "ApplicationSettings.h"
 #include "AutheIDClient.h"
@@ -17,12 +16,9 @@ using namespace bs::hd;
 
 namespace
 {
-
 const int kAnimationDurationMs = 500;
-
 const QColor kSuccessColor = Qt::green;
 const QColor kFailColor = Qt::red;
-
 }
 
 WalletKeyWidget::WalletKeyWidget(AutheIDClient::RequestType requestType
@@ -42,8 +38,6 @@ WalletKeyWidget::WalletKeyWidget(AutheIDClient::RequestType requestType
 {
    ui_->setupUi(this);
 
-   qDebug() << "WalletKeyWidget::WalletKeyWidget";
-
    passwordData_.qSetEncType(QEncryptionType::Unencrypted);
    for (int i = 0; i < walletInfo.encKeys().size(); ++i) {
       if (keyIndex == i) {
@@ -52,9 +46,9 @@ WalletKeyWidget::WalletKeyWidget(AutheIDClient::RequestType requestType
          if (!deviceInfo.deviceId.empty()) {
             knownDeviceIds_.push_back(deviceInfo.deviceId);
          }
-         {
-            ui_->comboBoxAuthId->addItem(QString::fromStdString(deviceInfo.userId));
-         }
+
+         ui_->comboBoxAuthId->addItem(QString::fromStdString(deviceInfo.userId));
+
          if (deviceInfo.userId.empty()) {
             passwordData_.encType = EncryptionType::Password;
          }
@@ -62,13 +56,11 @@ WalletKeyWidget::WalletKeyWidget(AutheIDClient::RequestType requestType
             passwordData_.encType = EncryptionType::Auth;
          }
       }
-
    }
    if ((keyIndex >= 0) && (keyIndex < walletInfo.encKeys().size())) {
       ui_->comboBoxAuthId->setCurrentIndex(keyIndex);
       ui_->labelAuthId->setText(ui_->comboBoxAuthId->currentText());
    }
-
 
    ui_->radioButtonPassword->setChecked(passwordData_.encType == EncryptionType::Password);
    ui_->radioButtonAuth->setChecked(passwordData_.encType == EncryptionType::Auth);
@@ -87,10 +79,12 @@ WalletKeyWidget::WalletKeyWidget(AutheIDClient::RequestType requestType
    connect(ui_->pushButtonAuth, &QPushButton::clicked, this, &WalletKeyWidget::onAuthSignClicked);
 
    connect(ui_->lineEditPassword, &QLineEdit::returnPressed, this, [this](){
-      if (ui_->lineEditPasswordConfirm->isVisible())
+      if (ui_->lineEditPasswordConfirm->isVisible()) {
          ui_->lineEditPasswordConfirm->setFocus();
-      else
+      }
+      else {
          emit returnPressed(keyIndex_);
+      }
    });
 
    connect(ui_->lineEditPasswordConfirm, &QLineEdit::returnPressed, this, [this](){
@@ -194,16 +188,13 @@ void WalletKeyWidget::onAuthSignClicked()
       }
       catch (const std::exception &e) {
          // TODO display error
-         ui_->pushButtonAuth->setEnabled(false);
+         // ui_->pushButtonAuth->setEnabled(false);
       }
-
-      //ui_->comboBoxAuthId->setEditText(username);
    }
    timeLeft_ = 120;
    ui_->progressBar->setMaximum(timeLeft_ * 2);
-   //if (!hideProgressBar_) {
-      ui_->progressBar->show();
-   //}
+   ui_->progressBar->show();
+
    timer_.start();
    authRunning_ = true;
 
@@ -232,7 +223,6 @@ void WalletKeyWidget::onAuthSucceeded(const std::string &encKey, const SecureBin
 
 void WalletKeyWidget::onAuthFailed(const QString &text)
 {
-   
    stop();
    ui_->pushButtonAuth->setEnabled(true);
    ui_->pushButtonAuth->setText(tr("Auth failed: %1 - retry").arg(text));
@@ -271,9 +261,7 @@ void WalletKeyWidget::stop()
       autheIDClient_ = nullptr;
    }
    timer_.stop();
-   //if (!progressBarFixed_) {
-      ui_->progressBar->hide();
-   //}
+   ui_->progressBar->hide();
    ui_->comboBoxAuthId->setEnabled(true);
    ui_->widgetAuthLayout->show();
 }
@@ -293,7 +281,6 @@ void WalletKeyWidget::start()
    if (passwordData_.encType == EncryptionType::Auth && !authRunning_ && !ui_->comboBoxAuthId->currentText().isEmpty()) {
       onAuthSignClicked();
       ui_->progressBar->setValue(0);
-      //ui_->pushButtonAuth->setEnabled(true);
    }
 }
 
@@ -321,7 +308,6 @@ void WalletKeyWidget::setUseType(WalletKeyWidget::UseType useType)
    ui_->labelPasswordConfirm->setVisible(changeAuthType);
    ui_->lineEditPasswordConfirm->setVisible(changeAuthType);
    ui_->labelPasswordInfo->setVisible(changeAuthType);
-
 
    if (requestAuthType) {
       ui_->widgetEncTypeSelect->setMaximumHeight(0);
@@ -371,7 +357,6 @@ void WalletKeyWidget::setUseType(WalletKeyWidget::UseType useType)
 
 QPropertyAnimation* WalletKeyWidget::startAuthAnimation(bool success)
 {
-   // currently not used?
    QGraphicsColorizeEffect *eff = new QGraphicsColorizeEffect(this);
    eff->setColor(success ? kSuccessColor : kFailColor);
    ui_->labelAuthId->setGraphicsEffect(eff);
