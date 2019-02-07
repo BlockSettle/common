@@ -38,7 +38,7 @@ WalletKeyWidget::WalletKeyWidget(AutheIDClient::RequestType requestType
 {
    ui_->setupUi(this);
 
-   passwordData_.qSetEncType(QEncryptionType::Unencrypted);
+   passwordData_.encType = EncryptionType::Unencrypted;
    for (int i = 0; i < walletInfo.encKeys().size(); ++i) {
       if (keyIndex == i) {
          const auto &encKey = walletInfo.encKeys().at(i);
@@ -125,11 +125,11 @@ void WalletKeyWidget::onPasswordChanged()
       if (!ui_->lineEditPassword->text().isEmpty()) {
          ui_->labelPassword->setEnabled(true);
       }
-      passwordData_.qSetTextPassword(ui_->lineEditPassword->text());
+      passwordData_.password = ui_->lineEditPassword->text().toStdString();
       emit passwordDataChanged(keyIndex_, passwordData_);
    }
    else {
-      emit passwordDataChanged(keyIndex_, QPasswordData());
+      emit passwordDataChanged(keyIndex_, PasswordData());
    }
 
    QString msg;
@@ -162,7 +162,7 @@ void WalletKeyWidget::onPasswordChanged()
 void WalletKeyWidget::onAuthIdChanged(const QString &text)
 {
    ui_->labelAuthId->setText(text);
-   passwordData_.qSetEncKey(text);
+   passwordData_.encKey = text.toStdString();
    emit passwordDataChanged(keyIndex_, passwordData_);
    ui_->pushButtonAuth->setEnabled(!text.isEmpty());
 }

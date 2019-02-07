@@ -49,13 +49,6 @@ private slots:
    void onContinueClicked();
    void onTabChanged(int index);
 
-//   void onOldDeviceKeyChanged(int, SecureBinaryData);
-//   void onOldDeviceFailed();
-
-//   void onNewDeviceEncKeyChanged(int index, SecureBinaryData encKey);
-//   void onNewDeviceKeyChanged(int index, SecureBinaryData password);
-//   void onNewDeviceFailed();
-
    void onPasswordChanged(const std::string &walletId, bool ok);
 
 protected:
@@ -74,17 +67,14 @@ private:
    std::shared_ptr<spdlog::logger> logger_;
    std::shared_ptr<SignContainer> signingContainer_;
    std::shared_ptr<bs::hd::Wallet>  wallet_;
-   //const bs::wallet::KeyRank oldKeyRank_;
    bs::wallet::KeyRank newKeyRank_;
-   std::vector<bs::wallet::QPasswordData> oldPasswordData_;
-   std::vector<bs::wallet::QPasswordData> newPasswordData_;
-   // Init variables in resetKeys method so they always valid when we restart process
+   std::vector<bs::wallet::PasswordData> oldPasswordData_;
+   std::vector<bs::wallet::PasswordData> newPasswordData_;
+
    bool addNew_;
    bool removeOld_;
    SecureBinaryData oldKey_;
    State state_ = State::Idle;
-//   WalletKeyWidget *deviceKeyOld_ = nullptr;
-//   WalletKeyWidget *deviceKeyNew_ = nullptr;
    bool deviceKeyOldValid_;
    bool deviceKeyNewValid_;
    bool isLatestChangeAddDevice_;

@@ -87,7 +87,7 @@ void WalletKeysCreateWidget::addKey()
    layout()->addWidget(widget);
    ui_->pushButtonDelKey->setEnabled(true);
    widgets_.emplace_back(widget);
-   pwdData_.push_back(bs::wallet::QPasswordData());
+   pwdData_.push_back(bs::wallet::PasswordData());
    ui_->spinBoxRankM->setMaximum(pwdData_.size());
    ui_->spinBoxRankM->setMinimum(1);
    updateKeyRank(0);
@@ -117,40 +117,11 @@ void WalletKeysCreateWidget::onDelClicked()
    }
 }
 
-void WalletKeysCreateWidget::onPasswordDataChanged(int index, bs::wallet::QPasswordData passwordData)
+void WalletKeysCreateWidget::onPasswordDataChanged(int index, bs::wallet::PasswordData passwordData)
 {
    pwdData_[index] = passwordData;
    emit keyChanged();
 }
-
-//void WalletKeysCreateWidget::onKeyChanged(int index, SecureBinaryData key)
-//{
-//   if ((index < 0) || (index >= pwdData_.size())) {
-//      return;
-//   }
-//   pwdData_[index].password = key;
-//   emit keyChanged();
-//}
-
-//void WalletKeysCreateWidget::onKeyTypeChanged(int index, bool password)
-//{
-//   if ((index < 0) || (index >= pwdData_.size())) {
-//      return;
-//   }
-//   pwdData_[index].encType = password ? bs::wallet::EncryptionType::Password : bs::wallet::EncryptionType::Auth;
-//   pwdData_[index].password.clear();
-//   emit keyChanged();
-//   emit keyTypeChanged(password);
-//}
-
-//void WalletKeysCreateWidget::onEncKeyChanged(int index, SecureBinaryData encKey)
-//{
-//   if ((index < 0) || (index >= pwdData_.size())) {
-//      return;
-//   }
-//   pwdData_[index].encKey = encKey;
-//   emit keyChanged();
-//}
 
 void WalletKeysCreateWidget::updateKeyRank(int)
 {

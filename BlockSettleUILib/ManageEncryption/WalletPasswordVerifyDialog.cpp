@@ -22,7 +22,7 @@ WalletPasswordVerifyDialog::WalletPasswordVerifyDialog(const std::shared_ptr<App
 WalletPasswordVerifyDialog::~WalletPasswordVerifyDialog() = default;
 
 void WalletPasswordVerifyDialog::init(const bs::hd::WalletInfo& walletInfo
-                                         , const std::vector<bs::wallet::QPasswordData>& keys
+                                         , const std::vector<bs::wallet::PasswordData>& keys
                                          , const std::shared_ptr<spdlog::logger> &logger)
 {
    walletInfo_ = walletInfo;

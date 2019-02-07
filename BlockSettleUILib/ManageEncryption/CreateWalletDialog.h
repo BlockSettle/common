@@ -70,14 +70,4 @@ private:
    bool              authNoticeWasShown_ = false;
 };
 
-// Common function for CreateWalletDialog and ImportWalletDialog.
-// Checks validity and returns updated keys in keys output argument if succeeds.
-// Shows error messages if needed.
-bool checkNewWalletValidity(WalletsManager* walletsManager
-                            , const bs::hd::WalletInfo &walletInfo
-                            , WalletKeysCreateWidget* widgetCreateKeys
-                            , std::vector<bs::wallet::PasswordData>* keys
-                            , const std::shared_ptr<ApplicationSettings> &appSettings
-                            , QWidget* parent);
-
 #endif // __CREATE_WALLET_DIALOG_H__

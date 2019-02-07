@@ -119,8 +119,6 @@ signals:
    void HDWalletCreated(RequestId id, std::shared_ptr<bs::hd::Wallet>);
    void DecryptedRootKey(RequestId id, const SecureBinaryData &privKey, const SecureBinaryData &chainCode
       , std::string walletId);
-//   void HDWalletInfo(unsigned int id, std::vector<bs::wallet::EncryptionType>
-//      , std::vector<SecureBinaryData> &encKeys, bs::wallet::KeyRank);
    void QWalletInfo(unsigned int id, const bs::hd::WalletInfo &);
    void MissingWallets(const std::vector<std::string> &);
    void AddressSyncFailed(const std::vector<std::pair<std::string, std::string>> &failedAddresses);

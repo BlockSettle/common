@@ -37,7 +37,7 @@ public:
       ChangeAuthForDialog        // requests password to change or email for eid (depends of user select) in parent widget
                                  // ChangeToEidAsDialog should be opened if eid selected
    };
-   Q_ENUMS(UseType)
+   Q_ENUM(UseType)
 
    ~WalletKeyWidget() override = default;
 
@@ -54,7 +54,7 @@ signals:
    void returnPressed(int keyIndex);
 
    // emitted when password entered or eid auth recieved
-   void passwordDataChanged(int keyIndex, const bs::wallet::QPasswordData &passwordData);
+   void passwordDataChanged(int keyIndex, const bs::wallet::PasswordData &passwordData);
 
    // Signals that Auth was denied or timed out
    void failed();
@@ -88,7 +88,7 @@ private:
    std::vector<std::string> knownDeviceIds_; // contains only device id for key with index keyIndex
 
    bs::hd::WalletInfo walletInfo_;
-   bs::wallet::QPasswordData passwordData_;
+   bs::wallet::PasswordData passwordData_;
    std::shared_ptr<spdlog::logger> logger_;
 };
 

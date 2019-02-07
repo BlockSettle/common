@@ -184,10 +184,6 @@ void RootWalletPropertiesDialog::onChangePassword()
 
    int result = manageEncryptionDialog.exec();
 
-//   ChangeWalletPasswordDialog changePasswordDialog(logger_, signingContainer_, wallet_
-//      , walletEncTypes_, walletEncKeys_, walletEncRank_, QString(), appSettings_, this);
-
-//   int result = changePasswordDialog.exec();
 
    if (result == QDialog::Accepted) {
       // Update wallet encryption type
@@ -195,16 +191,16 @@ void RootWalletPropertiesDialog::onChangePassword()
    }
 }
 
-static inline QString encTypeToString(bs::wallet::QEncryptionType enc)
+static inline QString encTypeToString(bs::wallet::EncryptionType enc)
 {
    switch (enc) {
-      case bs::wallet::QEncryptionType::Unencrypted :
+      case bs::wallet::EncryptionType::Unencrypted :
          return QObject::tr("Unencrypted");
 
-      case bs::wallet::QEncryptionType::Password :
+      case bs::wallet::EncryptionType::Password :
          return QObject::tr("Password");
 
-      case bs::wallet::QEncryptionType::Auth :
+      case bs::wallet::EncryptionType::Auth :
          return QObject::tr("Auth eID");
    };
 }

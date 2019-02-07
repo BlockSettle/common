@@ -56,7 +56,7 @@ void WalletKeysSubmitWidget::init(AutheIDClient::RequestType requestType
 
    bool hasAuth = false;
    for (const auto &encType : walletInfo.encTypes()) {
-      if (encType == QEncryptionType::Auth) {
+      if (encType == EncryptionType::Auth) {
          hasAuth = true;
          break;
       }
@@ -83,7 +83,7 @@ void WalletKeysSubmitWidget::init(AutheIDClient::RequestType requestType
    }
    else if (walletInfo.encTypes().size() == walletInfo.keyRank().first) {
       for (const auto &encType : walletInfo.encTypes()) {
-         const bool isPassword = (encType == QEncryptionType::Password);
+         const bool isPassword = (encType == EncryptionType::Password);
          addKey(isPassword ? 0 : encKeyIndex++, prompt);
       }
    }
@@ -92,13 +92,13 @@ void WalletKeysSubmitWidget::init(AutheIDClient::RequestType requestType
          addKey(0, prompt);
       }
       else {
-         if ((walletInfo.encTypes().size() == 1) && (walletInfo.encTypes()[0] == QEncryptionType::Auth)
+         if ((walletInfo.encTypes().size() == 1) && (walletInfo.encTypes()[0] == EncryptionType::Auth)
              && (walletInfo.encKeys().size() == walletInfo.keyRank().first)) {
             for (unsigned int i = 0; i < walletInfo.keyRank().first; ++i) {
                addKey(encKeyIndex++, prompt);
             }
          }
-         else if ((walletInfo.encTypes().size() == 1) && (walletInfo.encTypes()[0] == QEncryptionType::Password)) {
+         else if ((walletInfo.encTypes().size() == 1) && (walletInfo.encTypes()[0] == EncryptionType::Password)) {
             for (unsigned int i = 0; i < walletInfo.keyRank().first; ++i) {
                addKey(0, prompt);
             }
@@ -127,7 +127,7 @@ void WalletKeysSubmitWidget::addKey(int encKeyIndex, const QString &prompt)
    widget->setUseType(useType_);
 
    widgets_.push_back(widget);
-   pwdData_.push_back(QPasswordData());
+   pwdData_.push_back(PasswordData());
 
 
    connect(widget, &WalletKeyWidget::passwordDataChanged, this, &WalletKeysSubmitWidget::onPasswordDataChanged);
@@ -155,7 +155,7 @@ void WalletKeysSubmitWidget::setFocus()
    widgets_.front()->setFocus();
 }
 
-void WalletKeysSubmitWidget::onPasswordDataChanged(int index, QPasswordData passwordData)
+void WalletKeysSubmitWidget::onPasswordDataChanged(int index, PasswordData passwordData)
 {
    pwdData_[index] = passwordData;
    emit keyChanged();

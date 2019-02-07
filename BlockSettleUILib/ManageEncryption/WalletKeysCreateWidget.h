@@ -40,8 +40,8 @@ public:
    void cancel();
 
    bool isValid() const;
-   bs::wallet::QPasswordData passwordData(int keyIndex) const { return pwdData_.at(keyIndex); }
-   std::vector<bs::wallet::QPasswordData> passwordData() const { return pwdData_; }
+   bs::wallet::PasswordData passwordData(int keyIndex) const { return pwdData_.at(keyIndex); }
+   std::vector<bs::wallet::PasswordData> passwordData() const { return pwdData_; }
    bs::wallet::KeyRank keyRank() const { return keyRank_; }
 
 public slots:
@@ -57,11 +57,7 @@ signals:
 private slots:
    void onAddClicked();
    void onDelClicked();
-   void onPasswordDataChanged(int index, bs::wallet::QPasswordData passwordData);
-
-//   void onKeyChanged(int index, SecureBinaryData);
-//   void onKeyTypeChanged(int index, bool password);
-//   void onEncKeyChanged(int index, SecureBinaryData);
+   void onPasswordDataChanged(int index, bs::wallet::PasswordData passwordData);
    void updateKeyRank(int);
 
 private:
@@ -69,9 +65,8 @@ private:
 
 private:
    std::unique_ptr<Ui::WalletKeysCreateWidget> ui_;
-   //std::string walletId_;
    std::vector<std::unique_ptr<WalletKeyWidget>> widgets_;
-   std::vector<bs::wallet::QPasswordData> pwdData_;
+   std::vector<bs::wallet::PasswordData> pwdData_;
    bs::wallet::KeyRank keyRank_ = { 0, 0 };
    Flags flags_{NoFlag};
    std::shared_ptr<ApplicationSettings> appSettings_;

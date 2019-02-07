@@ -23,7 +23,7 @@ public:
    // By default the dialog will show only Auth usage info page.
    // If init called then password/Auth check will be used too.
    void init(const bs::hd::WalletInfo &walletInfo
-             , const std::vector<bs::wallet::QPasswordData> &keys
+             , const std::vector<bs::wallet::PasswordData> &keys
              , const std::shared_ptr<spdlog::logger> &logger);
 
 private slots:
@@ -34,7 +34,7 @@ private:
    void initAuth(const QString& authId);
 
    std::unique_ptr<Ui::WalletPasswordVerifyDialog> ui_;
-   std::vector<bs::wallet::QPasswordData> keys_;
+   std::vector<bs::wallet::PasswordData> keys_;
    bs::hd::WalletInfo walletInfo_;
    bool runPasswordCheck_ = false;
    const std::shared_ptr<ApplicationSettings> appSettings_;

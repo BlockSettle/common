@@ -1,18 +1,8 @@
 #include <QFile>
-#include <QVariant>
-#include <QStandardPaths>
-
-#include "WalletBackupFile.h"
 #include "WalletEncryption.h"
 #include "QWalletInfo.h"
 #include "AutheIDClient.h"
-
-namespace bs {
-   namespace wallet {
-      QNetworkType toQNetworkType(NetworkType netType) { return static_cast<QNetworkType>(netType); }
-      NetworkType fromQNetworkType(bs::wallet::QNetworkType netType) { return static_cast<NetworkType>(netType); }
-   }
-}
+#include "WalletBackupFile.h"
 
 using namespace bs::hd;
 using namespace bs::wallet;
@@ -31,7 +21,7 @@ WalletInfo::WalletInfo(const headless::GetHDWalletInfoResponse &response)
 {
    rootId_ = QString::fromStdString(response.rootwalletid());
    for (int i = 0; i < response.enctypes_size(); ++i) {
-      encTypes_.push_back(static_cast<bs::wallet::QEncryptionType>(response.enctypes(i)));
+      encTypes_.push_back(static_cast<bs::wallet::EncryptionType>(response.enctypes(i)));
    }
    for (int i = 0; i < response.enckeys_size(); ++i) {
       encKeys_.push_back(QString::fromStdString(response.enckeys(i)));
@@ -43,7 +33,7 @@ WalletInfo::WalletInfo(const headless::PasswordRequest &request)
 {
    setRootId(request.walletid());
    for (int i = 0; i < request.enctypes_size(); ++i) {
-      encTypes_.push_back(static_cast<bs::wallet::QEncryptionType>(request.enctypes(i)));
+      encTypes_.push_back(static_cast<bs::wallet::EncryptionType>(request.enctypes(i)));
    }
    for (int i = 0; i < request.enckeys_size(); ++i) {
       encKeys_.push_back(QString::fromStdString(request.enckeys(i)));
@@ -163,9 +153,9 @@ void WalletInfo::setRootId(const QString &rootId)
    emit walletChanged();
 }
 
-QEncryptionType WalletInfo::encType()
+EncryptionType WalletInfo::encType()
 {
-   return encTypes_.isEmpty() ? bs::wallet::QEncryptionType::Unencrypted : encTypes_.at(0);
+   return encTypes_.isEmpty() ? bs::wallet::EncryptionType::Unencrypted : encTypes_.at(0);
 }
 
 QString WalletInfo::email() const
@@ -189,7 +179,7 @@ void WalletInfo::setKeyRank(const bs::wallet::KeyRank &keyRank)
 bool WalletInfo::isEidAuthOnly() const
 {
    for (auto encType : encTypes()) {
-      if (encType != QEncryptionType::Auth) {
+      if (encType != EncryptionType::Auth) {
          return false;
       }
    }
@@ -209,39 +199,12 @@ void WalletInfo::setEncTypes(const std::vector<EncryptionType> &encTypes)
 {
    encTypes_.clear();
    for (const EncryptionType &encType : encTypes) {
-      encTypes_.push_back(static_cast<bs::wallet::QEncryptionType>(encType));
+      encTypes_.push_back(encType);
    }
    emit walletChanged();
 }
 
-//void WalletInfo::setPasswordData(const QList<QPasswordData> &passwordData)
-//{
-//   std::vector<PasswordData> pwData;
-//   pwData.assign(passwordData.constBegin(), passwordData.constEnd());
-//   setPasswordData(pwData);
-////   encKeys_.clear();
-////   encTypes_.clear();
-
-////   bool isAuth = false;
-////   bool isPassword = false;
-////   for (const QPasswordData &pw : passwordData) {
-////      encKeys_.push_back(pw.qEncKey());
-////      if (pw.qEncType() == QEncryptionType::Auth)
-////         isAuth = true;
-////      if (pw.qEncType() == QEncryptionType::Password)
-////         isPassword = true;
-////   }
-
-////   if (isAuth)
-////      encTypes_.append(QEncryptionType::Auth);
-
-////   if (isPassword)
-////      encTypes_.append(QEncryptionType::Password);
-
-////   emit walletChanged();
-//}
-
-void WalletInfo::setPasswordData(const std::vector<QPasswordData> &passwordData)
+void WalletInfo::setPasswordData(const std::vector<PasswordData> &passwordData)
 {
    encKeys_.clear();
    encTypes_.clear();
@@ -257,10 +220,10 @@ void WalletInfo::setPasswordData(const std::vector<QPasswordData> &passwordData)
    }
 
    if (isAuth)
-      encTypes_.append(QEncryptionType::Auth);
+      encTypes_.append(EncryptionType::Auth);
 
    if (isPassword)
-      encTypes_.append(QEncryptionType::Password);
+      encTypes_.append(EncryptionType::Password);
 
    emit walletChanged();
 }
@@ -271,7 +234,7 @@ void WalletInfo::setEncKeys(const QList<QString> &encKeys)
    emit walletChanged();
 }
 
-void WalletInfo::setEncTypes(const QList<QEncryptionType> &encTypes)
+void WalletInfo::setEncTypes(const QList<EncryptionType> &encTypes)
 {
    encTypes_ = encTypes;
    emit walletChanged();
@@ -285,61 +248,3 @@ void WalletInfo::setName(const QString &name)
    name_ = name;
    emit walletChanged();
 }
-
-QSeed QSeed::fromPaperKey(const QString &key, QNetworkType netType)
-{
-   QSeed seed;
-   try {
-      const auto seedLines = key.split(QLatin1String("\n"), QString::SkipEmptyParts);
-      if (seedLines.count() == 2) {
-         EasyCoDec::Data easyData = { seedLines[0].toStdString(), seedLines[1].toStdString() };
-         seed = bs::wallet::Seed::fromEasyCodeChecksum(easyData, bs::wallet::fromQNetworkType(netType));
-      }
-      else if (seedLines.count() == 4) {
-         EasyCoDec::Data easyData = { seedLines[0].toStdString(), seedLines[1].toStdString() };
-         EasyCoDec::Data edChainCode = { seedLines[2].toStdString(), seedLines[3].toStdString() };
-         seed = bs::wallet::Seed::fromEasyCodeChecksum(easyData, edChainCode, bs::wallet::fromQNetworkType(netType));
-      }
-      else {
-         seed.setSeed(key.toStdString());
-      }
-   }
-   catch (const std::exception &e) {
-      seed.lastError_ = tr("Failed to parse wallet key: %1").arg(QLatin1String(e.what()));
-      return seed;
-   }
-
-   return seed;
-}
-
-QSeed QSeed::fromDigitalBackup(const QString &filename, QNetworkType netType)
-{
-   QSeed seed;
-
-   QFile file(filename);
-   if (!file.exists()) {
-      seed.lastError_ = tr("Digital Backup file %1 doesn't exist").arg(filename);
-      return seed;
-   }
-   if (file.open(QIODevice::ReadOnly)) {
-      QByteArray data = file.readAll();
-      const auto wdb = WalletBackupFile::Deserialize(std::string(data.data(), data.size()));
-      if (wdb.id.empty()) {
-         seed.lastError_ = tr("Digital Backup file %1 corrupted").arg(filename);
-      }
-      else {
-         seed = bs::wallet::Seed::fromEasyCodeChecksum(wdb.seed, wdb.chainCode, bs::wallet::fromQNetworkType(netType));
-      }
-   }
-   else {
-      seed.lastError_ = tr("Failed to read Digital Backup file %1").arg(filename);
-   }
-
-   return seed;
-}
-
-QString QSeed::lastError() const
-{
-   return lastError_;
-}
-

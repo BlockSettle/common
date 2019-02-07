@@ -153,7 +153,7 @@ void ImportWalletDialog::importWallet()
       return;
    }
 
-   std::vector<bs::wallet::QPasswordData> pwData = ui_->widgetCreateKeys->passwordData();
+   std::vector<bs::wallet::PasswordData> pwData = ui_->widgetCreateKeys->passwordData();
 
    // request eid auth if it's selected
    if (ui_->widgetCreateKeys->passwordData()[0].encType == bs::wallet::EncryptionType::Auth) {
@@ -172,7 +172,6 @@ void ImportWalletDialog::importWallet()
       if (!result) {
          return;
       }
-      //walletInfo_.setEncKeys(QList<QString>() << ui_->widgetCreateKeys->passwordData().at(0).qEncKey());
 
       walletInfo_.setPasswordData(dialog.passwordData());
       pwData = dialog.passwordData();
@@ -182,18 +181,6 @@ void ImportWalletDialog::importWallet()
          , QObject::tr("Please check the password"), this);
       messageBox.exec();
    }
-
-
-//   walletName_ = ui_->lineEditWalletName->text();
-//   const QString &walletDescription = ui_->lineEditDescription->text();
-//   std::vector<bs::wallet::PasswordData> keys;
-
-//   bool result = checkNewWalletValidity(walletsMgr_.get(), walletName_, walletId_
-//      , ui_->widgetCreateKeys, &keys, appSettings_, this);
-//   if (!result) {
-//      return;
-//   }
-
 
 
    try {

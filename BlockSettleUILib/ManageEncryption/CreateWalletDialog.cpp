@@ -65,9 +65,6 @@ CreateWalletDialog::CreateWalletDialog(const std::shared_ptr<WalletsManager>& wa
 
    // for eid wallet signing suggest email used for login into app
 
-//   ui_->widgetCreateKeys->init(AutheIDClient::ActivateWallet
-//      , walletId_, username, appSettings);
-
    ui_->widgetCreateKeys->init(AutheIDClient::ActivateWallet
       , walletInfo_, WalletKeyWidget::UseType::ChangeAuthForDialog, appSettings, logger);
 
@@ -109,7 +106,7 @@ void CreateWalletDialog::createWallet()
       return;
    }
 
-   std::vector<bs::wallet::QPasswordData> pwData = ui_->widgetCreateKeys->passwordData();
+   std::vector<bs::wallet::PasswordData> pwData = ui_->widgetCreateKeys->passwordData();
 
    // request eid auth if it's selected
    if (ui_->widgetCreateKeys->passwordData()[0].encType == bs::wallet::EncryptionType::Auth) {
@@ -128,7 +125,6 @@ void CreateWalletDialog::createWallet()
       if (!result) {
          return;
       }
-      //walletInfo_.setEncKeys(QList<QString>() << ui_->widgetCreateKeys->passwordData().at(0).qEncKey());
 
       walletInfo_.setPasswordData(dialog.passwordData());
       pwData = dialog.passwordData();
@@ -209,69 +205,4 @@ void CreateWalletDialog::reject()
 
    ui_->widgetCreateKeys->cancel();
    QDialog::reject();
-}
-
-bool checkNewWalletValidity(WalletsManager* walletsManager
-   , const bs::hd::WalletInfo &walletInfo
-   , WalletKeysCreateWidget* widgetCreateKeys
-   , std::vector<bs::wallet::PasswordData>* keys
-   , const std::shared_ptr<ApplicationSettings> &appSettings
-   , QWidget* parent)
-{
-   //*keys = widgetCreateKeys->passwordData();
-//   const auto k = widgetCreateKeys->passwordData();
-//   keys->assign(k.cbegin(), k.cend());
-
-//   if (walletsManager->WalletNameExists(walletInfo.name().toStdString())) {
-//      BSMessageBox messageBox(BSMessageBox::critical, QObject::tr("Invalid wallet name")
-//         , QObject::tr("Wallet with this name already exists"), parent);
-//      messageBox.exec();
-//      return false;
-//   }
-
-
-
-
-//   if (!keys->empty() && keys->at(0).encType == bs::wallet::EncryptionType::Auth) {
-//      if (keys->at(0).encKey.isNull()) {
-//         BSMessageBox messageBox(BSMessageBox::critical, QObject::tr("Invalid Auth eID")
-//            , QObject::tr("Please check Auth eID Email"), parent);
-//         messageBox.exec();
-//         return false;
-//      }
-
-//      EnterWalletPassword dialog(AutheIDClient::ActivateWallet, parent);
-////      dialog.init(walletId, widgetCreateKeys->keyRank(), *keys
-////         , appSettings, QObject::tr("Activate Auth eID Signing"), QObject::tr("Auth eID"));
-
-//      dialog.init(walletId, widgetCreateKeys->keyRank(), *keys
-//         , appSettings, QObject::tr("Activate Auth eID Signing"), QObject::tr("Auth eID"));
-//      int result = dialog.exec();
-//      if (!result) {
-//         return false;
-//      }
-
-//      keys->at(0).encKey = dialog.getEncKey(0);
-//      keys->at(0).password = dialog.getPassword();
-
-//   }
-//   else if (!widgetCreateKeys->isValid()) {
-//      BSMessageBox messageBox(BSMessageBox::critical, QObject::tr("Invalid password")
-//         , QObject::tr("Please check the password"), parent);
-//      messageBox.exec();
-//      return false;
-//   }
-
-
-
-
-
-//   WalletPasswordVerifyDialog verifyDialog(appSettings, parent);
-//   verifyDialog.init(walletInfo, *keys, widgetCreateKeys->keyRank());
-//   int result = verifyDialog.exec();
-//   if (!result) {
-//      return false;
-//   }
-
-   return true;
 }

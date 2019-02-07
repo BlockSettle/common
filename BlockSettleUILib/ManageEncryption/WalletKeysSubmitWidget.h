@@ -54,8 +54,8 @@ public:
    void suspend() { suspended_ = true; }
    void resume();
 
-   bs::wallet::QPasswordData passwordData(int keyIndex) const { return pwdData_.at(keyIndex); }
-   std::vector<bs::wallet::QPasswordData> passwordData() const { return pwdData_; }
+   bs::wallet::PasswordData passwordData(int keyIndex) const { return pwdData_.at(keyIndex); }
+   std::vector<bs::wallet::PasswordData> passwordData() const { return pwdData_; }
 
 signals:
    void keyChanged();
@@ -65,7 +65,7 @@ signals:
 
 public slots:
    void setFocus();
-   void onPasswordDataChanged(int index, bs::wallet::QPasswordData passwordData);
+   void onPasswordDataChanged(int index, bs::wallet::PasswordData passwordData);
 
 private:
    void addKey(int encKeyIndex, const QString &prompt = QString());
@@ -74,7 +74,7 @@ private:
 private:
    std::unique_ptr<Ui::WalletKeysSubmitWidget> ui_;
    std::vector<WalletKeyWidget *> widgets_;
-   std::vector<bs::wallet::QPasswordData> pwdData_;
+   std::vector<bs::wallet::PasswordData> pwdData_;
    std::atomic_bool suspended_;
    Flags flags_{NoFlag};
    std::shared_ptr<ApplicationSettings> appSettings_;

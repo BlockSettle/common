@@ -34,9 +34,9 @@ public:
       , const QString &title = QString());
 
 
-   bs::wallet::QPasswordData passwordData(int keyIndex) const { return ui_->widgetSubmitKeys->passwordData(keyIndex); }
+   bs::wallet::PasswordData passwordData(int keyIndex) const { return ui_->widgetSubmitKeys->passwordData(keyIndex); }
    SecureBinaryData resultingKey() const;
-   std::vector<bs::wallet::QPasswordData> passwordData() const { return ui_->widgetSubmitKeys->passwordData(); }
+   std::vector<bs::wallet::PasswordData> passwordData() const { return ui_->widgetSubmitKeys->passwordData(); }
 
 private slots:
    void updateState();
