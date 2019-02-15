@@ -52,7 +52,7 @@ bool bs::wallet::AssetEntryComment::deserialize(BinaryRefReader brr)
 }
 
 
-void bs::wallet::MetaData::set(const shared_ptr<AssetEntryMeta> &value)
+void bs::wallet::MetaData::set(const std::shared_ptr<AssetEntryMeta> &value)
 {
    data_[value->key()] = value;
 }
@@ -214,7 +214,7 @@ Signer bs::wallet::TXSignRequest::getSigner() const
 // Estimate the TX virtual size. This will not be exact, as there's no sig yet.
 // Round up the inputs to guarantee that we meet RBF's relay fee policy.
 size_t bs::wallet::estimateTXVirtSize(const std::vector<UTXO> &inputs
-              , const std::vector<std::shared_ptr<ScriptRecipient>> &recipients)
+              , const std::map<unsigned int, std::shared_ptr<ScriptRecipient>> &recipients)
 {
    if (inputs.empty() || recipients.empty()) {
       return 0;
@@ -225,7 +225,7 @@ size_t bs::wallet::estimateTXVirtSize(const std::vector<UTXO> &inputs
 
    // Get the output virtual sizes from Armory. Assume these will be accurate.
    for (const auto &recip : recipients) {
-      result += recip->getSize();
+      result += recip.second->getSize();
    }
 
    // Estimate the virtual size for the inputs. Because we can't analyze the
@@ -262,7 +262,7 @@ size_t bs::wallet::estimateTXVirtSize(const std::vector<UTXO> &inputs
          break;
       }
    }
-   return result;
+   return result * 1.4; // rough approximation to Armory's calculations
 }
 
 size_t bs::wallet::TXSignRequest::estimateTxVirtSize() const
@@ -270,9 +270,12 @@ size_t bs::wallet::TXSignRequest::estimateTxVirtSize() const
    if (!isValid()) {
       return 0;
    }
-   auto recipCopy = recipients;
+   std::map<unsigned int, std::shared_ptr<ScriptRecipient>> recipCopy;
+   for (unsigned int i = 0; i < recipients.size(); ++i) {
+      recipCopy[i] = recipients[i];
+   }
    if (change.value) {
-      recipCopy.push_back(change.address.getRecipient(change.value));
+      recipCopy[recipients.size()] = change.address.getRecipient(change.value);
    }
    return bs::wallet::estimateTXVirtSize(inputs, recipCopy);
 }
@@ -296,7 +299,11 @@ size_t bs::wallet::TXMultiSignRequest::estimateTxVirtSize() const
    for (const auto &input : inputs) {
       inputsList.push_back(input.first);
    }
-   return bs::wallet::estimateTXVirtSize(inputsList, recipients);
+   std::map<unsigned int, std::shared_ptr<ScriptRecipient>> recipCopy;
+   for (unsigned int i = 0; i < recipients.size(); ++i) {
+      recipCopy[i] = recipients[i];
+   }
+   return bs::wallet::estimateTXVirtSize(inputsList, recipCopy);
 }
 
 
@@ -343,7 +350,8 @@ SecureBinaryData bs::wallet::Seed::decodeEasyCodeChecksum(const EasyCoDec::Data 
    return (privKeyHalf1 + privKeyHalf2);
 }
 
-BinaryData bs::wallet::Seed::decodeEasyCodeLineChecksum(const string& easyCodeHalf, size_t ckSumSize, size_t keyValueSize)
+BinaryData bs::wallet::Seed::decodeEasyCodeLineChecksum(
+   const std::string& easyCodeHalf, size_t ckSumSize, size_t keyValueSize)
 {
     const auto& hexStr = EasyCoDec().toHex(easyCodeHalf);
     const auto keyHalfWithChecksum = BinaryData::CreateFromHex(hexStr);
@@ -405,7 +413,7 @@ std::string bs::Wallet::GetAddressComment(const bs::Address &address) const
    if ((aeMeta == nullptr) || (aeMeta->type() != bs::wallet::AssetEntryMeta::Comment)) {
       return "";
    }
-   const auto aeComment = dynamic_pointer_cast<bs::wallet::AssetEntryComment>(aeMeta);
+   const auto aeComment = std::dynamic_pointer_cast<bs::wallet::AssetEntryComment>(aeMeta);
    if (aeComment == nullptr) {
       return "";
    }
@@ -429,7 +437,7 @@ std::string bs::Wallet::GetTransactionComment(const BinaryData &txHash)
    if ((aeMeta == nullptr) || (aeMeta->type() != bs::wallet::AssetEntryMeta::Comment)) {
       return {};
    }
-   const auto aeComment = dynamic_pointer_cast<bs::wallet::AssetEntryComment>(aeMeta);
+   const auto aeComment = std::dynamic_pointer_cast<bs::wallet::AssetEntryComment>(aeMeta);
    return aeComment ? aeComment->comment() : std::string{};
 }
 
@@ -1038,6 +1046,9 @@ void bs::Wallet::UnregisterWallet()
    spendableCallbacks_.clear();
    zcListCallbacks_.clear();
    historyCache_.clear();
+
+   RegisterWallet();
+   btcWallet_.reset();
 }
 
 bs::wallet::TXSignRequest bs::Wallet::CreateTXRequest(const std::vector<UTXO> &inputs

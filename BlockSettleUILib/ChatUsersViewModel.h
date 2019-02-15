@@ -1,6 +1,5 @@
-#ifndef __CHAT_USERS_VIEW_MODEL__
-#define __CHAT_USERS_VIEW_MODEL__
-
+#ifndef CHAT_USERS_VIEW_MODEL
+#define CHAT_USERS_VIEW_MODEL
 
 #include <QAbstractItemModel>
 #include <QMap>
@@ -8,12 +7,22 @@
 
 #include <memory>
 
+#include "ChatUserData.h"
 
 class ChatUsersViewModel : public QAbstractTableModel
 {
    Q_OBJECT
 
 public:
+
+   enum Role
+   {
+      UserConnectionStatusRole = Qt::UserRole,
+      UserStateRole,
+      UserNameRole,
+      HaveNewMessageRole
+   };
+
    ChatUsersViewModel(QObject* parent = nullptr);
    ~ChatUsersViewModel() noexcept override = default;
 
@@ -33,13 +42,11 @@ public:
    QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
 
 public slots:
-   void onUsersReplace(const std::vector<std::string> &);
-   void onUsersAdd(const std::vector<std::string> &);
-   void onUsersDel(const std::vector<std::string> &);
+   void onUserDataListChanged(const ChatUserDataListPtr &chatUserDataListPtr);
 
 private:
-   std::vector<std::string>   users_;
+   ChatUserDataListPtr _users;
 };
 
 
-#endif
+#endif // CHAT_USERS_VIEW_MODEL

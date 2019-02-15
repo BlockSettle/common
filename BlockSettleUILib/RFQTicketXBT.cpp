@@ -82,7 +82,7 @@ void RFQTicketXBT::setTransactionData()
 {
    if (!transactionData_) {
       transactionData_ = std::make_shared<TransactionData>([this]() { emit update(); }
-         , true, true);
+         , nullptr, true, true);
    }
 
    if (walletsManager_ != nullptr) {
@@ -90,7 +90,7 @@ void RFQTicketXBT::setTransactionData()
          if (!transactionData_) {
             return;
          }
-         transactionData_->SetFeePerByte(feePerByte);
+         transactionData_->setFeePerByte(feePerByte);
          setWallets();
       };
       walletsManager_->estimatedFeePerByte(2, cbFee, this);

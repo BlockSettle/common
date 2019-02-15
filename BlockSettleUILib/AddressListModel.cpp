@@ -162,9 +162,10 @@ void AddressListModel::updateWalletData()
                  ++j) {
                addressRows_[j].transactionCount = (*addrTxNs)[j];
             }
-            emit dataChanged(index(0, ColumnTxCount)
-                             , index(addressRows_.size()-1, ColumnTxCount));
-            emit updated();
+            QMetaObject::invokeMethod(this, [this] {
+               emit dataChanged(index(0, ColumnTxCount)
+                  , index(addressRows_.size() - 1, ColumnTxCount));
+            });
          }
       };
 
@@ -189,9 +190,10 @@ void AddressListModel::updateWalletData()
                  ++j) {
                addressRows_[j].balance = (*addrBalances)[j];
             }
-            emit dataChanged(index(0, ColumnBalance)
-                             , index(addressRows_.size() - 1, ColumnBalance));
-            emit updated();
+            QMetaObject::invokeMethod(this, [this] {
+               emit dataChanged(index(0, ColumnBalance)
+                  , index(addressRows_.size() - 1, ColumnBalance));
+            });
          }
       };
 
@@ -300,8 +302,17 @@ QVariant AddressListModel::dataForRow(const AddressListModel::AddressRow &row, i
       case AddressListModel::ColumnAddress:
          return row.getAddress();
       case AddressListModel::ColumnBalance:
-         return (row.wltType == bs::wallet::Type::ColorCoin) ? UiUtils::displayCCAmount(row.balance)
-            : UiUtils::displayAmount(row.balance);
+         if (row.wltType == bs::wallet::Type::ColorCoin) {
+            if (wallets_.size() == 1) {
+               return UiUtils::displayCCAmount(row.balance);
+            }
+            else {
+               return {};
+            }
+         }
+         else {
+            return UiUtils::displayAmount(row.balance);
+         }
       case AddressListModel::ColumnTxCount:
          return row.transactionCount;
       case AddressListModel::ColumnComment:
@@ -363,9 +374,9 @@ QVariant AddressListModel::data(const QModelIndex& index, int role) const
          break;
 
       case Qt::TextColorRole:
-         if (!row.isExternal) {
+/*         if (!row.isExternal) {
             return QColor(Qt::gray);
-         }
+         }*/   // don't remove completely in case someone decides to revert back
          break;
 
       default:

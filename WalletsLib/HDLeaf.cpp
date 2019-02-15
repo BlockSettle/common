@@ -291,7 +291,7 @@ void hd::Leaf::init(const std::shared_ptr<Node> &node, const hd::Path &path, Nod
    }
 }
 
-void hd::Leaf::onZeroConfReceived(ArmoryConnection::ReqIdType reqId)
+void hd::Leaf::onZeroConfReceived(const std::vector<bs::TXEntry>)
 {
 //!   activateAddressesFromLedger(armory_->getZCentries(reqId));
 }  // if ZC is received, then likely wallet already contains the participating address
@@ -602,6 +602,13 @@ std::set<BinaryData> hd::Leaf::getAddrHashSet()
       result.insert(addr.second.id());
    }
    return result;
+}
+
+void hd::Leaf::UnregisterWallet()
+{
+   addrPrefixedHashes_.clear();
+   addressPool_.clear();
+   Wallet::UnregisterWallet();
 }
 
 bs::Address hd::Leaf::createAddress(AddressEntryType aet, bool isInternal)
@@ -1405,9 +1412,9 @@ void hd::CCLeaf::onStateChanged(ArmoryConnection::State state)
    }
 }
 
-void hd::CCLeaf::onZeroConfReceived(ArmoryConnection::ReqIdType reqId)
+void hd::CCLeaf::onZeroConfReceived(const std::vector<bs::TXEntry> entries)
 {
-   hd::Leaf::onZeroConfReceived(reqId);
+   hd::Leaf::onZeroConfReceived(entries);
    refreshInvalidUTXOs(true);
 }
 

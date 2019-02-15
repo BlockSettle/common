@@ -14,26 +14,26 @@
 #include "AddressListModel.h"
 #include "ApplicationSettings.h"
 #include "AssetManager.h"
-#include "CreateWalletDialog.h"
 #include "HDWallet.h"
-#include "ImportWalletDialog.h"
-#include "ImportWalletTypeDialog.h"
 #include "BSMessageBox.h"
 #include "NewWalletDialog.h"
 #include "NewWalletSeedDialog.h"
-#include "RootWalletPropertiesDialog.h"
 #include "SelectAddressDialog.h"
 #include "SignContainer.h"
-#include "VerifyWalletBackupDialog.h"
-#include "WalletBackupDialog.h"
-#include "WalletDeleteDialog.h"
 #include "WalletImporter.h"
 #include "WalletsManager.h"
 #include "WalletsViewModel.h"
 #include "WalletWarningDialog.h"
 #include "TreeViewWithEnterKey.h"
 #include "NewWalletSeedConfirmDialog.h"
-
+#include "ManageEncryption/VerifyWalletBackupDialog.h"
+#include "ManageEncryption/WalletDeleteDialog.h"
+#include "ManageEncryption/CreateWalletDialog.h"
+#include "ManageEncryption/CreateWalletDialog.h"
+#include "ManageEncryption/ImportWalletDialog.h"
+#include "ManageEncryption/ImportWalletTypeDialog.h"
+#include "ManageEncryption/WalletBackupDialog.h"
+#include "ManageEncryption/RootWalletPropertiesDialog.h"
 
 class AddressSortFilterModel : public QSortFilterProxyModel
 {
@@ -127,11 +127,6 @@ public:
 
    void setFilter(const Filter &filter) {
       filterMode_ = filter;
-      invalidate();
-   }
-
-public slots:
-   void onUpdated() {
       invalidate();
    }
 
@@ -243,7 +238,6 @@ void WalletsWidget::InitWalletsView(const std::string& defaultWalletId)
    addressSortFilterModel_ = new AddressSortFilterModel(this);
    addressSortFilterModel_->setSourceModel(addressModel_);
    addressSortFilterModel_->setSortRole(AddressListModel::SortRole);
-   connect(addressModel_, &AddressListModel::updated, addressSortFilterModel_, &AddressSortFilterModel::onUpdated, Qt::QueuedConnection);
 
    ui->treeViewAddresses->setUniformRowHeights(true);
    ui->treeViewAddresses->setModel(addressSortFilterModel_);
@@ -297,6 +291,9 @@ void WalletsWidget::showWalletProperties(const QModelIndex& index)
 
    const auto &hdWallet = node->hdWallet();
    if (hdWallet != nullptr) {
+//      RootWalletPropertiesDialog(logger_, hdWallet, walletsManager_, armory_, signingContainer_
+//         , walletsModel_, appSettings_, assetManager_, this).exec();
+
       RootWalletPropertiesDialog(logger_, hdWallet, walletsManager_, armory_, signingContainer_
          , walletsModel_, appSettings_, assetManager_, this).exec();
    }
@@ -326,7 +323,13 @@ void WalletsWidget::onAddressContextMenu(const QPoint &p)
 {
    const auto index = addressSortFilterModel_->mapToSource(ui->treeViewAddresses->indexAt(p));
    const auto addressIndex = addressModel_->index(index.row(), static_cast<int>(AddressListModel::ColumnAddress));
-   curAddress_ = bs::Address(addressModel_->data(addressIndex).toString());
+   try {
+      curAddress_ = bs::Address(addressModel_->data(addressIndex, AddressListModel::Role::AddressRole).toString());
+   }
+   catch (const std::exception &) {
+      curAddress_.clear();
+      return;
+   }
    curWallet_ = walletsManager_->GetWalletByAddress(curAddress_);
 
    if (!curWallet_) {
@@ -405,16 +408,16 @@ void WalletsWidget::onNewWallet()
       }
 
       if (newWalletDialog.isCreate()) {
-         CreateNewWallet(false);
+         CreateNewWallet();
       } else if (newWalletDialog.isImport()) {
-         ImportNewWallet(false);
+         ImportNewWallet();
       }
    } else {
-      ImportNewWallet(false);
+      ImportNewWallet();
    }
 }
 
-bool WalletsWidget::CreateNewWallet(bool primary, bool report)
+bool WalletsWidget::CreateNewWallet(bool report)
 {
    NetworkType netType = appSettings_->get<NetworkType>(ApplicationSettings::netType);
 
@@ -439,8 +442,10 @@ bool WalletsWidget::CreateNewWallet(bool primary, bool report)
       return false;
    }
    std::shared_ptr<bs::hd::Wallet> newWallet;
+//   CreateWalletDialog createWalletDialog(walletsManager_, signingContainer_
+//      , appSettings_->GetHomeDir(), walletSeed, walletId, username_, appSettings_, this);
    CreateWalletDialog createWalletDialog(walletsManager_, signingContainer_
-      , appSettings_->GetHomeDir(), walletSeed, walletId, primary, username_, appSettings_, this);
+      , appSettings_->GetHomeDir(), walletSeed, walletId, username_, appSettings_, logger_, this);
    if (createWalletDialog.exec() == QDialog::Accepted) {
       if (createWalletDialog.walletCreated()) {
          newWallet = walletsManager_->GetHDWalletById(walletId);
@@ -465,19 +470,20 @@ bool WalletsWidget::CreateNewWallet(bool primary, bool report)
    }
 }
 
-bool WalletsWidget::ImportNewWallet(bool primary, bool report)
+bool WalletsWidget::ImportNewWallet(bool report)
 {
-   if (primary && assetManager_->privateShares(true).empty()) {
-      BSMessageBox q(BSMessageBox::question, tr("Private Market Import"), tr("Private Market data is missing")
+   bool disablePrimaryImport = false;
+
+   if (!walletsManager_->HasPrimaryWallet() && assetManager_->privateShares(true).empty()) {
+      BSMessageBox q(BSMessageBox::warning, tr("Private Market Import"), tr("Private Market data is missing")
          , tr("You do not have Private Market data available in the BlockSettle Terminal. You must first log "
-            "into your Celer account from the main menu. A successful login will cause the proper data to be "
+            "into the BlockSettle trading network from the main menu. A successful login will cause the proper data to be "
             "automatically downloaded. Without this data, you will be unable to receive your Private Market "
             "balances. Are you absolutely certain that you wish to proceed an import that doesn't include "
             "Private Market data? (Upon receiving the data, you will have to re-import the wallet in order to "
             "use the data.)"), this);
-      if (q.exec() == QDialog::Accepted) {
-         return false;
-      }
+      q.exec();
+      disablePrimaryImport = true;
    }
 
    // if signer is not ready - import WO only
@@ -485,11 +491,19 @@ bool WalletsWidget::ImportNewWallet(bool primary, bool report)
 
    if (importWalletDialog.exec() == QDialog::Accepted) {
       if (importWalletDialog.type() == ImportWalletTypeDialog::Full) {
-         ImportWalletDialog createImportedWallet(walletsManager_, signingContainer_
-            , assetManager_, authMgr_, armory_, importWalletDialog.GetSeedData()
-            , importWalletDialog.GetChainCodeData(), appSettings_
-            , username_, importWalletDialog.GetName(), importWalletDialog.GetDescription()
-            , primary, this);
+         ImportWalletDialog createImportedWallet(walletsManager_
+                                                    , signingContainer_
+                                                    , assetManager_
+                                                    , authMgr_, armory_
+                                                    , importWalletDialog.GetSeedData()
+                                                    , importWalletDialog.GetChainCodeData()
+                                                    , appSettings_
+                                                    , logger_
+                                                    , username_
+                                                    , importWalletDialog.GetName()
+                                                    , importWalletDialog.GetDescription()
+                                                    , disablePrimaryImport
+                                                    , this);
 
          if (createImportedWallet.exec() == QDialog::Accepted) {
             const auto &importer = createImportedWallet.getWalletImporter();
@@ -714,29 +728,4 @@ void WalletsWidget::onDeleteWallet()
    }
    WalletDeleteDialog(wallet, walletsManager_, signingContainer_, appSettings_
                       , logger_, this).exec();
-}
-
-
-bool WalletBackupAndVerify(const std::shared_ptr<bs::hd::Wallet> &wallet
-   , const std::shared_ptr<SignContainer> &container
-   , const std::shared_ptr<ApplicationSettings> &appSettings
-   , const std::shared_ptr<spdlog::logger> &logger
-   , QWidget *parent)
-{
-   if (!wallet) {
-      return false;
-   }
-   WalletBackupDialog walletBackupDialog(wallet, container, appSettings, parent);
-   if (walletBackupDialog.exec() == QDialog::Accepted) {
-      BSMessageBox(BSMessageBox::success, QObject::tr("Backup"), QObject::tr("%1 Backup successfully created")
-         .arg(walletBackupDialog.isDigitalBackup() ? QObject::tr("Digital") : QObject::tr("Paper"))
-            , walletBackupDialog.filePath(), parent).exec();
-      if (!walletBackupDialog.isDigitalBackup()) {
-         VerifyWalletBackupDialog(wallet, logger, parent).exec();
-      }
-      WalletWarningDialog(parent).exec();
-      return true;
-   }
-
-   return false;
 }

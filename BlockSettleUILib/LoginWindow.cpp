@@ -1,61 +1,102 @@
 #include "LoginWindow.h"
 #include "ui_LoginWindow.h"
-#include "AboutDialog.h"
-#include "ApplicationSettings.h"
-#include "UiUtils.h"
 
 #include <QSettings>
 #include <QIcon>
-#include <spdlog/spdlog.h>
 
-LoginWindow::LoginWindow(const std::shared_ptr<ApplicationSettings> &settings, QWidget* parent)
+#include "AboutDialog.h"
+#include "ApplicationSettings.h"
+#include "UiUtils.h"
+#include "BSMessageBox.h"
+#include <spdlog/spdlog.h>
+#include "AutheIDClient.h"
+
+namespace {
+   int kAuthTimeout = 60;
+}
+
+LoginWindow::LoginWindow(const std::shared_ptr<ApplicationSettings> &settings
+                         , const std::shared_ptr<spdlog::logger> &logger
+                         , QWidget* parent)
    : QDialog(parent)
    , ui_(new Ui::LoginWindow())
    , settings_(settings)
-   , autheID_(false)
+   , logger_(logger)
 {
    ui_->setupUi(this);
-   ui_->loginVersionLabel->setText(tr("Version %1").arg(QString::fromStdString(AboutDialog::version())));
+   ui_->progressBar->setMaximum(kAuthTimeout * 2); // update every 0.5 sec
+   const auto version = ui_->loginVersionLabel->text().replace(QLatin1String("{Version}")
+      , tr("Version %1").arg(QString::fromStdString(AboutDialog::version())));
+   ui_->loginVersionLabel->setText(version);
    resize(minimumSize());
 
-   const auto resetLink = ui_->labelResetPassword->text().replace(QLatin1String("{ResetPasswordLink}")
-      , settings->get<QString>(ApplicationSettings::ResetPassword_Url));
-   ui_->labelResetPassword->setText(resetLink);
 
    const auto accountLink = ui_->labelGetAccount->text().replace(QLatin1String("{GetAccountLink}")
       , settings->get<QString>(ApplicationSettings::GetAccount_Url));
    ui_->labelGetAccount->setText(accountLink);
 
-   connect(ui_->pushButtonLogin, &QPushButton::clicked, this, &LoginWindow::onLoginPressed);
-   connect(ui_->lineEditPassword, &QLineEdit::textChanged, this, &LoginWindow::onTextChanged);
    connect(ui_->lineEditUsername, &QLineEdit::textChanged, this, &LoginWindow::onTextChanged);
 
+   ui_->checkBoxRememberUsername->setChecked(settings_->get<bool>(ApplicationSettings::rememberLoginUserName));
+
    const QString username = settings_->get<QString>(ApplicationSettings::celerUsername);
-   if (!username.isEmpty()) {
+   if (!username.isEmpty() && ui_->checkBoxRememberUsername->isChecked()) {
       ui_->lineEditUsername->setText(username);
-      ui_->lineEditPassword->setFocus();
    }
    else {
       ui_->lineEditUsername->setFocus();
    }
 
-   connect(ui_->pushButtonAuth, &QPushButton::clicked, this, &LoginWindow::onAuthPressed);
+   autheIDConnection_ = std::make_shared<AutheIDClient>(logger_, settings_->GetAuthKeys());
+   connect(autheIDConnection_.get(), &AutheIDClient::authSuccess, this, &LoginWindow::onAutheIDDone);
+   connect(autheIDConnection_.get(), &AutheIDClient::failed, this, &LoginWindow::onAutheIDFailed);
+
+#ifdef PRODUCTION_BUILD
+   connect(ui_->signWithEidButton, &QPushButton::clicked, this, &LoginWindow::onAuthPressed);
+#else
+   connect(ui_->signWithEidButton, &QPushButton::clicked, this, &LoginWindow::accept);
+#endif
+
+   timer_.setInterval(500);
+   connect(&timer_, &QTimer::timeout, this, &LoginWindow::onTimer);
 }
 
 LoginWindow::~LoginWindow() = default;
 
-void LoginWindow::onTextChanged()
+void LoginWindow::onTimer()
 {
-   ui_->pushButtonLogin->setEnabled(!(ui_->lineEditPassword->text().isEmpty() || ui_->lineEditUsername->text().isEmpty()));
-   ui_->pushButtonAuth->setEnabled(!ui_->lineEditUsername->text().isEmpty());
+   timeLeft_ -= 0.5;
+   if (timeLeft_ <= 0) {
+      onAutheIDFailed(tr("Timeout"));
+   }
+   else {
+      ui_->progressBar->setValue(timeLeft_ * 2);
+      ui_->labelTimeLeft->setText(tr("%1 seconds left").arg((int)timeLeft_));
+      ui_->progressBar->repaint();
+   }
 }
 
-void LoginWindow::onLoginPressed()
+void LoginWindow::setupLoginPage()
 {
-   if (ui_->checkBoxRememberUsername->isChecked()) {
-      settings_->set(ApplicationSettings::celerUsername, ui_->lineEditUsername->text());
-   }
-   accept();
+   timer_.stop();
+   state_ = Login;
+   timeLeft_ = kAuthTimeout;
+   ui_->signWithEidButton->setText(tr("Sign in with Auth eID"));
+   ui_->stackedWidgetAuth->setCurrentWidget(ui_->pageLogin);
+   ui_->progressBar->setValue(0);
+   ui_->labelTimeLeft->setText(QStringLiteral(""));
+}
+
+void LoginWindow::setupCancelPage()
+{
+   state_ = Cancel;
+   ui_->signWithEidButton->setText(tr("Cancel"));
+   ui_->stackedWidgetAuth->setCurrentWidget(ui_->pageCancel);
+}
+
+void LoginWindow::onTextChanged()
+{
+   ui_->signWithEidButton->setEnabled(!ui_->lineEditUsername->text().isEmpty());
 }
 
 QString LoginWindow::getUsername() const
@@ -63,42 +104,51 @@ QString LoginWindow::getUsername() const
    return ui_->lineEditUsername->text().toLower();
 }
 
-QString LoginWindow::getPassword() const
-{
-   return ui_->lineEditPassword->text();
-}
-
 void LoginWindow::onAuthPressed()
 {
-   autheID_ = true;
+   if (state_ == Login) {
+      if (autheIDConnection_->authenticate(ui_->lineEditUsername->text().toStdString(), settings_)) {
+         setupLoginPage();
+         timer_.start();
+      }
+      else {
+         onAutheIDFailed(tr("Auth eID username was rejected"));
+         autheIDConnection_->cancel();
+      }
+      setupCancelPage();
+   }
+   else {
+      setupLoginPage();
+      autheIDConnection_->cancel();
+   }
+
    if (ui_->checkBoxRememberUsername->isChecked()) {
+      settings_->set(ApplicationSettings::rememberLoginUserName, true);
       settings_->set(ApplicationSettings::celerUsername, ui_->lineEditUsername->text());
    }
-   accept();
-   ui_->pushButtonAuth->setEnabled(false);
-}
-
-void LoginWindow::onAuthSucceeded(const QString &userId, const QString &details)
-{
-   auto palette = ui_->pushButtonAuth->palette();
-   palette.setColor(QPalette::Button, QColor(Qt::green));
-   ui_->pushButtonAuth->setAutoFillBackground(true);
-   ui_->pushButtonAuth->setPalette(palette);
-   ui_->pushButtonAuth->update();
-   ui_->pushButtonAuth->setText(tr("Successfully authenticated"));
-}
-
-void LoginWindow::onAuthFailed(const QString &userId, const QString &text)
-{
-   auto palette = ui_->pushButtonAuth->palette();
-   palette.setColor(QPalette::Button, QColor(Qt::red));
-   ui_->pushButtonAuth->setAutoFillBackground(true);
-   ui_->pushButtonAuth->setPalette(palette);
-   ui_->pushButtonAuth->update();
-   ui_->pushButtonAuth->setText(tr("Auth auth failed: %1").arg(text));
+   else {
+      settings_->set(ApplicationSettings::rememberLoginUserName, false);
+   }
 }
 
 void LoginWindow::onAuthStatusUpdated(const QString &userId, const QString &status)
 {
-   ui_->pushButtonAuth->setText(status);
+   ui_->signWithEidButton->setText(status);
 }
+
+void LoginWindow::onAutheIDDone(const std::string& jwt)
+{
+   jwt_= jwt;
+//   BSMessageBox loginSuccessBox(BSMessageBox::success, tr("Login success"), tr("Login success"), tr("Login success for ") + ui_->lineEditUsername->text(), this);
+//   loginSuccessBox.exec();
+   accept();
+}
+
+void LoginWindow::onAutheIDFailed(const QString &text)
+{
+   setupLoginPage();
+   BSMessageBox loginErrorBox(BSMessageBox::critical, tr("Login failed"), tr("Login failed"), text, this);
+   loginErrorBox.exec();
+}
+
+

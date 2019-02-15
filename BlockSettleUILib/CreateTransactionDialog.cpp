@@ -6,6 +6,7 @@
 #include <QDebug>
 #include <QCheckBox>
 #include <QComboBox>
+#include <QCoreApplication>
 #include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
@@ -66,11 +67,21 @@ CreateTransactionDialog::~CreateTransactionDialog() noexcept
 
 void CreateTransactionDialog::init()
 {
-   transactionData_ = std::make_shared<TransactionData>([this]() {
-      QMetaObject::invokeMethod(this, [this] {
-         onTransactionUpdated();
-      });
-   });
+   if (!transactionData_) {
+      transactionData_ = std::make_shared<TransactionData>([this]() {
+         QMetaObject::invokeMethod(this, [this] {
+            onTransactionUpdated();
+         });
+      }, logger_);
+   }
+   else {
+      const auto recipients = transactionData_->allRecipientIds();
+      for (const auto &recipId : recipients) {
+         transactionData_->RemoveRecipient(recipId);
+      }
+      onTransactionUpdated();
+      transactionData_->SetCallback([this] { onTransactionUpdated(); });
+   }
 
    xbtValidator_ = new XbtAmountValidator(this);
    lineEditAmount()->setValidator(xbtValidator_);
@@ -232,7 +243,7 @@ void CreateTransactionDialog::onFeeSuggestionsLoaded(const std::map<unsigned int
 
 void CreateTransactionDialog::feeSelectionChanged(int currentIndex)
 {
-   transactionData_->SetFeePerByte(comboBoxFeeSuggestions()->itemData(currentIndex).toFloat());
+   transactionData_->setFeePerByte(comboBoxFeeSuggestions()->itemData(currentIndex).toFloat());
 }
 
 void CreateTransactionDialog::selectedWalletChanged(int, bool resetInputs, const std::function<void()> &cbInputsReset)
@@ -264,8 +275,10 @@ void CreateTransactionDialog::onTransactionUpdated()
    labelAmount()->setText(UiUtils::displayAmount(summary.selectedBalance));
    labelTxInputs()->setText(summary.isAutoSelected ? tr("Auto (%1)").arg(QString::number(summary.usedTransactions))
       : QString::number(summary.usedTransactions));
+   labelTxOutputs()->setText(QString::number(summary.outputsCount));
    labelEstimatedFee()->setText(UiUtils::displayAmount(summary.totalFee));
-   labelTotalAmount()->setText(UiUtils::displayAmount(UiUtils::amountToBtc(summary.balanceToSpend) + UiUtils::amountToBtc(summary.totalFee)));
+   labelTotalAmount()->setText(UiUtils::displayAmount(summary.balanceToSpend + UiUtils::amountToBtc(summary.totalFee)));
+   labelTXAmount()->setText(UiUtils::displayAmount(summary.balanceToSpend));
    if (labelTxSize()) {
       labelTxSize()->setText(QString::number(summary.txVirtSize));
    }
@@ -276,7 +289,7 @@ void CreateTransactionDialog::onTransactionUpdated()
 
    if (changeLabel() != nullptr) {
       if (summary.hasChange) {
-         changeLabel()->setText(UiUtils::displayAmount(summary.selectedBalance - UiUtils::amountToBtc(summary.balanceToSpend) - UiUtils::amountToBtc(summary.totalFee)));
+         changeLabel()->setText(UiUtils::displayAmount(summary.selectedBalance - summary.balanceToSpend - UiUtils::amountToBtc(summary.totalFee)));
       } else {
          changeLabel()->setText(UiUtils::displayAmount(0.0));
       }
@@ -287,10 +300,18 @@ void CreateTransactionDialog::onTransactionUpdated()
 
 void CreateTransactionDialog::onMaxPressed()
 {
-   auto maxValue = transactionData_->CalculateMaxAmount(lineEditAddress()->text().toStdString());
+   pushButtonMax()->setEnabled(false);
+   lineEditAmount()->setEnabled(false);
+   QCoreApplication::processEvents();
+
+   const bs::Address outputAddr(lineEditAddress()->text().trimmed());
+   const auto maxValue = transactionData_->CalculateMaxAmount(outputAddr)
+      - transactionData_->GetTotalRecipientsAmount();
    if (maxValue > 0) {
       lineEditAmount()->setText(UiUtils::displayAmount(maxValue));
    }
+   pushButtonMax()->setEnabled(true);
+   lineEditAmount()->setEnabled(true);
 }
 
 void CreateTransactionDialog::onTXSigned(unsigned int id, BinaryData signedTX, std::string error,

@@ -240,6 +240,7 @@ void TransactionsViewModel::init()
       connect(armory_.get(), &ArmoryConnection::newBlock, this, &TransactionsViewModel::updatePage, Qt::QueuedConnection);
    }
    connect(walletsManager_.get(), &WalletsManager::walletChanged, this, &TransactionsViewModel::refresh, Qt::QueuedConnection);
+   connect(walletsManager_.get(), &WalletsManager::walletDeleted, this, &TransactionsViewModel::cleanRefresh, Qt::QueuedConnection);
    connect(walletsManager_.get(), &WalletsManager::walletImportFinished, this, &TransactionsViewModel::refresh, Qt::QueuedConnection);
    connect(walletsManager_.get(), &WalletsManager::walletsReady, this, &TransactionsViewModel::updatePage, Qt::QueuedConnection);
    connect(walletsManager_.get(), &WalletsManager::newTransactions, this, &TransactionsViewModel::onNewTransactions, Qt::QueuedConnection);
@@ -368,6 +369,12 @@ void TransactionsViewModel::refresh()
    updatePage();
 }
 
+void TransactionsViewModel::cleanRefresh()
+{
+   clear();
+   updatePage();
+}
+
 void TransactionsViewModel::updatePage()
 {
    if (allWallets_) {
@@ -436,14 +443,7 @@ bool TransactionsViewModel::txKeyExists(const std::string &key)
 
 void TransactionsViewModel::onNewTransactions(std::vector<bs::TXEntry> page)
 {
-   pendingNewItems_.insert(pendingNewItems_.end(), page.begin(), page.end());
-   if (!initialLoadCompleted_) {
-      return;
-   }
-   initialLoadCompleted_ = false;
-   updateTransactionsPage(pendingNewItems_);
-   pendingNewItems_.clear();
-   initialLoadCompleted_ = true;
+   updateTransactionsPage(page);
 }
 
 static bool isChildOf(TransactionPtr child, TransactionPtr parent)
@@ -577,7 +577,6 @@ std::pair<size_t, size_t> TransactionsViewModel::updateTransactionsPage(const st
    };
 
    const auto newItemsCopy = *newItems;
-   const auto sizeNew = newItemsCopy.size();
    if (!newItemsCopy.empty()) {
       for (auto item : newItemsCopy) {
          updateTransactionDetails(item.second.first, cbInited);
@@ -590,7 +589,7 @@ std::pair<size_t, size_t> TransactionsViewModel::updateTransactionsPage(const st
    if (!updatedItems->empty()) {
       updateBlockHeight(*updatedItems);
    }
-   return { sizeNew, updatedItems->size() };
+   return { newItemsCopy.size(), updatedItems->size() };
 }
 
 void TransactionsViewModel::updateBlockHeight(const std::vector<std::shared_ptr<TransactionsViewItem>> &updItems)
@@ -651,14 +650,18 @@ void TransactionsViewModel::loadLedgerEntries()
          auto inPageCnt = pageCnt.get();
          emit initProgress(0, inPageCnt * 2);
          for (uint64_t pageId = 0; pageId < inPageCnt; ++pageId) {
+            if (stopped_) {
+               logger_->debug("[TransactionsViewModel::loadLedgerEntries] stopped");
+               break;
+            }
             const auto &cbLedger = [this, pageId, inPageCnt]
                (ReturnMessage<std::vector<ClientClasses::LedgerEntry>> entries)->void {
                try {
                  auto le = entries.get();
-                 rawData_[pageId] = bs::convertTXEntries(le);
+                 rawData_[pageId] = bs::TXEntry::fromLedgerEntries(le);
                  emit updateProgress((int)pageId);
                }
-               catch (exception& e) {
+               catch (std::exception& e) {
                   logger_->error("[TransactionsViewModel::loadLedgerEntries] " \
                      "Return data error (getPageCount) - {}", e.what());
                }

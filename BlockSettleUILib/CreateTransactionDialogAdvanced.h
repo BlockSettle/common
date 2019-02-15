@@ -35,7 +35,8 @@ public:
    CreateTransactionDialogAdvanced(const std::shared_ptr<ArmoryConnection> &
       , const std::shared_ptr<WalletsManager> &, const std::shared_ptr<SignContainer> &
       , bool loadFeeSuggestions, const std::shared_ptr<spdlog::logger>& logger
-      , QWidget* parent);
+      , const std::shared_ptr<TransactionData> &
+      , QWidget* parent = nullptr);
    ~CreateTransactionDialogAdvanced() override;
 
    void preSetAddress(const QString& address);
@@ -61,6 +62,9 @@ protected:
    QLabel *labelTxSize() const override;
    QPushButton *pushButtonCreate() const override;
    QPushButton *pushButtonCancel() const override;
+
+   QLabel* labelTXAmount() const override;
+   QLabel* labelTxOutputs() const override;
 
    virtual QLabel *feePerByteLabel() const override;
    virtual QLabel *changeLabel() const override;
@@ -94,6 +98,7 @@ protected slots:
 private slots:
    void updateManualFeeControls();
    void setTxFees();
+   void onOutputsInserted(const QModelIndex &parent, int first, int last);
 
 private:
    void clear() override;
@@ -102,10 +107,14 @@ private:
    void setRBFinputs(const Tx &, const std::shared_ptr<bs::Wallet> &);
    void setCPFPinputs(const Tx &, const std::shared_ptr<bs::Wallet> &);
 
+   bool isCurrentAmountValid() const;
    void validateAddOutputButton();
    Q_INVOKABLE void validateCreateButton();
 
-   void AddRecipient(const bs::Address &, double amount, bool isMax = false);
+   unsigned int AddRecipient(const bs::Address &, double amount, bool isMax = false);
+   void UpdateRecipientAmount(unsigned int recipId, double amount, bool isMax = false);
+   bool FixRecipientsAmount();
+   void onOutputRemoved();
 
    void AddManualFeeEntries(float feePerByte, float totalFee);
    void SetMinimumFee(float totalFee, float feePerByte = 0);
@@ -115,7 +124,7 @@ private:
    void SetInputs(const std::vector<UTXO> &);
    void disableOutputsEditing();
    void disableInputSelection();
-   void disableFeeChanging();
+   void enableFeeChanging(bool flag = true);
    void SetFixedChangeAddress(const QString& changeAddress);
    void SetPredefinedFee(const int64_t& manualFee);
    void setUnchangeableTx();
@@ -129,8 +138,8 @@ private:
 private:
    std::unique_ptr<Ui::CreateTransactionDialogAdvanced> ui_;
 
-   bool     currentAddressValid_ = false;
-   double   currentValue_ = 0;
+   bs::Address currentAddress_;
+   double      currentValue_ = 0;
    bool     isRBF_ = false;
    bool     allowAutoSelInputs_ = true;
 

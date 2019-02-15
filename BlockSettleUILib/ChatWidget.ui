@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>940</width>
-    <height>633</height>
+    <width>1006</width>
+    <height>666</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -98,7 +98,7 @@
         <number>0</number>
        </property>
        <item>
-        <widget class="QFrame" name="roomsFrame">
+        <widget class="QFrame" name="usersFrame">
          <property name="headerPanel" stdset="0">
           <bool>false</bool>
          </property>
@@ -119,7 +119,7 @@
            <number>0</number>
           </property>
           <item>
-           <widget class="QLabel" name="label">
+           <widget class="QLabel" name="label_3">
             <property name="minimumSize">
              <size>
               <width>0</width>
@@ -138,7 +138,7 @@
              </font>
             </property>
             <property name="text">
-             <string>CHAT ROOMS</string>
+             <string>USERS</string>
             </property>
             <property name="alignment">
              <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
@@ -152,29 +152,105 @@
            </widget>
           </item>
           <item>
-           <widget class="QTreeView" name="treeView_ChatRooms">
-            <property name="indentation">
-             <number>5</number>
+           <widget class="ChatSearchLineEdit" name="chatSearchLineEdit">
+            <property name="locale">
+             <locale language="English" country="UnitedStates"/>
             </property>
-            <property name="uniformRowHeights">
+            <property name="placeholderText">
+             <string>Search...</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="chatUsersVerticalSpacer">
+            <property name="orientation">
+             <enum>Qt::Vertical</enum>
+            </property>
+            <property name="sizeType">
+             <enum>QSizePolicy::Preferred</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>20</width>
+              <height>40</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item>
+           <widget class="ChatUserListTreeWidget" name="treeWidgetUsers">
+            <property name="focusPolicy">
+             <enum>Qt::NoFocus</enum>
+            </property>
+            <property name="horizontalScrollBarPolicy">
+             <enum>Qt::ScrollBarAlwaysOff</enum>
+            </property>
+            <property name="editTriggers">
+             <set>QAbstractItemView::DoubleClicked|QAbstractItemView::EditKeyPressed</set>
+            </property>
+            <property name="textElideMode">
+             <enum>Qt::ElideMiddle</enum>
+            </property>
+            <property name="verticalScrollMode">
+             <enum>QAbstractItemView::ScrollPerPixel</enum>
+            </property>
+            <property name="indentation">
+             <number>10</number>
+            </property>
+            <property name="rootIsDecorated">
              <bool>true</bool>
             </property>
-            <property name="sortingEnabled">
+            <property name="uniformRowHeights">
+             <bool>false</bool>
+            </property>
+            <property name="itemsExpandable">
              <bool>true</bool>
             </property>
             <property name="animated">
              <bool>true</bool>
             </property>
-            <property name="wordWrap">
-             <bool>true</bool>
-            </property>
             <property name="headerHidden">
-             <bool>false</bool>
-            </property>
-            <attribute name="headerVisible">
              <bool>true</bool>
-            </attribute>
+            </property>
+            <property name="expandsOnDoubleClick">
+             <bool>true</bool>
+            </property>
+            <column>
+             <property name="text">
+              <string notr="true">1</string>
+             </property>
+            </column>
            </widget>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" name="horizontalLayout_4">
+            <item>
+             <widget class="QLabel" name="label_5">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="text">
+               <string>YOU: </string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="labelUserName">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="text">
+               <string>OwnUserName</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
           </item>
          </layout>
         </widget>
@@ -253,7 +329,7 @@
                <bool>false</bool>
               </property>
               <attribute name="horizontalHeaderVisible">
-               <bool>true</bool>
+               <bool>false</bool>
               </attribute>
               <attribute name="horizontalHeaderMinimumSectionSize">
                <number>0</number>
@@ -309,12 +385,6 @@
                  <height>84</height>
                 </size>
                </property>
-               <property name="horizontalScrollBarPolicy">
-                <enum>Qt::ScrollBarAlwaysOff</enum>
-               </property>
-               <property name="sizeAdjustPolicy">
-                <enum>QAbstractScrollArea::AdjustToContents</enum>
-               </property>
                <property name="placeholderText">
                 <string>TYPE MESSAGE AND SEND</string>
                </property>
@@ -346,7 +416,7 @@
         </widget>
        </item>
        <item>
-        <widget class="QFrame" name="usersFrame">
+        <widget class="QFrame" name="roomsFrame">
          <property name="autoFillBackground">
           <bool>false</bool>
          </property>
@@ -367,7 +437,7 @@
            <number>0</number>
           </property>
           <item>
-           <widget class="QLabel" name="label_3">
+           <widget class="QLabel" name="label">
             <property name="minimumSize">
              <size>
               <width>0</width>
@@ -386,7 +456,7 @@
              </font>
             </property>
             <property name="text">
-             <string>USERS</string>
+             <string>CHAT ROOMS</string>
             </property>
             <property name="alignment">
              <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
@@ -400,25 +470,28 @@
            </widget>
           </item>
           <item>
-           <widget class="QTreeView" name="treeViewUsers">
-            <property name="editTriggers">
-             <set>QAbstractItemView::DoubleClicked|QAbstractItemView::EditKeyPressed</set>
-            </property>
+           <widget class="QTreeView" name="treeView_ChatRooms">
             <property name="indentation">
-             <number>10</number>
-            </property>
-            <property name="rootIsDecorated">
-             <bool>false</bool>
+             <number>5</number>
             </property>
             <property name="uniformRowHeights">
              <bool>true</bool>
             </property>
-            <property name="itemsExpandable">
-             <bool>false</bool>
-            </property>
-            <property name="expandsOnDoubleClick">
+            <property name="sortingEnabled">
              <bool>true</bool>
             </property>
+            <property name="animated">
+             <bool>true</bool>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+            <property name="headerHidden">
+             <bool>true</bool>
+            </property>
+            <attribute name="headerVisible">
+             <bool>false</bool>
+            </attribute>
            </widget>
           </item>
          </layout>
@@ -432,9 +505,19 @@
  </widget>
  <customwidgets>
   <customwidget>
+   <class>ChatUserListTreeWidget</class>
+   <extends>QTreeWidget</extends>
+   <header>ChatUserListTreeWidget.h</header>
+  </customwidget>
+  <customwidget>
+   <class>ChatSearchLineEdit</class>
+   <extends>QLineEdit</extends>
+   <header location="global">ChatSearchLineEdit.h</header>
+  </customwidget>
+  <customwidget>
    <class>BSChatInput</class>
    <extends>QTextEdit</extends>
-   <header>BSChatInput.h</header>
+   <header location="global">BSChatInput.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

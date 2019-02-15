@@ -76,21 +76,21 @@ namespace bs {
 
       class MetaData
       {
-         std::map<BinaryData, shared_ptr<AssetEntryMeta>>   data_;
+         std::map<BinaryData, std::shared_ptr<AssetEntryMeta>>   data_;
 
       protected:
          unsigned int      nbMetaData_;
 
          MetaData() : nbMetaData_(0) {}
 
-         shared_ptr<AssetEntryMeta> get(const BinaryData &key) const {
+         std::shared_ptr<AssetEntryMeta> get(const BinaryData &key) const {
             const auto itData = data_.find(key);
             if (itData != data_.end()) {
                return itData->second;
             }
             return nullptr;
          }
-         void set(const shared_ptr<AssetEntryMeta> &value);
+         void set(const std::shared_ptr<AssetEntryMeta> &value);
          void write(const std::shared_ptr<LMDBEnv> env, LMDB *db);
          void readFromDB(const std::shared_ptr<LMDBEnv> env, LMDB *db);
       };
@@ -198,7 +198,7 @@ namespace bs {
       size_t getInputScrSize(const std::shared_ptr<AddressEntry> &);
       BinaryData computeID(const BinaryData &input);
       size_t estimateTXVirtSize(const std::vector<UTXO> &inputs
-         , const std::vector<std::shared_ptr<ScriptRecipient>> &);
+         , const std::map<unsigned int, std::shared_ptr<ScriptRecipient>> &);
    }  // namepsace wallet
 
 
@@ -250,7 +250,7 @@ namespace bs {
       virtual bool getRBFTxOutList(std::function<void(std::vector<UTXO>)>) const;
       virtual std::string RegisterWallet(const std::shared_ptr<ArmoryConnection> &armory = nullptr
          , bool asNew = false);
-      void UnregisterWallet();
+      virtual void UnregisterWallet();
       virtual void SetArmory(const std::shared_ptr<ArmoryConnection> &);
       virtual void SetUserID(const BinaryData &) {}
       virtual bool getHistoryPage(uint32_t id) const;

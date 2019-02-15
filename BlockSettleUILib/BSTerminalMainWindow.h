@@ -11,6 +11,7 @@
 #include "ArmoryConnection.h"
 #include "CelerClient.h"
 #include "TransactionsViewModel.h"
+#include "QWalletInfo.h"
 
 namespace Ui {
     class BSTerminalMainWindow;
@@ -95,9 +96,7 @@ private slots:
    void InitTransactionsView();
    void ArmoryIsOffline();
    void SignerReady();
-   void onPasswordRequested(std::string walletId, std::string prompt
-      , std::vector<bs::wallet::EncryptionType>, std::vector<SecureBinaryData> encKeys
-      , bs::wallet::KeyRank);
+   void onPasswordRequested(const bs::hd::WalletInfo &walletInfo, std::string prompt);
    void showInfo(const QString &title, const QString &text);
    void showError(const QString &title, const QString &text);
    void onSignerConnError(const QString &);
@@ -135,7 +134,6 @@ private:
    std::shared_ptr<CCPortfolioModel>         portfolioModel_;
    std::shared_ptr<ConnectionManager>        connectionManager_;
    std::shared_ptr<CelerClient>              celerConnection_;
-   std::shared_ptr<AutheIDClient>            autheIDConnection_;
    std::shared_ptr<CelerMarketDataProvider>  mdProvider_;
    std::shared_ptr<AssetManager>             assetManager_;
    std::shared_ptr<CCFileManager>            ccFileManager_;
@@ -185,11 +183,8 @@ private slots:
    void openAccountInfoDialog();
    void openCCTokenDialog();
    void showZcNotification(const TxInfo &);
-   void onZCreceived(ArmoryConnection::ReqIdType);
+   void onZCreceived(const std::vector<bs::TXEntry>);
    void onArmoryStateChanged(ArmoryConnection::State);
-
-   void onAutheIDDone(const std::string& email);
-   void onAutheIDFailed();
 
    void onLogin();
    void onLogout();
@@ -223,7 +218,6 @@ private:
 
    void updateLoginActionState();
 
-   void loginWithAutheID(const std::string& email);
    void loginWithCeler(const std::string& username, const std::string& password);
    void loginToCeler(const std::string& username, const std::string& password);
 

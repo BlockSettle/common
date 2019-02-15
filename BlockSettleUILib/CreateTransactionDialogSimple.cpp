@@ -206,7 +206,7 @@ bool CreateTransactionDialogSimple::userRequestedAdvancedDialog() const
 std::shared_ptr<CreateTransactionDialogAdvanced> CreateTransactionDialogSimple::CreateAdvancedDialog()
 {
    auto advancedDialog = std::make_shared<CreateTransactionDialogAdvanced>(armory_, walletsManager_
-      , signingContainer_, true, logger_, parentWidget());
+      , signingContainer_, true, logger_, transactionData_, parentWidget());
 
    if (!offlineTransactions_.empty()) {
       advancedDialog->SetImportedTransactions(offlineTransactions_);
@@ -240,4 +240,14 @@ void CreateTransactionDialogSimple::onImportPressed()
    }
 
    showAdvanced();
+}
+
+QLabel* CreateTransactionDialogSimple::labelTXAmount() const
+{
+   return ui_->labelTransactionAmount;
+}
+
+QLabel* CreateTransactionDialogSimple::labelTxOutputs() const
+{
+   return ui_->labelTXOutputs;
 }
