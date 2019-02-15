@@ -291,7 +291,7 @@ void hd::Leaf::init(const std::shared_ptr<Node> &node, const hd::Path &path, Nod
    }
 }
 
-void hd::Leaf::onZeroConfReceived(ArmoryConnection::ReqIdType reqId)
+void hd::Leaf::onZeroConfReceived(const std::vector<bs::TXEntry>)
 {
 //!   activateAddressesFromLedger(armory_->getZCentries(reqId));
 }  // if ZC is received, then likely wallet already contains the participating address
@@ -422,10 +422,7 @@ std::string hd::Leaf::GetWalletId() const
       return "";
    }
    if (walletId_.empty() && node_) {
-      const auto prevMode = NetworkConfig::getMode();
-      NetworkConfig::selectNetwork(node_->getNetworkType() == NetworkType::TestNet ? NETWORK_MODE_TESTNET : NETWORK_MODE_MAINNET);
       walletId_ = node_->getId();
-      NetworkConfig::selectNetwork(prevMode);
    }
    return walletId_;
 }
@@ -607,6 +604,13 @@ std::set<BinaryData> hd::Leaf::getAddrHashSet()
    return result;
 }
 
+void hd::Leaf::UnregisterWallet()
+{
+   addrPrefixedHashes_.clear();
+   addressPool_.clear();
+   Wallet::UnregisterWallet();
+}
+
 bs::Address hd::Leaf::createAddress(AddressEntryType aet, bool isInternal)
 {
    topUpAddressPool();
@@ -783,8 +787,7 @@ hd::Path hd::Leaf::getPathForAddress(const bs::Address &addr) const
 }
 
 bool hd::Leaf::getSpendableTxOutList(std::function<void(std::vector<UTXO>)>cb
-                                     , QObject *obj, const bool& startup
-                                     , uint64_t val)
+   , QObject *obj, uint64_t val)
 {
    const auto &cbTxOutList = [this, cb](std::vector<UTXO> txOutList) {
       std::vector<UTXO> result;
@@ -802,7 +805,7 @@ bool hd::Leaf::getSpendableTxOutList(std::function<void(std::vector<UTXO>)>cb
       }
       cb(result);
    };
-   return bs::Wallet::getSpendableTxOutList(cbTxOutList, obj, startup, val);
+   return bs::Wallet::getSpendableTxOutList(cbTxOutList, obj, val);
 }
 
 std::string hd::Leaf::GetAddressIndex(const bs::Address &addr)
@@ -1193,11 +1196,11 @@ void hd::CCLeaf::SetArmory(const std::shared_ptr<ArmoryConnection> &armory)
    }
    if (checker_ && !validationStarted_) {
       validationEnded_ = false;
-      validationProc(false);
+      validationProc();
    }
 }
 
-void hd::CCLeaf::refreshInvalidUTXOs(const bool& initValidation, const bool& ZConly)
+void hd::CCLeaf::refreshInvalidUTXOs(const bool& ZConly)
 {
    {
       QMutexLocker lock(&addrMapsMtx_);
@@ -1221,7 +1224,7 @@ void hd::CCLeaf::refreshInvalidUTXOs(const bool& initValidation, const bool& ZCo
          };
          findInvalidUTXOs(utxos, cbUpdateSpendableBalance);
       };
-      hd::Leaf::getSpendableTxOutList(cbRefresh, this, initValidation);
+      hd::Leaf::getSpendableTxOutList(cbRefresh, this);
    }
 
    const auto &cbRefreshZC = [this](std::vector<UTXO> utxos) {
@@ -1238,10 +1241,10 @@ void hd::CCLeaf::refreshInvalidUTXOs(const bool& initValidation, const bool& ZCo
       };
       findInvalidUTXOs(utxos, cbUpdateZcBalance);
    };
-   hd::Leaf::getSpendableZCList(cbRefreshZC, this, initValidation);
+   hd::Leaf::getSpendableZCList(cbRefreshZC, this);
 }
 
-void hd::CCLeaf::validationProc(const bool& initValidation)
+void hd::CCLeaf::validationProc()
 {
    validationStarted_ = true;
    if (!armory_ || (armory_->state() != ArmoryConnection::State::Ready)) {
@@ -1249,7 +1252,7 @@ void hd::CCLeaf::validationProc(const bool& initValidation)
       return;
    }
    validationEnded_ = true;
-   refreshInvalidUTXOs(initValidation);
+   refreshInvalidUTXOs();
    hd::Leaf::firstInit();
 
    if (!validationStarted_) {
@@ -1263,7 +1266,8 @@ void hd::CCLeaf::validationProc(const bool& initValidation)
    }
 
    for (const auto &addr : GetUsedAddressList()) {
-      const auto &cbLedger = [this, addr, addressesToCheck](AsyncClient::LedgerDelegate ledger) {
+      const auto &cbLedger = [this, addr, addressesToCheck]
+                              (const std::shared_ptr<AsyncClient::LedgerDelegate> &ledger) {
          if (!validationStarted_) {
             return;
          }
@@ -1295,6 +1299,7 @@ void hd::CCLeaf::validationProc(const bool& initValidation)
                emit walletReset();
             }
          };
+
          const auto &cbHistory = [this, cbCheck, addr, addressesToCheck]
          (ReturnMessage<std::vector<ClientClasses::LedgerEntry>> entries)->void {
             try {
@@ -1311,7 +1316,20 @@ void hd::CCLeaf::validationProc(const bool& initValidation)
                }
             }
          };
-         ledger.getHistoryPage(0, cbHistory);  //? Shouldn't we continue past the first page?
+         const auto &cbPages = [this,  cbHistory, ledger] (ReturnMessage<uint64_t> pages) {
+            try {
+               const auto pageCnt = pages.get();
+               for (uint32_t pageId = 0; pageId < pageCnt; ++pageId) {
+                  ledger->getHistoryPage(pageId, cbHistory);
+               }
+            }
+            catch (const std::exception &e) {
+               if (logger_) {
+                  logger_->error("[hd::CCLeaf::validationProc] cbPages failed: {}", e.what());
+               }
+            }
+         };
+         ledger->getPageCount(cbPages);
       };
       armory_->getLedgerDelegateForAddress(GetWalletId(), addr, cbLedger, this);
    }
@@ -1382,8 +1400,8 @@ void hd::CCLeaf::firstInit(bool force)
       validationStarted_ = false;
    }
    if (checker_ && !validationStarted_) {
-//      validationEnded_ = false;
-      validationProc(true);
+      validationEnded_ = false;
+      validationProc();
    }
 }
 
@@ -1394,10 +1412,10 @@ void hd::CCLeaf::onStateChanged(ArmoryConnection::State state)
    }
 }
 
-void hd::CCLeaf::onZeroConfReceived(ArmoryConnection::ReqIdType reqId)
+void hd::CCLeaf::onZeroConfReceived(const std::vector<bs::TXEntry> entries)
 {
-   hd::Leaf::onZeroConfReceived(reqId);
-   refreshInvalidUTXOs(false, true);
+   hd::Leaf::onZeroConfReceived(entries);
+   refreshInvalidUTXOs(true);
 }
 
 std::vector<UTXO> hd::CCLeaf::filterUTXOs(const std::vector<UTXO> &utxos) const
@@ -1412,8 +1430,7 @@ std::vector<UTXO> hd::CCLeaf::filterUTXOs(const std::vector<UTXO> &utxos) const
 }
 
 bool hd::CCLeaf::getSpendableTxOutList(std::function<void(std::vector<UTXO>)>cb
-                                       , QObject *obj, const bool& startup
-                                       , uint64_t val)
+   , QObject *obj, uint64_t val)
 {
    if (validationStarted_ && !validationEnded_) {
       return false;
@@ -1421,11 +1438,11 @@ bool hd::CCLeaf::getSpendableTxOutList(std::function<void(std::vector<UTXO>)>cb
    const auto &cbTxOutList = [this, cb](std::vector<UTXO> txOutList) {
       cb(filterUTXOs(txOutList));
    };
-   return hd::Leaf::getSpendableTxOutList(cbTxOutList, obj, startup, val);
+   return hd::Leaf::getSpendableTxOutList(cbTxOutList, obj, val);
 }
 
 bool hd::CCLeaf::getSpendableZCList(std::function<void(std::vector<UTXO>)> cb
-                                    , QObject *obj, const bool& startup)
+   , QObject *obj)
 {
    if (validationStarted_ && !validationEnded_) {
       return false;
@@ -1433,7 +1450,7 @@ bool hd::CCLeaf::getSpendableZCList(std::function<void(std::vector<UTXO>)> cb
    const auto &cbZCList = [this, cb](std::vector<UTXO> txOutList) {
       cb(filterUTXOs(txOutList));
    };
-   return hd::Leaf::getSpendableZCList(cbZCList, obj, startup);
+   return hd::Leaf::getSpendableZCList(cbZCList, obj);
 }
 
 bool hd::CCLeaf::isBalanceAvailable() const

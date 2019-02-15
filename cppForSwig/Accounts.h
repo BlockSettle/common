@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //                                                                            //
-//  Copyright (C) 2017, goatpig                                               //
+//  Copyright (C) 2017-2019, goatpig                                          //
 //  Distributed under the MIT license                                         //
 //  See LICENSE-MIT or https://opensource.org/licenses/MIT                    //
 //                                                                            //
@@ -22,8 +22,8 @@
 #include "DerivationScheme.h"
 
 #define ARMORY_LEGACY_ACCOUNTID        0xF6E10000
-#define IMPORTS_ACCOUNTID              0
-#define ARMORY_LEGACY_ASSET_ACCOUNTID  1
+#define IMPORTS_ACCOUNTID              0x00000000
+#define ARMORY_LEGACY_ASSET_ACCOUNTID  0x00000001
 
 #define BIP32_LEGACY_OUTER_ACCOUNT_DERIVATIONID 0x00000000
 #define BIP32_LEGACY_INNER_ACCOUNT_DERIVATIONID 0x00000001
@@ -35,6 +35,10 @@
 #define ASSET_ACCOUNT_PREFIX     0xE1
 #define ASSET_COUNT_PREFIX       0xE2
 #define ASSET_TOP_INDEX_PREFIX   0xE3
+
+#define META_ACCOUNT_COMMENTS    0x000000C0
+#define META_ACCOUNT_AUTHPEER    0x000000C1
+#define META_ACCOUNT_PREFIX      0xF1
 
 class AccountException : public std::runtime_error
 {
@@ -67,9 +71,23 @@ enum AccountTypeEnum
    native P2WPKH, nested P2WPKH
    */
    AccountTypeEnum_BIP32_SegWit,
+
+   /*
+   BIP32 derivation scheme, derPath is used as is.
+   inner account is outer account.
+   no address type is assumed, this has to be provided at creation
+   */
+   AccountTypeEnum_BIP32_Custom,
    
    AccountTypeEnum_BIP44,
    AccountTypeEnum_Custom
+};
+
+enum MetaAccountType
+{
+   MetaAccount_Unset = 0,
+   MetaAccount_Comments,
+   MetaAccount_AuthPeers
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -179,6 +197,9 @@ private:
    SecureBinaryData derivedRoot_;
    SecureBinaryData derivedChaincode_;
 
+   unsigned depth_ = 0;
+   unsigned leafId_ = 0;
+
 private:
    void deriveFromRoot(void);
 
@@ -188,9 +209,11 @@ public:
       SecureBinaryData& privateRoot,
       SecureBinaryData& publicRoot,
       SecureBinaryData& chainCode,
-      const std::vector<unsigned>& derivationPath) :
+      const std::vector<unsigned>& derivationPath,
+      unsigned depth, unsigned leafId) :
       AccountType(type, privateRoot, publicRoot, chainCode),
-      derivationPath_(derivationPath)
+      derivationPath_(derivationPath),
+      depth_(depth), leafId_(leafId)
    {
       deriveFromRoot();
    }
@@ -216,23 +239,26 @@ public:
    }
 
    BinaryData getAccountID(void) const;
+
+   //bip32 locals
+   unsigned getDepth(void) const { return depth_; }
+   unsigned getLeafID(void) const { return leafId_; }
 };
 
 
 ////////////////////
 struct AccountType_BIP32_Legacy : public AccountType_BIP32
 {
-private:
-   void deriveFromRoot(void);
-
 public:
    AccountType_BIP32_Legacy(
       SecureBinaryData& privateRoot,
       SecureBinaryData& publicRoot,
       SecureBinaryData& chainCode,
-      const std::vector<unsigned>& derivationPath) :
+      const std::vector<unsigned>& derivationPath,
+      unsigned depth, unsigned leafId) :
       AccountType_BIP32(AccountTypeEnum_BIP32_Legacy,
-         privateRoot, publicRoot, chainCode, derivationPath)
+         privateRoot, publicRoot, chainCode, derivationPath,
+         depth, leafId)
    {
       //uncompressed p2pkh
       addressTypes_.insert(AddressEntryType_P2PKH);
@@ -253,17 +279,16 @@ public:
 ////////////////////
 struct AccountType_BIP32_SegWit : public AccountType_BIP32
 {
-private:
-   void deriveFromRoot(void);
-
 public:
    AccountType_BIP32_SegWit(
       SecureBinaryData& privateRoot,
       SecureBinaryData& publicRoot,
       SecureBinaryData& chainCode,
-      const std::vector<unsigned>& derivationPath) :
+      const std::vector<unsigned>& derivationPath,
+      unsigned depth, unsigned leafId) :
       AccountType_BIP32(AccountTypeEnum_BIP32_SegWit,
-      privateRoot, publicRoot, chainCode, derivationPath)
+         privateRoot, publicRoot, chainCode, derivationPath,
+         depth, leafId)
    {
       //p2wpkh
       addressTypes_.insert(AddressEntryType_P2WPKH);
@@ -280,6 +305,26 @@ public:
    std::set<unsigned> getNodes(void) const;
    BinaryData getOuterAccountID(void) const;
    BinaryData getInnerAccountID(void) const;
+};
+
+////////////////////
+struct AccountType_BIP32_Custom : public AccountType_BIP32
+{
+public:
+   AccountType_BIP32_Custom(
+      SecureBinaryData& privateRoot,
+      SecureBinaryData& publicRoot,
+      SecureBinaryData& chainCode,
+      const std::vector<unsigned>& derivationPath,
+      unsigned depth, unsigned leafId) :
+      AccountType_BIP32(AccountTypeEnum_BIP32_Custom,
+         privateRoot, publicRoot, chainCode, derivationPath,
+         depth, leafId)
+   {}
+
+   std::set<unsigned> getNodes(void) const { return std::set<unsigned>(); }
+   BinaryData getOuterAccountID(void) const { return WRITE_UINT32_BE(0); };
+   BinaryData getInnerAccountID(void) const { return WRITE_UINT32_BE(0); };
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -374,6 +419,8 @@ public:
    //Lockable virtuals
    void initAfterLock(void) {}
    void cleanUpBeforeUnlock(void) {}
+
+   std::shared_ptr<AssetEntry> getRoot(void) const { return root_; }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -390,7 +437,7 @@ private:
 
    AddressEntryType defaultAddressEntryType_ = AddressEntryType_P2PKH;
    std::set<AddressEntryType> addressTypes_;
-   std::map<BinaryData, BinaryData> addressHashes_;
+   std::map<BinaryData, std::pair<BinaryData, AddressEntryType>> addressHashes_;
 
    BinaryData ID_;
    std::shared_ptr<LMDBEnv> dbEnv_ = nullptr;
@@ -472,15 +519,17 @@ public:
    std::shared_ptr<AddressEntry> getNewAddress(
       const BinaryData& account, AddressEntryType aeType);
    std::shared_ptr<AssetEntry> getOutterAssetForIndex(unsigned) const;
+   std::shared_ptr<AssetEntry> getOutterAssetRoot(void) const;
+
 
    AddressEntryType getAddressType(void) const { return defaultAddressEntryType_; }
    bool hasAddressType(AddressEntryType);
 
    std::shared_ptr<AssetEntry> getAssetForID(const BinaryData&) const;
-   const BinaryData& getAssetIDForAddr(const BinaryData&);
+   const std::pair<BinaryData, AddressEntryType>& getAssetIDPairForAddr(const BinaryData&);
 
    void updateAddressHashMap(void);
-   const std::map<BinaryData, BinaryData>& getAddressHashMap(void);
+   const std::map<BinaryData, std::pair<BinaryData, AddressEntryType>>& getAddressHashMap(void);
 
    std::shared_ptr<AssetAccount> getOuterAccount(void) const;
    const std::map<BinaryData, std::shared_ptr<AssetAccount>>& getAccountMap(void) const;
@@ -488,6 +537,84 @@ public:
    //Lockable virtuals
    void initAfterLock(void) {}
    void cleanUpBeforeUnlock(void) {}
+};
+
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+class MetaDataAccount : public Lockable
+{
+   friend struct AuthPeerAssetConversion;
+
+private:
+   MetaAccountType type_ = MetaAccount_Unset;
+   BinaryData ID_;
+   std::shared_ptr<LMDBEnv> dbEnv_ = nullptr;
+   LMDB* db_ = nullptr;
+
+   std::map<unsigned, std::shared_ptr<MetaData>> assets_;
+
+public:
+   //to search sets
+   bool operator<(const MetaDataAccount& rhs)
+   {
+      return type_ < rhs.type_;
+   }
+
+   struct find_by_id
+   {
+      const MetaAccountType type_;
+
+      find_by_id(const MetaAccountType& type) :
+         type_(type)
+      {}
+
+      bool operator()(const MetaDataAccount& account)
+      {
+         return type_ == account.type_;
+      }
+
+      bool operator()(const std::shared_ptr<MetaDataAccount>& account)
+      {
+         return type_ == account->type_;
+      }
+   };
+
+private:
+   bool writeAssetToDisk(std::shared_ptr<MetaData>);
+
+public:
+   MetaDataAccount(std::shared_ptr<LMDBEnv> dbEnv, LMDB* db) :
+      dbEnv_(dbEnv), db_(db)
+   {}
+   
+   //Lockable virtuals
+   void initAfterLock(void) {}
+   void cleanUpBeforeUnlock(void) {}
+
+   //storage methods
+   void readFromDisk(const BinaryData& key);
+   void commit(void);
+   void updateOnDisk(void);
+
+   //setup methods
+   void reset(void);
+   void make_new(MetaAccountType);
+
+   //
+   std::shared_ptr<MetaData> getMetaDataByIndex(unsigned) const;
+   void eraseMetaDataByIndex(unsigned);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+struct AuthPeerAssetConversion
+{
+   static std::map<std::string, const SecureBinaryData*> getAssetMap(
+      const MetaDataAccount*);
+   static std::map<SecureBinaryData, std::set<unsigned>> getKeyIndexMap(
+      const MetaDataAccount*);
+
+   static int addAsset(MetaDataAccount*, const SecureBinaryData&,
+      const std::vector<std::string>&);
 };
 
 #endif

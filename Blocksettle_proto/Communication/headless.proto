@@ -53,8 +53,7 @@ enum NetworkType
 
 message AuthenticationRequest
 {
-   string   password = 1;  // probably not needed here
-   NetworkType  netType = 2;
+   NetworkType  netType = 1;
 }
 
 message AuthenticationReply
@@ -180,6 +179,7 @@ message NewHDWallet
    bool     primary = 4;
    bytes    privateKey = 5;
    bytes    seed = 6;
+   bytes    chainCode = 7;
 }
 
 message PasswordData

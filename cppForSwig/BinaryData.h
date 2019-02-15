@@ -127,6 +127,7 @@ public:
    }
 
    bool isNull(void) const { return (data_.size()==0);}
+   bool isZero(void) const;
    
    BinaryData& operator=(const BinaryData &o)
    {
@@ -533,6 +534,12 @@ public:
       auto vec = move(data_);
       clear();
       return vec; 
+   }
+
+   /////////////////////////////////////////////////////////////////////////////
+   const std::vector<uint8_t>& getVector(void) const
+   {
+      return data_;
    }
 
 public:

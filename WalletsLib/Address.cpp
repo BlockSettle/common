@@ -46,7 +46,9 @@ bs::Address::Address(const std::string& data, Format format, AddressEntryType ae
       }
       else {
          try {
-            parsedData = BtcUtils::base58toScrAddr(data);
+            BinaryData base58In(data);
+            base58In.append('\0'); // Remove once base58toScrAddr() is fixed.
+            parsedData = BtcUtils::base58toScrAddr(base58In);
             format = Format::Base58;
          }
          catch (const std::exception &) {
@@ -71,7 +73,9 @@ bs::Address::Address(const std::string& data, Format format, AddressEntryType ae
       switch (format) {
       case Format::Base58:
          try {
-            copyFrom(BtcUtils::base58toScrAddr(data));
+            BinaryData base58In(data);
+            base58In.append('\0'); // Remove once base58toScrAddr() is fixed.
+            copyFrom(BtcUtils::base58toScrAddr(base58In));
          }
          catch (const std::runtime_error &) {}
          break;
@@ -205,6 +209,12 @@ bool bs::Address::isValid() const
       return false;
    }
    return true;
+}
+
+void bs::Address::clear()
+{
+   BinaryData::clear();
+   aet_ = AddressEntryType_Default;
 }
 
 bool bs::Address::isProperHash() const
@@ -377,7 +387,7 @@ std::shared_ptr<ScriptRecipient> bs::Address::getRecipient(uint64_t value) const
          return std::make_shared<Recipient_P2PKH>(unprefixed(), value);
 
       case AddressEntryType_P2WSH:
-         return std::make_shared<Recipient_PW2SH>(unprefixed(), value);
+         return std::make_shared<Recipient_P2WSH>(unprefixed(), value);
 
       case AddressEntryType_P2SH:
          return std::make_shared<Recipient_P2SH>(unprefixed(), value);

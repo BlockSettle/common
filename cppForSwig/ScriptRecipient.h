@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //                                                                            //
-//  Copyright (C) 2016, goatpig                                               //
+//  Copyright (C) 2016-18, goatpig                                            //
 //  Distributed under the MIT license                                         //
 //  See LICENSE-MIT or https://opensource.org/licenses/MIT                    //
 //                                                                            //
@@ -84,20 +84,10 @@ public:
          throw ScriptRecipientException("a160 is not 20 bytes long!");
    }
 
-   void serialize(void)
-   {
-      BinaryWriter bw;
-      bw.put_uint64_t(value_);
-
-      auto&& rawScript = BtcUtils::getP2PKHScript(h160_);
-      bw.put_var_int(rawScript.getSize());
-      bw.put_BinaryData(rawScript);
-
-      script_ = std::move(bw.getData());
-   }
+   void serialize(void);
 
    //return size is static
-   size_t getSize(void) const { return 34; }
+   size_t getSize(void) const;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -114,21 +104,10 @@ public:
          throw ScriptRecipientException("a160 is not 20 bytes long!");
    }
 
-   void serialize(void)
-   {
-      BinaryWriter bw;
-      bw.put_uint64_t(value_);
-
-      auto&& rawScript = BtcUtils::getP2PKScript(pubkey_);
-
-      bw.put_var_int(rawScript.getSize());
-      bw.put_BinaryData(rawScript);
-
-      script_ = std::move(bw.getData());
-   }
+   void serialize(void);
 
    //return size is static
-   size_t getSize(void) const { return 10 + pubkey_.getSize(); }
+   size_t getSize(void) const;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -145,20 +124,8 @@ public:
          throw ScriptRecipientException("a160 is not 20 bytes long!");
    }
 
-   void serialize(void)
-   {
-      BinaryWriter bw;
-      bw.put_uint64_t(value_);
-
-      auto&& rawScript = BtcUtils::getP2WPKHOutputScript(h160_);
-
-      bw.put_var_int(rawScript.getSize());
-      bw.put_BinaryData(rawScript);
-
-      script_ = std::move(bw.getData());
-   }
-
-   size_t getSize(void) const { return 31; }
+   void serialize(void);
+   size_t getSize(void) const;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -175,50 +142,26 @@ public:
          throw ScriptRecipientException("a160 is not 20 bytes long!");
    }
 
-   void serialize(void)
-   {
-      BinaryWriter bw;
-      bw.put_uint64_t(value_);
-      
-      auto&& rawScript = BtcUtils::getP2SHScript(h160_);
-
-      bw.put_var_int(rawScript.getSize());
-      bw.put_BinaryData(rawScript);
-
-      script_ = std::move(bw.getData());
-   }
-
-   size_t getSize(void) const { return 32; }
+   void serialize(void);
+   size_t getSize(void) const;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-class Recipient_PW2SH : public ScriptRecipient
+class Recipient_P2WSH : public ScriptRecipient
 {
 private:
    const BinaryData h256_;
 
 public:
-   Recipient_PW2SH(const BinaryData& h256, uint64_t val) :
+   Recipient_P2WSH(const BinaryData& h256, uint64_t val) :
       ScriptRecipient(SST_P2WSH, val), h256_(h256)
    {
       if (h256_.getSize() != 32)
          throw ScriptRecipientException("a256 is not 32 bytes long!");
    }
 
-   void serialize(void)
-   {
-      BinaryWriter bw;
-      bw.put_uint64_t(value_);
-      
-      auto&& rawScript = BtcUtils::getP2WSHOutputScript(h256_);
-
-      bw.put_var_int(rawScript.getSize());
-      bw.put_BinaryData(rawScript);
-
-      script_ = std::move(bw.getData());
-   }
-
-   size_t getSize(void) const { return 43; }
+   void serialize(void);
+   size_t getSize(void) const;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -236,44 +179,8 @@ public:
             "OP_RETURN message cannot exceed 80 bytes");
    }
 
-   void serialize(void)
-   {
-      BinaryWriter bw;
-      bw.put_uint64_t(0);
-      
-      BinaryWriter bw_msg;
-      auto size = message_.getSize();
-      if (size > 75)
-      {
-         bw_msg.put_uint8_t(OP_PUSHDATA1);
-         bw_msg.put_uint8_t(size);
-      }
-      else if (size > 0)
-      {
-         bw_msg.put_uint8_t(size);
-      }
-
-      if (size > 0)
-         bw_msg.put_BinaryData(message_);
-
-      bw.put_uint8_t(bw_msg.getSize() + 1);
-      bw.put_uint8_t(OP_RETURN);
-      bw.put_BinaryData(bw_msg.getData());
-
-      script_ = bw.getData();
-   }
-
-   size_t getSize(void) const
-   {
-      auto size = message_.getSize();
-      if (size > 75)
-         size += 2;
-      else if (size > 0)
-         size += 1;
-      
-      size += 9; //8 for value, one for op_return
-      return size;
-   }
+   void serialize(void);
+   size_t getSize(void) const;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -287,26 +194,8 @@ public:
       ScriptRecipient(SST_UNIVERSAL, val), binScript_(script)
    {}
 
-   void serialize(void)
-   {
-      if (script_.getSize() != 0)
-         return;
-
-      BinaryWriter bw;
-      bw.put_uint64_t(value_);
-      bw.put_var_int(binScript_.getSize());
-      bw.put_BinaryData(binScript_);
-
-      script_ = std::move(bw.getData());
-   }
-
-   size_t getSize(void) const
-   {
-      size_t varint_len = 1;
-      if (binScript_.getSize() >= 0xfd)
-         varint_len = 3; //larger scripts would make the tx invalid
-
-      return 8 + binScript_.getSize() + varint_len;
-   }
+   void serialize(void);
+   size_t getSize(void) const;
 };
+
 #endif

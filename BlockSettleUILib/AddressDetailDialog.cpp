@@ -11,6 +11,7 @@
 #include <QAction>
 
 #include "ArmoryConnection.h"
+#include "HDNode.h"
 #include "MetaData.h"
 #include "TransactionsViewModel.h"
 #include "UiUtils.h"
@@ -70,7 +71,6 @@ public:
          && col != TransactionsViewModel::Columns::Address
          && col != TransactionsViewModel::Columns::Comment
          && col != TransactionsViewModel::Columns::SendReceive
-         && col != TransactionsViewModel::Columns::RbfFlag
          /*&& col != TransactionsViewModel::Columns::MissedBlocks*/;
    }
 };
@@ -108,7 +108,25 @@ AddressDetailDialog::AddressDetailDialog(const bs::Address& address
    const auto addressString = address.display();
    ui_->labelAddress->setText(addressString);
 
-   auto index = QString::fromStdString(wallet_->GetAddressIndex(address));
+   const auto addrIndex = wallet_->GetAddressIndex(address);
+   const auto path = bs::hd::Path::fromString(addrIndex);
+   QString index;
+   if (path.length() != 2) {
+      index = QString::fromStdString(addrIndex);
+   }
+   else {
+      const auto lastIndex = QString::number(path.get(-1));
+      switch (path.get(-2)) {
+      case 0:
+         index = tr("External/%1").arg(lastIndex);
+         break;
+      case 1:
+         index = tr("Internal/%1").arg(lastIndex);
+         break;
+      default:
+         index = tr("Unknown/%1").arg(lastIndex);
+      }
+   }
    if (index.length() > 64) {
       index = index.left(64);
    }
@@ -125,7 +143,7 @@ AddressDetailDialog::AddressDetailDialog(const bs::Address& address
       onError();
    }
    else {
-      const auto &cbLedgerDelegate = [this, armory](AsyncClient::LedgerDelegate delegate) {
+      const auto &cbLedgerDelegate = [this, armory](const std::shared_ptr<AsyncClient::LedgerDelegate> &delegate) {
          initModels(delegate);
       };
       if (!armory->getLedgerDelegateForAddress(wallet_->GetWalletId(), address_, cbLedgerDelegate, this)) {
@@ -134,7 +152,8 @@ AddressDetailDialog::AddressDetailDialog(const bs::Address& address
       }
    }
 
-   ui_->labelQR->setPixmap(UiUtils::getQRCode(addressString, 128));
+   const QString addrURI = QLatin1String("bitcoin:") + addressString;
+   ui_->labelQR->setPixmap(UiUtils::getQRCode(addrURI, 128));
 
    ui_->inputAddressesWidget->setContextMenuPolicy(Qt::CustomContextMenu);
    ui_->outputAddressesWidget->setContextMenuPolicy(Qt::CustomContextMenu);
@@ -147,7 +166,7 @@ AddressDetailDialog::AddressDetailDialog(const bs::Address& address
 
 AddressDetailDialog::~AddressDetailDialog() = default;
 
-void AddressDetailDialog::initModels(AsyncClient::LedgerDelegate delegate)
+void AddressDetailDialog::initModels(const std::shared_ptr<AsyncClient::LedgerDelegate> &delegate)
 {
    TransactionsViewModel* model = new TransactionsViewModel(armory_
                                                             , walletsManager_

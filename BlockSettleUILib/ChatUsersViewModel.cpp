@@ -1,69 +1,70 @@
+#include <QColor>
+
 #include "ChatUsersViewModel.h"
-
 #include "ChatClient.h"
-
-
-#include <QDebug>
-
 
 ChatUsersViewModel::ChatUsersViewModel(QObject* parent)
    : QAbstractTableModel(parent)
 {
 }
 
-
-QString ChatUsersViewModel::resolveUser(const QModelIndex& index)
+QString ChatUsersViewModel::resolveUser(const QModelIndex &index) const
 {
-   return userByIndex_[index.row()];
+   if ((index.row() < 0) || (index.row() >= _users.size())) {
+      return {};
+   }
+   return _users[index.row()]->userId();
 }
 
-
-int ChatUsersViewModel::columnCount(const QModelIndex &parent) const
+int ChatUsersViewModel::columnCount(const QModelIndex &/*parent*/) const
 {
    return 1;
 }
 
-
-int ChatUsersViewModel::rowCount(const QModelIndex &parent) const
+int ChatUsersViewModel::rowCount(const QModelIndex &/*parent*/) const
 {
-   return userByIndex_.count();
+   return _users.size();
 }
 
-
-QVariant ChatUsersViewModel::headerData(int section, Qt::Orientation orientation, int role) const
+QVariant ChatUsersViewModel::headerData(int /*section*/, Qt::Orientation /*orientation*/, int /*role*/) const
 {
    return QVariant();
 }
-
 
 QVariant ChatUsersViewModel::data(const QModelIndex &index, int role) const
 {
-   if (role == Qt::DisplayRole) {
-      return userByIndex_[index.row()];
+   if (index.row() >= _users.size())
+      return QVariant();
+
+   switch (role)
+   {
+      case Qt::DisplayRole:
+         return resolveUser(index);
+
+      case UserConnectionStatusRole:
+         return QVariant::fromValue(_users[index.row()]->userConnectionStatus());
+
+      case UserStateRole:
+         return QVariant::fromValue(_users[index.row()]->userState());
+
+      case UserNameRole:
+         return _users[index.row()]->userName();
+
+      case HaveNewMessageRole:
+         return _users[index.row()]->haveNewMessage();
    }
+
    return QVariant();
 }
 
-
-void ChatUsersViewModel::onClear()
+void ChatUsersViewModel::onUserDataListChanged(const ChatUserDataListPtr &chatUserDataListPtr)
 {
    beginResetModel();
-   indexByUser_.clear();
-   userByIndex_.clear();
+   _users.clear();
+   _users.reserve(chatUserDataListPtr.size());
+   for (const auto &userDataPtr : chatUserDataListPtr) {
+      _users.push_back(std::move(userDataPtr));
+   }
    endResetModel();
 }
 
-
-void ChatUsersViewModel::onUserUpdate(const QString& userId)
-{
-   if (indexByUser_.contains(userId))
-   {
-      return;
-   }
-
-   auto rowIdx = static_cast<int>(userByIndex_.size());
-   beginInsertRows(QModelIndex(), rowIdx, rowIdx);
-   indexByUser_[userId] = userByIndex_.count();
-   userByIndex_.append(userId);
-   endInsertRows();
-}

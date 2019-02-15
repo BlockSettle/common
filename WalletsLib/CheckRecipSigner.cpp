@@ -81,7 +81,7 @@ struct recip_compare {
 };
 void CheckRecipSigner::removeDupRecipients()
 {  // can be implemented later in a better way without temporary std::set
-   vector<shared_ptr<ScriptRecipient>> uniqueRecepients;
+   std::vector<std::shared_ptr<ScriptRecipient>> uniqueRecepients;
 
    std::set<std::shared_ptr<ScriptRecipient>, recip_compare> recipSet;
    for (const auto r : recipients_) {
@@ -226,7 +226,7 @@ bool CheckRecipSigner::GetInputAddressList(const std::shared_ptr<spdlog::logger>
    const auto &cbOutputTXs = [this, cbTXs, cb](std::vector<Tx> txs) {
       for (const auto &tx : txs) {
          for (size_t i = 0; i < tx.getNumTxIn(); ++i) {
-            TxIn in = tx.getTxInCopy(i);
+            TxIn in = tx.getTxInCopy((int)i);
             OutPoint op = in.getOutPoint();
             txHashSet_.insert(op.getTxHash());
             txOutIdx_[op.getTxHash()].insert(op.getTxOutIndex());
@@ -275,7 +275,7 @@ int TxChecker::receiverIndex(const bs::Address &addr) const
       }
       const auto &txAddr = bs::Address::fromTxOut(out);
       if (addr.id() == txAddr.id()) {
-         return i;
+         return (int)i;
       }
    }
    return -1;

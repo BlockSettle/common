@@ -114,8 +114,7 @@ namespace bs {
          bool hasExtOnlyAddresses() const override { return isExtOnly_; }
 
          bool getSpendableTxOutList(std::function<void(std::vector<UTXO>)>
-                                    , QObject *obj, const bool& startup = false
-                                    , uint64_t val = UINT64_MAX) override;
+            , QObject *obj, uint64_t val = UINT64_MAX) override;
 
          bool containsAddress(const bs::Address &addr) override;
          bool containsHiddenAddress(const bs::Address &addr) const override;
@@ -150,6 +149,7 @@ namespace bs {
          void setDB(const std::shared_ptr<LMDBEnv> &env, LMDB *db);
 
          void SetArmory(const std::shared_ptr<ArmoryConnection> &) override;
+         void UnregisterWallet() override;
 
          std::shared_ptr<LMDBEnv> getDBEnv() override { return dbEnv_; }
          LMDB *getDB() override { return db_; }
@@ -168,7 +168,7 @@ namespace bs {
          void scanComplete(const std::string &walletId);
 
       protected slots:
-         virtual void onZeroConfReceived(ArmoryConnection::ReqIdType);
+         virtual void onZeroConfReceived(const std::vector<bs::TXEntry>);
          virtual void onRefresh(std::vector<BinaryData> ids);
 
       protected:
@@ -213,7 +213,7 @@ namespace bs {
          std::map<bs::Address, AddrPoolKey>           poolByAddr_;
 
       private:
-         shared_ptr<LMDBEnv> dbEnv_ = nullptr;
+         std::shared_ptr<LMDBEnv> dbEnv_ = nullptr;
          LMDB* db_ = nullptr;
          using AddressTuple = std::tuple<bs::Address, std::shared_ptr<Node>, Path>;
          std::unordered_map<Path::Elem, AddressTuple> addressMap_;
@@ -281,11 +281,9 @@ namespace bs {
          void firstInit(bool force) override;
 
          bool getSpendableTxOutList(std::function<void(std::vector<UTXO>)>
-                                    , QObject *, const bool& startup = false
-                                    , uint64_t val = UINT64_MAX) override;
+            , QObject *, uint64_t val = UINT64_MAX) override;
          bool getSpendableZCList(std::function<void(std::vector<UTXO>)>
-                                 , QObject *
-                                 , const bool& startup = false) override;
+            , QObject *) override;
          bool isBalanceAvailable() const override;
          BTCNumericTypes::balance_type GetSpendableBalance() const override;
          BTCNumericTypes::balance_type GetUnconfirmedBalance() const override;
@@ -302,17 +300,16 @@ namespace bs {
          void SetArmory(const std::shared_ptr<ArmoryConnection> &) override;
 
       private slots:
-         void onZeroConfReceived(ArmoryConnection::ReqIdType) override;
+         void onZeroConfReceived(const std::vector<bs::TXEntry>) override;
          void onStateChanged(ArmoryConnection::State);
 
       private:
-         void validationProc(const bool& initValidation);
+         void validationProc();
          void findInvalidUTXOs(const std::vector<UTXO> &
-                               , std::function<void (const std::vector<UTXO> &)>);
-         void refreshInvalidUTXOs(const bool& initValidation
-                                  , const bool& ZConly = false);
+            , std::function<void (const std::vector<UTXO> &)>);
+         void refreshInvalidUTXOs(const bool& ZConly = false);
          BTCNumericTypes::balance_type correctBalance(BTCNumericTypes::balance_type
-                                           , bool applyCorrection = true) const;
+            , bool applyCorrection = true) const;
          std::vector<UTXO> filterUTXOs(const std::vector<UTXO> &) const;
 
          std::shared_ptr<TxAddressChecker>   checker_;

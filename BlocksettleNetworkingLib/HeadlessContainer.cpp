@@ -7,6 +7,7 @@
 #include "SettlementWallet.h"
 #include "WalletsManager.h"
 #include "ZmqSecuredDataConnection.h"
+#include "ZMQHelperFunctions.h"
 
 #include <QCoreApplication>
 #include <QDebug>
@@ -16,7 +17,6 @@
 #include <QtConcurrent/QtConcurrentRun>
 
 #include <spdlog/spdlog.h>
-
 
 using namespace Blocksettle::Communication;
 Q_DECLARE_METATYPE(headless::RequestPacket)
@@ -58,7 +58,8 @@ public:
             }
             return;
          }
-         logger_->error("[HeadlessListener] {} auth ticket mismatch!", packet.type());
+         logger_->error("[HeadlessListener] {} auth ticket mismatch ({} vs {})!", packet.type()
+            , authTicket_.toHexStr(), BinaryData(packet.authticket()).toHexStr());
          emit error(tr("auth ticket mismatch"));
          return;
       }
@@ -226,15 +227,7 @@ void HeadlessContainer::ProcessPasswordRequest(const std::string &data)
       logger_->error("[HeadlessContainer] Failed to parse PasswordRequest");
       return;
    }
-   std::vector<bs::wallet::EncryptionType> encTypes;
-   for (int i = 0; i < request.enctypes_size(); ++i) {
-      encTypes.push_back(static_cast<bs::wallet::EncryptionType>(request.enctypes(i)));
-   }
-   std::vector<SecureBinaryData> encKeys;
-   for (int i = 0; i < request.enckeys_size(); ++i) {
-      encKeys.push_back(request.enckeys(i));
-   }
-   emit PasswordRequested(request.walletid(), request.prompt(), encTypes, encKeys, { request.rankm(), 0 });
+   emit PasswordRequested(bs::hd::WalletInfo(request), request.prompt());
 }
 
 void HeadlessContainer::ProcessCreateHDWalletResponse(unsigned int id, const std::string &data)
@@ -264,7 +257,7 @@ void HeadlessContainer::ProcessCreateHDWalletResponse(unsigned int id, const std
             logger_->warn("[HeadlessContainer] invalid path[{}]: {}", i, response.wallet().groups(i).path());
             continue;
          }
-         const auto grpType = static_cast<bs::hd::CoinType>(grpPath.get(grpPath.length() - 1));
+         const auto grpType = static_cast<bs::hd::CoinType>(grpPath.get((int)grpPath.length() - 1));
          auto group = wallet->createGroup(grpType);
 
          for (int j = 0; j < response.wallet().leaves_size(); j++) {
@@ -273,7 +266,7 @@ void HeadlessContainer::ProcessCreateHDWalletResponse(unsigned int id, const std
                logger_->warn("[HeadlessContainer] invalid path[{}]: {}", j, response.wallet().leaves(j).path());
                continue;
             }
-            if (leafPath.get(leafPath.length() - 2) != static_cast<bs::hd::Path::Elem>(grpType)) {
+            if (leafPath.get((int)leafPath.length() - 2) != static_cast<bs::hd::Path::Elem>(grpType)) {
                continue;
             }
             auto leaf = group->newLeaf();
@@ -316,16 +309,7 @@ void HeadlessContainer::ProcessGetHDWalletInfoResponse(unsigned int id, const st
       return;
    }
    if (response.error().empty()) {
-      std::vector<bs::wallet::EncryptionType> encTypes;
-      for (int i = 0; i < response.enctypes_size(); ++i) {
-         encTypes.push_back(static_cast<bs::wallet::EncryptionType>(response.enctypes(i)));
-      }
-      std::vector<SecureBinaryData> encKeys;
-      for (int i = 0; i < response.enckeys_size(); ++i) {
-         encKeys.push_back(response.enckeys(i));
-      }
-      bs::wallet::KeyRank keyRank = { response.rankm(), response.rankn() };
-      emit HDWalletInfo(id, encTypes, encKeys, keyRank);
+      emit QWalletInfo(id, bs::hd::WalletInfo(response));
    }
    else {
       missingWallets_.insert(response.rootwalletid());
@@ -664,6 +648,7 @@ HeadlessContainer::RequestId HeadlessContainer::CreateHDWallet(const std::string
    if (!seed.empty()) {
       if (seed.hasPrivateKey()) {
          wallet->set_privatekey(seed.privateKey().toBinStr());
+         wallet->set_chaincode(seed.chainCode().toBinStr());
       }
       else if (!seed.seed().isNull()) {
          wallet->set_seed(seed.seed().toBinStr());
@@ -676,19 +661,20 @@ HeadlessContainer::RequestId HeadlessContainer::CreateHDWallet(const std::string
    return Send(packet);
 }
 
-HeadlessContainer::RequestId HeadlessContainer::DeleteHD(const std::shared_ptr<bs::hd::Wallet> &wlt)
+HeadlessContainer::RequestId HeadlessContainer::DeleteHDRoot(const std::string &rootWalletId)
 {
-   if (!wlt) {
+   if (rootWalletId.empty()) {
       return 0;
    }
-   return SendDeleteHDRequest(wlt->getWalletId(), {});
+   return SendDeleteHDRequest(rootWalletId, {});
 }
-HeadlessContainer::RequestId HeadlessContainer::DeleteHD(const std::shared_ptr<bs::Wallet> &leaf)
+
+HeadlessContainer::RequestId HeadlessContainer::DeleteHDLeaf(const std::string &leafWalletId)
 {
-   if (!leaf) {
+   if (leafWalletId.empty()) {
       return 0;
    }
-   return SendDeleteHDRequest({}, leaf->GetWalletId());
+   return SendDeleteHDRequest({}, leafWalletId);
 }
 
 HeadlessContainer::RequestId HeadlessContainer::SendDeleteHDRequest(const std::string &rootWalletId, const std::string &leafId)
@@ -781,13 +767,13 @@ HeadlessContainer::RequestId HeadlessContainer::GetDecryptedRootKey(const std::s
    return Send(packet);
 }
 
-HeadlessContainer::RequestId HeadlessContainer::GetInfo(const std::shared_ptr<bs::hd::Wallet> &wallet)
+HeadlessContainer::RequestId HeadlessContainer::GetInfo(const std::string &rootWalletId)
 {
-   if (!wallet) {
+   if (rootWalletId.empty()) {
       return 0;
    }
    headless::GetHDWalletInfoRequest request;
-   request.set_rootwalletid(wallet->getWalletId());
+   request.set_rootwalletid(rootWalletId);
 
    headless::RequestPacket packet;
    packet.set_type(headless::GetHDWalletInfoRequestType);
@@ -807,24 +793,37 @@ bool HeadlessContainer::isWalletOffline(const std::string &walletId) const
 
 
 RemoteSigner::RemoteSigner(const std::shared_ptr<spdlog::logger> &logger
-   , const QString &host, const QString &port, NetworkType netType
-   , const std::shared_ptr<ConnectionManager>& connectionManager, const QString &pwHash
-   , OpMode opMode)
+                           , const QString &host, const QString &port
+                           , NetworkType netType
+                           , const std::shared_ptr<ConnectionManager>& connectionManager
+                           , const std::shared_ptr<ApplicationSettings>& appSettings
+                           , const SecureBinaryData& pubKey
+                           , OpMode opMode)
    : HeadlessContainer(logger, opMode)
-   , host_(host), port_(port), netType_(netType), pwHash_(pwHash)
-   , connPubKey_("t>ituO$mt-[Fl}&IE%EicU@L&LvC%8i$$nS3YFm}")
+   , host_(host), port_(port), netType_(netType)
    , connectionManager_{connectionManager}
+   , appSettings_{appSettings}
+   , zmqSignerPubKey_{pubKey}
 {}
 
+// Establish the remote connection to the signer.
 bool RemoteSigner::Start()
 {
    if (connection_) {
       return true;
    }
 
+   // Load remote singer zmq pub key.
+   // If the server pub key exists, proceed (it was initialized in LocalSigner::Start()).
+   if (!zmqSignerPubKey_.getSize()){
+      logger_->error("[RemoteSigner::Start] missing server public key.");
+      return false;
+   }
+
    connection_ = connectionManager_->CreateSecuredDataConnection(true);
-   if (!connection_->SetServerPublicKey(connPubKey_)) {
-      logger_->error("[HeadlessContainer] Failed to set connection pubkey");
+   if (!connection_->SetServerPublicKey(zmqSignerPubKey_)) {
+      logger_->error("[RemoteSigner::{}] Failed to set ZMQ server public key"
+         , __func__);
       connection_ = nullptr;
       return false;
    }
@@ -865,7 +864,8 @@ void RemoteSigner::ConnectHelper()
          emit connected();
       }
       else {
-         logger_->error("[HeadlessContainer] Failed to open connection to headless container");
+         logger_->error("[HeadlessContainer] Failed to open connection to "
+            "headless container");
          return;
       }
    }
@@ -903,7 +903,6 @@ void RemoteSigner::Authenticate()
 
    authPending_ = true;
    headless::AuthenticationRequest request;
-   request.set_password(pwHash_.toStdString());
    request.set_nettype((netType_ == NetworkType::TestNet) ? headless::TestNetType : headless::MainNetType);
 
    headless::RequestPacket packet;
@@ -1022,10 +1021,15 @@ void RemoteSigner::onPacketReceived(headless::RequestPacket packet)
 }
 
 
-LocalSigner::LocalSigner(const std::shared_ptr<spdlog::logger> &logger, const QString &homeDir, NetworkType netType
-   , const QString &port
-   , const std::shared_ptr<ConnectionManager>& connectionManager, const QString &pwHash, double asSpendLimit)
-   : RemoteSigner(logger, QLatin1String("127.0.0.1"), port, netType, connectionManager, pwHash, OpMode::Local)
+LocalSigner::LocalSigner(const std::shared_ptr<spdlog::logger> &logger
+                         , const QString &homeDir, NetworkType netType, const QString &port
+                         , const std::shared_ptr<ConnectionManager>& connectionManager
+                         , const std::shared_ptr<ApplicationSettings> &appSettings
+                         , const SecureBinaryData& pubKey
+                         , double asSpendLimit)
+   : RemoteSigner(logger, QLatin1String("127.0.0.1"), port, netType
+                  , connectionManager, appSettings, pubKey, OpMode::Local)
+
 {
    auto walletsCopyDir = homeDir + QLatin1String("/copy");
    if (!QDir().exists(walletsCopyDir)) {
@@ -1063,9 +1067,6 @@ LocalSigner::LocalSigner(const std::shared_ptr<spdlog::logger> &logger, const QS
    args_ << QLatin1String("--listen") << QLatin1String("127.0.0.1");
    args_ << QLatin1String("--port") << port_;
    args_ << QLatin1String("--dirwallets") << walletsCopyDir;
-   if (!pwHash_.isEmpty()) {
-      args_ << QLatin1String("--pwhash") << pwHash;
-   }
    if (asSpendLimit > 0) {
       args_ << QLatin1String("--auto_sign_spend_limit") << QString::number(asSpendLimit, 'f', 8);
    }
@@ -1073,6 +1074,7 @@ LocalSigner::LocalSigner(const std::shared_ptr<spdlog::logger> &logger, const QS
 
 bool LocalSigner::Start()
 {
+   // If there's a previous headless process, stop it.
    KillHeadlessProcess();
    headlessProcess_ = std::make_shared<QProcess>();
    connect(headlessProcess_.get(), QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished)
@@ -1082,7 +1084,7 @@ bool LocalSigner::Start()
 
 #ifdef Q_OS_WIN
    const auto signerAppPath = QCoreApplication::applicationDirPath() + QLatin1String("/blocksettle_signer.exe");
-#elif defined (Q_OS_MAC)
+#elif defined (Q_OS_MACOS)
    auto bundleDir = QDir(QCoreApplication::applicationDirPath());
    bundleDir.cdUp();
    bundleDir.cdUp();
@@ -1092,13 +1094,15 @@ bool LocalSigner::Start()
    const auto signerAppPath = QCoreApplication::applicationDirPath() + QLatin1String("/blocksettle_signer");
 #endif
    if (!QFile::exists(signerAppPath)) {
-      logger_->error("[HeadlessContainer] Signer binary {} not found", signerAppPath.toStdString());
+      logger_->error("[HeadlessContainer] Signer binary {} not found"
+         , signerAppPath.toStdString());
       emit connectionError(tr("missing signer binary"));
       emit ready();
       return false;
    }
 
-   logger_->debug("[HeadlessContainer] starting {} {}", signerAppPath.toStdString(), args_.join(QLatin1Char(' ')).toStdString());
+   logger_->debug("[HeadlessContainer] starting {} {}"
+      , signerAppPath.toStdString(), args_.join(QLatin1Char(' ')).toStdString());
    headlessProcess_->start(signerAppPath, args_);
    if (!headlessProcess_->waitForStarted(5000)) {
       logger_->error("[HeadlessContainer] Failed to start child");
@@ -1106,19 +1110,68 @@ bool LocalSigner::Start()
       emit ready();
       return false;
    }
+
    QFile pidFile(pidFileName);
    if (pidFile.open(QIODevice::WriteOnly)) {
-      const auto pidStr = QString::number(headlessProcess_->processId()).toStdString();
+      const auto pidStr = \
+         QString::number(headlessProcess_->processId()).toStdString();
       pidFile.write(pidStr.data(), pidStr.size());
       pidFile.close();
    }
    else {
-      logger_->warn("[HeadlessContainer] Failed to open PID file {} for writing", pidFileName.toStdString());
+      logger_->warn("[LocalSigner::{}] Failed to open PID file {} for writing"
+         , __func__, pidFileName.toStdString());
    }
-   logger_->debug("[HeadlessContainer] child process started");
+   logger_->debug("[LocalSigner::{}] child process started", __func__);
 
-   RemoteSigner::Start();
-   return true;
+
+   // Load local ZMQ server public key.
+   if (zmqSignerPubKey_.getSize() == 0) {
+      // If the server pub key exists, proceed. If not, give the signer a little time to create the key.
+      // 50 ms seems reasonable on a VM but we'll add some padding to be safe.
+      const auto zmqLocalSignerPubKeyPath = appSettings_->get<QString>(ApplicationSettings::zmqLocalSignerPubKeyFilePath);
+
+      QFile zmqLocalSignerPubKeyFile(zmqLocalSignerPubKeyPath);
+      if (!zmqLocalSignerPubKeyFile.exists()) {
+         QThread::msleep(250);
+      }
+
+      if (!bs::network::readZmqKeyFile(zmqLocalSignerPubKeyPath, zmqSignerPubKey_, true
+         , logger_)) {
+         logger_->error("[LocalSigner::{}] failed to read ZMQ server public "
+            "key ({})", __func__, zmqLocalSignerPubKeyPath.toStdString());
+      }
+   }
+
+
+   // SPECIAL CASE: Unlike Windows and Linux, the Signer and Terminal have
+   // different data directories on Macs. Check the Signer for a file. There is
+   // an issue here if the Signer has moved its keys away from the standard
+   // location. We really should check the Signer's config file instead.
+#ifdef Q_OS_MACOS
+   QString zmqSignerPubKeyPath = \
+      appSettings_->get<QString>(ApplicationSettings::zmqLocalSignerPubKeyFilePath);
+   QFile zmqSignerPubKeyFile(zmqSignerPubKeyPath);
+   if (!zmqSignerPubKeyFile.exists()) {
+      QThread::msleep(250); // Give Signer time to create files if needed.
+      QDir signZMQFileDir(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation));
+      signZMQFileDir.cdUp();
+      QString signZMQSrvPubKeyPath = signZMQFileDir.path() + \
+         QString::fromStdString("/Blocksettle/zmq_conn_srv.pub");
+      if (!QFile::copy(signZMQSrvPubKeyPath, zmqSignerPubKeyPath)) {
+         logger_->error("[LocalSigner::{}] Failed to copy ZMQ public key file "
+            "{} to the terminal. Connection will not start.", __func__
+            , signZMQSrvPubKeyPath.toStdString());
+         return false;
+      }
+      else {
+         logger_->info("[LocalSigner::{}] Copied ZMQ public key file ({}) to "
+            "the terminal.", __func__, zmqSignerPubKeyPath.toStdString());
+      }
+   }
+#endif
+
+   return RemoteSigner::Start();
 }
 
 bool LocalSigner::Stop()

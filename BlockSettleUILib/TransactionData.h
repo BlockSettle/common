@@ -9,14 +9,18 @@
 #include "MetaData.h"
 #include "UtxoReservation.h"
 
-
 class CoinSelection;
 class RecipientContainer;
 class ScriptRecipient;
 class SelectedTransactionInputs;
+struct UtxoSelection;
+struct PaymentStruct;
 
 namespace bs {
    class Wallet;
+}
+namespace spdlog {
+   class logger;
 }
 
 class TransactionData
@@ -51,13 +55,13 @@ public:
    using onTransactionChanged = std::function<void()>;
 
 public:
-   TransactionData(onTransactionChanged changedCallback = onTransactionChanged()
+   TransactionData(const onTransactionChanged &changedCallback = nullptr
+      , const std::shared_ptr<spdlog::logger> &logger = nullptr
       , bool SWOnly = false, bool confirmedOnly = false);
    ~TransactionData() noexcept;
 
    TransactionData(const TransactionData&) = delete;
    TransactionData& operator = (const TransactionData&) = delete;
-
    TransactionData(TransactionData&&) = delete;
    TransactionData& operator = (TransactionData&&) = delete;
 
@@ -70,9 +74,10 @@ public:
    void SetSigningWallet(const std::shared_ptr<bs::Wallet>& wallet) { signWallet_ = wallet; }
    std::shared_ptr<bs::Wallet> GetWallet() const { return wallet_; }
    std::shared_ptr<bs::Wallet> GetSigningWallet() const { return signWallet_; }
-   void SetFeePerByte(float feePerByte);
-   float FeePerByte() const { return feePerByte_; }
-   void SetTotalFee(uint64_t fee);
+   void setFeePerByte(float feePerByte);
+   void setTotalFee(uint64_t fee, bool overrideFeePerByte = true);
+   float feePerByte() const;
+   uint64_t totalFee() const;
 
    bool IsTransactionValid() const;
    bool InputsLoadedFromArmory() const;
@@ -81,6 +86,7 @@ public:
    std::vector<unsigned int> GetRecipientIdList() const;
 
    unsigned int RegisterNewRecipient();
+   std::vector<unsigned int> allRecipientIds() const;
    bool UpdateRecipientAddress(unsigned int recipientId, const bs::Address &);
    bool UpdateRecipientAddress(unsigned int recipientId, const std::shared_ptr<AddressEntry> &);
    void ResetRecipientAddress(unsigned int recipientId);
@@ -95,6 +101,7 @@ public:
 
    bs::Address GetRecipientAddress(unsigned int recipientId) const;
    BTCNumericTypes::balance_type GetRecipientAmount(unsigned int recipientId) const;
+   BTCNumericTypes::balance_type  GetTotalRecipientsAmount() const;
    bool IsMaxAmount(unsigned int recipientId) const;
 
    bs::wallet::TXSignRequest CreateUnsignedTransaction(bool isRBF = false, const bs::Address &changeAddr = {});
@@ -110,7 +117,7 @@ public:
    std::shared_ptr<SelectedTransactionInputs> GetSelectedInputs();
    TransactionSummary GetTransactionSummary() const;
 
-   double CalculateMaxAmount(const bs::Address &recipient = {}) const;
+   double CalculateMaxAmount(const bs::Address &recipient = {}, bool force = false) const;
 
    void ReserveUtxosFor(double amount, const std::string &reserveId, const bs::Address &addr = {});
    void ReloadSelection(const std::vector<UTXO> &);
@@ -134,23 +141,32 @@ private:
    void InvalidateTransactionData();
    bool UpdateTransactionData();
    bool RecipientsReady() const;
+   std::vector<UTXO> decorateUTXOs(const std::vector<UTXO> &inUTXOs = {}) const;
+   UtxoSelection computeSizeAndFee(const std::vector<UTXO>& inUTXOs
+      , const PaymentStruct& inPS) const;
+
+   // Temporary function until some Armory changes are accepted upstream.
+   size_t getVirtSize(const UtxoSelection& inUTXOSel) const;
 
    std::vector<std::shared_ptr<ScriptRecipient>> GetRecipientList() const;
 
 private:
-   std::shared_ptr<bs::Wallet>   wallet_, signWallet_;
+   onTransactionChanged             changedCallback_;
+   std::shared_ptr<spdlog::logger>  logger_;
 
+   std::shared_ptr<bs::Wallet>   wallet_, signWallet_;
    std::shared_ptr<SelectedTransactionInputs> selectedInputs_;
 
    float       feePerByte_;
    uint64_t    totalFee_ = 0;
+   mutable double maxAmount_ = 0;
    // recipients
    unsigned int nextId_;
    std::unordered_map<unsigned int, std::shared_ptr<RecipientContainer>> recipients_;
    mutable bs::Address              fallbackRecvAddress_;
    std::shared_ptr<CoinSelection>   coinSelection_;
 
-   std::vector<UTXO>    usedUTXO_;
+   mutable std::vector<UTXO>  usedUTXO_;
    TransactionSummary   summary_;
    bool     maxSpendAmount_ = false;
 
@@ -158,8 +174,6 @@ private:
 
    const bool  swTransactionsOnly_;
    const bool  confirmedInputs_;
-
-   onTransactionChanged changedCallback_;
 
    std::vector<UTXO>    reservedUTXO_;
    std::shared_ptr<bs::UtxoReservation::Adapter>   utxoAdapter_;

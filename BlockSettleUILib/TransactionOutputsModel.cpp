@@ -1,5 +1,5 @@
+#include <QColor>
 #include "TransactionOutputsModel.h"
-
 #include "UiUtils.h"
 
 TransactionOutputsModel::TransactionOutputsModel(QObject* parent)
@@ -27,16 +27,31 @@ void TransactionOutputsModel::clear()
    endResetModel();
 }
 
+void TransactionOutputsModel::enableRows(bool flag)
+{
+   if (rowsEnabled_ != flag) {
+      rowsEnabled_ = flag;
+      emit dataChanged(index(0, 0), index(rowCount({}) - 1, columnCount({}) - 1));
+   }
+}
+
+Qt::ItemFlags TransactionOutputsModel::flags(const QModelIndex &index) const
+{
+   if (rowsEnabled_) {
+      return QAbstractTableModel::flags(index);
+   }
+   return Qt::ItemNeverHasChildren;
+}
+
 QVariant TransactionOutputsModel::data(const QModelIndex & index, int role) const
 {
    switch (role) {
    case Qt::TextAlignmentRole:
-      if (index.column() == ColumnAmount) {
-         return Qt::AlignRight;
-      }
       return Qt::AlignLeft;
    case Qt::DisplayRole:
       return getRowData(index.column(), outputs_[index.row()]);
+   case Qt::TextColorRole:
+      return rowsEnabled_ ? QVariant{} : QColor(Qt::gray);
    }
    return QVariant{};
 }
@@ -46,6 +61,19 @@ void TransactionOutputsModel::AddRecipient(unsigned int recipientId, const QStri
    beginInsertRows(QModelIndex{}, (int)outputs_.size(), (int)outputs_.size());
    outputs_.emplace_back(OutputRow{recipientId, address, amount});
    endInsertRows();
+}
+
+void TransactionOutputsModel::UpdateRecipientAmount(unsigned int recipientId, double amount)
+{
+   int row = -1;
+   for (int i = 0; i < outputs_.size(); ++i) {
+      if (outputs_[i].recipientId == recipientId) {
+         row = i;
+         outputs_[i].amount = amount;
+         break;
+      }
+   }
+   emit dataChanged(index(row, ColumnAmount), index(row, ColumnAmount), { Qt::DisplayRole });
 }
 
 void TransactionOutputsModel::RemoveRecipient(int row)
@@ -74,7 +102,7 @@ int TransactionOutputsModel::GetRowById(unsigned int id)
 
 QVariant TransactionOutputsModel::getRowData(int column, const OutputRow& outputRow) const
 {
-   switch(column){
+   switch (column) {
    case ColumnAddress:
       return outputRow.address;
    case ColumnAmount:

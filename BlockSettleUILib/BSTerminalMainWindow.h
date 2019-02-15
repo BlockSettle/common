@@ -11,6 +11,7 @@
 #include "ArmoryConnection.h"
 #include "CelerClient.h"
 #include "TransactionsViewModel.h"
+#include "QWalletInfo.h"
 
 namespace Ui {
     class BSTerminalMainWindow;
@@ -47,7 +48,8 @@ class BSTerminalMainWindow : public QMainWindow
 Q_OBJECT
 
 public:
-   BSTerminalMainWindow(const std::shared_ptr<ApplicationSettings>& settings, BSTerminalSplashScreen& splashScreen, QWidget* parent = nullptr);
+   BSTerminalMainWindow(const std::shared_ptr<ApplicationSettings>& settings
+      , BSTerminalSplashScreen& splashScreen, QWidget* parent = nullptr);
    ~BSTerminalMainWindow() override;
 
    void postSplashscreenActions();
@@ -83,13 +85,17 @@ private:
    bool isMDLicenseAccepted() const;
    void saveUserAcceptedMDLicense();
 
+signals:
+   void readyToLogin();
+
 private slots:
+   // display login dialog once network settings loaded
+   void onReadyToLogin();
+
    void InitTransactionsView();
    void ArmoryIsOffline();
    void SignerReady();
-   void onPasswordRequested(std::string walletId, std::string prompt
-      , std::vector<bs::wallet::EncryptionType>, std::vector<SecureBinaryData> encKeys
-      , bs::wallet::KeyRank);
+   void onPasswordRequested(const bs::hd::WalletInfo &walletInfo, std::string prompt);
    void showInfo(const QString &title, const QString &text);
    void showError(const QString &title, const QString &text);
    void onSignerConnError(const QString &);
@@ -99,7 +105,7 @@ private slots:
 
    bool createWallet(bool primary, bool reportSuccess = true);
 
-   void acceptMDAgreement(const std::string &host, const std::string &port);
+   void acceptMDAgreement();
    void updateControlEnabledState();
    void onButtonUserClicked();
 
@@ -127,7 +133,6 @@ private:
    std::shared_ptr<CCPortfolioModel>         portfolioModel_;
    std::shared_ptr<ConnectionManager>        connectionManager_;
    std::shared_ptr<CelerClient>              celerConnection_;
-   std::shared_ptr<AutheIDClient>            autheIDConnection_;
    std::shared_ptr<CelerMarketDataProvider>  mdProvider_;
    std::shared_ptr<AssetManager>             assetManager_;
    std::shared_ptr<CCFileManager>            ccFileManager_;
@@ -150,10 +155,10 @@ private:
       Connection  marketData;
       Connection  mdhs;
       Connection  chat;
-      bool isSet{ false };
+      bool        isSet = false;
    };
-   void GetNetworkSettingsFromPuB(const std::function<void(NetworkSettings)> &);
-   NetworkSettings   networkSettings_;
+   void GetNetworkSettingsFromPuB(const std::function<void()> &);
+   void OnNetworkSettingsLoaded();
 
    struct TxInfo {
       Tx       tx;
@@ -177,11 +182,8 @@ private slots:
    void openAccountInfoDialog();
    void openCCTokenDialog();
    void showZcNotification(const TxInfo &);
-   void onZCreceived(ArmoryConnection::ReqIdType);
+   void onZCreceived(const std::vector<bs::TXEntry>);
    void onArmoryStateChanged(ArmoryConnection::State);
-
-   void onAutheIDDone(const std::string& email);
-   void onAutheIDFailed();
 
    void onLogin();
    void onLogout();
@@ -192,6 +194,8 @@ private slots:
    void showRunInBackgroundMessage();
    void onAuthMgrConnComplete();
    void onCCInfoMissing();
+
+   void onMDConnectionDetailsRequired();
 
 protected:
    void closeEvent(QCloseEvent* event) override;
@@ -213,12 +217,12 @@ private:
 
    void updateLoginActionState();
 
-   void loginWithAutheID(const std::string& email);
    void loginWithCeler(const std::string& username, const std::string& password);
    void loginToCeler(const std::string& username, const std::string& password);
 
 private:
-   QString loginButtonText_;
+   QString           loginButtonText_;
+   NetworkSettings   networkSettings_;
 };
 
 #endif // __BS_TERMINAL_MAIN_WINDOW_H__

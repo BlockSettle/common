@@ -1,8 +1,11 @@
 #include <QFileDialog>
+#include <QStandardPaths>
 #include "SignerSettingsPage.h"
 #include "ui_SignerSettingsPage.h"
 #include "ApplicationSettings.h"
 #include "BtcUtils.h"
+#include "ZMQHelperFunctions.h"
+#include "BSMessageBox.h"
 
 
 enum RunModeIndex {
@@ -13,20 +16,29 @@ enum RunModeIndex {
 
 
 SignerSettingsPage::SignerSettingsPage(QWidget* parent)
-   : QWidget{parent}
+   : SettingsPage{parent}
    , ui_{new Ui::SignerSettingsPage{}}
 {
    ui_->setupUi(this);
+   ui_->lineEditRemoteZmqPubKey->setVisible(false);
+
    connect(ui_->comboBoxRunMode, SIGNAL(activated(int)), this, SLOT(runModeChanged(int)));
    connect(ui_->pushButtonOfflineDir, &QPushButton::clicked, this, &SignerSettingsPage::onOfflineDirSel);
+   connect(ui_->pushButtonZmqPubKey, &QPushButton::clicked, this, &SignerSettingsPage::onZmqPubKeySel);
    connect(ui_->spinBoxAsSpendLimit, SIGNAL(valueChanged(double)), this, SLOT(onAsSpendLimitChanged(double)));
+
+   connect(ui_->comboBoxZmqImportType, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int index){
+      ui_->lineEditRemoteZmqPubKey->setVisible(index != 0);
+      ui_->pushButtonZmqPubKey->setVisible(index == 0);
+      ui_->lineEditZmqKeyPath->setVisible(index == 0);
+   });
 }
 
 SignerSettingsPage::~SignerSettingsPage() = default;
 
 void SignerSettingsPage::runModeChanged(int index)
 {
-   onModeChanged(index, false);
+   onModeChanged(index);
 }
 
 void SignerSettingsPage::onOfflineDirSel()
@@ -39,27 +51,48 @@ void SignerSettingsPage::onOfflineDirSel()
    ui_->labelOfflineDir->setText(dir);
 }
 
-void SignerSettingsPage::onModeChanged(int index, bool displayDefault)
+void SignerSettingsPage::onZmqPubKeySel()
+{
+   const auto file = QFileDialog::getOpenFileName(this, tr("Select ZMQ public key")
+      , QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation)
+      , QStringLiteral("*.pub"));
+   if (file.isEmpty()) {
+      return;
+   }
+
+   SecureBinaryData zmqSignerPubKey;
+   if (!bs::network::readZmqKeyFile(file, zmqSignerPubKey, true)) {
+      BSMessageBox info(BSMessageBox::critical, tr("Import ZMQ key failed")
+         , tr("Failed to parse ZMQ public key from file")
+         , QStringLiteral(""), this);
+      info.exec();
+      return;
+   }
+
+   ui_->lineEditRemoteZmqPubKey->setText(QString::fromStdString(zmqSignerPubKey.toBinStr()));
+   ui_->lineEditZmqKeyPath->setText(file);
+}
+
+void SignerSettingsPage::onModeChanged(int index)
 {
    switch (static_cast<RunModeIndex>(index)) {
    case Local:
       showHost(false);
       showPort(true);
-      ui_->spinBoxPort->setValue(appSettings_->get<int>(ApplicationSettings::signerPort, displayDefault));
-      showPassword(true);
-      ui_->lineEditPassword->setText(appSettings_->get<QString>(ApplicationSettings::signerPassword, displayDefault));
+      ui_->spinBoxPort->setValue(appSettings_->get<int>(ApplicationSettings::signerPort));
+      showZmqPubKey(false);
       showOfflineDir(false);
       showLimits(true);
-      ui_->spinBoxAsSpendLimit->setValue(appSettings_->get<double>(ApplicationSettings::autoSignSpendLimit, displayDefault));
+      ui_->spinBoxAsSpendLimit->setValue(appSettings_->get<double>(ApplicationSettings::autoSignSpendLimit));
       break;
 
    case Remote:
       showHost(true);
-      ui_->lineEditHost->setText(appSettings_->get<QString>(ApplicationSettings::signerHost, displayDefault));
+      ui_->lineEditHost->setText(appSettings_->get<QString>(ApplicationSettings::signerHost));
       showPort(true);
-      ui_->spinBoxPort->setValue(appSettings_->get<int>(ApplicationSettings::signerPort, displayDefault));
-      showPassword(true);
-      ui_->lineEditPassword->setText(appSettings_->get<QString>(ApplicationSettings::signerPassword, displayDefault));
+      ui_->spinBoxPort->setValue(appSettings_->get<int>(ApplicationSettings::signerPort));
+      showZmqPubKey(true);
+      ui_->lineEditRemoteZmqPubKey->setText(appSettings_->get<QString>(ApplicationSettings::zmqRemoteSignerPubKey));
       showOfflineDir(false);
       showLimits(false);
       break;
@@ -67,9 +100,9 @@ void SignerSettingsPage::onModeChanged(int index, bool displayDefault)
    case Offline:
       showHost(false);
       showPort(false);
-      showPassword(false);
+      showZmqPubKey(false);
       showOfflineDir(true);
-      ui_->labelOfflineDir->setText(appSettings_->get<QString>(ApplicationSettings::signerOfflineDir, displayDefault));
+      ui_->labelOfflineDir->setText(appSettings_->get<QString>(ApplicationSettings::signerOfflineDir));
       showLimits(false);
       break;
 
@@ -77,16 +110,21 @@ void SignerSettingsPage::onModeChanged(int index, bool displayDefault)
    }
 }
 
-void SignerSettingsPage::setAppSettings(const std::shared_ptr<ApplicationSettings>& appSettings)
+void SignerSettingsPage::display()
 {
-   appSettings_ = appSettings;
+   const auto modeIndex = appSettings_->get<int>(ApplicationSettings::signerRunMode) - 1;
+   onModeChanged(modeIndex);
+   ui_->comboBoxRunMode->setCurrentIndex(modeIndex);
 }
 
-void SignerSettingsPage::displaySettings(bool displayDefault)
+void SignerSettingsPage::reset()
 {
-   const auto modeIndex = appSettings_->get<int>(ApplicationSettings::signerRunMode, displayDefault) - 1;
-   onModeChanged(modeIndex, displayDefault);
-   ui_->comboBoxRunMode->setCurrentIndex(modeIndex);
+   for (const auto &setting : {ApplicationSettings::signerRunMode, ApplicationSettings::signerHost
+      , ApplicationSettings::signerPort, ApplicationSettings::signerOfflineDir
+      , ApplicationSettings::zmqRemoteSignerPubKey, ApplicationSettings::autoSignSpendLimit}) {
+      appSettings_->reset(setting, false);
+   }
+   display();
 }
 
 void SignerSettingsPage::showHost(bool show)
@@ -101,10 +139,11 @@ void SignerSettingsPage::showPort(bool show)
    ui_->spinBoxPort->setVisible(show);
 }
 
-void SignerSettingsPage::showPassword(bool show)
+void SignerSettingsPage::showZmqPubKey(bool show)
 {
-   ui_->labelPassword->setVisible(show);
-   ui_->lineEditPassword->setVisible(show);
+   ui_->widgetZmqLabel->setVisible(show);
+   ui_->widgetZmqComboBox->setVisible(show);
+   ui_->widgetZmqContent->setVisible(show);
 }
 
 void SignerSettingsPage::showOfflineDir(bool show)
@@ -131,19 +170,18 @@ void SignerSettingsPage::onAsSpendLimitChanged(double value)
    }
 }
 
-void SignerSettingsPage::applyChanges()
+void SignerSettingsPage::apply()
 {
    switch (static_cast<RunModeIndex>(ui_->comboBoxRunMode->currentIndex())) {
    case Local:
       appSettings_->set(ApplicationSettings::signerPort, ui_->spinBoxPort->value());
       appSettings_->set(ApplicationSettings::autoSignSpendLimit, ui_->spinBoxAsSpendLimit->value());
-      savePassword();
       break;
 
    case Remote:
       appSettings_->set(ApplicationSettings::signerHost, ui_->lineEditHost->text());
       appSettings_->set(ApplicationSettings::signerPort, ui_->spinBoxPort->value());
-      savePassword();
+      saveZmqRemotePubKey();
       break;
 
    case Offline:
@@ -153,14 +191,12 @@ void SignerSettingsPage::applyChanges()
    default:    break;
    }
    appSettings_->set(ApplicationSettings::signerRunMode, ui_->comboBoxRunMode->currentIndex() + 1);
-
 }
 
-void SignerSettingsPage::savePassword()
+void SignerSettingsPage::saveZmqRemotePubKey()
 {
-   const auto &password = ui_->lineEditPassword->text().toStdString();
-   if (!password.empty() && (password != appSettings_->get<std::string>(ApplicationSettings::signerPassword))) {
-      const auto hash = BtcUtils::getSha256(password);
-      appSettings_->set(ApplicationSettings::signerPassword, QString::fromStdString(hash.getSliceCopy(0, 8).toHexStr()));
+   const QString &remoteSignerZmqPubKey = ui_->lineEditRemoteZmqPubKey->text();
+   if (!remoteSignerZmqPubKey.isEmpty() && (remoteSignerZmqPubKey != appSettings_->get<QString>(ApplicationSettings::zmqRemoteSignerPubKey))) {
+      appSettings_->set(ApplicationSettings::zmqRemoteSignerPubKey, remoteSignerZmqPubKey);
    }
 }

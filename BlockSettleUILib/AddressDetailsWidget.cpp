@@ -62,6 +62,7 @@ void AddressDetailsWidget::loadTransactions()
 
    uint64_t totSpent = 0;
    uint64_t totRcvd = 0;
+   uint64_t totCount = 0;
 
    // Go through each TXEntry object and calculate all required UI data.
    for (const auto &curTXEntry : txEntryHashSet_) {
@@ -113,6 +114,7 @@ void AddressDetailsWidget::loadTransactions()
       else {
          totSpent -= curTXEntry.second.value; // Negative, so fake that out.
       }
+      totCount++;
 
       setConfirmationColor(item);
       // disabled as per Scott's request
@@ -124,6 +126,7 @@ void AddressDetailsWidget::loadTransactions()
    ui_->balance->setText(UiUtils::displayAmount(totRcvd - totSpent));
    ui_->totalReceived->setText(UiUtils::displayAmount(totRcvd));
    ui_->totalSent->setText(UiUtils::displayAmount(totSpent));
+   ui_->transactionCount->setText(QString::number(totCount));
 
    tree->resizeColumns();
 }
@@ -174,7 +177,7 @@ void AddressDetailsWidget::onTxClicked(QTreeWidgetItem *item, int column)
 
 // Used in refresh. The callback used when getting a ledger delegate (pages)
 // from Armory. Processes the data as needed.
-void AddressDetailsWidget::getTxData(AsyncClient::LedgerDelegate delegate)
+void AddressDetailsWidget::getTxData(const std::shared_ptr<AsyncClient::LedgerDelegate> &delegate)
 {
    // The callback that handles previous Tx objects attached to the TxIn objects
    // and processes them. Once done, the UI can be changed.
@@ -227,7 +230,7 @@ void AddressDetailsWidget::getTxData(AsyncClient::LedgerDelegate delegate)
             const auto &itTX = txMap_.find(searchHash);
             if (itTX == txMap_.end()) {
                txHashSet.insert(searchHash);
-               txEntryHashSet_[searchHash] = bs::convertTXEntry(entry);
+               txEntryHashSet_[searchHash] = bs::TXEntry::fromLedgerEntry(entry);
             }
          }
       }
@@ -246,13 +249,12 @@ void AddressDetailsWidget::getTxData(AsyncClient::LedgerDelegate delegate)
       }
    };
 
-   auto delegatePtr = std::make_shared<AsyncClient::LedgerDelegate>(delegate);
-   const auto &cbPageCnt = [this, delegatePtr, cbLedger]
+   const auto &cbPageCnt = [this, delegate, cbLedger]
                            (ReturnMessage<uint64_t> pageCnt)->void {
       try {
          const auto &inPageCnt = pageCnt.get();
          for(uint64_t i = 0; i < inPageCnt; i++) {
-            delegatePtr->getHistoryPage(i, cbLedger);
+            delegate->getHistoryPage(i, cbLedger);
          }
       }
       catch (const std::exception &e) {
@@ -260,7 +262,7 @@ void AddressDetailsWidget::getTxData(AsyncClient::LedgerDelegate delegate)
             "error (getPageCount) - {}", e.what());
       }
    };
-   delegate.getPageCount(cbPageCnt);
+   delegate->getPageCount(cbPageCnt);
 }
 
 // Function that grabs the TX data for the address. Used in callback.
@@ -276,7 +278,7 @@ void AddressDetailsWidget::refresh(const std::shared_ptr<bs::PlainWallet> &walle
    }
 
    // Process TX data for the "first" (i.e., only) address in the wallet.
-   const auto &cbLedgerDelegate = [this](AsyncClient::LedgerDelegate delegate) {
+   const auto &cbLedgerDelegate = [this](const std::shared_ptr<AsyncClient::LedgerDelegate> &delegate) {
       getTxData(delegate);
    };
    const auto addr = wallet->GetUsedAddressList()[0];
@@ -317,6 +319,7 @@ void AddressDetailsWidget::clear()
 
    const auto &loading = tr("Loading...");
    ui_->balance->setText(loading);
+   ui_->transactionCount->setText(loading);
    ui_->totalReceived->setText(loading);
    ui_->totalSent->setText(loading);
 }

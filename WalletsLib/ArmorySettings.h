@@ -12,8 +12,6 @@ struct ArmorySettings
 {
    NetworkType netType;
 
-   bool ignoreAllZC;
-
    SocketType socketType;
 
    std::string armoryDBIp;
@@ -24,6 +22,7 @@ struct ArmorySettings
    QString armoryExecutablePath;
    QString dbDir;
    QString bitcoinBlocksDir;
+   QString dataDir;
 };
 
 #endif // __ARMORY_SETTINGS_H__

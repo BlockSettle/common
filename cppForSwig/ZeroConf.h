@@ -131,7 +131,7 @@ public:
    ParsedTxStatus state_ = Tx_Uninitialized;
    bool isRBF_ = false;
    bool isChainedZc_ = false;
-
+   bool needsReparsed_ = false;
 
 public:
    ParsedTx(BinaryData& key) :
@@ -180,7 +180,7 @@ struct ZeroConfInvPacket
 struct ParsedZCData
 {
    std::set<BinaryData> txioKeys_;
-   std::set<BinaryData> invalidatedKeys_;
+   std::map<BinaryData, BinaryData> invalidatedKeys_;
 
    void mergeTxios(ParsedZCData& pzd)
    {
@@ -191,7 +191,7 @@ struct ParsedZCData
 ////////////////////////////////////////////////////////////////////////////////
 struct ZcPurgePacket
 {
-   std::set<BinaryData> invalidatedZcKeys_;
+   std::map<BinaryData, BinaryData> invalidatedZcKeys_;
    std::map<BinaryData, BinaryData> minedTxioKeys_;
 };
 

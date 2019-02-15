@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //                                                                            //
-//  Copyright (C) 2016, goatpig                                               //
+//  Copyright (C) 2016-18, goatpig                                            //
 //  Distributed under the MIT license                                         //
 //  See LICENSE-MIT or https://opensource.org/licenses/MIT                    //
 //                                                                            //
@@ -15,62 +15,6 @@ using namespace std;
 
 StackItem::~StackItem()
 {}
-
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-//// ScriptSpender
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-ScriptRecipient::~ScriptRecipient() 
-{}
-
-////////////////////////////////////////////////////////////////////////////////
-shared_ptr<ScriptRecipient> ScriptRecipient::deserialize(
-   const BinaryDataRef& dataPtr)
-{
-   shared_ptr<ScriptRecipient> result_ptr;
-
-   BinaryRefReader brr(dataPtr);
-
-   auto value = brr.get_uint64_t();
-   auto script = brr.get_BinaryDataRef(brr.getSizeRemaining());
-
-   BinaryRefReader brr_script(script);
-
-   auto byte0 = brr_script.get_uint8_t();
-   auto byte1 = brr_script.get_uint8_t();
-   auto byte2 = brr_script.get_uint8_t();
-
-   if (byte0 == 25 && byte1 == OP_DUP && byte2 == OP_HASH160)
-   {
-      auto byte3 = brr_script.get_uint8_t();
-      if (byte3 == 20)
-      {
-         auto&& hash160 = brr_script.get_BinaryData(20);
-         result_ptr = make_shared<Recipient_P2PKH>(hash160, value);
-      }
-   }
-   else if (byte0 == 22 && byte1 == 0 && byte2 == 20)
-   {
-      auto&& hash160 = brr_script.get_BinaryData(20);
-      result_ptr = make_shared<Recipient_P2WPKH>(hash160, value);
-   }
-   else if (byte0 == 23 && byte1 == OP_HASH160 && byte2 == 20)
-   {
-      auto&& hash160 = brr_script.get_BinaryData(20);
-      result_ptr = make_shared<Recipient_P2SH>(hash160, value);
-   }
-   else if (byte0 == 34 && byte1 == 0 && byte2 == 32)
-   {
-      auto&& hash256 = brr_script.get_BinaryData(32);
-      result_ptr = make_shared<Recipient_PW2SH>(hash256, value);
-   }
-
-   if (result_ptr == nullptr)
-      throw runtime_error("unexpected recipient script");
-
-   return result_ptr;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
@@ -1660,12 +1604,19 @@ void SignerProxyFromSigner::setLambda(
       auto&& sig = signer->sign(script, privKey, SHD, index);
 
       //convert to DER
+#ifndef LIBBTC_ONLY
       auto&& derSig = BtcUtils::rsToDerSig(sig.getRef());
 
       //append sighash byte
       derSig.append(spender->getSigHashByte());
-
       return SecureBinaryData(derSig);
+#else
+      //append sighash byte
+      SecureBinaryData sbd_hashbyte(1);
+      *sbd_hashbyte.getPtr() = spender->getSigHashByte();
+      sig.append(sbd_hashbyte);
+      return sig;
+#endif
    };
 
    signerLambda_ = signerLBD;

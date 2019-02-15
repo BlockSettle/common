@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //                                                                            //
-//  Copyright (C) 2016, goatpig                                               //
+//  Copyright (C) 2016-2019, goatpig                                          //
 //  Distributed under the MIT license                                         //
 //  See LICENSE-MIT or https://opensource.org/licenses/MIT                    //
 //                                                                            //
@@ -8,6 +8,7 @@
 
 #include "Wallets.h"
 #include "BlockDataManagerConfig.h"
+#include "BIP32_Node.h"
 
 using namespace std;
 
@@ -217,7 +218,7 @@ shared_ptr<AssetWallet_Single> AssetWallet_Single::
    auto&& masterID_long = BtcUtils::getHMAC256(
       pubkey, SecureBinaryData(hmacMasterMsg));
    auto&& masterID = BtcUtils::computeID(masterID_long);
-   string masterIDStr(masterID.getCharPtr(), masterID.getSize());
+   string masterIDStr(masterID.getCharPtr());
 
    //create wallet file and dbenv
    stringstream pathSS;
@@ -244,7 +245,7 @@ shared_ptr<AssetWallet_Single> AssetWallet_Single::
    
    //create kdf and master encryption key
    auto kdfPtr = make_shared<KeyDerivationFunction_Romix>();
-   auto&& masterKeySBD = SecureBinaryData().GenerateRandom(32);
+   auto&& masterKeySBD = CryptoPRNG::generateRandom(32);
    DecryptedEncryptionKey masterEncryptionKey(masterKeySBD);
    masterEncryptionKey.deriveKey(kdfPtr);
    auto&& masterEncryptionKeyId = masterEncryptionKey.getId(kdfPtr->getId());
@@ -363,16 +364,18 @@ createFromPublicRoot_Armory135(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-shared_ptr<AssetWallet_Single> AssetWallet_Single::
-createFromPrivateRoot_BIP32(
-const string& folder,
-const SecureBinaryData& privateRoot,
-const vector<unsigned>& derivationPath,
-const SecureBinaryData& passphrase,
-unsigned lookup)
+shared_ptr<AssetWallet_Single> AssetWallet_Single::createFromSeed_BIP32(
+   const string& folder,
+   const SecureBinaryData& seed,
+   const vector<unsigned>& derivationPath,
+   const SecureBinaryData& passphrase,
+   unsigned lookup)
 {
+   BIP32_Node rootNode;
+   rootNode.initFromSeed(seed);
+
    //compute wallet ID
-   auto&& pubkey = CryptoECDSA().ComputePublicKey(privateRoot);
+   auto pubkey = rootNode.getPublicKey();
 
    //compute master ID as hmac256(root pubkey, "MetaEntry")
    string hmacMasterMsg("MetaEntry");
@@ -393,9 +396,9 @@ unsigned lookup)
 
    {
       //walletID
-      auto&& chaincode = BtcUtils::computeChainCode_Armory135(privateRoot);
+      auto chaincode_copy = rootNode.getChaincode();
       auto derScheme = make_shared<DerivationScheme_ArmoryLegacy>(
-         chaincode);
+         chaincode_copy);
 
       auto asset_single = make_shared<AssetEntry_Single>(
          ROOT_ASSETENTRY_ID, BinaryData(),
@@ -406,7 +409,7 @@ unsigned lookup)
 
    //create kdf and master encryption key
    auto kdfPtr = make_shared<KeyDerivationFunction_Romix>();
-   auto&& masterKeySBD = SecureBinaryData().GenerateRandom(32);
+   auto&& masterKeySBD = CryptoPRNG::generateRandom(32);
    DecryptedEncryptionKey masterEncryptionKey(masterKeySBD);
    masterEncryptionKey.deriveKey(kdfPtr);
    auto&& masterEncryptionKeyId = masterEncryptionKey.getId(kdfPtr->getId());
@@ -415,23 +418,29 @@ unsigned lookup)
       masterEncryptionKeyId);
 
    //address accounts
-   SecureBinaryData dummy1, dummy2, dummy3, dummy4;
-   auto&& privateRootCopy_1 = privateRoot.copy();
-   auto&& privateRootCopy_2 = privateRoot.copy();
-
    set<shared_ptr<AccountType>> accountTypes;
+
+   /*
+   Derive 2 hardcoded paths on top of the main derivatrionPath for
+   this wallet, to support the default address chains for Armory operations
+   */
+
+   SecureBinaryData dummy1, dummy2, dummy3, dummy4;
+   auto privateRootCopy_1 = rootNode.getPrivateKey();
+   auto privateRootCopy_2 = rootNode.getPrivateKey();
+
    accountTypes.insert(
       make_shared<AccountType_BIP32_Legacy>(
-      privateRootCopy_1, 
-      dummy1, dummy2, 
-      derivationPath));
+         privateRootCopy_1,
+         dummy1, dummy2,
+         derivationPath, 0, 0));
    (*accountTypes.begin())->setMain(true);
 
    accountTypes.insert(
       make_shared<AccountType_BIP32_SegWit>(
-      privateRootCopy_2, 
-      dummy3, dummy4, 
-      derivationPath));
+         privateRootCopy_2,
+         dummy3, dummy4,
+         derivationPath, 0, 0));
 
    auto walletPtr = initWalletDb(
       wltMetaPtr,
@@ -439,7 +448,7 @@ unsigned lookup)
       masterEncryptionKey,
       move(cypher),
       passphrase,
-      privateRoot,
+      rootNode.getPrivateKey(),
       move(accountTypes),
       lookup - 1);
 
@@ -460,6 +469,136 @@ unsigned lookup)
    return walletPtr;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+shared_ptr<AssetWallet_Single> AssetWallet_Single::createFromBase58_BIP32(
+   const string& folder,
+   const SecureBinaryData& base58,
+   const vector<unsigned>& derivationPath,
+   const SecureBinaryData& passphrase,
+   unsigned lookup)
+{
+   //setup node
+   BIP32_Node node;
+   node.initFromBase58(base58);
+
+   bool isPublic = false;
+   if (node.isPublic())
+      isPublic = true;
+
+   //compute wallet ID
+   auto pubkey = node.getPublicKey();
+
+   //compute master ID as hmac256(root pubkey, "MetaEntry")
+   string hmacMasterMsg("MetaEntry");
+   auto&& masterID_long = BtcUtils::getHMAC256(
+      pubkey, SecureBinaryData(hmacMasterMsg));
+   auto&& masterID = BtcUtils::computeID(masterID_long);
+   string masterIDStr(masterID.getCharPtr(), masterID.getSize());
+
+   //create wallet file and dbenv
+   stringstream pathSS;
+   if (!isPublic)
+      pathSS << folder << "/armory_" << masterIDStr << "_wallet.lmdb";
+   else
+      pathSS << folder << "/armory_" << masterIDStr << "_WatchingOnly.lmdb";
+
+   auto dbenv = getEnvFromFile(pathSS.str(), 2);
+   initWalletMetaDB(dbenv, masterIDStr);
+
+   auto wltMetaPtr = make_shared<WalletMeta_Single>(dbenv);
+   wltMetaPtr->parentID_ = masterID;
+
+   {
+      //walletID
+      auto chaincode_copy = node.getChaincode();
+      auto derScheme = 
+         make_shared<DerivationScheme_ArmoryLegacy>(chaincode_copy);
+
+      auto asset_single = make_shared<AssetEntry_Single>(
+         ROOT_ASSETENTRY_ID, BinaryData(),
+         pubkey, nullptr);
+
+      wltMetaPtr->walletID_ = move(computeWalletID(derScheme, asset_single));
+   }
+
+   //create kdf and master encryption key
+   auto kdfPtr = make_shared<KeyDerivationFunction_Romix>();
+   auto&& masterKeySBD = CryptoPRNG::generateRandom(32);
+   DecryptedEncryptionKey masterEncryptionKey(masterKeySBD);
+   masterEncryptionKey.deriveKey(kdfPtr);
+   auto&& masterEncryptionKeyId = masterEncryptionKey.getId(kdfPtr->getId());
+
+   auto cypher = make_unique<Cypher_AES>(kdfPtr->getId(),
+      masterEncryptionKeyId);
+
+   //address accounts
+   set<shared_ptr<AccountType>> accountTypes;
+
+   /*
+   Unlike wallets setup from seeds, we do not make any assumption with those setup from
+   a xpriv/xpub and only use what's provided in derivationPath. It is the caller's
+   responsibility to run sanity checks.
+   */
+
+   shared_ptr<AssetWallet_Single> walletPtr = nullptr;
+
+   if (!isPublic)
+   {
+      auto privateRootCopy = node.getPrivateKey();
+      SecureBinaryData dummy;
+      auto chainCodeCopy = node.getChaincode();
+
+      accountTypes.insert(make_shared<AccountType_BIP32_Custom>(
+         privateRootCopy, dummy, chainCodeCopy, derivationPath,
+         node.getDepth(), node.getLeafID()));
+      (*accountTypes.begin())->setMain(true);
+
+      walletPtr = initWalletDb(
+         wltMetaPtr,
+         kdfPtr,
+         masterEncryptionKey,
+         move(cypher),
+         passphrase,
+         node.getPrivateKey(),
+         move(accountTypes),
+         lookup - 1);
+   }
+   else
+   {
+      //ctors move the arguments in, gotta create copies first
+      auto pubkey_copy = node.getPublicKey();
+      auto chaincode_copy = node.getChaincode();
+      SecureBinaryData dummy1;
+
+      accountTypes.insert(make_shared<AccountType_BIP32_Custom>(
+         dummy1, pubkey_copy, chaincode_copy, derivationPath,
+         node.getDepth(), node.getLeafID()));
+      (*accountTypes.begin())->setMain(true);
+
+      pubkey_copy = node.getPublicKey();
+      walletPtr = initWalletDbFromPubRoot(
+         wltMetaPtr,
+         pubkey_copy,
+         move(accountTypes),
+         lookup - 1);
+   }
+
+   //set as main
+   {
+      LMDB dbMeta;
+
+      {
+         dbMeta.open(dbenv.get(), WALLETMETA_DBNAME);
+
+         LMDBEnv::Transaction metatx(dbenv.get(), LMDB::ReadWrite);
+         setMainWallet(&dbMeta, wltMetaPtr);
+      }
+
+      dbMeta.close();
+   }
+
+   return walletPtr;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 shared_ptr<AssetWallet> AssetWallet::loadMainWalletFromFile(const string& path)
@@ -714,7 +853,7 @@ shared_ptr<AssetWallet_Single> AssetWallet_Single::initWalletDb(
    }
 
    //encrypt master key, create object and set it
-   metaPtr->defaultEncryptionKey_ = move(SecureBinaryData().GenerateRandom(32));
+   metaPtr->defaultEncryptionKey_ = move(CryptoPRNG::generateRandom(32));
    auto defaultKey = metaPtr->getDefaultEncryptionKey();
    auto defaultEncryptionKeyPtr = make_unique<DecryptedEncryptionKey>(defaultKey);
    defaultEncryptionKeyPtr->deriveKey(masterKdf);
@@ -779,7 +918,7 @@ shared_ptr<AssetWallet_Single> AssetWallet_Single::initWalletDb(
    }
 
 
-   /**insert the original entries**/
+   //insert the original entries
    {
       LMDBEnv::Transaction tx(walletPtr->dbEnv_.get(), LMDB::ReadWrite);
       walletPtr->putHeaderData(
@@ -912,6 +1051,21 @@ shared_ptr<AssetWallet_Single> AssetWallet_Single::initWalletDbFromPubRoot(
 
             //commit to disk
             account_ptr->commit();
+
+            if (accountType->isMain())
+               walletPtr->mainAccount_ = account_ptr->getID();
+         }
+
+         //main account
+         if (walletPtr->mainAccount_.getSize() > 0)
+         {
+            BinaryWriter bwKey;
+            bwKey.put_uint32_t(MAIN_ACCOUNT_KEY);
+
+            BinaryWriter bwData;
+            bwData.put_var_int(walletPtr->mainAccount_.getSize());
+            bwData.put_BinaryData(walletPtr->mainAccount_);
+            walletPtr->putData(bwKey.getData(), bwData.getData());
          }
       }
    }
@@ -1097,6 +1251,8 @@ void AssetWallet_Single::readFromFile()
 
          ++dbIter;
       }
+
+      loadMetaAccounts();
    }
 }
 
@@ -1158,6 +1314,8 @@ void AssetWallet_Multisig::readFromFile()
          walletPtrs[subwalletPtr->getID()] = subwalletPtr;
 
       }
+
+      loadMetaAccounts();
    }
 }
 
@@ -1268,7 +1426,8 @@ bool AssetWallet::hasScrAddr(const BinaryData& scrAddr)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-const BinaryData& AssetWallet::getAssetIDForAddr(const BinaryData& scrAddr)
+const pair<BinaryData, AddressEntryType>& 
+   AssetWallet::getAssetIDForAddr(const BinaryData& scrAddr)
 {
    //this takes prefixed hashes or a b58 address
 
@@ -1289,7 +1448,7 @@ const BinaryData& AssetWallet::getAssetIDForAddr(const BinaryData& scrAddr)
    {
       try
       {
-         return acc->getAssetIDForAddr(scrHash);
+         return acc->getAssetIDPairForAddr(scrHash);
       }
       catch (runtime_error&)
       {
@@ -1298,7 +1457,6 @@ const BinaryData& AssetWallet::getAssetIDForAddr(const BinaryData& scrAddr)
    }
 
    throw runtime_error("unknown scrAddr");
-   return BtcUtils::BadAddress();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1495,8 +1653,7 @@ void AssetWallet::extendPrivateChainToIndex(
 const SecureBinaryData& AssetWallet_Single::getDecryptedValue(
    shared_ptr<Asset_PrivateKey> assetPtr)
 {
-   //have to lock the decryptedData object before calling this method or it 
-   //will throw
+   //have to lock the decryptedData object before calling this method
    return decryptedData_->getDecryptedPrivateKey(assetPtr);
 }
 
@@ -1559,4 +1716,79 @@ unsigned AssetWallet_Single::getMainAccountAssetCount(void) const
 
    auto asset_account = account->getOuterAccount();
    return asset_account->getAssetCount();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+shared_ptr<AssetEntry> AssetWallet_Single::getAccountRoot(
+   const BinaryData& id) const
+{
+   auto account = getAccountForID(id);
+   if (account == nullptr)
+      throw WalletException("failed to grab main account");
+
+   return account->getOutterAssetRoot();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+void AssetWallet::addMetaAccount(MetaAccountType type)
+{
+   auto account_ptr = make_shared<MetaDataAccount>(dbEnv_, db_);
+   account_ptr->make_new(type);
+
+   //do not overwrite existing account of the same type
+   if (metaDataAccounts_.insert(account_ptr).second == false)
+      return;
+
+   account_ptr->commit();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void AssetWallet::loadMetaAccounts()
+{
+   //accounts
+   BinaryWriter bwPrefix;
+   bwPrefix.put_uint8_t(META_ACCOUNT_PREFIX);
+   CharacterArrayRef account_prefix(
+      bwPrefix.getSize(), bwPrefix.getData().getCharPtr());
+
+   auto dbIter = db_->begin();
+   dbIter.seek(account_prefix, LMDB::Iterator::Seek_GE);
+
+   while (dbIter.isValid())
+   {
+      //iterate through account keys
+      auto& key = dbIter.key();
+      BinaryData key_bd((uint8_t*)key.mv_data, key.mv_size);
+
+      try
+      {
+         //instantiate account object and read data on disk
+         auto metaAccount = make_shared<MetaDataAccount>(dbEnv_, db_);
+         metaAccount->readFromDisk(key_bd);
+
+         //insert
+         metaDataAccounts_.insert(metaAccount);
+      }
+      catch (exception&)
+      {
+         //in case of exception, the value for this key is not for an
+         //account. Assume we ran out of accounts and break out.
+         break;
+      }
+
+      ++dbIter;
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+shared_ptr<MetaDataAccount> AssetWallet::getMetaAccount(MetaAccountType type)
+{
+   auto iter = find_if(
+      metaDataAccounts_.begin(), metaDataAccounts_.end(),
+      MetaDataAccount::find_by_id(type));
+
+   if (iter == metaDataAccounts_.end())
+      throw WalletException("no meta account for this type");
+   return *iter;
 }

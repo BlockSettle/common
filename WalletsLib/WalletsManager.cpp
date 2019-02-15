@@ -21,8 +21,6 @@ WalletsManager::WalletsManager(const std::shared_ptr<spdlog::logger>& logger, co
    , armory_(armory)
    , preferWatchingOnly_(preferWatchinOnly)
 {
-   btc_ecc_start();
-
    nbBackupFilesToKeep_ = appSettings_->get<unsigned int>(ApplicationSettings::nbBackupFilesKeep);
    if (armory_) {
       connect(armory_.get(), &ArmoryConnection::zeroConfReceived, this, &WalletsManager::onZeroConfReceived, Qt::QueuedConnection);
@@ -35,12 +33,13 @@ WalletsManager::WalletsManager(const std::shared_ptr<spdlog::logger>& logger, co
 
 WalletsManager::WalletsManager(const std::shared_ptr<spdlog::logger> &logger)
    : QObject(nullptr), logger_(logger), preferWatchingOnly_(false)
-{
-   btc_ecc_start();
-}
+{}
 
 WalletsManager::~WalletsManager() noexcept
 {
+   // These really ought to be called elsewhere, when the appropriate binaries
+   // shut down.
+   shutdownBIP151CTX();
    btc_ecc_stop();
 }
 
@@ -163,12 +162,7 @@ void WalletsManager::LoadWallets(NetworkType netType, const QString &walletsPath
             , tr("The Terminal has detected a signing wallet, not a watching-only wallet. Please consider replacing"
                " the signing wallet with a watching-only wallet."));
       }
-      for (const auto &hdWallet : hdSigningWallets) {
-         if (hdWallet->isPrimary() && HasPrimaryWallet()) {
-            logger_->error("Wallet {} ({}) is not loaded - multiple primary wallets are not supported!"
-               , hdWallet->getName(), hdWallet->getWalletId());
-            continue;
-         }
+      for (const auto &hdWallet : hdSigningWallets) { // No check for primary wallets duplication here
          SaveWallet(hdWallet);
       }
    }
@@ -197,8 +191,8 @@ void WalletsManager::BackupWallet(const hd_wallet_type &wallet, const std::strin
    }
    auto files = dirBackup.entryList(QStringList{ QString::fromStdString(
       bs::hd::Wallet::fileNamePrefix(false) + wallet->getWalletId() + "_*.lmdb" )});
-   if (!files.empty() && (files.size() >= nbBackupFilesToKeep_)) {
-      for (size_t i = 0; i <= files.size() - nbBackupFilesToKeep_; i++) {
+   if (!files.empty() && (files.size() >= (int)nbBackupFilesToKeep_)) {
+      for (int i = 0; i <= files.size() - (int)nbBackupFilesToKeep_; i++) {
          logger_->debug("Removing old backup file {}", files[i].toStdString());
          QFile::remove(backupDir + QDir::separator() + files[i]);
       }
@@ -612,6 +606,8 @@ bool WalletsManager::DeleteWalletFile(const wallet_gen_type &wallet)
          break;
       }
    }
+
+   wallet->UnregisterWallet();
    if (!isHDLeaf) {
       if (!wallet->EraseFile()) {
          logger_->error("Failed to remove wallet file for {}", wallet->GetWalletName());
@@ -627,7 +623,8 @@ bool WalletsManager::DeleteWalletFile(const wallet_gen_type &wallet)
       authAddressWallet_ = nullptr;
       emit authWalletChanged();
    }
-   emit walletChanged();
+   emit walletDeleted();
+   emit walletBalanceUpdated(wallet->GetWalletId());
    return true;
 }
 
@@ -640,9 +637,14 @@ bool WalletsManager::DeleteWalletFile(const hd_wallet_type &wallet)
    }
 
    const auto &leaves = wallet->getLeaves();
+   const bool prevState = blockSignals(true);
+   for (const auto &leaf : leaves) {
+      leaf->UnregisterWallet();
+   }
    for (const auto &leaf : leaves) {
       EraseWallet(leaf);
    }
+   blockSignals(prevState);
 
    const auto itId = std::find(hdWalletsId_.begin(), hdWalletsId_.end(), wallet->getWalletId());
    if (itId != hdWalletsId_.end()) {
@@ -657,7 +659,8 @@ bool WalletsManager::DeleteWalletFile(const hd_wallet_type &wallet)
       authAddressWallet_.reset();
       emit authWalletChanged();
    }
-   emit walletChanged();
+   emit walletDeleted();
+   emit walletBalanceUpdated(wallet->getWalletId());
    return result;
 }
 
@@ -800,7 +803,7 @@ bool WalletsManager::GetTransactionDirection(Tx tx, const std::shared_ptr<bs::Wa
          }
          if (txOuts.size() == 1) {
             const auto addr = txOuts[0].getScrAddressStr();
-            const auto settlAE = dynamic_pointer_cast<bs::SettlementAddressEntry>(GetSettlementWallet()->getAddressEntryForAddr(addr));
+            const auto settlAE = std::dynamic_pointer_cast<bs::SettlementAddressEntry>(GetSettlementWallet()->getAddressEntryForAddr(addr));
             if (settlAE) {
                const auto &cbPayout = [this, cb, txKey, inAddrs](bs::PayoutSigner::Type poType) {
                   if (poType == bs::PayoutSigner::SignedBySeller) {
@@ -878,15 +881,15 @@ bool WalletsManager::GetTransactionMainAddress(const Tx &tx, const std::shared_p
    const auto &cbProcessAddresses = [this, txKey, cb](const std::set<bs::Address> &addresses) {
       switch (addresses.size()) {
       case 0:
-         updateTxDescCache(txKey, tr("no address"), addresses.size(), cb);
+         updateTxDescCache(txKey, tr("no address"), (int)addresses.size(), cb);
          break;
 
       case 1:
-         updateTxDescCache(txKey, (*addresses.begin()).display(), addresses.size(), cb);
+         updateTxDescCache(txKey, (*addresses.begin()).display(), (int)addresses.size(), cb);
          break;
 
       default:
-         updateTxDescCache(txKey, tr("%1 output addresses").arg(addresses.size()), addresses.size(), cb);
+         updateTxDescCache(txKey, tr("%1 output addresses").arg(addresses.size()), (int)addresses.size(), cb);
          break;
       }
    };
@@ -1012,7 +1015,7 @@ void WalletsManager::onCCSecurityInfo(QString ccProd, QString ccDesc, unsigned l
       }
       if (wallet.second->GetShortName() == cc) {
          wallet.second->SetDescription(ccDesc.toStdString());
-         const auto ccWallet = dynamic_pointer_cast<bs::hd::Leaf>(wallet.second);
+         const auto ccWallet = std::dynamic_pointer_cast<bs::hd::Leaf>(wallet.second);
          if (ccWallet) {
             ccWallet->setData(genesisAddr.toStdString());
             ccWallet->setData(nbSatoshis);
@@ -1043,42 +1046,25 @@ void WalletsManager::onCCInfoLoaded()
 //   they have been confirmed.
 // - If a TX has multiple instances of the same address, each instance will get
 //   its own UTXO object while sharing the same UTXO hash.
-// - There's no immediate way to determine if the UTXO entry is for change.
-void WalletsManager::onZeroConfReceived(ArmoryConnection::ReqIdType reqId)
+// - It is possible, in conjunction with a wallet, to determine if the UTXO is
+//   attached to an internal or external address.
+void WalletsManager::onZeroConfReceived(const std::vector<bs::TXEntry> entries)
 {
    std::vector<bs::TXEntry> ourZCentries;
 
-   for (const auto led : armory_->getZCentries(reqId)) {
-      auto wallet = GetWalletById(led.getID());
+   for (const auto &entry : entries) {
+      auto wallet = GetWalletById(entry.id);
       if (wallet != nullptr) {
-         logger_->debug("[{}] ZC entry in wallet {}", __func__
+         logger_->debug("[WalletsManager::onZeroConfReceived] ZC entry in wallet {}"
                         , wallet->GetWalletName());
 
-         // Get the ZC UTXOs for the wallet. We need to save a copy for UTXO
-         // filtering and balance correction purposes.
-         const auto &cbZCList = [this, wallet](ReturnMessage<std::vector<UTXO>> utxos)-> void {
-            try {
-               auto inUTXOs = utxos.get();
-               for(auto& utxo: inUTXOs) {
-                  wallet->addZCUTXOForFilter(utxo);
-               }
-            }
-            catch (const std::exception &e) {
-               if (logger_ != nullptr) {
-                  logger_->error("[WalletsManager::onZeroConfReceived] Return data error " \
-                     "- {}", e.what());
-               }
-            }
-         };
-         wallet->getSpendableZCList(cbZCList, this);
-
          // We have an affected wallet. Update it!
-         ourZCentries.push_back(bs::convertTXEntry(led));
-         wallet->UpdateBalanceFromDB();
+         ourZCentries.push_back(entry);
+         wallet->UpdateBalances();
       } // if
       else {
-         logger_->debug("[{}] get ZC but wallet not found: {}", __func__
-                        , led.getID());
+         logger_->debug("[WalletsManager::onZeroConfReceived] get ZC but wallet not found: {}"
+                        , entry.id);
       }
    } // for
 
@@ -1233,20 +1219,4 @@ void WalletsManager::ResumeRescan()
          logger_->warn("Rescan for {} is already in progress", rootWallet.second->getName());
       }
    }
-}
-
-
-bs::TXEntry bs::convertTXEntry(const ClientClasses::LedgerEntry &entry)
-{
-   return { entry.getTxHash(), entry.getID(), entry.getValue(), entry.getBlockNum()
-         , entry.getTxTime(), entry.isOptInRBF(), entry.isChainedZC() };
-}
-
-std::vector<bs::TXEntry> bs::convertTXEntries(std::vector<ClientClasses::LedgerEntry> entries)
-{
-   std::vector<bs::TXEntry> result;
-   for (const auto &entry : entries) {
-      result.push_back(bs::convertTXEntry(entry));
-   }
-   return result;
 }

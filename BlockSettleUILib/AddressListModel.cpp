@@ -1,4 +1,5 @@
 #include "AddressListModel.h"
+#include <QColor>
 #include "WalletsManager.h"
 #include "UiUtils.h"
 
@@ -34,8 +35,6 @@ AddressListModel::AddressListModel(std::shared_ptr<WalletsManager> walletsManage
 {
    connect(walletsManager.get(), &WalletsManager::walletsReady, this
            , &AddressListModel::updateData);
-//   connect(walletsManager.get(), &WalletsManager::walletChanged, this
-//           , &AddressListModel::updateData);
    connect(walletsManager.get(), &WalletsManager::blockchainEvent, this
            , &AddressListModel::updateData);
 }
@@ -86,7 +85,8 @@ AddressListModel::AddressRow AddressListModel::createRow(const bs::Address &addr
 void AddressListModel::updateData()
 {
    bool expected = false;
-   if (!std::atomic_compare_exchange_strong(&processing_, &expected, true)) {
+   bool desired = true;
+   if (!std::atomic_compare_exchange_strong(&processing_, &expected, desired)) {
       return;
    }
    beginResetModel();
@@ -157,14 +157,15 @@ void AddressListModel::updateWalletData()
          // On the final address, set the TX count for all addresses and emit
          // any required signals.
          if (*nbTxNs <= 0) {
-            for (size_t i = 0;
-                 i < std::min(addressRows_.size(), addrTxNs->size());
-                 ++i) {
-               addressRows_[i].transactionCount = (*addrTxNs)[i];
+            for (size_t j = 0;
+                 j < std::min(addressRows_.size(), addrTxNs->size());
+                 ++j) {
+               addressRows_[j].transactionCount = (*addrTxNs)[j];
             }
-            emit dataChanged(index(0, ColumnTxCount)
-                             , index(addressRows_.size()-1, ColumnTxCount));
-            emit updated();
+            QMetaObject::invokeMethod(this, [this] {
+               emit dataChanged(index(0, ColumnTxCount)
+                  , index(addressRows_.size() - 1, ColumnTxCount));
+            });
          }
       };
 
@@ -174,19 +175,25 @@ void AddressListModel::updateWalletData()
          if (i >= addressRows_.size()) {
             return;
          }
-         (*addrBalances)[i] = balances[0];
+         if (balances.size() == 3) {
+            (*addrBalances)[i] = balances[0];
+         }
+         else {
+            (*addrBalances)[i] = 0;
+         }
 
          // On the final address, set the balance for all addresses and emit
          // any required signals.
          if (*nbBalances <= 0) {
-            for (size_t i = 0;
-                 i < std::min(addressRows_.size(), addrBalances->size());
-                 ++i) {
-               addressRows_[i].balance = (*addrBalances)[i];
+            for (size_t j = 0;
+                 j < std::min(addressRows_.size(), addrBalances->size());
+                 ++j) {
+               addressRows_[j].balance = (*addrBalances)[j];
             }
-            emit dataChanged(index(0, ColumnBalance)
-                             , index(addressRows_.size() - 1, ColumnBalance));
-            emit updated();
+            QMetaObject::invokeMethod(this, [this] {
+               emit dataChanged(index(0, ColumnBalance)
+                  , index(addressRows_.size() - 1, ColumnBalance));
+            });
          }
       };
 
@@ -195,10 +202,12 @@ void AddressListModel::updateWalletData()
       const auto &address = addressRows_[i].address;
       if (wallet) {
          if (!wallet->getAddrTxN(address, cbTxN)) {
-            return;
+            cbTxN(0);
+            continue;
          }
          if (!wallet->getAddrBalance(address, cbBalance)) {
-            return;
+            cbBalance({});
+            continue;
          }
       }
    }
@@ -207,7 +216,8 @@ void AddressListModel::updateWalletData()
 void AddressListModel::removeEmptyIntAddresses()
 {
    bool expected = false;
-   if (!std::atomic_compare_exchange_strong(&processing_, &expected, true)) {
+   bool desired = true;
+   if (!std::atomic_compare_exchange_strong(&processing_, &expected, desired)) {
       return;
    }
 
@@ -292,8 +302,17 @@ QVariant AddressListModel::dataForRow(const AddressListModel::AddressRow &row, i
       case AddressListModel::ColumnAddress:
          return row.getAddress();
       case AddressListModel::ColumnBalance:
-         return (row.wltType == bs::wallet::Type::ColorCoin) ? UiUtils::displayCCAmount(row.balance)
-            : UiUtils::displayAmount(row.balance);
+         if (row.wltType == bs::wallet::Type::ColorCoin) {
+            if (wallets_.size() == 1) {
+               return UiUtils::displayCCAmount(row.balance);
+            }
+            else {
+               return {};
+            }
+         }
+         else {
+            return UiUtils::displayAmount(row.balance);
+         }
       case AddressListModel::ColumnTxCount:
          return row.transactionCount;
       case AddressListModel::ColumnComment:
@@ -321,7 +340,7 @@ QVariant AddressListModel::data(const QModelIndex& index, int role) const
       return {};
    }
 
-   const auto& row = addressRows_[index.row()];
+   const auto row = addressRows_[index.row()];
 
    switch (role) {
       case Qt::DisplayRole:
@@ -352,6 +371,13 @@ QVariant AddressListModel::data(const QModelIndex& index, int role) const
          else {
             return dataForRow(row, index.column());
          }
+         break;
+
+      case Qt::TextColorRole:
+/*         if (!row.isExternal) {
+            return QColor(Qt::gray);
+         }*/   // don't remove completely in case someone decides to revert back
+         break;
 
       default:
          break;

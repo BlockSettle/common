@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>535</width>
-    <height>383</height>
+    <height>360</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -88,6 +88,47 @@
       </property>
       <item>
        <layout class="QFormLayout" name="formLayout">
+        <item row="0" column="0">
+         <widget class="QLabel" name="labelMode">
+          <property name="minimumSize">
+           <size>
+            <width>130</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>130</width>
+            <height>16777215</height>
+           </size>
+          </property>
+          <property name="text">
+           <string>Signer mode</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QComboBox" name="comboBoxRunMode">
+          <property name="frame">
+           <bool>true</bool>
+          </property>
+          <item>
+           <property name="text">
+            <string extracomment="Signer process is started automatically on local computer">Local</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string extracomment="Signer process is started manually on local or remote computer">Remote</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string extracomment="Signing works in manual mode via files">Offline</string>
+           </property>
+          </item>
+         </widget>
+        </item>
         <item row="1" column="0">
          <widget class="QLabel" name="labelHost">
           <property name="minimumSize">
@@ -150,73 +191,173 @@
          </widget>
         </item>
         <item row="3" column="0">
-         <widget class="QLabel" name="labelPassword">
+         <widget class="QWidget" name="widgetZmqLabel" native="true">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
           <property name="minimumSize">
            <size>
-            <width>130</width>
+            <width>0</width>
             <height>0</height>
            </size>
           </property>
-          <property name="maximumSize">
-           <size>
-            <width>130</width>
-            <height>16777215</height>
-           </size>
-          </property>
-          <property name="text">
-           <string>Signer password</string>
-          </property>
+          <layout class="QHBoxLayout" name="horizontalLayout_2">
+           <property name="spacing">
+            <number>3</number>
+           </property>
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
+            <number>0</number>
+           </property>
+           <item>
+            <widget class="QLabel" name="labelZmqPubKey">
+             <property name="text">
+              <string>ZMQ public key</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="labelZmqPubKeyHint">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>10</width>
+               <height>15</height>
+              </size>
+             </property>
+             <property name="maximumSize">
+              <size>
+               <width>10</width>
+               <height>15</height>
+              </size>
+             </property>
+             <property name="toolTip">
+              <string>A Z85-encoded key (40 bytes) used to connect to the signer. Choose between a file with the key, or manually entering the key.</string>
+             </property>
+             <property name="styleSheet">
+              <string notr="true">image: url(&quot;:/resources/notification_info@2x.png&quot;);</string>
+             </property>
+             <property name="text">
+              <string/>
+             </property>
+            </widget>
+           </item>
+          </layout>
          </widget>
         </item>
         <item row="3" column="1">
-         <widget class="QLineEdit" name="lineEditPassword">
-          <property name="echoMode">
-           <enum>QLineEdit::PasswordEchoOnEdit</enum>
-          </property>
+         <widget class="QWidget" name="widgetZmqComboBox" native="true">
+          <layout class="QHBoxLayout" name="layoutOfflineDir_2">
+           <property name="spacing">
+            <number>5</number>
+           </property>
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
+            <number>0</number>
+           </property>
+           <item>
+            <widget class="QComboBox" name="comboBoxZmqImportType">
+             <property name="minimumSize">
+              <size>
+               <width>120</width>
+               <height>0</height>
+              </size>
+             </property>
+             <item>
+              <property name="text">
+               <string>Import From File</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Enter Key Manually</string>
+              </property>
+             </item>
+            </widget>
+           </item>
+          </layout>
          </widget>
         </item>
-        <item row="0" column="0">
-         <widget class="QLabel" name="labelMode">
+        <item row="6" column="0">
+         <widget class="QWidget" name="horizontalWidget" native="true">
           <property name="minimumSize">
            <size>
-            <width>130</width>
+            <width>0</width>
             <height>0</height>
            </size>
           </property>
-          <property name="maximumSize">
-           <size>
-            <width>130</width>
-            <height>16777215</height>
-           </size>
-          </property>
-          <property name="text">
-           <string>Signer mode</string>
-          </property>
+          <layout class="QHBoxLayout" name="horizontalLayout">
+           <property name="spacing">
+            <number>0</number>
+           </property>
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
+            <number>0</number>
+           </property>
+           <item>
+            <widget class="QLabel" name="labelDirHint">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>130</width>
+               <height>0</height>
+              </size>
+             </property>
+             <property name="maximumSize">
+              <size>
+               <width>130</width>
+               <height>16777215</height>
+              </size>
+             </property>
+             <property name="text">
+              <string>Offline requests dir</string>
+             </property>
+             <property name="wordWrap">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+          </layout>
          </widget>
         </item>
-        <item row="0" column="1">
-         <widget class="QComboBox" name="comboBoxRunMode">
-          <property name="frame">
-           <bool>true</bool>
-          </property>
-          <item>
-           <property name="text">
-            <string extracomment="Signer process is started automatically on local computer">Local</string>
-           </property>
-          </item>
-          <item>
-           <property name="text">
-            <string extracomment="Signer process is started manually on local or remote computer">Remote</string>
-           </property>
-          </item>
-          <item>
-           <property name="text">
-            <string extracomment="Signing works in manual mode via files">Offline</string>
-           </property>
-          </item>
-         </widget>
-        </item>
-        <item row="4" column="1">
+        <item row="6" column="1">
          <widget class="QWidget" name="widgetOfflineDir" native="true">
           <layout class="QHBoxLayout" name="layoutOfflineDir">
            <property name="spacing">
@@ -273,14 +414,14 @@
          </widget>
         </item>
         <item row="4" column="0">
-         <widget class="QWidget" name="horizontalWidget" native="true">
+         <widget class="QWidget" name="horizontalWidget_2" native="true">
           <property name="minimumSize">
            <size>
             <width>0</width>
             <height>0</height>
            </size>
           </property>
-          <layout class="QHBoxLayout" name="horizontalLayout">
+          <layout class="QHBoxLayout" name="horizontalLayout_7">
            <property name="spacing">
             <number>0</number>
            </property>
@@ -297,7 +438,7 @@
             <number>0</number>
            </property>
            <item>
-            <widget class="QLabel" name="labelDirHint">
+            <widget class="QLabel" name="labelDirHint_5">
              <property name="sizePolicy">
               <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                <horstretch>0</horstretch>
@@ -317,10 +458,73 @@
               </size>
              </property>
              <property name="text">
-              <string>Offline requests dir</string>
+              <string/>
              </property>
              <property name="wordWrap">
               <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item row="4" column="1">
+         <widget class="QWidget" name="widgetZmqContent" native="true">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>0</width>
+            <height>0</height>
+           </size>
+          </property>
+          <layout class="QHBoxLayout" name="horizontalLayout_3">
+           <property name="spacing">
+            <number>3</number>
+           </property>
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
+            <number>0</number>
+           </property>
+           <item>
+            <widget class="QLineEdit" name="lineEditRemoteZmqPubKey">
+             <property name="readOnly">
+              <bool>false</bool>
+             </property>
+             <property name="placeholderText">
+              <string>Enter ZMQ key</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLineEdit" name="lineEditZmqKeyPath">
+             <property name="placeholderText">
+              <string>Select a file</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="pushButtonZmqPubKey">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="text">
+              <string>Select</string>
              </property>
             </widget>
            </item>

@@ -1,19 +1,28 @@
-#ifndef __CHAT_USERS_VIEW_MODEL__
-#define __CHAT_USERS_VIEW_MODEL__
+#ifndef CHAT_USERS_VIEW_MODEL
+#define CHAT_USERS_VIEW_MODEL
 
-
-#include <QAbstractTableModel>
+#include <QAbstractItemModel>
 #include <QMap>
 #include <QVector>
 
 #include <memory>
 
+#include "ChatUserData.h"
 
 class ChatUsersViewModel : public QAbstractTableModel
 {
    Q_OBJECT
 
 public:
+
+   enum Role
+   {
+      UserConnectionStatusRole = Qt::UserRole,
+      UserStateRole,
+      UserNameRole,
+      HaveNewMessageRole
+   };
+
    ChatUsersViewModel(QObject* parent = nullptr);
    ~ChatUsersViewModel() noexcept override = default;
 
@@ -23,7 +32,7 @@ public:
    ChatUsersViewModel(ChatUsersViewModel&&) = delete;
    ChatUsersViewModel& operator = (ChatUsersViewModel&&) = delete;
 
-   QString resolveUser(const QModelIndex& index);
+   QString resolveUser(const QModelIndex &) const;
 
 public:
    int columnCount(const QModelIndex &parent = QModelIndex()) const override;
@@ -33,13 +42,11 @@ public:
    QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
 
 public slots:
-   void onUserUpdate(const QString& userId);
-   void onClear();
+   void onUserDataListChanged(const ChatUserDataListPtr &chatUserDataListPtr);
 
 private:
-   QMap<QString, int> indexByUser_;
-   QVector<QString> userByIndex_;
+   ChatUserDataListPtr _users;
 };
 
 
-#endif
+#endif // CHAT_USERS_VIEW_MODEL

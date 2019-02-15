@@ -119,7 +119,7 @@ public:
    {
       Q_UNUSED(source_parent);
 /*      const auto col = static_cast<TransactionsViewModel::Columns>(source_column);
-      return (col != TransactionsViewModel::Columns::RbfFlag) && (col != TransactionsViewModel::Columns::MissedBlocks);*/
+      return (col != TransactionsViewModel::Columns::MissedBlocks);*/
       return true;   // strange, but it works properly only this way
    }
 
@@ -169,7 +169,7 @@ TransactionsWidget::TransactionsWidget(QWidget* parent)
       qApp->clipboard()->setText(curAddress_);
    });
 
-   actionCopyTx_ = new QAction(tr("Copy Transaction"));
+   actionCopyTx_ = new QAction(tr("Copy &Transaction Hash"));
    connect(actionCopyTx_, &QAction::triggered, [this]() {
       qApp->clipboard()->setText(curTx_);
    });
@@ -249,6 +249,7 @@ TransactionsWidget::TransactionsWidget(QWidget* parent)
           this, &TransactionsWidget::onEnterKeyInTrxPressed);
 
    ui->labelResultCount->hide();
+   ui->progressBar->hide();
 }
 
 TransactionsWidget::~TransactionsWidget() = default;
@@ -265,6 +266,7 @@ void TransactionsWidget::init(const std::shared_ptr<WalletsManager> &walletsMgr
    logger_ = logger;
 
    connect(walletsManager_.get(), &WalletsManager::walletChanged, this, &TransactionsWidget::walletsChanged);
+   connect(walletsManager_.get(), &WalletsManager::walletDeleted, this, &TransactionsWidget::walletsChanged);
 }
 
 void TransactionsWidget::SetTransactionsModel(const std::shared_ptr<TransactionsViewModel>& model)
@@ -295,7 +297,6 @@ void TransactionsWidget::SetTransactionsModel(const std::shared_ptr<Transactions
 
    ui->treeViewTransactions->setSortingEnabled(true);
    ui->treeViewTransactions->setModel(sortFilterModel_);
-   ui->treeViewTransactions->hideColumn(static_cast<int>(TransactionsViewModel::Columns::RbfFlag));
    ui->treeViewTransactions->hideColumn(static_cast<int>(TransactionsViewModel::Columns::TxHash));
 //   ui->treeViewTransactions->hideColumn(static_cast<int>(TransactionsViewModel::Columns::MissedBlocks));
 }
@@ -315,6 +316,7 @@ void TransactionsWidget::onDataLoaded(int count)
 
 void TransactionsWidget::onProgressInited(int start, int end)
 {
+   ui->progressBar->show();
    ui->progressBar->setMinimum(start);
    ui->progressBar->setMaximum(end);
 }

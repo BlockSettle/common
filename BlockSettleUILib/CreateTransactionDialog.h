@@ -58,7 +58,9 @@ protected:
    virtual QCheckBox *checkBoxRBF() const = 0;
    virtual QLabel *labelBalance() const = 0;
    virtual QLabel *labelAmount() const = 0;
+   virtual QLabel *labelTXAmount() const = 0;
    virtual QLabel *labelTxInputs() const = 0;
+   virtual QLabel *labelTxOutputs() const = 0;
    virtual QLabel *labelEstimatedFee() const = 0;
    virtual QLabel *labelTotalAmount() const = 0;
    virtual QLabel *labelTxSize() const = 0;
@@ -73,8 +75,6 @@ protected:
    virtual void onTransactionUpdated();
 
    virtual bool HaveSignedImportedTransaction() const { return false; }
-
-   void updateCreateButtonText();
 
    std::vector<bs::wallet::TXSignRequest> ImportTransactions();
    bool BroadcastImportedTx();
@@ -92,6 +92,8 @@ protected slots:
       , const std::function<void()> &cbInputsReset = nullptr);
    virtual void onMaxPressed();
    void onTXSigned(unsigned int id, BinaryData signedTX, std::string error, bool cancelledByUser);
+   void updateCreateButtonText();
+   void onSignerAuthenticated();
 
 protected:
    void populateFeeList();

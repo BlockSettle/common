@@ -9,7 +9,7 @@
 #include "ZmqSecuredDataConnection.h"
 #include "ApplicationSettings.h"
 
-using namespace AutheID::RP;
+using namespace autheid::rp;
 
 namespace
 {
@@ -53,6 +53,8 @@ AutheIDClient::AutheIDClient(const std::shared_ptr<spdlog::logger> &logger
 {
    connectionManager_.reset(new ConnectionManager(logger));
    timer_ = new QTimer(this);
+   timer_->setSingleShot(true);
+
    QObject::connect(timer_, &QTimer::timeout, this, &AutheIDClient::timeout);
 }
 
@@ -61,23 +63,24 @@ AutheIDClient::~AutheIDClient()
    cancel();
 }
 
-void AutheIDClient::connect(const std::string &serverPubKey
+void AutheIDClient::connect(const BinaryData& serverPubKey
    , const std::string &serverHost, const std::string &serverPort)
 {
    connection_ = connectionManager_->CreateSecuredDataConnection();
    if (!connection_) {
-      logger_->error("connection_ == nullptr");
+      logger_->error("[{}] connection_ == nullptr", __func__);
       throw std::runtime_error("invalid connection");
    }
 
    if (!connection_->SetServerPublicKey(serverPubKey)) {
-      logger_->error("AutheIDClient::SetServerPublicKey failed");
+      logger_->error("[{}] failed", __func__);
       throw std::runtime_error("failed to set connection public key");
    }
 
    if (!connection_->openConnection(serverHost, serverPort, this)) {
-      logger_->error("AutheIDClient::openConnection failed");
-      throw std::runtime_error("failed to open connection to " + serverHost + ":" + serverPort);
+      logger_->error("[{}] failed", __func__);
+      throw std::runtime_error("failed to open connection to " + serverHost + \
+                               ":" + serverPort);
    }
 }
 
@@ -86,7 +89,7 @@ bool AutheIDClient::isConnected() const
    return (connection_ && connection_->isActive());
 }
 
-bool AutheIDClient::sendToAuthServer(const std::string &payload, const AutheID::RP::PayloadType type)
+bool AutheIDClient::sendToAuthServer(const std::string &payload, const PayloadType type)
 {
    ClientPacket packet;
    packet.set_type(type);
@@ -214,8 +217,8 @@ bool AutheIDClient::sign(const BinaryData &data, const std::string &email
    request.set_apikey(kApiKey);
    request.set_userid(email);
 
-   QMetaObject::invokeMethod(timer_, [this] {
-      timer_->start(kConnectTimeoutSeconds * 1000);
+   QMetaObject::invokeMethod(timer_, [this, expiration] {
+      timer_->start(expiration * 1000);
    });
 
    return sendToAuthServer(request.SerializeAsString(), PayloadCreate);
@@ -223,7 +226,9 @@ bool AutheIDClient::sign(const BinaryData &data, const std::string &email
 
 void AutheIDClient::cancel()
 {
-   timer_->stop();
+   QMetaObject::invokeMethod(timer_, [this] {
+      timer_->stop();
+   });
 
    if (!connection_ || requestId_.empty()) {
       return;
@@ -438,6 +443,10 @@ int AutheIDClient::getAutheIDClientTimeout(RequestType requestType)
 
 void AutheIDClient::processSignatureReply(const SignatureReply &reply)
 {
+   QMetaObject::invokeMethod(timer_, [this] {
+      timer_->stop();
+   });
+
    if (reply.signaturedata().empty() || reply.sign().empty()) {
       emit failed(tr("Missing mandatory signature data in reply"));
       return;

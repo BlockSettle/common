@@ -70,7 +70,7 @@ public:
    // the Utxos in the list.  If you don't care (i.e. you only want to 
    // know what TxOuts are available to spend, you can pass in 0 for currBlk
    uint64_t getFullBalance(void) const;
-   uint64_t getFullBalanceFromDB(void) const;
+   uint64_t getFullBalanceFromDB(unsigned) const;
    uint64_t getSpendableBalance(uint32_t currBlk) const;
    uint64_t getUnconfirmedBalance(uint32_t currBlk) const;
 
@@ -109,6 +109,8 @@ public:
    {
       doneRegisteringCallback_ = lbd;
    }
+
+   void setConfTarget(unsigned, const std::string&);
 
 private:   
    
@@ -171,6 +173,7 @@ private:
    mutable int lastPulledCountsID_ = -1;
    mutable int lastPulledBalancesID_ = -1;
    int32_t updateID_ = 0;
+   unsigned confTarget_ = MIN_CONFIRMATIONS;
 };
 
 #endif

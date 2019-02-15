@@ -124,7 +124,7 @@ bool DealerXBTSettlementContainer::accept(const SecureBinaryData &password)
       const auto &cbSettlInput = [this, receivingAddress, password](UTXO input) {
          try {
             const auto txReq = settlWallet_->CreatePayoutTXRequest(input
-               , receivingAddress, transactionData_->FeePerByte());
+               , receivingAddress, transactionData_->feePerByte());
             const auto authAddr = bs::Address::fromPubKey(authKey_, AddressEntryType_P2WPKH);
             payoutSignId_ = signingContainer_->SignPayoutTXRequest(txReq, authAddr, settlAddr_
                , autoSign_, password);
@@ -185,7 +185,7 @@ void DealerXBTSettlementContainer::deactivate()
    }
 }
 
-void DealerXBTSettlementContainer::zcReceived(unsigned int)
+void DealerXBTSettlementContainer::zcReceived(const std::vector<bs::TXEntry>)
 {
    if (settlMonitor_) {
       settlMonitor_->checkNewEntries();
@@ -222,7 +222,7 @@ void DealerXBTSettlementContainer::onPayInDetected(int confirmationsNumber, cons
 
          const auto &cbInput = [this](UTXO input) {
             fee_ = settlWallet_->GetEstimatedFeeFor(input, transactionData_->GetFallbackRecvAddress()
-               , transactionData_->FeePerByte());
+               , transactionData_->feePerByte());
          };
          settlWallet_->GetInputFor(settlAddr_, cbInput);
       };

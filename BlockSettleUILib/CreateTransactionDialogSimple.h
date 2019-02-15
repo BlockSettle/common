@@ -42,6 +42,8 @@ protected:
    QPushButton *pushButtonCancel() const override;
    QLabel *feePerByteLabel() const override;
    QLabel *changeLabel() const override;
+   QLabel* labelTXAmount() const override;
+   QLabel* labelTxOutputs() const override;
 
    bs::Address getChangeAddress() const override;
 
@@ -57,7 +59,6 @@ private slots:
 
 private:
    void initUI();
-   void onTransactionUpdated() override;
 
    std::unique_ptr<Ui::CreateTransactionDialogSimple> ui_;
    unsigned int   recipientId_ = 0;

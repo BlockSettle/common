@@ -587,6 +587,7 @@ CCPortfolioModel::CCPortfolioModel(const std::shared_ptr<WalletsManager>& wallet
    connect(walletsManager.get(), &WalletsManager::walletsReady, this, &CCPortfolioModel::reloadXBTWalletsList);
    connect(walletsManager.get(), &WalletsManager::walletsLoaded, this, &CCPortfolioModel::reloadXBTWalletsList);
    connect(walletsManager.get(), &WalletsManager::walletChanged, this, &CCPortfolioModel::reloadXBTWalletsList);
+   connect(walletsManager.get(), &WalletsManager::walletDeleted, this, &CCPortfolioModel::reloadXBTWalletsList);
    connect(walletsManager.get(), &WalletsManager::walletImportFinished, this, &CCPortfolioModel::reloadXBTWalletsList);
    connect(walletsManager.get(), &WalletsManager::blockchainEvent, this, &CCPortfolioModel::updateXBTBalance);
 }
@@ -771,7 +772,10 @@ void CCPortfolioModel::onXBTPriceChanged(const std::string& currency)
       auto fxGroup = root_->GetFXGroup();
 
       auto fxNode = fxGroup->GetFXNode(currency);
-      assert(fxNode != nullptr);
+//!      assert(fxNode != nullptr);    // produces crash on login to Celer
+      if (!fxNode) {    //! workaround
+         return;
+      }
 
       const double balance = assetManager_->getBalance(currency);
       const double price = assetManager_->getPrice(currency);
@@ -994,7 +998,7 @@ void CCPortfolioModel::reloadCCWallets()
 
 void CCPortfolioModel::updateCCBalance()
 {
-   if (root_->HaveXBTGroup()) {
+   if (root_->HaveCCGroup()) {
       auto ccGroup = root_->GetCCGroup();
 
       bool balanceUpdated = false;

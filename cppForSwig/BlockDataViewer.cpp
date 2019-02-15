@@ -69,7 +69,7 @@ void BlockDataViewer::scanWallets(shared_ptr<BDV_Notification> action)
    bool refresh = false;
 
    ScanWalletStruct scanData;
-   map<BinaryData, LedgerEntry>* leMapPtr = nullptr;
+   vector<LedgerEntry>* leVecPtr = nullptr;
 
    switch (action->action_type())
    {
@@ -107,11 +107,14 @@ void BlockDataViewer::scanWallets(shared_ptr<BDV_Notification> action)
       if (reorgNotif->zcPurgePacket_ != nullptr)
       {
          scanData.saStruct_.invalidatedZcKeys_ =
-            reorgNotif->zcPurgePacket_->invalidatedZcKeys_;
+            &reorgNotif->zcPurgePacket_->invalidatedZcKeys_;
 
          scanData.saStruct_.minedTxioKeys_ =
-            reorgNotif->zcPurgePacket_->minedTxioKeys_;
+            &reorgNotif->zcPurgePacket_->minedTxioKeys_;
       }
+
+      //carry zc state
+      scanData.saStruct_.zcState_ = reorgNotif->zcState_;
 
       prevTopBlock = reorgState.prevTop_->getBlockHeight() + 1;
 
@@ -132,10 +135,10 @@ void BlockDataViewer::scanWallets(shared_ptr<BDV_Notification> action)
       if (zcAction->packet_.purgePacket_ != nullptr)
       {
          scanData.saStruct_.invalidatedZcKeys_ =
-            zcAction->packet_.purgePacket_->invalidatedZcKeys_;
+            &zcAction->packet_.purgePacket_->invalidatedZcKeys_;
       }
 
-      leMapPtr = &zcAction->leMap_;
+      leVecPtr = &zcAction->leVec_;
       prevTopBlock = startBlock = endBlock = blockchain().top()->getBlockHeight();
 
       break;
@@ -145,6 +148,15 @@ void BlockDataViewer::scanWallets(shared_ptr<BDV_Notification> action)
    {
       auto refreshNotif =
          dynamic_pointer_cast<BDV_Notification_Refresh>(action);
+
+      if (refreshNotif->refresh_ == BDV_refreshSkipRescan)
+      {
+         //only flagged the wallet to send a refresh notification, do not
+         //perform any other operations
+         ++updateID_;
+         return;
+      }
+
       scanData.saStruct_.zcMap_ =
          move(refreshNotif->zcPacket_.txioMap_);
 
@@ -185,10 +197,16 @@ void BlockDataViewer::scanWallets(shared_ptr<BDV_Notification> action)
       scanData.startBlock_ = *sbIter;
       group.scanWallets(scanData, updateID_);
 
-      if (leMapPtr != nullptr)
-         leMapPtr->insert(scanData.saStruct_.zcLedgers_.begin(),
-                          scanData.saStruct_.zcLedgers_.end());
       sbIter++;
+   }
+
+   if (leVecPtr != nullptr)
+   {
+      for (auto& walletLedgerMap : scanData.saStruct_.zcLedgers_)
+      {
+         for(auto& lePair : walletLedgerMap.second)
+            leVecPtr->push_back(lePair.second);
+      }
    }
 
    lastScanned_ = endBlock;

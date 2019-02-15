@@ -441,7 +441,7 @@ void hd::Wallet::openDB()
             walletId_ = masterID.toBinStr();
          }
          catch (NoEntryInWalletException&) {
-            throw runtime_error("missing masterID entry");
+            throw std::runtime_error("missing masterID entry");
          }
       }
       {  //mainWalletID
@@ -670,7 +670,8 @@ BinaryDataRef hd::Wallet::getDataRefForKey(LMDB* db, const BinaryData& key) cons
    BinaryRefReader brr((const uint8_t*)ref.data, ref.len);
    auto len = brr.get_var_int();
    if (len != brr.getSizeRemaining()) {
-      throw WalletException("on disk data length mismatch: " + to_string(len) + ", " + to_string(brr.getSizeRemaining()));
+      throw WalletException("on disk data length mismatch: "
+         + std::to_string(len) + ", " + std::to_string(brr.getSizeRemaining()));
    }
    return brr.get_BinaryDataRef((uint32_t)brr.getSizeRemaining());
 }
@@ -755,7 +756,7 @@ static bool nextCombi(std::vector<int> &a , const int n, const int m)
 bool hd::Wallet::changePassword(const std::vector<wallet::PasswordData> &newPass, wallet::KeyRank keyRank
    , const SecureBinaryData &oldPass, bool addNew, bool removeOld, bool dryRun)
 {
-   int newPassSize = newPass.size();
+   unsigned int newPassSize = (unsigned int)newPass.size();
    if (addNew) {
       newPassSize += rootNodes_.rank().second;
 
@@ -863,7 +864,7 @@ bool hd::Wallet::changePassword(const std::vector<wallet::PasswordData> &newPass
 
       std::vector<int> combiIndices;
       combiIndices.reserve(keyRank.second);
-      for (int i = 0; i < keyRank.second; ++i) {
+      for (unsigned int i = 0; i < keyRank.second; ++i) {
          combiIndices.push_back(i);
       }
       if (!addNode(combiIndices)) {
@@ -884,6 +885,7 @@ bool hd::Wallet::changePassword(const std::vector<wallet::PasswordData> &newPass
 
    updatePersistence();
    LOG(logger_, info, "Wallet::changePassword: success");
+   emit metaDataChanged();
    return true;
 }
 

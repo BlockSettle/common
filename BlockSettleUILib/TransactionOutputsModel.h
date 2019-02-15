@@ -14,14 +14,18 @@ public:
    ~TransactionOutputsModel() noexcept override = default;
 
    void AddRecipient(unsigned int recipientId, const QString& address, double amount);
+   void UpdateRecipientAmount(unsigned int recipientId, double amount);
 
    unsigned int   GetOutputId(int row);
    int            GetRowById(unsigned int id);
    void           RemoveRecipient(int row);
 
    void clear();
+   void enableRows(bool flag = true);
+
    int rowCount(const QModelIndex & parent) const override;
    int columnCount(const QModelIndex & parent) const override;
+   Qt::ItemFlags flags(const QModelIndex &index) const override;
    QVariant data(const QModelIndex & index, int role = Qt::DisplayRole) const override;
    QVariant headerData(int section, Qt::Orientation orientation, int role) const override;
 
@@ -46,6 +50,7 @@ private:
 
 private:
    std::vector<OutputRow> outputs_;
+   bool rowsEnabled_ = true;
 };
 
 #endif // __TRANSACTION_OUTPUTS_MODEL_H__

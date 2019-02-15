@@ -19,9 +19,7 @@ using namespace std;
 ScrAddrObj::ScrAddrObj(LMDBBlockDatabase *db, Blockchain *bc,
    ZeroConfContainer* zc, BinaryDataRef addr) :
       db_(db), bc_(bc), zc_(zc), scrAddr_(addr), utxos_(this)
-{ 
-   relevantTxIO_.clear();
-} 
+{} 
 
 ////////////////////////////////////////////////////////////////////////////////
 uint64_t ScrAddrObj::getSpendableBalance(uint32_t currBlk) const
@@ -29,7 +27,8 @@ uint64_t ScrAddrObj::getSpendableBalance(uint32_t currBlk) const
    //ignoreing the currBlk for now, until the partial history loading is solid
    uint64_t balance = getFullBalance();
 
-   for (auto txio : relevantTxIO_)
+   auto&& txios = getTxios();
+   for (auto& txio : txios)
    {
       if (!txio.second.hasTxIn() &&
           !txio.second.isSpendable(db_, currBlk))
@@ -41,25 +40,28 @@ uint64_t ScrAddrObj::getSpendableBalance(uint32_t currBlk) const
 
 
 ////////////////////////////////////////////////////////////////////////////////
-uint64_t ScrAddrObj::getUnconfirmedBalance(uint32_t currBlk) const
+uint64_t ScrAddrObj::getUnconfirmedBalance(
+   uint32_t currBlk, unsigned confTarget) const
 {
    uint64_t balance = 0;
-   for (auto txio : relevantTxIO_)
+   auto&& txios = getTxios();
+   for (auto& txio : txios)
    {
-      if(txio.second.isMineButUnconfirmed(db_, currBlk))
+      if(txio.second.isMineButUnconfirmed(db_, currBlk, confTarget))
          balance += txio.second.getValue();
    }
    return balance;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-uint64_t ScrAddrObj::getFullBalance() const
+uint64_t ScrAddrObj::getFullBalance(unsigned updateID) const
 {
    StoredScriptHistory ssh;
    db_->getStoredScriptHistorySummary(ssh, scrAddr_);
    uint64_t balance = ssh.getScriptBalance(false);
 
-   for (auto txio : relevantTxIO_)
+   auto&& txios = getHistoryForScrAddr(UINT32_MAX, UINT32_MAX, 0, false);
+   for (auto& txio : txios)
    {
       if (txio.second.hasTxOutZC())
          balance += txio.second.getValue();
@@ -67,28 +69,21 @@ uint64_t ScrAddrObj::getFullBalance() const
          balance -= txio.second.getValue();
    }
 
+   if (balance != internalBalance_)
+   {
+      internalBalance_ = balance;
+      if (updateID != UINT32_MAX)
+         updateID_ = updateID;
+   }
+
    return balance;
 }
    
 ////////////////////////////////////////////////////////////////////////////////
-void ScrAddrObj::addTxIO(TxIOPair& txio, bool isZeroConf)
-{ 
-   relevantTxIO_[txio.getDBKeyOfOutput()] = txio;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 void ScrAddrObj::clearBlkData(void)
 {
-   relevantTxIO_.clear();
    hist_.reset();
    totalTxioCount_ = 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-void ScrAddrObj::updateTxIOMap(map<BinaryData, TxIOPair>& txio_map)
-{
-   for (auto txio : txio_map)
-      relevantTxIO_[txio.first] = txio.second;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -106,21 +101,22 @@ void ScrAddrObj::scanZC(const ScanAddressStruct& scanInfo,
    //look for invalidated keys, delete from validZcKeys_ as we go
    bool purge = false;
 
-   if (scanInfo.invalidatedZcKeys_.size() != 0)
+   if (scanInfo.invalidatedZcKeys_ != nullptr && 
+       scanInfo.invalidatedZcKeys_->size() != 0)
    {
       auto keyIter = validZCKeys_.begin();
       while (keyIter != validZCKeys_.end())
       {
-         auto zcIter = scanInfo.invalidatedZcKeys_.find(
+         auto zcIter = scanInfo.invalidatedZcKeys_->find(
             keyIter->first.getSliceRef(0, 6));
-         if (zcIter != scanInfo.invalidatedZcKeys_.end())
+         if (zcIter != scanInfo.invalidatedZcKeys_->end())
          {
             purge = true;
 
             for (auto& txiokey : keyIter->second)
             {
                auto&& insertIter = invalidatedZCMap.insert(make_pair(
-                  txiokey, zcIter->getRef()));
+                  txiokey, zcIter->first.getRef()));
 
                if (insertIter.second == false)
                {
@@ -143,13 +139,29 @@ void ScrAddrObj::scanZC(const ScanAddressStruct& scanInfo,
    //purge if necessary
    if (purge)
    {
-      if (purgeZC(invalidatedZCMap, scanInfo.minedTxioKeys_))
-         updateID_ = updateID;
+      if (scanInfo.minedTxioKeys_ != nullptr)
+      {
+         if (purgeZC(invalidatedZCMap, *scanInfo.minedTxioKeys_))
+            updateID_ = updateID;
+      }
+      else
+      {
+         map<BinaryData, BinaryData> dummyMap;
+         if (purgeZC(invalidatedZCMap, dummyMap))
+            updateID_ = updateID;
+      }
    }
 
    auto haveIter = scanInfo.zcMap_.find(scrAddr_);
    if (haveIter == scanInfo.zcMap_.end())
-      return;
+   {
+      if(scanInfo.zcState_ == nullptr)
+         return;
+
+      haveIter = scanInfo.zcState_->txioMap_.find(scrAddr_);
+      if (haveIter == scanInfo.zcState_->txioMap_.end())
+         return;
+   }
 
    if (haveIter->second == nullptr)
    {
@@ -165,8 +177,8 @@ void ScrAddrObj::scanZC(const ScanAddressStruct& scanInfo,
    for (auto& txiopair : zcTxIOMap)
    {
       auto& newtxio = txiopair.second;
-      auto _keyIter = relevantTxIO_.find(txiopair.first);
-      if (_keyIter != relevantTxIO_.end())
+      auto _keyIter = zcTxios_.find(txiopair.first);
+      if (_keyIter != zcTxios_.end())
       {
          //dont replace a zc that is spent with a zc that is unspent. 
          //zc revocation is handled in the purge segment         
@@ -208,7 +220,7 @@ void ScrAddrObj::scanZC(const ScanAddressStruct& scanInfo,
          txioPair.second.setTxOutFromSelf(true);
 
       txioPair.second.setScrAddrRef(getScrAddr());
-      relevantTxIO_[txioPair.first] = move(txioPair.second);
+      zcTxios_[txioPair.first] = move(txioPair.second);
    }
 }
 
@@ -220,14 +232,14 @@ bool ScrAddrObj::purgeZC(
    bool purged = false;
    for (auto zc : invalidatedTxOutKeys)
    {
-      auto txioIter = relevantTxIO_.find(zc.first);
-      if (txioIter == relevantTxIO_.end())
+      auto txioIter = zcTxios_.find(zc.first);
+      if (txioIter == zcTxios_.end())
          continue;
 
       if (zc.second.isNull())
       {
          //the entire entry needs to go
-         relevantTxIO_.erase(txioIter);
+         zcTxios_.erase(txioIter);
          purged = true;
          continue;
       }
@@ -243,7 +255,7 @@ bool ScrAddrObj::purgeZC(
             txInKey = move(txioIter->second.getDBKeyOfInput());
 
          //purged ZC chain, remove the TxIO
-         relevantTxIO_.erase(txioIter);
+         zcTxios_.erase(txioIter);
          purged = true;
 
          //was this txio carrying an input?
@@ -252,8 +264,8 @@ bool ScrAddrObj::purgeZC(
 
          //zc txio had a spend and was mined, reciprocate the spend on the now
          //mined txio
-         auto minedIter = relevantTxIO_.find(minedKeyIter->second);
-         if (minedIter == relevantTxIO_.end())
+         auto minedIter = zcTxios_.find(minedKeyIter->second);
+         if (minedIter == zcTxios_.end())
          {
             LOGWARN << "missing mined txio";
             continue;
@@ -265,8 +277,16 @@ bool ScrAddrObj::purgeZC(
 
       if (txio.hasTxInZC() && txio.getTxRefOfInput().getDBKeyRef() == zc.second)
       {
-         txio.setTxIn(BinaryData(0));
-         txio.setTxHashOfInput(BinaryData(0));
+         if (!txio.hasTxOutZC())
+         {
+            zcTxios_.erase(txioIter);
+         }
+         else
+         {
+            txio.setTxIn(BinaryData(0));
+            txio.setTxHashOfInput(BinaryData(0));
+         }
+
          purged = true;
       }
    }
@@ -277,7 +297,7 @@ bool ScrAddrObj::purgeZC(
 ////////////////////////////////////////////////////////////////////////////////
 void ScrAddrObj::updateAfterReorg(uint32_t lastValidBlockHeight)
 {
-   auto txioIter = relevantTxIO_.begin();
+   /*auto txioIter = relevantTxIO_.begin();
 
    uint32_t height;
    while (txioIter != relevantTxIO_.end())
@@ -313,7 +333,7 @@ void ScrAddrObj::updateAfterReorg(uint32_t lastValidBlockHeight)
       }
       else
          relevantTxIO_.erase(txioIter++);
-   }
+   }*/
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -334,21 +354,6 @@ uint64_t ScrAddrObj::getTxioCountFromSSH(void) const
    return ssh.totalTxioCount_;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-void ScrAddrObj::fetchDBScrAddrData(uint32_t startBlock,
-   uint32_t endBlock, int32_t updateID)
-{
-   //maintains first page worth of TxIO in RAM. This call purges ZC, so you 
-   //should rescan ZC right after
-
-   auto hist = getHistoryForScrAddr(startBlock, endBlock, true);
-   
-   if (hist.size() != 0)
-      updateID_ = updateID;
-   
-   updateTxIOMap(hist);
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 map<BinaryData, TxIOPair> ScrAddrObj::getHistoryForScrAddr(
    uint32_t startBlock, uint32_t endBlock,
@@ -357,46 +362,11 @@ map<BinaryData, TxIOPair> ScrAddrObj::getHistoryForScrAddr(
 {
    map<BinaryData, TxIOPair> outMap;
 
-   //check relevantTxio_ first to see if it has some of the TxIOs
-   uint32_t localTxioBottom = hist_.getPageBottom(0);
-   if (update==false && endBlock > localTxioBottom && lastSeenBlock_ != 0)
-   {
-      if (startBlock <= localTxioBottom)
-      {
-         for (auto txioPair : relevantTxIO_)
-         {
-            auto& txio = outMap[txioPair.first];
-            txio = txioPair.second;
-            txio.setScrAddrRef(getScrAddr());
-         }
-      }
-      else
-      {
-         BinaryData startHeight = DBUtils::heightAndDupToHgtx(startBlock, 0);
-         startHeight.append(WRITE_UINT16_BE(0));
-
-         for (auto& txioPair : relevantTxIO_)
-         {
-            if (txioPair.second >= startHeight)
-            {
-               auto& txio = outMap[txioPair.first];
-               txio = txioPair.second;
-               txio.setScrAddrRef(getScrAddr());
-            }
-         }
-      }
-         
-      if (startBlock >= localTxioBottom)
-         return outMap;
-
-      endBlock = localTxioBottom -1;
-   }
-
    //grab txio range from ssh
    StoredScriptHistory ssh;
    auto start = startBlock;
-   if (startBlock == UINT32_MAX && lastSeenBlock_ == 0)
-      start = lastSeenBlock_;
+   if (startBlock == UINT32_MAX)
+      start = 0;
    db_->getStoredScriptHistory(ssh, scrAddr_, start, endBlock);
 
    //update scrAddrObj containers
@@ -410,33 +380,54 @@ map<BinaryData, TxIOPair> ScrAddrObj::getHistoryForScrAddr(
    if (scrAddr_[0] == SCRIPT_PREFIX_MULTISIG)
       withMultisig = true;
 
-   if (!ssh.isInitialized())
-      return outMap;
-
-   //Serve content as a map. Do not overwrite existing TxIOs to avoid wiping ZC
-   //data, Since the data isn't overwritten, iterate the map from its end to make
-   //sure newer txio aren't ignored due to older ones being inserted first.
-   auto subSSHiter = ssh.subHistMap_.rbegin();
-   while (subSSHiter != ssh.subHistMap_.rend())
+   if (ssh.isInitialized())
    {
-      StoredSubHistory & subssh = subSSHiter->second;
-
-      for (auto &txiop : subssh.txioMap_)
+      //Serve content as a map. Do not overwrite existing TxIOs to avoid wiping ZC
+      //data, Since the data isn't overwritten, iterate the map from its end to make
+      //sure newer txio aren't ignored due to older ones being inserted first.
+      auto subSSHiter = ssh.subHistMap_.rbegin();
+      while (subSSHiter != ssh.subHistMap_.rend())
       {
-         if (withMultisig || !txiop.second.isMultisig())
+         StoredSubHistory & subssh = subSSHiter->second;
+
+         for (auto &txiop : subssh.txioMap_)
          {
-            auto& txio = outMap[txiop.first];
-            txio.setScrAddrRef(getScrAddr());
+            if (withMultisig || !txiop.second.isMultisig())
+            {
+               auto& txio = outMap[txiop.first];
+               if (!txio.hasValue())
+                  txio = txiop.second;
 
-            if (!txio.hasValue())
-               txio = txiop.second;
+               txio.setScrAddrRef(getScrAddr());
+            }
          }
-      }
 
-      ++subSSHiter;
+         ++subSSHiter;
+      }
+   }
+
+   if (endBlock == UINT32_MAX)
+   {
+      for (auto& zcTxio : zcTxios_)
+      {
+         auto iter = outMap.find(zcTxio.first);
+         if (iter == outMap.end())
+         {
+            outMap.insert(zcTxio);
+            continue;
+         }
+
+         iter->second = zcTxio.second;
+      }
    }
 
    return outMap;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+map<BinaryData, TxIOPair> ScrAddrObj::getTxios() const
+{
+   return getHistoryForScrAddr(UINT32_MAX, UINT32_MAX, 0, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -477,7 +468,6 @@ ScrAddrObj& ScrAddrObj::operator= (const ScrAddrObj& rhs)
    this->bc_ = rhs.bc_;
 
    this->scrAddr_ = rhs.scrAddr_;
-   this->relevantTxIO_ = rhs.relevantTxIO_;
 
    this->totalTxioCount_ = rhs.totalTxioCount_;
    this->lastSeenBlock_ = rhs.lastSeenBlock_;
@@ -592,12 +582,13 @@ vector<UnspentTxOut> ScrAddrObj::getSpendableTxOutList(
    db_->getStoredScriptHistory(ssh, scrAddr_);
    db_->getFullUTXOMapForSSH(ssh, utxoMap, false);
 
+   auto&& txios = getTxios();
    vector<UnspentTxOut> utxoVec;
 
    for (auto& utxo : utxoMap)
    {
-      auto txioIter = relevantTxIO_.find(utxo.first);
-      if (txioIter != relevantTxIO_.end())
+      auto txioIter = txios.find(utxo.first);
+      if (txioIter != txios.end())
          if (txioIter->second.hasTxInZC())
             continue;
 
@@ -609,7 +600,7 @@ vector<UnspentTxOut> ScrAddrObj::getSpendableTxOutList(
 
    auto&& tx = db_->beginTransaction(STXO, LMDB::ReadOnly);
 
-   for (auto& txio : relevantTxIO_)
+   for (auto& txio : txios)
    {
       if (!txio.second.hasTxOutZC())
          continue;

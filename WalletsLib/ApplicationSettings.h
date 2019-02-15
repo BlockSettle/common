@@ -34,8 +34,6 @@ public:
 
    enum Setting {
       initialized,
-      ignoreAllZC,
-      satoshiPort,
       runArmoryLocally,
       netType,
       armoryDbIp,
@@ -54,11 +52,13 @@ public:
       chatServerHost,
       chatServerPort,
       chatServerPubKey,
+      chatPrivKey,
+      chatPubKey,
+      chatDbFile,
       celerUsername,
       signerHost,
       signerPort,
       signerRunMode,
-      signerPassword,
       signerOfflineDir,
       autoSignSpendLimit,
       launchToTray,
@@ -69,7 +69,6 @@ public:
       bsPublicKey,
       logDefault,
       logMessages,
-      otpFileName,
       ccFileName,
       txCacheFileName,
       nbBackupFilesKeep,
@@ -86,6 +85,7 @@ public:
       Binaries_Dl_Url,
       ResetPassword_Url,
       GetAccount_Url,
+      GettingStartedGuide_Url,
       WalletFiltering,
       FxRfqLimit,
       XbtRfqLimit,
@@ -99,6 +99,9 @@ public:
       MDLicenseAccepted,
       authPrivKey,
       jwtUsername,
+      zmqLocalSignerPubKeyFilePath,
+      zmqRemoteSignerPubKey,
+      rememberLoginUserName,
       _last
    };
 
@@ -118,22 +121,24 @@ public:
    void set(Setting s, const QVariant &val, bool toFile=true);
    void reset(Setting s, bool toFile=true);     // Reset setting to default value
 
+   using State = std::unordered_map<Setting, QVariant>;
+   State getState() const;
+   void setState(const State &);
+
    void SetDefaultSettings(bool toFile=false);                   // reset all settings to default
 
-   int GetDefaultArmoryPort() const;
-
-   static int GetDefaultArmoryPortForNetwork(NetworkType networkType);
+   static int GetDefaultArmoryLocalPort(NetworkType networkType);
+   static int GetDefaultArmoryRemotePort(NetworkType networkType);
+   QString GetArmoryRemotePort(NetworkType networkType = NetworkType::Invalid) const;
 
    QString GetSettingsPath() const;
 
    QString  GetHomeDir() const;
-   QString  GetBitcoinsDir() const;
-   int GetSatoshiPort() const;
    QString  GetBackupDir() const;
 
    ArmorySettings GetArmorySettings() const;
 
-   std::vector<bs::LogConfig> GetLogsConfig(bool getDefaultValue = false) const;
+   std::vector<bs::LogConfig> GetLogsConfig() const;
 
    unsigned int GetWalletScanIndex(const std::string &id) const;
    void SetWalletScanIndex(const std::string &id, unsigned int index);
@@ -175,5 +180,16 @@ private:
    autheid::PrivateKey  authPrivKey_;
    autheid::PublicKey   authPubKey_;
 };
+
+template<> QString ApplicationSettings::get<QString>(Setting s, bool getDefaultValue) const;
+template<> std::string ApplicationSettings::get<std::string>(Setting set, bool getDefaultValue) const;
+template<> bool ApplicationSettings::get<bool>(Setting set, bool getDefaultValue) const;
+template<> int ApplicationSettings::get<int>(Setting set, bool getDefaultValue) const;
+template<> unsigned int ApplicationSettings::get<unsigned int>(Setting set, bool getDefaultValue) const;
+template<> double ApplicationSettings::get<double>(Setting set, bool getDefaultValue) const;
+template<> QRect ApplicationSettings::get<QRect>(Setting set, bool getDefaultValue) const;
+template<> QStringList ApplicationSettings::get<QStringList>(Setting set, bool getDefaultValue) const;
+template<> QVariantMap ApplicationSettings::get<QVariantMap> (Setting set, bool getDefaultValue) const;
+template<> NetworkType ApplicationSettings::get<NetworkType>(Setting set, bool getDefaultValue) const;
 
 #endif // __APPLICATION_SETTINGS_H__

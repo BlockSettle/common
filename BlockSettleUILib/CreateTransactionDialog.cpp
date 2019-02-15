@@ -6,6 +6,7 @@
 #include <QDebug>
 #include <QCheckBox>
 #include <QComboBox>
+#include <QCoreApplication>
 #include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
@@ -66,11 +67,21 @@ CreateTransactionDialog::~CreateTransactionDialog() noexcept
 
 void CreateTransactionDialog::init()
 {
-   transactionData_ = std::make_shared<TransactionData>([this]() {
-      QMetaObject::invokeMethod(this, [this] {
-         onTransactionUpdated();
-      });
-   });
+   if (!transactionData_) {
+      transactionData_ = std::make_shared<TransactionData>([this]() {
+         QMetaObject::invokeMethod(this, [this] {
+            onTransactionUpdated();
+         });
+      }, logger_);
+   }
+   else {
+      const auto recipients = transactionData_->allRecipientIds();
+      for (const auto &recipId : recipients) {
+         transactionData_->RemoveRecipient(recipId);
+      }
+      onTransactionUpdated();
+      transactionData_->SetCallback([this] { onTransactionUpdated(); });
+   }
 
    xbtValidator_ = new XbtAmountValidator(this);
    lineEditAmount()->setValidator(xbtValidator_);
@@ -89,27 +100,38 @@ void CreateTransactionDialog::init()
 
    if (signingContainer_) {
       connect(signingContainer_.get(), &SignContainer::TXSigned, this, &CreateTransactionDialog::onTXSigned);
+      connect(signingContainer_.get(), &SignContainer::disconnected, this, &CreateTransactionDialog::updateCreateButtonText);
+      connect(signingContainer_.get(), &SignContainer::authenticated, this, &CreateTransactionDialog::onSignerAuthenticated);
       signer_ = signingContainer_;
-      updateCreateButtonText();
    }
+   updateCreateButtonText();
    lineEditAddress()->setFocus();
 }
 
 void CreateTransactionDialog::updateCreateButtonText()
 {
-   if (signer_->opMode() == SignContainer::OpMode::Offline) {
-      if (HaveSignedImportedTransaction()) {
-         pushButtonCreate()->setText(tr("Broadcast"));
-      } else {
-         pushButtonCreate()->setText(tr("Export"));
-      }
-   } else {
-      if (signer_->isOffline()) {
-         pushButtonCreate()->setText(tr("Unable to sign"));
-      } else {
-         pushButtonCreate()->setText(tr("Broadcast"));
-      }
+   if (!signer_) {
+      pushButtonCreate()->setEnabled(false);
+      return;
    }
+   if (HaveSignedImportedTransaction()) {
+      pushButtonCreate()->setText(tr("Broadcast"));
+      if (signer_->isOffline() || (signer_->opMode() == SignContainer::OpMode::Offline)) {
+         pushButtonCreate()->setEnabled(false);
+      }
+      return;
+   }
+   if (signer_->isOffline() || (signer_->opMode() == SignContainer::OpMode::Offline)) {
+      signer_ = offlineSigner_;
+      pushButtonCreate()->setText(tr("Export"));
+   } else {
+      selectedWalletChanged(-1);
+   }
+}
+
+void CreateTransactionDialog::onSignerAuthenticated()
+{
+   selectedWalletChanged(-1);
 }
 
 void CreateTransactionDialog::clear()
@@ -156,7 +178,7 @@ int CreateTransactionDialog::SelectWallet(const std::string& walletId)
 
 void CreateTransactionDialog::populateWalletsList()
 {
-   auto selectedWalletIndex = UiUtils::fillWalletsComboBox(comboBoxWallets(), walletsManager_, signingContainer_);
+   auto selectedWalletIndex = UiUtils::fillWalletsComboBox(comboBoxWallets(), walletsManager_);
    selectedWalletChanged(selectedWalletIndex);
 }
 
@@ -221,11 +243,15 @@ void CreateTransactionDialog::onFeeSuggestionsLoaded(const std::map<unsigned int
 
 void CreateTransactionDialog::feeSelectionChanged(int currentIndex)
 {
-   transactionData_->SetFeePerByte(comboBoxFeeSuggestions()->itemData(currentIndex).toFloat());
+   transactionData_->setFeePerByte(comboBoxFeeSuggestions()->itemData(currentIndex).toFloat());
 }
 
 void CreateTransactionDialog::selectedWalletChanged(int, bool resetInputs, const std::function<void()> &cbInputsReset)
 {
+   if (!comboBoxWallets()->count()) {
+      pushButtonCreate()->setText(tr("No wallets"));
+      return;
+   }
    const auto currentWallet = walletsManager_->GetWalletById(UiUtils::getSelectedWalletId(comboBoxWallets()));
    const auto rootWallet = walletsManager_->GetHDRootForLeaf(currentWallet->GetWalletId());
    if (signingContainer_->isWalletOffline(currentWallet->GetWalletId())
@@ -236,7 +262,9 @@ void CreateTransactionDialog::selectedWalletChanged(int, bool resetInputs, const
       pushButtonCreate()->setText(tr("Broadcast"));
       signer_ = signingContainer_;
    }
-   transactionData_->SetWallet(currentWallet, armory_->topBlock(), resetInputs, cbInputsReset);
+   if ((transactionData_->GetWallet() != currentWallet) || resetInputs) {
+      transactionData_->SetWallet(currentWallet, armory_->topBlock(), resetInputs, cbInputsReset);
+   }
 }
 
 void CreateTransactionDialog::onTransactionUpdated()
@@ -247,8 +275,10 @@ void CreateTransactionDialog::onTransactionUpdated()
    labelAmount()->setText(UiUtils::displayAmount(summary.selectedBalance));
    labelTxInputs()->setText(summary.isAutoSelected ? tr("Auto (%1)").arg(QString::number(summary.usedTransactions))
       : QString::number(summary.usedTransactions));
+   labelTxOutputs()->setText(QString::number(summary.outputsCount));
    labelEstimatedFee()->setText(UiUtils::displayAmount(summary.totalFee));
-   labelTotalAmount()->setText(UiUtils::displayAmount(UiUtils::amountToBtc(summary.balanceToSpend) + UiUtils::amountToBtc(summary.totalFee)));
+   labelTotalAmount()->setText(UiUtils::displayAmount(summary.balanceToSpend + UiUtils::amountToBtc(summary.totalFee)));
+   labelTXAmount()->setText(UiUtils::displayAmount(summary.balanceToSpend));
    if (labelTxSize()) {
       labelTxSize()->setText(QString::number(summary.txVirtSize));
    }
@@ -259,17 +289,29 @@ void CreateTransactionDialog::onTransactionUpdated()
 
    if (changeLabel() != nullptr) {
       if (summary.hasChange) {
-         changeLabel()->setText(UiUtils::displayAmount(summary.selectedBalance - UiUtils::amountToBtc(summary.balanceToSpend) - UiUtils::amountToBtc(summary.totalFee)));
+         changeLabel()->setText(UiUtils::displayAmount(summary.selectedBalance - summary.balanceToSpend - UiUtils::amountToBtc(summary.totalFee)));
       } else {
          changeLabel()->setText(UiUtils::displayAmount(0.0));
       }
    }
+
+   pushButtonCreate()->setEnabled(transactionData_->IsTransactionValid());
 }
 
 void CreateTransactionDialog::onMaxPressed()
 {
-   auto maxValue = transactionData_->CalculateMaxAmount(lineEditAddress()->text().toStdString());
-   lineEditAmount()->setText(UiUtils::displayAmount(maxValue));
+   pushButtonMax()->setEnabled(false);
+   lineEditAmount()->setEnabled(false);
+   QCoreApplication::processEvents();
+
+   const bs::Address outputAddr(lineEditAddress()->text().trimmed());
+   const auto maxValue = transactionData_->CalculateMaxAmount(outputAddr)
+      - transactionData_->GetTotalRecipientsAmount();
+   if (maxValue > 0) {
+      lineEditAmount()->setText(UiUtils::displayAmount(maxValue));
+   }
+   pushButtonMax()->setEnabled(true);
+   lineEditAmount()->setEnabled(true);
 }
 
 void CreateTransactionDialog::onTXSigned(unsigned int id, BinaryData signedTX, std::string error,
