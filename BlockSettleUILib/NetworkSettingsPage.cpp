@@ -1,8 +1,8 @@
 #include "NetworkSettingsPage.h"
-
 #include "ui_NetworkSettingsPage.h"
-
 #include "ApplicationSettings.h"
+
+#include "ArmoryServersWidget.h"
 
 enum EnvConfiguration
 {
@@ -21,6 +21,7 @@ struct EnvSettings
 NetworkSettingsPage::NetworkSettingsPage(QWidget* parent)
    : SettingsPage{parent}
    , ui_{new Ui::NetworkSettingsPage}
+   //, armoryServerComboBoxModel(new ArmoryServersViewModel(appSettings_, true))
 {
    ui_->setupUi(this);
 
@@ -32,6 +33,12 @@ NetworkSettingsPage::NetworkSettingsPage(QWidget* parent)
 
    connect(ui_->armoryDBHostLineEdit, &QLineEdit::editingFinished, this, &NetworkSettingsPage::onArmoryHostChanged);
    connect(ui_->armoryDBPortLineEdit, &QLineEdit::editingFinished, this, &NetworkSettingsPage::onArmoryPortChanged);
+   connect(ui_->pushButtonManageArmory, &QPushButton::clicked, this, [this](){
+      ArmoryServersWidget armoryServersWidget(appSettings_);
+      armoryServersWidget.exec();
+
+      // todo: refresh current selected server
+   });
 }
 
 NetworkSettingsPage::~NetworkSettingsPage() = default;
@@ -56,6 +63,21 @@ void NetworkSettingsPage::display()
    ui_->spinBoxPublicBridgePort->setValue(appSettings_->get<int>(ApplicationSettings::pubBridgePort));
    ui_->lineEditPublicBridgeHost->setText(appSettings_->get<QString>(ApplicationSettings::pubBridgeHost));
    ui_->spinBoxPublicBridgePort->setValue(appSettings_->get<int>(ApplicationSettings::pubBridgePort));
+
+//   // load armory servers from ini
+//   ui_->comboBoxArmoryServer->clear();
+//   QStringList servers = appSettings_->get<QStringList>(ApplicationSettings::armoryServers);
+//   for (auto i = servers.begin(); i != servers.end(); ++i) {
+//      QString serverValue = *i;
+//      if (serverValue.split(QStringLiteral("")).size() != 3) {
+//         servers.erase(i);
+//         continue;
+//      }
+//      QStringList values = serverValue.split(QStringLiteral(":"));
+//      values.removeLast();
+//      *i = values.join();
+//   }
+//   ui_->comboBoxArmoryServer->setModel(armoryServerComboBoxModel);
 }
 
 void NetworkSettingsPage::reset()

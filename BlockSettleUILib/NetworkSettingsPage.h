@@ -3,10 +3,11 @@
 
 #include <memory>
 #include "ConfigDialog.h"
+#include "ArmoryServersViewModel.h"
 
 namespace Ui {
    class NetworkSettingsPage;
-};
+}
 
 class ApplicationSettings;
 
@@ -32,6 +33,7 @@ private:
 
 private:
    std::unique_ptr<Ui::NetworkSettingsPage> ui_;
+   ArmoryServersViewModel *armoryServerComboBoxModel;
 };
 
 #endif // __NETWORK_SETTINGS_PAGE_H__

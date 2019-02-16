@@ -102,6 +102,7 @@ public:
       zmqLocalSignerPubKeyFilePath,
       zmqRemoteSignerPubKey,
       rememberLoginUserName,
+      armoryServers,
       _last
    };
 
