@@ -30,12 +30,12 @@ Q_DECLARE_METATYPE(std::vector<bs::TXEntry>)
 // funct won't be called.) We can reject or accept the connection as needed.
 // The derivation proof will be added later, and can be used for actual
 // verification.
-bool bip150PromptUser(const BinaryData& srvPubKey
-   , const std::string& srvIPPort) {
-   std::cout << "Simple proof of concept for now. Srv pub key = "
-      << srvPubKey.toHexStr() << " - Srv IP:Port = " << srvIPPort << std::endl;
-   return true;
-}
+//bool bip150PromptUser(const BinaryData& srvPubKey
+//   , const std::string& srvIPPort) {
+//   std::cout << "Simple proof of concept for now. Srv pub key = "
+//      << srvPubKey.toHexStr() << " - Srv IP:Port = " << srvIPPort << std::endl;
+//   return true;
+//}
 
 ArmoryConnection::ArmoryConnection(const std::shared_ptr<spdlog::logger> &logger
    , const std::string &txCacheFN, bool cbInMainThread)
@@ -58,6 +58,12 @@ ArmoryConnection::ArmoryConnection(const std::shared_ptr<spdlog::logger> &logger
    const BinaryData curKeyBin = READHEX(BIP150_KEY_1);
    bsBIP150PubKeys.push_back(curKeyBin);
 
+//   bip150PromptUser=[](const BinaryData& srvPubKey
+//         , const std::string& srvIPPort) {
+//      std::cout << "Simple proof of concept for now. Srv pub key = "
+//         << srvPubKey.toHexStr() << " - Srv IP:Port = " << srvIPPort << std::endl;
+//      return true;
+//   };
 }
 
 ArmoryConnection::~ArmoryConnection() noexcept
@@ -107,7 +113,8 @@ bool ArmoryConnection::startLocalArmoryProcess(const ArmorySettings &settings)
    return false;
 }
 
-void ArmoryConnection::setupConnection(const ArmorySettings &settings)
+void ArmoryConnection::setupConnection(const ArmorySettings &settings
+        , std::function<bool (const BinaryData &, const std::string &)> bip150PromptUserRoutine)
 {
    emit prepareConnection(settings.netType, settings.armoryDBIp, settings.armoryDBPort);
 
@@ -150,7 +157,7 @@ void ArmoryConnection::setupConnection(const ArmorySettings &settings)
       logger_->debug("[ArmoryConnection::setupConnection] completed");
    };
 
-   const auto &connectRoutine = [this, settings, registerRoutine] {
+   const auto &connectRoutine = [this, settings, registerRoutine, bip150PromptUserRoutine] {
       if (connThreadRunning_) {
          return;
       }
@@ -187,7 +194,7 @@ void ArmoryConnection::setupConnection(const ArmorySettings &settings)
          for (const auto &x : bsBIP150PubKeys) {
             bdv_->addPublicKey(x);
          }
-         bdv_->setCheckServerKeyPromptLambda(bip150PromptUser);
+         bdv_->setCheckServerKeyPromptLambda(bip150PromptUserRoutine);
 
          connected = bdv_->connectToRemote();
          if (!connected) {

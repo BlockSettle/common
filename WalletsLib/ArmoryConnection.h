@@ -91,7 +91,9 @@ public:
 
    State state() const { return state_; }
 
-   void setupConnection(const ArmorySettings &);
+   void setupConnection(const ArmorySettings &
+                        , std::function<bool (const BinaryData&, const std::string&)> bip150PromptUserRoutine
+                        = [](const BinaryData&, const std::string&){return true;});
    bool goOnline();
 
    bool broadcastZC(const BinaryData& rawTx);
@@ -126,6 +128,9 @@ public:
    unsigned int getConfirmationsNumber(uint32_t blockNum) const;
 
    bool isOnline() const { return isOnline_; }
+
+   auto bip150PromptUser(const BinaryData& srvPubKey
+                         , const std::string& srvIPPort) -> bool;
 
 signals:
    void stateChanged(ArmoryConnection::State) const;

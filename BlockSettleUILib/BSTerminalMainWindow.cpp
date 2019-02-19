@@ -739,7 +739,11 @@ void BSTerminalMainWindow::initArmory()
 
 void BSTerminalMainWindow::connectArmory()
 {
-   armory_->setupConnection(applicationSettings_->GetArmorySettings());
+   armory_->setupConnection(applicationSettings_->GetArmorySettings(), [this](const BinaryData& srvPubKey, const std::string& srvIPPort){
+      QDialog *d= new QDialog;
+      d->exec();
+      return true;
+   });
 }
 
 void BSTerminalMainWindow::connectSigner()
