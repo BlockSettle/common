@@ -740,9 +740,13 @@ void BSTerminalMainWindow::initArmory()
 void BSTerminalMainWindow::connectArmory()
 {
    armory_->setupConnection(applicationSettings_->GetArmorySettings(), [this](const BinaryData& srvPubKey, const std::string& srvIPPort){
-      QDialog *d= new QDialog;
-      d->exec();
-      return true;
+      std::shared_ptr<std::promise<bool>> promiseObj = std::make_shared<std::promise<bool>>();
+      std::future<bool> futureObj = promiseObj->get_future();
+      QMetaObject::invokeMethod(this, "showArmoryServerPrompt", Qt::QueuedConnection
+                                , Q_ARG(BinaryData, srvPubKey)
+                                , Q_ARG(std::string, srvIPPort)
+                                , Q_ARG(std::shared_ptr<std::promise<bool>>, promiseObj));
+      return futureObj.get();
    });
 }
 
@@ -1399,4 +1403,16 @@ void BSTerminalMainWindow::onButtonUserClicked() {
          , tr("Do you want to continue?")).exec() == QDialog::Accepted)
       onLogout();
    }
+}
+
+void BSTerminalMainWindow::showArmoryServerPrompt(const BinaryData &srvPubKey, const std::string &srvIPPort, std::shared_ptr<std::promise<bool>> promiseObj)
+{
+   bool answer = BSMessageBox(BSMessageBox::messageBoxType::question
+                    , tr("Armory")
+                    , tr("Check Armory Server Key for %2:\n\n%1").arg(QString::fromLatin1(QByteArray::fromStdString(srvPubKey.toBinStr()).toHex()))
+                              .arg(QString::fromStdString(srvIPPort))
+                    , tr("Press cancel if you don't trust this server.")
+                    , this).exec() == QDialog::Accepted;
+
+   promiseObj->set_value(answer);
 }
