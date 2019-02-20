@@ -87,6 +87,7 @@ private:
 
 signals:
    void readyToLogin();
+   void armoryServerPromptResultReady();
 
 private slots:
    // display login dialog once network settings loaded
@@ -108,6 +109,7 @@ private slots:
    void acceptMDAgreement();
    void updateControlEnabledState();
    void onButtonUserClicked();
+   void showArmoryServerPrompt(const BinaryData& srvPubKey, const std::string& srvIPPort, std::shared_ptr<std::promise<bool> > promiseObj);
 
 private:
    QAction *action_send_;
