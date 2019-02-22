@@ -116,6 +116,7 @@ bool ArmoryConnection::startLocalArmoryProcess(const ArmorySettings &settings)
 void ArmoryConnection::setupConnection(const ArmorySettings &settings
         , std::function<bool (const BinaryData &, const std::string &)> bip150PromptUserRoutine)
 {
+   needsBreakConnectionLoop_.store(false);
    emit prepareConnection(settings.netType, settings.armoryDBIp, settings.armoryDBPort);
 
    if (settings.runLocally) {
@@ -162,7 +163,7 @@ void ArmoryConnection::setupConnection(const ArmorySettings &settings
          return;
       }
       connThreadRunning_ = true;
-      setState(State::Unknown);
+      setState(State::Connecting);
       stopServiceThreads();
       if (bdv_) {
          bdv_->unregisterFromDB();
@@ -174,6 +175,10 @@ void ArmoryConnection::setupConnection(const ArmorySettings &settings
       isOnline_ = false;
       bool connected = false;
       do {
+         if (needsBreakConnectionLoop_.load()) {
+            setState(State::Canceled);
+            break;
+         }
          cbRemote_ = std::make_shared<ArmoryCallback>(this, logger_);
          logger_->debug("[ArmoryConnection::setupConnection] connecting to Armory {}:{}"
                         , settings.armoryDBIp, settings.armoryDBPort);
@@ -816,7 +821,9 @@ void ArmoryCallback::disconnected()
 {
    logger_->debug("[{}]", __func__);
    connection_->regThreadRunning_ = false;
-   connection_->setState(ArmoryConnection::State::Offline);
+   if (connection_->state() != ArmoryConnection::State::Canceled) {
+      connection_->setState(ArmoryConnection::State::Offline);
+   }
 }
 
 

@@ -39,6 +39,10 @@ NetworkSettingsPage::NetworkSettingsPage(QWidget* parent)
 
       // todo: refresh current selected server
    });
+
+   ui_->ArmorySettingsGroupBoxOld->hide();
+   ui_->PublicBridgeSettingsGroup->hide();
+
 }
 
 NetworkSettingsPage::~NetworkSettingsPage() = default;

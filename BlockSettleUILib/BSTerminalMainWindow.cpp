@@ -746,7 +746,12 @@ void BSTerminalMainWindow::connectArmory()
                                 , Q_ARG(BinaryData, srvPubKey)
                                 , Q_ARG(std::string, srvIPPort)
                                 , Q_ARG(std::shared_ptr<std::promise<bool>>, promiseObj));
-      return futureObj.get();
+      bool result = futureObj.get();
+
+      // stop armory connection loop if server key was rejected
+      armory_->needsBreakConnectionLoop_.store(!result);
+      armory_->setState(ArmoryConnection::State::Canceled);
+      return result;
    });
 }
 

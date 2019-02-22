@@ -145,13 +145,14 @@ void StatusBarView::onArmoryStateChanged(ArmoryConnection::State state)
 
    switch (state) {
    case ArmoryConnection::State::Scanning:
-   case ArmoryConnection::State::Connected:
+   case ArmoryConnection::State::Connecting:
       connectionStatusLabel_->setToolTip(tr("Connecting..."));
       connectionStatusLabel_->setPixmap(iconConnecting_);
       break;
 
    case ArmoryConnection::State::Closing:
    case ArmoryConnection::State::Offline:
+   case ArmoryConnection::State::Canceled:
       connectionStatusLabel_->setToolTip(tr("Database Offline"));
       connectionStatusLabel_->setPixmap(iconOffline_);
       break;

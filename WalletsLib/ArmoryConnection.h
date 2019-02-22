@@ -76,8 +76,9 @@ class ArmoryConnection : public QObject
    Q_OBJECT
 public:
    enum class State : uint8_t {
-      Unknown,
       Offline,
+      Connecting,
+      Canceled,
       Connected,
       Scanning,
       Error,
@@ -132,6 +133,8 @@ public:
    auto bip150PromptUser(const BinaryData& srvPubKey
                          , const std::string& srvIPPort) -> bool;
 
+   void setState(State);
+   std::atomic_bool  needsBreakConnectionLoop_ = 0;
 signals:
    void stateChanged(ArmoryConnection::State) const;
    void connectionError(QString) const;
@@ -146,7 +149,6 @@ signals:
 
 private:
    void registerBDV(NetworkType);
-   void setState(State);
    void setTopBlock(unsigned int topBlock) { topBlock_ = topBlock; }
    void onRefresh(std::vector<BinaryData>);
    void onZCsReceived(const std::vector<ClientClasses::LedgerEntry> &);
@@ -160,7 +162,7 @@ private:
    std::shared_ptr<spdlog::logger>  logger_;
    std::shared_ptr<AsyncClient::BlockDataViewer>   bdv_;
    std::shared_ptr<ArmoryCallback>  cbRemote_;
-   std::atomic<State>   state_ = { State::Unknown };
+   std::atomic<State>   state_ = { State::Offline };
    std::atomic_uint     topBlock_ = { 0 };
    TxCacheFile    txCache_;
    const bool     cbInMainThread_;

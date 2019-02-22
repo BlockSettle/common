@@ -13,6 +13,12 @@ ArmoryServersWidget::ArmoryServersWidget(const std::shared_ptr<ApplicationSettin
    ui_->buttonBox->setStandardButtons(QDialogButtonBox::Ok);
    ui_->tableViewArmory->horizontalHeader()->setStretchLastSection(true);
 
+   ui_->lineEditKey->setVisible(false);
+   connect(ui_->checkBoxServerPrivacy, &QCheckBox::clicked, [this](bool clicked){
+      ui_->lineEditKey->setVisible(ui_->checkBoxServerPrivacy->isChecked());
+      ui_->labelKey->setVisible(ui_->checkBoxServerPrivacy->isChecked());
+   });
+
    connect(ui_->pushButtonAddServer, &QPushButton::clicked, this, &ArmoryServersWidget::onAddServer);
 }
 
