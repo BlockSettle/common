@@ -7,14 +7,6 @@
 #include "ZMQHelperFunctions.h"
 #include "BSMessageBox.h"
 
-
-enum RunModeIndex {
-   Local = 0,
-   Remote,
-   Offline
-};
-
-
 SignerSettingsPage::SignerSettingsPage(QWidget* parent)
    : SettingsPage{parent}
    , ui_{new Ui::SignerSettingsPage{}}
@@ -75,7 +67,7 @@ void SignerSettingsPage::onZmqPubKeySel()
 
 void SignerSettingsPage::onModeChanged(int index)
 {
-   switch (static_cast<RunModeIndex>(index)) {
+   switch (static_cast<SignerRunModeIndex>(index)) {
    case Local:
       showHost(false);
       showPort(true);
@@ -172,7 +164,7 @@ void SignerSettingsPage::onAsSpendLimitChanged(double value)
 
 void SignerSettingsPage::apply()
 {
-   switch (static_cast<RunModeIndex>(ui_->comboBoxRunMode->currentIndex())) {
+   switch (static_cast<SignerRunModeIndex>(ui_->comboBoxRunMode->currentIndex())) {
    case Local:
       appSettings_->set(ApplicationSettings::signerPort, ui_->spinBoxPort->value());
       appSettings_->set(ApplicationSettings::autoSignSpendLimit, ui_->spinBoxAsSpendLimit->value());

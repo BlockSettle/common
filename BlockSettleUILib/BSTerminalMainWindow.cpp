@@ -210,7 +210,7 @@ void BSTerminalMainWindow::GetNetworkSettingsFromPuB(const std::function<void()>
 	  }
 #endif // NDEBUG
 
-     
+
    };
 
    cmdPuBSettings_->SetReplyCallback([this, title, cb, populateAppSettings](const std::string &data) {
@@ -471,10 +471,11 @@ bool BSTerminalMainWindow::InitSigningContainer()
       }
    }
 
-   signContainer_ = CreateSigner(logMgr_->logger(), applicationSettings_, signerPubKey
-      , runMode, signerHost, connectionManager_);
+   signContainer_ = CreateSigner(logMgr_->logger(), applicationSettings_
+      , signerPubKey, runMode, signerHost, connectionManager_, walletsManager_);
    if (!signContainer_) {
-      showError(tr("BlockSettle Signer"), tr("BlockSettle Signer creation failure"));
+      showError(tr("BlockSettle Signer")
+         , tr("BlockSettle Signer creation failure"));
       return false;
    }
    connect(signContainer_.get(), &SignContainer::ready, this, &BSTerminalMainWindow::SignerReady);

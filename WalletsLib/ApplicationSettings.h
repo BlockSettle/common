@@ -12,6 +12,12 @@
 #include "EncryptUtils.h"
 #include "LogManager.h"
 
+// The signer running mode.
+enum SignerRunModeIndex {
+   Local = 0,
+   Remote,
+   Offline
+};
 
 class ApplicationSettings : public QObject
 {

@@ -1,13 +1,12 @@
 #include "HeadlessContainer.h"
-
-#include "ApplicationSettings.h"
 #include "ConnectionManager.h"
-#include "DataConnectionListener.h"
 #include "HDWallet.h"
 #include "SettlementWallet.h"
 #include "WalletsManager.h"
 #include "ZmqSecuredDataConnection.h"
 #include "ZMQHelperFunctions.h"
+
+#include "zmq.h"
 
 #include <QCoreApplication>
 #include <QDebug>
@@ -30,133 +29,104 @@ static NetworkType mapNetworkType(headless::NetworkType netType)
    }
 }
 
-class HeadlessListener : public QObject, public DataConnectionListener
-{
-   Q_OBJECT
-public:
-   HeadlessListener(const std::shared_ptr<spdlog::logger> &logger
-      , const std::shared_ptr<DataConnection> &conn, NetworkType netType)
-      : logger_(logger), connection_(conn), netType_(netType) {
+void HeadlessListener::OnDataReceived(const std::string& data) {
+   headless::RequestPacket packet;
+   if (!packet.ParseFromString(data)) {
+      logger_->error("[HeadlessListener] failed to parse request packet");
+      return;
+   }
+   if (packet.id() > id_) {
+      logger_->error("[HeadlessListener] reply id inconsistency: {} > {}", packet.id(), id_);
+      emit error(tr("reply id inconsistency"));
+      return;
+   }
+   if ((packet.type() != headless::AuthenticationRequestType)
+      && (authTicket_.isNull() || (SecureBinaryData(packet.authticket()) != authTicket_))) {
+      if (packet.type() == headless::DisconnectionRequestType) {
+         if (packet.authticket().empty()) {
+            emit authFailed();
+         }
+         return;
+      }
+      logger_->error("[HeadlessListener] {} auth ticket mismatch ({} vs {})!", packet.type()
+         , authTicket_.toHexStr(), BinaryData(packet.authticket()).toHexStr());
+      emit error(tr("auth ticket mismatch"));
+      return;
    }
 
-   void OnDataReceived(const std::string& data) override {
-      headless::RequestPacket packet;
-      if (!packet.ParseFromString(data)) {
-         logger_->error("[HeadlessListener] failed to parse request packet");
+   if (packet.type() == headless::DisconnectionRequestType) {
+      OnDisconnected();
+      return;
+   }
+
+   if (packet.type() == headless::AuthenticationRequestType) {
+      if (!authTicket_.isNull()) {
+         logger_->error("[HeadlessListener] already authenticated");
+         emit error(tr("already authenticated"));
          return;
       }
-      if (packet.id() > id_) {
-         logger_->error("[HeadlessListener] reply id inconsistency: {} > {}", packet.id(), id_);
-         emit error(tr("reply id inconsistency"));
+      headless::AuthenticationReply response;
+      if (!response.ParseFromString(packet.data())) {
+         logger_->error("[HeadlessListener] failed to parse auth reply");
+         emit error(tr("failed to parse auth reply"));
          return;
       }
-      if ((packet.type() != headless::AuthenticationRequestType)
-         && (authTicket_.isNull() || (SecureBinaryData(packet.authticket()) != authTicket_))) {
-         if (packet.type() == headless::DisconnectionRequestType) {
-            if (packet.authticket().empty()) {
-               emit authFailed();
-            }
-            return;
-         }
-         logger_->error("[HeadlessListener] {} auth ticket mismatch ({} vs {})!", packet.type()
-            , authTicket_.toHexStr(), BinaryData(packet.authticket()).toHexStr());
-         emit error(tr("auth ticket mismatch"));
+      if (mapNetworkType(response.nettype()) != netType_) {
+         logger_->error("[HeadlessListener] network type mismatch");
+         emit error(tr("network type mismatch"));
          return;
       }
 
-      if (packet.type() == headless::DisconnectionRequestType) {
-         OnDisconnected();
-         return;
-      }
-
-      if (packet.type() == headless::AuthenticationRequestType) {
-         if (!authTicket_.isNull()) {
-            logger_->error("[HeadlessListener] already authenticated");
-            emit error(tr("already authenticated"));
-            return;
-         }
-         headless::AuthenticationReply response;
-         if (!response.ParseFromString(packet.data())) {
-            logger_->error("[HeadlessListener] failed to parse auth reply");
-            emit error(tr("failed to parse auth reply"));
-            return;
-         }
-         if (mapNetworkType(response.nettype()) != netType_) {
-            logger_->error("[HeadlessListener] network type mismatch");
-            emit error(tr("network type mismatch"));
-            return;
-         }
-
-         if (!response.authticket().empty()) {
-            authTicket_ = response.authticket();
-            hasUI_ = response.hasui();
-            logger_->debug("[HeadlessListener] successfully authenticated");
-            emit authenticated();
-         }
-         else {
-            logger_->error("[HeadlessListener] authentication failure: {}", response.error());
-            emit error(QString::fromStdString(response.error()));
-            return;
-         }
+      if (!response.authticket().empty()) {
+         authTicket_ = response.authticket();
+         hasUI_ = response.hasui();
+         logger_->debug("[HeadlessListener] successfully authenticated");
+         emit authenticated();
       }
       else {
-         emit PacketReceived(packet);
+         logger_->error("[HeadlessListener] authentication failure: {}", response.error());
+         emit error(QString::fromStdString(response.error()));
+         return;
       }
    }
-
-   void OnConnected() override {
-      logger_->debug("[HeadlessListener] Connected");
-      emit connected();
+   else {
+      emit PacketReceived(packet);
    }
+}
 
-   void OnDisconnected() override {
-      logger_->debug("[HeadlessListener] Disconnected");
+void HeadlessListener::OnConnected() {
+   logger_->debug("[HeadlessListener] Connected");
+   emit connected();
+}
+
+void HeadlessListener::OnDisconnected() {
+   logger_->debug("[HeadlessListener] Disconnected");
+   emit disconnected();
+}
+
+void HeadlessListener::OnError(DataConnectionError errorCode) {
+   logger_->debug("[HeadlessListener] error {}", errorCode);
+   emit error(tr("error #%1").arg(QString::number(errorCode)));
+}
+
+HeadlessContainer::RequestId HeadlessListener::Send(headless::RequestPacket packet,
+   bool updateId) {
+   HeadlessContainer::RequestId id = 0;
+   if (updateId) {
+      id = ++id_;
+      packet.set_id(id);
+   }
+   packet.set_authticket(authTicket_.toBinStr());
+   if (!connection_->send(packet.SerializeAsString())) {
+      logger_->error("[HeadlessListener] Failed to send request packet");
       emit disconnected();
+      return 0;
    }
+   return id;
+}
 
-   void OnError(DataConnectionError errorCode) override {
-      logger_->debug("[HeadlessListener] error {}", errorCode);
-      emit error(tr("error #%1").arg(QString::number(errorCode)));
-   }
-
-   HeadlessContainer::RequestId Send(headless::RequestPacket packet, bool updateId = true) {
-      HeadlessContainer::RequestId id = 0;
-      if (updateId) {
-         id = ++id_;
-         packet.set_id(id);
-      }
-      packet.set_authticket(authTicket_.toBinStr());
-      if (!connection_->send(packet.SerializeAsString())) {
-         logger_->error("[HeadlessListener] Failed to send request packet");
-         emit disconnected();
-         return 0;
-      }
-      return id;
-   }
-
-   void resetAuthTicket() { authTicket_.clear(); }
-   bool isAuthenticated() const { return !authTicket_.isNull(); }
-   bool hasUI() const { return hasUI_; }
-
-signals:
-   void authenticated();
-   void authFailed();
-   void connected();
-   void disconnected();
-   void error(const QString &err);
-   void PacketReceived(headless::RequestPacket);
-
-private:
-   std::shared_ptr<spdlog::logger>  logger_;
-   std::shared_ptr<DataConnection>  connection_;
-   const NetworkType                netType_;
-   HeadlessContainer::RequestId     id_ = 0;
-   SecureBinaryData  authTicket_;
-   bool     hasUI_ = false;
-};
-
-
-HeadlessContainer::HeadlessContainer(const std::shared_ptr<spdlog::logger> &logger, OpMode opMode)
+HeadlessContainer::HeadlessContainer(const std::shared_ptr<spdlog::logger> &logger
+   , OpMode opMode)
    : SignContainer(logger, opMode)
 {
    qRegisterMetaType<headless::RequestPacket>();
@@ -793,58 +763,68 @@ bool HeadlessContainer::isWalletOffline(const std::string &walletId) const
 
 
 RemoteSigner::RemoteSigner(const std::shared_ptr<spdlog::logger> &logger
-                           , const QString &host, const QString &port
-                           , NetworkType netType
-                           , const std::shared_ptr<ConnectionManager>& connectionManager
-                           , const std::shared_ptr<ApplicationSettings>& appSettings
-                           , const SecureBinaryData& pubKey
-                           , OpMode opMode)
-   : HeadlessContainer(logger, opMode)
-   , host_(host), port_(port), netType_(netType)
-   , connectionManager_{connectionManager}
-   , appSettings_{appSettings}
-   , zmqSignerPubKey_{pubKey}
+   , const QString &host
+   , const QString &port
+   , NetworkType netType
+   , const std::shared_ptr<ConnectionManager>& connectionManager
+   , const std::shared_ptr<ApplicationSettings>& appSettings
+   , const SecureBinaryData& pubKey
+   , const std::shared_ptr<WalletsManager>& walletsManager
+   , OpMode opMode)
+      : HeadlessContainer(logger, opMode)
+      , host_(host), port_(port), netType_(netType)
+      , connectionManager_{connectionManager}
+      , appSettings_{appSettings}
+      , zmqSignerPubKey_{pubKey}
 {}
 
 // Establish the remote connection to the signer.
 bool RemoteSigner::Start()
 {
-   if (connection_) {
+   if (cliConnection_) {
       return true;
    }
 
-   // Load remote singer zmq pub key.
-   // If the server pub key exists, proceed (it was initialized in LocalSigner::Start()).
-   if (!zmqSignerPubKey_.getSize()){
-      logger_->error("[RemoteSigner::Start] missing server public key.");
+   // Okay, this is going to be weird. Grab some aspirin.
+   //
+   // We need to do two-way authentication of connections. ZMQ makes this very
+   // difficult without following their exact rules (i.e., run a (phony) server
+   // via the ZAP protocol, or run CZMQ). We're going to do a workaround. The
+   // terminal will be considered authenticated since it launched the signer in
+   // local mode. The terminal will act as a server. Why? The client/requester
+   // can set the server/responder public key; the connection will work only
+   // with that specific key. So, we'll have the signer connect to the terminal.
+   // If the signer has the wrong private key, the connection will fail,
+   // otherwise it'll work. This is considered acceptable.
+   //
+   // For the terminal that spawns a headless signer, grab the signer's key
+   // from a special cookie and use that to set up the connection, to which the
+   // signer will connect automatically.
+   //
+   // For the terminal that connects to a remote signer, grab the signer's key
+   // from the config. The terminal will need to start before the signer.
+   const auto modeIndex = static_cast<SignerRunModeIndex>(
+      appSettings_->get<int>(ApplicationSettings::signerRunMode) - 1);
+   if (modeIndex == SignerRunModeIndex::Local) {
+      return StartLocal();
+   }
+   else if (modeIndex == SignerRunModeIndex::Remote) {
+      return StartRemote();
+   }
+   else {
+      // We should not be here!
       return false;
    }
-
-   connection_ = connectionManager_->CreateSecuredDataConnection(true);
-   if (!connection_->SetServerPublicKey(zmqSignerPubKey_)) {
-      logger_->error("[RemoteSigner::{}] Failed to set ZMQ server public key"
-         , __func__);
-      connection_ = nullptr;
-      return false;
-   }
-
-   if (opMode() == OpMode::RemoteInproc) {
-      connection_->SetZMQTransport(ZMQTransport::InprocTransport);
-   }
-
-   {
-      std::lock_guard<std::mutex> lock(mutex_);
-      listener_ = std::make_shared<HeadlessListener>(logger_, connection_, netType_);
-      connect(listener_.get(), &HeadlessListener::connected, this, &RemoteSigner::onConnected, Qt::QueuedConnection);
-      connect(listener_.get(), &HeadlessListener::authenticated, this, &RemoteSigner::onAuthenticated, Qt::QueuedConnection);
-      connect(listener_.get(), &HeadlessListener::authFailed, [this] { authPending_ = false; });
-      connect(listener_.get(), &HeadlessListener::disconnected, this, &RemoteSigner::onDisconnected, Qt::QueuedConnection);
-      connect(listener_.get(), &HeadlessListener::error, this, &RemoteSigner::onConnError, Qt::QueuedConnection);
-      connect(listener_.get(), &HeadlessListener::PacketReceived, this, &RemoteSigner::onPacketReceived, Qt::QueuedConnection);
-   }
-
-   return Connect();
 }
+
+// Establish the remote connection to the signer. Should be called directly only
+// if the signer is in local mode.
+/*bool RemoteSigner::Start(std::pair<SecureBinaryData, SecureBinaryData> termKeys) {
+   termZMQSrvPubKey_ = termKeys.first;
+   termZMQSrvPrvKey_ = termKeys.second;
+
+   return Start();
+}*/
 
 bool RemoteSigner::Stop()
 {
@@ -859,8 +839,8 @@ bool RemoteSigner::Connect()
 
 void RemoteSigner::ConnectHelper()
 {
-   if (!connection_->isActive()) {
-      if (connection_->openConnection(host_.toStdString(), port_.toStdString(), listener_.get())) {
+   if (!cliConnection_->isActive()) {
+      if (cliConnection_->openConnection(host_.toStdString(), port_.toStdString(), listener_.get())) {
          emit connected();
       }
       else {
@@ -874,7 +854,7 @@ void RemoteSigner::ConnectHelper()
 
 bool RemoteSigner::Disconnect()
 {
-   if (!connection_) {
+   if (!cliConnection_) {
       return true;
    }
    headless::RequestPacket packet;
@@ -882,7 +862,7 @@ bool RemoteSigner::Disconnect()
    packet.set_data("");
    Send(packet);
 
-   return connection_->closeConnection();
+   return cliConnection_->closeConnection();
 }
 
 void RemoteSigner::Authenticate()
@@ -1020,15 +1000,15 @@ void RemoteSigner::onPacketReceived(headless::RequestPacket packet)
    }
 }
 
-
 LocalSigner::LocalSigner(const std::shared_ptr<spdlog::logger> &logger
-                         , const QString &homeDir, NetworkType netType, const QString &port
-                         , const std::shared_ptr<ConnectionManager>& connectionManager
-                         , const std::shared_ptr<ApplicationSettings> &appSettings
-                         , const SecureBinaryData& pubKey
-                         , double asSpendLimit)
+   , const QString &homeDir, NetworkType netType, const QString &port
+   , const std::shared_ptr<ConnectionManager>& connectionManager
+   , const std::shared_ptr<ApplicationSettings> &appSettings
+   , const SecureBinaryData& pubKey
+   , const std::shared_ptr<WalletsManager>& walletsManager
+   , double asSpendLimit)
    : RemoteSigner(logger, QLatin1String("127.0.0.1"), port, netType
-                  , connectionManager, appSettings, pubKey, OpMode::Local)
+      , connectionManager, appSettings, pubKey, walletsManager, OpMode::Local)
 
 {
    auto walletsCopyDir = homeDir + QLatin1String("/copy");
@@ -1064,12 +1044,119 @@ LocalSigner::LocalSigner(const std::shared_ptr<spdlog::logger> &logger
    default: break;
    }
 
+   // The local signer needs the terminal's public key in order to set up the
+   // CurveZMQ connection. Create the key set here now and write the pub key to
+   // a file.
+   std::pair<SecureBinaryData, SecureBinaryData> termKeyPair;
+   int result = bs::network::getCurveZMQKeyPair(termKeyPair);
+   if (result == -1) {
+      logger_->error("[{}] failed to generate key pair: {}", __func__
+         , zmq_strerror(zmq_errno()));
+      return;
+   }
+   termZMQSrvPubKey_ = termKeyPair.first;
+   termZMQSrvPrvKey_ = termKeyPair.second;
+
+   // Write the public key to a special cookie meant for the signer. We'll
+   // overwrite anything already present.
+   const auto dir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+   const auto pubFilePath = dir + QDir::separator()
+      + QLatin1String("srvCookie");
+   QFile pubFile(pubFilePath);
+   if (!pubFile.open(QIODevice::WriteOnly)) {
+      logger_->error("[{}] Failure to open CurveZMQ public file ({})", __func__
+         , pubFilePath.toStdString());
+      return;
+   }
+   if (pubFile.write(termKeyPair.first.toBinStr().c_str()
+      , termKeyPair.first.toBinStr().length()) != CURVEZMQPUBKEYBUFFERSIZE) {
+      logger_->error("[{}] Failure to properly write to CurveZMQ public file "
+            "({})", __func__, pubFilePath.toStdString());
+      pubFile.close();
+      return;
+   }
+   pubFile.close();
+
+   args_ << QString::fromStdString("--local_term_pk") << pubFilePath;
    args_ << QLatin1String("--listen") << QLatin1String("127.0.0.1");
    args_ << QLatin1String("--port") << port_;
    args_ << QLatin1String("--dirwallets") << walletsCopyDir;
    if (asSpendLimit > 0) {
-      args_ << QLatin1String("--auto_sign_spend_limit") << QString::number(asSpendLimit, 'f', 8);
+      args_ << QLatin1String("--auto_sign_spend_limit")
+         << QString::number(asSpendLimit, 'f', 8);
    }
+}
+
+bool RemoteSigner::StartLocal() {
+   srvConnection_ = connectionManager_->CreateSecuredServerConnection();
+   if (!srvConnection_->SetKeyPair(termZMQSrvPubKey_, termZMQSrvPrvKey_)) {
+      logger_->error("[{}] Failed to establish secure connection", __func__);
+      throw std::runtime_error("secure connection problem");
+   }
+
+   // Force a binding at localhost:23456 for the headless signer. May have to
+   // rework later, although that would imply using SignerSettings and
+   // potentially plugging into the UI.
+   std::string srvAddr = "127.0.0.1";
+   std::string srvPort = "23456";
+   SignContainer::Limits defaultLimits;
+   QString signerDir;
+   const auto dir = QStandardPaths::displayName(QStandardPaths::AppDataLocation);
+   const auto commonRoot = dir + QDir::separator() + QLatin1String("..")
+      + QDir::separator() + QLatin1String("..") + QDir::separator()
+      + QLatin1String("Blocksettle");
+   if (netType_ == NetworkType::TestNet) {
+      signerDir = commonRoot + QDir::separator() + QLatin1String("testnet3");
+   }
+   else {
+      signerDir = commonRoot;
+   }
+   signerDir += QDir::separator() + QLatin1String("signer");
+
+   hcListener_ = std::make_shared<HeadlessContainerListener>(srvConnection_
+      , logger_, walletsMgr_, QDir::cleanPath(signerDir).toStdString(), netType_);
+   hcListener_->SetLimits(defaultLimits);
+   if (!srvConnection_->BindConnection(srvAddr, srvPort, hcListener_.get())) {
+      logger_->error("[{}] Failed to bind to {}:{}", __func__
+         , srvAddr, srvPort);
+      throw std::runtime_error("failed to bind listening socket");
+   }
+
+   return true;
+}
+
+bool RemoteSigner::StartRemote() {
+   // Load remote singer zmq pub key.
+   // If the server pub key exists, proceed (it was initialized in LocalSigner::Start()).
+   if (!zmqSignerPubKey_.getSize()){
+      logger_->error("[RemoteSigner::Start] missing server public key.");
+      return false;
+   }
+
+   cliConnection_ = connectionManager_->CreateSecuredDataConnection(true);
+   if (!cliConnection_->SetServerPublicKey(zmqSignerPubKey_)) {
+      logger_->error("[RemoteSigner::{}] Failed to set ZMQ server public key"
+         , __func__);
+      cliConnection_ = nullptr;
+      return false;
+   }
+
+   if (opMode() == OpMode::RemoteInproc) {
+      cliConnection_->SetZMQTransport(ZMQTransport::InprocTransport);
+   }
+
+   {
+      std::lock_guard<std::mutex> lock(mutex_);
+      listener_ = std::make_shared<HeadlessListener>(logger_, cliConnection_, netType_);
+      connect(listener_.get(), &HeadlessListener::connected, this, &RemoteSigner::onConnected, Qt::QueuedConnection);
+      connect(listener_.get(), &HeadlessListener::authenticated, this, &RemoteSigner::onAuthenticated, Qt::QueuedConnection);
+      connect(listener_.get(), &HeadlessListener::authFailed, [this] { authPending_ = false; });
+      connect(listener_.get(), &HeadlessListener::disconnected, this, &RemoteSigner::onDisconnected, Qt::QueuedConnection);
+      connect(listener_.get(), &HeadlessListener::error, this, &RemoteSigner::onConnError, Qt::QueuedConnection);
+      connect(listener_.get(), &HeadlessListener::PacketReceived, this, &RemoteSigner::onPacketReceived, Qt::QueuedConnection);
+   }
+
+   return Connect();
 }
 
 bool LocalSigner::Start()
@@ -1083,15 +1170,18 @@ bool LocalSigner::Start()
    });
 
 #ifdef Q_OS_WIN
-   const auto signerAppPath = QCoreApplication::applicationDirPath() + QLatin1String("/blocksettle_signer.exe");
+   const auto signerAppPath = QCoreApplication::applicationDirPath()
+      + QLatin1String("/blocksettle_signer.exe");
 #elif defined (Q_OS_MACOS)
    auto bundleDir = QDir(QCoreApplication::applicationDirPath());
    bundleDir.cdUp();
    bundleDir.cdUp();
    bundleDir.cdUp();
-   const auto signerAppPath = bundleDir.absoluteFilePath(QLatin1String("Blocksettle Signer.app/Contents/MacOS/Blocksettle Signer"));
+   const auto signerAppPath = bundleDir.absoluteFilePath(QLatin1String(
+      "Blocksettle Signer.app/Contents/MacOS/Blocksettle Signer"));
 #else
-   const auto signerAppPath = QCoreApplication::applicationDirPath() + QLatin1String("/blocksettle_signer");
+   const auto signerAppPath = QCoreApplication::applicationDirPath()
+      + QLatin1String("/blocksettle_signer");
 #endif
    if (!QFile::exists(signerAppPath)) {
       logger_->error("[HeadlessContainer] Signer binary {} not found"
@@ -1124,52 +1214,7 @@ bool LocalSigner::Start()
    }
    logger_->debug("[LocalSigner::{}] child process started", __func__);
 
-
-   // Load local ZMQ server public key.
-   if (zmqSignerPubKey_.getSize() == 0) {
-      // If the server pub key exists, proceed. If not, give the signer a little time to create the key.
-      // 50 ms seems reasonable on a VM but we'll add some padding to be safe.
-      const auto zmqLocalSignerPubKeyPath = appSettings_->get<QString>(ApplicationSettings::zmqLocalSignerPubKeyFilePath);
-
-      QFile zmqLocalSignerPubKeyFile(zmqLocalSignerPubKeyPath);
-      if (!zmqLocalSignerPubKeyFile.exists()) {
-         QThread::msleep(250);
-      }
-
-      if (!bs::network::readZmqKeyFile(zmqLocalSignerPubKeyPath, zmqSignerPubKey_, true
-         , logger_)) {
-         logger_->error("[LocalSigner::{}] failed to read ZMQ server public "
-            "key ({})", __func__, zmqLocalSignerPubKeyPath.toStdString());
-      }
-   }
-
-
-   // SPECIAL CASE: Unlike Windows and Linux, the Signer and Terminal have
-   // different data directories on Macs. Check the Signer for a file. There is
-   // an issue here if the Signer has moved its keys away from the standard
-   // location. We really should check the Signer's config file instead.
-#ifdef Q_OS_MACOS
-   QString zmqSignerPubKeyPath = \
-      appSettings_->get<QString>(ApplicationSettings::zmqLocalSignerPubKeyFilePath);
-   QFile zmqSignerPubKeyFile(zmqSignerPubKeyPath);
-   if (!zmqSignerPubKeyFile.exists()) {
-      QThread::msleep(250); // Give Signer time to create files if needed.
-      QDir signZMQFileDir(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation));
-      signZMQFileDir.cdUp();
-      QString signZMQSrvPubKeyPath = signZMQFileDir.path() + \
-         QString::fromStdString("/Blocksettle/zmq_conn_srv.pub");
-      if (!QFile::copy(signZMQSrvPubKeyPath, zmqSignerPubKeyPath)) {
-         logger_->error("[LocalSigner::{}] Failed to copy ZMQ public key file "
-            "{} to the terminal. Connection will not start.", __func__
-            , signZMQSrvPubKeyPath.toStdString());
-         return false;
-      }
-      else {
-         logger_->info("[LocalSigner::{}] Copied ZMQ public key file ({}) to "
-            "the terminal.", __func__, zmqSignerPubKeyPath.toStdString());
-      }
-   }
-#endif
+//   QThread::msleep(250); // Give Signer time to create files if needed.
 
    return RemoteSigner::Start();
 }
@@ -1228,5 +1273,3 @@ void HeadlessAddressSyncer::SyncWallet(const std::shared_ptr<bs::Wallet> &wallet
    }
    signingContainer_->SyncAddresses(addresses);
 }
-
-#include "HeadlessContainer.moc"

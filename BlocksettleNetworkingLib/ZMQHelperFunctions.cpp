@@ -117,16 +117,16 @@ bool bs::network::readZmqKeyFile(const QString& zmqKeyFilePath
    QFile zmqFile(zmqKeyFilePath);
    if (!zmqFile.open(QIODevice::ReadOnly)) {
       if (logger) {
-         logger->error("[ZmqSecuredServerConnection::{}] ZMQ key file ({}) "
-            "cannot be opened.", __func__, zmqKeyFilePath.toStdString());
+         logger->error("[{}] ZMQ key file ({}) cannot be opened.", __func__
+            , zmqKeyFilePath.toStdString());
       }
       return false;
    }
 
    if (zmqFile.size() != targetFileSize) {
       if (logger) {
-         logger->error("[ZmqSecuredServerConnection::{}] ZMQ key file size "
-            "({} bytes) should be {} bytes.", __func__, zmqFile.size()
+         logger->error("[{}] ZMQ key file size ({} bytes) should be {} bytes."
+            , __func__, zmqFile.size()
             , isPub ? CURVEZMQPUBKEYBUFFERSIZE : CURVEZMQPRVKEYBUFFERSIZE);
       }
       return false;
@@ -148,8 +148,8 @@ bool bs::network::readZmqKeyString(const QByteArray& zmqEncodedKey, SecureBinary
 
    if (zmq_z85_decode(junkBuf.getPtr(), zmqEncodedKey.toStdString().c_str()) == NULL) {
       if (logger) {
-         logger->error("[ZmqSecuredServerConnection::{}] ZMQ key string "
-            "is not a Z85-formatted key file.", __func__);
+         logger->error("[{}] ZMQ key string is not a Z85-formatted key file."
+            , __func__);
       }
       return false;
    }
@@ -157,9 +157,8 @@ bool bs::network::readZmqKeyString(const QByteArray& zmqEncodedKey, SecureBinary
    zmqKey = SecureBinaryData(zmqEncodedKey.toStdString());
    if (zmqKey.getSize() != targetFileSize) {
       if (logger) {
-         logger->error("[ZmqSecuredServerConnection::{}] ZMQ key string ({}) "
-            "is {} bytes, not {} bytes", __func__, zmqKey.getSize()
-            , targetFileSize);
+         logger->error("[{}] ZMQ key string ({}) is {} bytes, not {} bytes"
+            , __func__, zmqKey.getSize(), targetFileSize);
       }
       return false;
    }

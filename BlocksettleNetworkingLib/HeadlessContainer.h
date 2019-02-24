@@ -8,6 +8,10 @@
 #include "MetaData.h"
 #include "SignContainer.h"
 #include "ApplicationSettings.h"
+#include "HeadlessContainerListener.h"
+#include "DataConnection.h"
+#include "DataConnectionListener.h"
+#include "ZmqSecuredServerConnection.h"
 
 #include "headless.pb.h"
 
@@ -25,11 +29,10 @@ namespace bs {
 }
 class ApplicationSettings;
 class ConnectionManager;
-class HeadlessListener;
 class QProcess;
 class WalletsManager;
 class ZmqSecuredDataConnection;
-
+class HeadlessListener;
 
 class HeadlessContainer : public SignContainer
 {
@@ -90,9 +93,47 @@ protected:
    void ProcessChangePasswordResponse(unsigned int id, const std::string &data);
    void ProcessSetLimitsResponse(unsigned int id, const std::string &data);
 
-   std::shared_ptr<HeadlessListener>   listener_;
-   std::unordered_set<std::string>     missingWallets_;
-   std::set<RequestId>                 signRequests_;
+   std::shared_ptr<HeadlessListener>          listener_;
+   std::shared_ptr<HeadlessContainerListener> hcListener_;
+   std::unordered_set<std::string>            missingWallets_;
+   std::set<RequestId>                        signRequests_;
+};
+
+class HeadlessListener : public QObject, public DataConnectionListener
+{
+   Q_OBJECT
+public:
+   HeadlessListener(const std::shared_ptr<spdlog::logger> &logger
+      , const std::shared_ptr<DataConnection> &conn, NetworkType netType)
+      : logger_(logger), connection_(conn), netType_(netType) {}
+
+   void OnConnected() override;
+   void OnDisconnected() override;
+   void OnError(DataConnectionError errorCode) override;
+   void OnDataReceived(const std::string& data);
+
+   HeadlessContainer::RequestId Send(
+      Blocksettle::Communication::headless::RequestPacket packet
+      , bool updateId = true);
+   void resetAuthTicket() { authTicket_.clear(); }
+   bool isAuthenticated() const { return !authTicket_.isNull(); }
+   bool hasUI() const { return hasUI_; }
+
+signals:
+   void authenticated();
+   void authFailed();
+   void connected();
+   void disconnected();
+   void error(const QString &err);
+   void PacketReceived(Blocksettle::Communication::headless::RequestPacket);
+
+private:
+   std::shared_ptr<spdlog::logger>  logger_;
+   std::shared_ptr<DataConnection>  connection_;
+   const NetworkType                netType_;
+   HeadlessContainer::RequestId     id_ = 0;
+   SecureBinaryData  authTicket_;
+   bool     hasUI_ = false;
 };
 
 bool KillHeadlessProcess();
@@ -107,10 +148,12 @@ public:
       , const std::shared_ptr<ConnectionManager>& connectionManager
       , const std::shared_ptr<ApplicationSettings>& appSettings
       , const SecureBinaryData& pubKey
+      , const std::shared_ptr<WalletsManager>& walletsManager
       , OpMode opMode = OpMode::Remote);
    ~RemoteSigner() noexcept = default;
 
    bool Start() override;
+//   bool Start(std::pair<SecureBinaryData, SecureBinaryData> termKeys);
    bool Stop() override;
    bool Connect() override;
    bool Disconnect() override;
@@ -127,15 +170,21 @@ protected slots:
 private:
    void ConnectHelper();
    void Authenticate();
+   bool StartLocal();
+   bool StartRemote();
 
 protected:
    const QString          host_;
    const QString          port_;
    const NetworkType      netType_;
-   std::shared_ptr<ZmqSecuredDataConnection> connection_;
+   std::shared_ptr<ZmqSecuredDataConnection> cliConnection_;
+   std::shared_ptr<ZmqSecuredServerConnection> srvConnection_;
    SecureBinaryData       zmqSignerPubKey_;
+   SecureBinaryData       termZMQSrvPubKey_;
+   SecureBinaryData       termZMQSrvPrvKey_;
    bool  authPending_ = false;
    std::shared_ptr<ApplicationSettings> appSettings_;
+   std::shared_ptr<WalletsManager> walletsMgr_;
 
 private:
    std::shared_ptr<ConnectionManager> connectionManager_;
@@ -151,6 +200,7 @@ public:
       , const std::shared_ptr<ConnectionManager>& connectionManager
       , const std::shared_ptr<ApplicationSettings>& appSettings
       , const SecureBinaryData& pubKey
+      , const std::shared_ptr<WalletsManager>& walletsManager
       , double asSpendLimit = 0);
    ~LocalSigner() noexcept = default;
 
