@@ -33,77 +33,13 @@
    <item row="2" column="0">
     <widget class="QGroupBox" name="groupBox">
      <property name="title">
-      <string>Add Server</string>
+      <string>ADD SERVER</string>
      </property>
      <layout class="QGridLayout" name="gridLayout">
-      <item row="0" column="0">
-       <widget class="QLabel" name="label_5">
-        <property name="text">
-         <string>Network type</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="0">
-       <widget class="QLabel" name="label">
-        <property name="text">
-         <string>IP address or DNS name</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="2">
-       <widget class="QLineEdit" name="lineEditAddress"/>
-      </item>
-      <item row="9" column="2">
+      <item row="11" column="2">
        <widget class="QLineEdit" name="lineEditKey"/>
       </item>
       <item row="6" column="2">
-       <widget class="QCheckBox" name="checkBoxServerPrivacy">
-        <property name="text">
-         <string>Private server</string>
-        </property>
-       </widget>
-      </item>
-      <item row="10" column="2">
-       <widget class="QPushButton" name="pushButtonAddServer">
-        <property name="minimumSize">
-         <size>
-          <width>150</width>
-          <height>0</height>
-         </size>
-        </property>
-        <property name="maximumSize">
-         <size>
-          <width>150</width>
-          <height>16777215</height>
-         </size>
-        </property>
-        <property name="text">
-         <string>ADD</string>
-        </property>
-       </widget>
-      </item>
-      <item row="9" column="0">
-       <widget class="QLabel" name="labelKey">
-        <property name="text">
-         <string>Key</string>
-        </property>
-       </widget>
-      </item>
-      <item row="6" column="0">
-       <widget class="QLabel" name="label_4">
-        <property name="text">
-         <string>Server Privacy</string>
-        </property>
-       </widget>
-      </item>
-      <item row="4" column="0">
-       <widget class="QLabel" name="label_2">
-        <property name="text">
-         <string>Port</string>
-        </property>
-       </widget>
-      </item>
-      <item row="4" column="2">
        <widget class="QSpinBox" name="spinBoxPort">
         <property name="minimumSize">
          <size>
@@ -128,12 +64,100 @@
         </property>
        </widget>
       </item>
-      <item row="0" column="2">
-       <widget class="QCheckBox" name="checkBox_2">
+      <item row="3" column="2">
+       <widget class="QLineEdit" name="lineEditAddress"/>
+      </item>
+      <item row="12" column="2">
+       <widget class="QPushButton" name="pushButtonAddServer">
+        <property name="minimumSize">
+         <size>
+          <width>150</width>
+          <height>0</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>150</width>
+          <height>16777215</height>
+         </size>
+        </property>
         <property name="text">
-         <string>Use Testnet</string>
+         <string>ADD</string>
         </property>
        </widget>
+      </item>
+      <item row="6" column="0">
+       <widget class="QLabel" name="label_2">
+        <property name="text">
+         <string>Port</string>
+        </property>
+       </widget>
+      </item>
+      <item row="11" column="0">
+       <widget class="QLabel" name="labelKey">
+        <property name="text">
+         <string>Key</string>
+        </property>
+       </widget>
+      </item>
+      <item row="8" column="0">
+       <widget class="QLabel" name="label_4">
+        <property name="text">
+         <string>ArmoryDB type</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="label_5">
+        <property name="text">
+         <string>Network type</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0">
+       <widget class="QLabel" name="label">
+        <property name="text">
+         <string>IP address or DNS name</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="2">
+       <widget class="QComboBox" name="comboBoxNetworkType">
+        <item>
+         <property name="text">
+          <string>MainNet</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>TestNet</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+      <item row="8" column="2">
+       <widget class="QComboBox" name="comboBoxPrivacy">
+        <item>
+         <property name="text">
+          <string>Public</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Private</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+      <item row="0" column="0">
+       <widget class="QLabel" name="label_3">
+        <property name="text">
+         <string>Name</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="2">
+       <widget class="QLineEdit" name="lineEditName"/>
       </item>
      </layout>
     </widget>

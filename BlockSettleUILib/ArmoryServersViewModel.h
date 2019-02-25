@@ -38,6 +38,8 @@ private:
 
    enum ArmoryServersViewViewColumns : int
    {
+      ColumnName,
+      ColumnType,
       ColumnAddress,
       ColumnPort,
       ColumnKey

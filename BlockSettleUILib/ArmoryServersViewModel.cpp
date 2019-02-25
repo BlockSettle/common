@@ -4,7 +4,7 @@
 #include "EncryptionUtils.h"
 
 namespace {
-   int kArmoryServerColumns = 3;
+   int kArmoryServerColumns = 5;
 }
 
 ArmoryServersViewModel::ArmoryServersViewModel(const std::shared_ptr<ApplicationSettings> &appSettings
@@ -38,13 +38,16 @@ QVariant ArmoryServersViewModel::data(const QModelIndex &index, int role) const
       // join address and port for combobox
       if (onlyAddressAndPort_) {
          if (index.column() == 0 || index.column() == 1) {
-            return values.at(0) + QStringLiteral(":") + values.at(1);
+            return values.at(2) + QStringLiteral(":") + values.at(3);
          }
          else {
             return values.at(index.column());
          }
       }
       else {
+         if (index.column() == 1) {
+            return values.at(index.column()) == QStringLiteral("0") ? tr("MainNet") : tr("TestNet");
+         }
          return values.at(index.column());
       }
    }
@@ -59,6 +62,10 @@ QVariant ArmoryServersViewModel::headerData(int section, Qt::Orientation orienta
 
    if (role == Qt::DisplayRole) {
       switch(static_cast<ArmoryServersViewViewColumns>(section)) {
+      case ArmoryServersViewViewColumns::ColumnName:
+         return tr("Name");
+      case ArmoryServersViewViewColumns::ColumnType:
+         return tr("Network \ntype");
       case ArmoryServersViewViewColumns::ColumnAddress:
          return tr("Address");
       case ArmoryServersViewViewColumns::ColumnPort:
