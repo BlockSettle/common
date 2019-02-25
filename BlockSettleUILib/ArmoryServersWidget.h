@@ -20,6 +20,7 @@ public:
 
 public slots:
    void onAddServer();
+   void onDeleteServer();
 
 private:
    std::unique_ptr<Ui::ArmoryServersWidget> ui_; // The main widget object.

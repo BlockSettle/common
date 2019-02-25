@@ -1,6 +1,6 @@
 #include "ArmoryServersWidget.h"
 #include "ui_ArmoryServersWidget.h"
-
+#include <QDebug>
 
 ArmoryServersWidget::ArmoryServersWidget(const std::shared_ptr<ApplicationSettings> &appSettings, QWidget *parent) :
    QDialog(parent)
@@ -9,23 +9,33 @@ ArmoryServersWidget::ArmoryServersWidget(const std::shared_ptr<ApplicationSettin
    , armoryServersModel(new ArmoryServersViewModel(appSettings))
 {
    ui_->setupUi(this);
+   ui_->lineEditKey->setVisible(false);
+   ui_->labelKey->setVisible(false);
+
    ui_->tableViewArmory->setModel(armoryServersModel);
    ui_->buttonBox->setStandardButtons(QDialogButtonBox::Ok);
    ui_->tableViewArmory->horizontalHeader()->setStretchLastSection(true);
 
    ui_->lineEditKey->setVisible(false);
-//   connect(ui_->checkBoxServerPrivacy, &QCheckBox::clicked, [this](bool clicked){
-//      ui_->lineEditKey->setVisible(ui_->checkBoxServerPrivacy->isChecked());
-//      ui_->labelKey->setVisible(ui_->checkBoxServerPrivacy->isChecked());
-//   });
+   connect(ui_->comboBoxPrivacy, QOverload<int>::of(&QComboBox::currentIndexChanged), [this](int index){
+      ui_->lineEditKey->setVisible(index == 1);
+      ui_->labelKey->setVisible(index == 1);
+   });
 
    connect(ui_->pushButtonAddServer, &QPushButton::clicked, this, &ArmoryServersWidget::onAddServer);
+   connect(ui_->pushButtonDeleteServer, &QPushButton::clicked, this, &ArmoryServersWidget::onDeleteServer);
 }
 
 ArmoryServersWidget::~ArmoryServersWidget() = default;
 
 void ArmoryServersWidget::onAddServer()
 {
+   if (ui_->lineEditName->text().isEmpty() || ui_->lineEditAddress->text().isEmpty())
+      return;
+
+   if (ui_->lineEditKey->text().isEmpty() && ui_->comboBoxNetworkType->currentIndex() == 1)
+      return;
+
    QStringList servers = appSettings_->get<QStringList>(ApplicationSettings::armoryServers);
    QString server = QString(QStringLiteral("%1:%2:%3:%4:%5"))
          .arg(ui_->lineEditName->text())
@@ -34,6 +44,18 @@ void ArmoryServersWidget::onAddServer()
          .arg(ui_->spinBoxPort->value())
          .arg(ui_->lineEditKey->text());
    servers.append(server);
+   appSettings_->set(ApplicationSettings::armoryServers, servers);
+   armoryServersModel->reloadServers();
+}
+
+void ArmoryServersWidget::onDeleteServer()
+{
+   if (ui_->tableViewArmory->selectionModel()->selectedRows(0).isEmpty()) {
+      return;
+   }
+   QStringList servers = appSettings_->get<QStringList>(ApplicationSettings::armoryServers);
+   servers.removeAt(ui_->tableViewArmory->selectionModel()->selectedRows(0).first().row());
+
    appSettings_->set(ApplicationSettings::armoryServers, servers);
    armoryServersModel->reloadServers();
 }
