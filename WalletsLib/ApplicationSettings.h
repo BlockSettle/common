@@ -6,6 +6,7 @@
 #include <QString>
 #include <QSettings>
 
+#include <QMutex>
 #include <bdmenums.h>
 
 #include "ArmorySettings.h"

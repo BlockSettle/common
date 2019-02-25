@@ -945,7 +945,9 @@ void BSTerminalMainWindow::openAuthDlgVerify(const QString &addrToVerify)
 
 void BSTerminalMainWindow::openConfigDialog()
 {
-   ConfigDialog(applicationSettings_, this).exec();
+   ConfigDialog configDialog(applicationSettings_, this);
+   connect(&configDialog, &ConfigDialog::reconnectArmory, this, &BSTerminalMainWindow::onArmoryNeedsReconnect);
+   configDialog.exec();
 
    UpdateMainWindowAppearence();
 }
@@ -1420,4 +1422,30 @@ void BSTerminalMainWindow::showArmoryServerPrompt(const BinaryData &srvPubKey, c
                     , this).exec() == QDialog::Accepted;
 
    promiseObj->set_value(answer);
+}
+
+void BSTerminalMainWindow::onArmoryNeedsReconnect()
+{
+   disconnect(statusBarView_.get(), 0, 0, 0);
+   statusBarView_->deleteLater();
+   QApplication::processEvents();
+
+   initArmory();
+   LoadWallets(BSTerminalSplashScreen(QPixmap()));
+
+   QApplication::processEvents();
+
+   statusBarView_ = std::make_shared<StatusBarView>(armory_, walletsManager_, assetManager_, celerConnection_
+      , signContainer_, ui->statusbar);
+
+   InitWalletsView();
+
+
+   widgetsInited_ = false;
+   InitSigningContainer();
+   InitAuthManager();
+
+   connectSigner();
+   connectArmory();
+
 }

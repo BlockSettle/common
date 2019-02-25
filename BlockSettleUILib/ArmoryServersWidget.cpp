@@ -12,9 +12,10 @@ ArmoryServersWidget::ArmoryServersWidget(const std::shared_ptr<ApplicationSettin
    ui_->lineEditKey->setVisible(false);
    ui_->labelKey->setVisible(false);
 
+   //ui_->tableViewArmory->horizontalHeader()->setStretchLastSection(true);
+   ui_->tableViewArmory->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
    ui_->tableViewArmory->setModel(armoryServersModel);
    ui_->buttonBox->setStandardButtons(QDialogButtonBox::Ok);
-   ui_->tableViewArmory->horizontalHeader()->setStretchLastSection(true);
 
    ui_->lineEditKey->setVisible(false);
    connect(ui_->comboBoxPrivacy, QOverload<int>::of(&QComboBox::currentIndexChanged), [this](int index){
@@ -24,6 +25,13 @@ ArmoryServersWidget::ArmoryServersWidget(const std::shared_ptr<ApplicationSettin
 
    connect(ui_->pushButtonAddServer, &QPushButton::clicked, this, &ArmoryServersWidget::onAddServer);
    connect(ui_->pushButtonDeleteServer, &QPushButton::clicked, this, &ArmoryServersWidget::onDeleteServer);
+   connect(ui_->pushButtonConnect, &QPushButton::clicked, this, &ArmoryServersWidget::onConnect);
+
+   connect(ui_->tableViewArmory->selectionModel(), &QItemSelectionModel::selectionChanged, this,
+           [this](const QItemSelection &selected, const QItemSelection &deselected){
+      ui_->pushButtonDeleteServer->setDisabled(ui_->tableViewArmory->selectionModel()->selectedIndexes().isEmpty());
+      ui_->pushButtonConnect->setDisabled(ui_->tableViewArmory->selectionModel()->selectedIndexes().isEmpty());
+   });
 }
 
 ArmoryServersWidget::~ArmoryServersWidget() = default;
@@ -58,4 +66,9 @@ void ArmoryServersWidget::onDeleteServer()
 
    appSettings_->set(ApplicationSettings::armoryServers, servers);
    armoryServersModel->reloadServers();
+}
+
+void ArmoryServersWidget::onConnect()
+{
+   emit reconnectArmory();
 }

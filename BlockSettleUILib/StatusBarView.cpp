@@ -96,6 +96,20 @@ StatusBarView::StatusBarView(const std::shared_ptr<ArmoryConnection> &armory, st
    setBalances();
 }
 
+StatusBarView::~StatusBarView()
+{
+   estimateLabel_->deleteLater();
+   balanceLabel_->deleteLater();
+   celerConnectionIconLabel_->deleteLater();
+   connectionStatusLabel_->deleteLater();
+   containerStatusLabel_->deleteLater();
+   progressBar_->deleteLater();
+
+   for (QWidget *separator : separators_) {
+      separator->deleteLater();
+   }
+}
+
 void StatusBarView::setupBtcIcon(NetworkType netType)
 {
    QString iconSuffix;
@@ -120,6 +134,7 @@ QWidget *StatusBarView::CreateSeparator()
    separator->setFixedWidth(1);
    separator->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
    separator->setStyleSheet(QLatin1String("background-color: #939393;"));
+   separators_.append(separator);
    return separator;
 }
 

@@ -2,6 +2,7 @@
 #define __ARMORY_SERVERS_VEIW_MODEL_H__
 
 #include <QAbstractTableModel>
+#include <QMutex>
 #include <memory>
 
 #include "AuthAddress.h"

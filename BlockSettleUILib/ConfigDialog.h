@@ -51,6 +51,9 @@ private slots:
    void onSelectionChanged(int currentRow);
    void illformedSettings(bool illformed);
 
+signals:
+   void reconnectArmory();
+
 private:
    std::unique_ptr<Ui::ConfigDialog> ui_;
    std::shared_ptr<ApplicationSettings>   applicationSettings_;

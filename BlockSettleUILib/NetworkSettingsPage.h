@@ -13,6 +13,8 @@ class ApplicationSettings;
 
 class NetworkSettingsPage : public SettingsPage
 {
+   Q_OBJECT
+
 public:
    NetworkSettingsPage(QWidget* parent = nullptr);
    ~NetworkSettingsPage() override;
@@ -27,6 +29,9 @@ private slots:
 
    void onArmoryHostChanged();
    void onArmoryPortChanged();
+
+signals:
+   void reconnectArmory();
 
 private:
    void DisplayRunArmorySettings(bool runLocally);

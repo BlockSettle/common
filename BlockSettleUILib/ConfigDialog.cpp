@@ -38,6 +38,10 @@ ConfigDialog::ConfigDialog(const std::shared_ptr<ApplicationSettings>& appSettin
    connect(ui_->pushButtonSetDefault, &QPushButton::clicked, this, &ConfigDialog::onDisplayDefault);
    connect(ui_->pushButtonCancel, &QPushButton::clicked, this, &ConfigDialog::reject);
    connect(ui_->pushButtonOk, &QPushButton::clicked, this, &ConfigDialog::onAcceptSettings);
+
+   connect(ui_->pageNetwork, &NetworkSettingsPage::reconnectArmory, this, [this](){
+      emit reconnectArmory();
+   });
 }
 
 ConfigDialog::~ConfigDialog() = default;

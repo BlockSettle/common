@@ -111,6 +111,7 @@ private slots:
    void onButtonUserClicked();
    void showArmoryServerPrompt(const BinaryData& srvPubKey, const std::string& srvIPPort, std::shared_ptr<std::promise<bool> > promiseObj);
 
+   void onArmoryNeedsReconnect();
 private:
    QAction *action_send_;
    QAction *action_receive_;

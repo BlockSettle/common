@@ -21,7 +21,6 @@ struct EnvSettings
 NetworkSettingsPage::NetworkSettingsPage(QWidget* parent)
    : SettingsPage{parent}
    , ui_{new Ui::NetworkSettingsPage}
-   //, armoryServerComboBoxModel(new ArmoryServersViewModel(appSettings_, true))
 {
    ui_->setupUi(this);
 
@@ -35,20 +34,24 @@ NetworkSettingsPage::NetworkSettingsPage(QWidget* parent)
    connect(ui_->armoryDBPortLineEdit, &QLineEdit::editingFinished, this, &NetworkSettingsPage::onArmoryPortChanged);
    connect(ui_->pushButtonManageArmory, &QPushButton::clicked, this, [this](){
       ArmoryServersWidget armoryServersWidget(appSettings_);
+      connect(&armoryServersWidget, &ArmoryServersWidget::reconnectArmory, this, [this](){
+         emit reconnectArmory();
+      });
       armoryServersWidget.exec();
+
 
       // todo: refresh current selected server
    });
 
    ui_->ArmorySettingsGroupBoxOld->hide();
    ui_->PublicBridgeSettingsGroup->hide();
-
 }
 
 NetworkSettingsPage::~NetworkSettingsPage() = default;
 
 void NetworkSettingsPage::display()
 {
+   armoryServerComboBoxModel = new ArmoryServersViewModel(appSettings_, true);
    ui_->checkBoxTestnet->setChecked(appSettings_->get<NetworkType>(ApplicationSettings::netType) == NetworkType::TestNet);
 
    if (appSettings_->get<bool>(ApplicationSettings::runArmoryLocally)) {
@@ -68,7 +71,7 @@ void NetworkSettingsPage::display()
    ui_->lineEditPublicBridgeHost->setText(appSettings_->get<QString>(ApplicationSettings::pubBridgeHost));
    ui_->spinBoxPublicBridgePort->setValue(appSettings_->get<int>(ApplicationSettings::pubBridgePort));
 
-//   // load armory servers from ini
+   // load armory servers from ini
 //   ui_->comboBoxArmoryServer->clear();
 //   QStringList servers = appSettings_->get<QStringList>(ApplicationSettings::armoryServers);
 //   for (auto i = servers.begin(); i != servers.end(); ++i) {
@@ -81,7 +84,7 @@ void NetworkSettingsPage::display()
 //      values.removeLast();
 //      *i = values.join();
 //   }
-//   ui_->comboBoxArmoryServer->setModel(armoryServerComboBoxModel);
+   ui_->comboBoxArmoryServer->setModel(armoryServerComboBoxModel);
 }
 
 void NetworkSettingsPage::reset()
@@ -119,22 +122,41 @@ void NetworkSettingsPage::DisplayRunArmorySettings(bool runLocally)
    } else {
       ui_->armoryDBHostLineEdit->setEnabled(true);
       ui_->armoryDBPortLineEdit->setEnabled(true);
-      ui_->armoryDBHostLineEdit->setText(appSettings_->get<QString>(ApplicationSettings::armoryDbIp));
-      ui_->armoryDBPortLineEdit->setText(appSettings_->GetArmoryRemotePort(networkType));
+
+      const QString &host = appSettings_->get<QString>(ApplicationSettings::armoryDbIp);
+      const QString &port = appSettings_->GetArmoryRemotePort(networkType);
+      ui_->armoryDBHostLineEdit->setText(host);
+      ui_->armoryDBPortLineEdit->setText(port);
+      ui_->comboBoxArmoryServer->addItem(host + QStringLiteral(":") + port);
+      ui_->comboBoxArmoryServer->setCurrentIndex(1);
    }
 }
 
 void NetworkSettingsPage::apply()
 {
-   appSettings_->set(ApplicationSettings::netType, ui_->checkBoxTestnet->isChecked()
-      ? (int)NetworkType::TestNet : (int)NetworkType::MainNet);
+//   appSettings_->set(ApplicationSettings::netType, ui_->checkBoxTestnet->isChecked()
+//      ? (int)NetworkType::TestNet : (int)NetworkType::MainNet);
 
    if (ui_->runArmoryDBLocallyCheckBox->isChecked()) {
       appSettings_->set(ApplicationSettings::runArmoryLocally, true);
    } else {
       appSettings_->set(ApplicationSettings::runArmoryLocally, false);
-      appSettings_->set(ApplicationSettings::armoryDbIp, ui_->armoryDBHostLineEdit->text());
-      appSettings_->set(ApplicationSettings::armoryDbPort, ui_->armoryDBPortLineEdit->text());
+//      appSettings_->set(ApplicationSettings::armoryDbIp, ui_->armoryDBHostLineEdit->text());
+//      appSettings_->set(ApplicationSettings::armoryDbPort, ui_->armoryDBPortLineEdit->text());
+
+      const QStringList &servers = appSettings_->get<QStringList>(ApplicationSettings::armoryServers);
+      if (servers.size() > ui_->comboBoxArmoryServer->currentIndex()) {
+         const QString &server = servers.at(ui_->comboBoxArmoryServer->currentIndex());
+         if (server.split(QStringLiteral(":")).size() == 5) {
+            const QStringList &serverData = server.split(QStringLiteral(":"));
+            appSettings_->set(ApplicationSettings::armoryDbIp, serverData.at(2));
+            appSettings_->set(ApplicationSettings::armoryDbPort, serverData.at(3));
+
+            appSettings_->set(ApplicationSettings::netType, serverData.at(1) == QStringLiteral("1")
+               ? (int)NetworkType::TestNet : (int)NetworkType::MainNet);
+         }
+      }
+
    }
 
    appSettings_->set(ApplicationSettings::pubBridgeHost, ui_->lineEditPublicBridgeHost->text());

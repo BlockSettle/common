@@ -15,6 +15,7 @@
 #include "JSON_codec.h"
 #include "ManualResetEvent.h"
 #include "SocketIncludes.h"
+#include <QDebug>
 
 const int DefaultArmoryDBStartTimeoutMsec = 500;
 
@@ -206,6 +207,12 @@ void ArmoryConnection::setupConnection(const ArmorySettings &settings
             logger_->warn("[ArmoryConnection::setupConnection] BDV connection failed");
             std::this_thread::sleep_for(std::chrono::seconds(30));
          }
+         AuthorizedPeers peers;
+         btc_pubkey ownkey = peers.getOwnPublicKey();
+         BinaryDataRef bdr(ownkey.pubkey, 33);
+         qDebug() << "  displaying own public key (hex): " << QString::fromStdString(bdr.toHexStr());
+
+
       } while (!connected);
       logger_->debug("[ArmoryConnection::setupConnection] BDV connected");
 
