@@ -30,6 +30,9 @@ ArmoryServersWidget::ArmoryServersWidget(const std::shared_ptr<ApplicationSettin
    connect(ui_->tableViewArmory->selectionModel(), &QItemSelectionModel::selectionChanged, this,
            [this](const QItemSelection &selected, const QItemSelection &deselected){
       ui_->pushButtonDeleteServer->setDisabled(ui_->tableViewArmory->selectionModel()->selectedIndexes().isEmpty());
+      if (selected.indexes().first().row() == 0) {
+         ui_->pushButtonDeleteServer->setDisabled(true);
+      }
       ui_->pushButtonConnect->setDisabled(ui_->tableViewArmory->selectionModel()->selectedIndexes().isEmpty());
    });
 }

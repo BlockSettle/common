@@ -24,13 +24,17 @@ int ArmoryServersViewModel::columnCount(const QModelIndex&) const
 
 int ArmoryServersViewModel::rowCount(const QModelIndex&) const
 {
-   return servers_.size();
+   // blocksettle server hardcoded
+   return servers_.size() + 1;
 }
 
 QVariant ArmoryServersViewModel::data(const QModelIndex &index, int role) const
 {
-   if (index.row() >= servers_.size()) return QVariant();
-   const QString& server = servers_.at(index.row());
+   if (index.row() >= servers_.size() + 1) return QVariant();
+   QString server;
+   if (index.row() == 0) server = QStringLiteral("BlockSettle Server:1:armory.blocksettle.com:8787:");
+   if (index.row() > 0) server = servers_.at(index.row() - 1);
+
    QStringList values = server.split(QStringLiteral(":"));
    if (values.size() != kArmoryServerColumns) return QVariant();
 
