@@ -63,6 +63,7 @@ BSTerminalMainWindow::BSTerminalMainWindow(const std::shared_ptr<ApplicationSett
    , ui(new Ui::BSTerminalMainWindow())
    , applicationSettings_(settings)
    , walletsManager_(nullptr)
+   , splashScreen_(splashScreen)
 {
    UiUtils::SetupLocale();
 
@@ -1431,7 +1432,7 @@ void BSTerminalMainWindow::onArmoryNeedsReconnect()
    QApplication::processEvents();
 
    initArmory();
-   LoadWallets(BSTerminalSplashScreen(QPixmap()));
+   LoadWallets(splashScreen_);
 
    QApplication::processEvents();
 

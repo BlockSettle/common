@@ -134,7 +134,7 @@ public:
                          , const std::string& srvIPPort) -> bool;
 
    void setState(State);
-   std::atomic_bool  needsBreakConnectionLoop_ = 0;
+   std::atomic_bool  needsBreakConnectionLoop_ {false};
 signals:
    void stateChanged(ArmoryConnection::State) const;
    void connectionError(QString) const;
