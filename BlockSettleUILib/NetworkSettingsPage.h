@@ -29,6 +29,14 @@ public:
 
 signals:
    void reconnectArmory();
+   void onArmoryHostChanged();
+   void onArmoryPortChanged();
+
+private slots:
+   void onEnvSelected(int);
+
+private:
+   void DetectEnvironmentSettings();
 
 private:
    std::unique_ptr<Ui::NetworkSettingsPage> ui_;
