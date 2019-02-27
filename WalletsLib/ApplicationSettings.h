@@ -6,7 +6,6 @@
 #include <QString>
 #include <QSettings>
 
-#include <QMutex>
 #include <bdmenums.h>
 
 #include "ArmorySettings.h"
@@ -147,8 +146,6 @@ public:
    QString GetDefaultHomeDir() const;
    QString GetDefaultBitcoinsDir() const;
    QString GetDefaultDBDir() const;
-
-   //ArmorySettings GetArmorySettings() const;
 
    std::vector<bs::LogConfig> GetLogsConfig() const;
 

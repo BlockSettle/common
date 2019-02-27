@@ -29,13 +29,13 @@ class QProcess;
 // WITH THE KEY ROTATION ALGORITHM. HARD-CODED KEYS WILL KILL ANY TERMINAL ONCE
 // THE KEYS ROTATE.
 // armory.blocksettle.com - 185.213.153.37 server
-#define TESTNET_ARMORY_BLOCKSETTLE_NAME "BlockSettle TestNet Server"
-#define TESTNET_ARMORY_BLOCKSETTLE_KEY "03a8649b32b9459961e143c5c111b9a47ffa494116791c1cb35945a8b9bc8254ab"
-#define TESTNET_ARMORY_BLOCKSETTLE_ADDRESS "armory.blocksettle.com"
-#define TESTNET_ARMORY_BLOCKSETTLE_PORT 81 //7681
+//#define TESTNET_ARMORY_BLOCKSETTLE_NAME "BlockSettle TestNet Server"
+//#define TESTNET_ARMORY_BLOCKSETTLE_KEY "03a8649b32b9459961e143c5c111b9a47ffa494116791c1cb35945a8b9bc8254ab"
+//#define TESTNET_ARMORY_BLOCKSETTLE_ADDRESS "armory.blocksettle.com"
+//#define TESTNET_ARMORY_BLOCKSETTLE_PORT 81 //7681
 
-#define MAINNET_ARMORY_BLOCKSETTLE_NAME "BlockSettle MainNet Server"
-#define MAINNET_ARMORY_BLOCKSETTLE_KEY "03a8649b32b9459961e143c5c111b9a47ffa494116791c1cb35945a8b9bc8254ab"
+//#define MAINNET_ARMORY_BLOCKSETTLE_NAME "BlockSettle MainNet Server"
+//#define MAINNET_ARMORY_BLOCKSETTLE_KEY "03a8649b32b9459961e143c5c111b9a47ffa494116791c1cb35945a8b9bc8254ab"
 #define MAINNET_ARMORY_BLOCKSETTLE_ADDRESS "armory.blocksettle.com"
 #define MAINNET_ARMORY_BLOCKSETTLE_PORT 80
 
@@ -178,7 +178,7 @@ private:
    const bool     cbInMainThread_;
    std::shared_ptr<BlockHeader> getTxBlockHeader_;
 
-   std::vector<SecureBinaryData> bsBIP150PubKeys;
+   std::vector<SecureBinaryData> bsBIP150PubKeys_;
 
    std::atomic_bool  regThreadRunning_;
    std::atomic_bool  connThreadRunning_;

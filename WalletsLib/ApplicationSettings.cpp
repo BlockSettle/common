@@ -558,29 +558,6 @@ void ApplicationSettings::SaveSettings()
    settings_.sync();
 }
 
-//ArmorySettings ApplicationSettings::GetArmorySettings() const
-//{
-//   ArmorySettings settings;
-
-//   settings.netType = get<NetworkType>(netType);
-//   settings.runLocally = get<bool>(ApplicationSettings::runArmoryLocally);
-//   if (settings.runLocally) {
-//      settings.armoryDBIp = QStringLiteral("127.0.0.1");
-//      settings.armoryDBPort = GetDefaultArmoryLocalPort(get<NetworkType>(netType));
-//   } else {
-//      settings.armoryDBIp = get<QString>(ApplicationSettings::armoryDbIp);
-//      settings.armoryDBPort = GetArmoryRemotePort();
-//   }
-//   settings.socketType = GetArmorySocketType();
-
-//   settings.armoryExecutablePath = QDir::cleanPath(get<QString>(ApplicationSettings::armoryPathName));
-//   settings.dbDir = GetDBDir();
-//   settings.bitcoinBlocksDir = GetBitcoinBlocksDir();
-//   settings.dataDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-
-//   return settings;
-//}
-
 unsigned int ApplicationSettings::GetWalletScanIndex(const std::string &id) const
 {
    FastLock lock(lock_);

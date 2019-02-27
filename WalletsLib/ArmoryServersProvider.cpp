@@ -151,7 +151,6 @@ void ArmoryServersProvider::setupServer(int index)
 void ArmoryServersProvider::addKey(const QString &address, int port, const QString &key)
 {
    // find server
-
    int index = -1;
    for (int i = 0; i < servers().size(); ++i) {
       if (servers().at(i).armoryDBIp == address && servers().at(i).armoryDBPort == port) {
