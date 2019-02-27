@@ -41,9 +41,15 @@ NetworkSettingsPage::NetworkSettingsPage(QWidget* parent)
          emit reconnectArmory();
       });
       armoryServersWidget.exec();
+      static_cast<ArmoryServersViewModel *>(ui_->comboBoxArmoryServer->model())->reloadServers();
+   });
 
-
-      // todo: refresh current selected server
+   connect(ui_->comboBoxArmoryServer, QOverload<int>::of(&QComboBox::currentIndexChanged), [this](int index) {
+      QStringList servers = appSettings_->get<QStringList>(ApplicationSettings::armoryServers);
+      QStringList serverData = servers.at(index).split(QStringLiteral(":"));
+      appSettings_->set(ApplicationSettings::armoryDbIp, serverData.at(2));
+      appSettings_->set(ApplicationSettings::armoryDbPort, serverData.at(3));
+      appSettings_->set(ApplicationSettings::netType, serverData.at(1).toInt());
    });
 
    connect(ui_->pushButtonArmoryServerKeyCopy, &QPushButton::clicked, this, [this](){
@@ -144,16 +150,16 @@ void NetworkSettingsPage::DisplayRunArmorySettings(bool runLocally)
       ui_->armoryDBHostLineEdit->setEnabled(true);
       ui_->armoryDBPortLineEdit->setEnabled(true);
 
-      const QString &host = appSettings_->get<QString>(ApplicationSettings::armoryDbIp);
-      const QString &port = appSettings_->GetArmoryRemotePort(networkType);
-      ui_->armoryDBHostLineEdit->setText(host);
-      ui_->armoryDBPortLineEdit->setText(port);
-      ui_->comboBoxArmoryServer->addItem(host + QStringLiteral(":") + port);
-      ui_->comboBoxArmoryServer->setCurrentIndex(1);
+//      QString host = appSettings_->get<QString>(ApplicationSettings::armoryDbIp);
+//      int port = appSettings_->GetArmoryRemotePort(networkType);
+//      ui_->armoryDBHostLineEdit->setText(host);
+//      ui_->armoryDBPortLineEdit->setText(QString::number(port));
+//      ui_->comboBoxArmoryServer->addItem(host + QStringLiteral(":") + port);
+//      ui_->comboBoxArmoryServer->setCurrentIndex(1);
 
-      ui_->labelArmoryServerNetwork->setText(appSettings_->get<int>(ApplicationSettings::netType) == 0 ? tr("MainNet") : tr("TestNet"));
-      ui_->labelArmoryServerAddress->setText(host);
-      ui_->labelArmoryServerPort->setText(port);
+//      ui_->labelArmoryServerNetwork->setText(appSettings_->get<int>(ApplicationSettings::netType) == 0 ? tr("MainNet") : tr("TestNet"));
+//      ui_->labelArmoryServerAddress->setText(host);
+//      ui_->labelArmoryServerPort->setText(port);
    }
 }
 

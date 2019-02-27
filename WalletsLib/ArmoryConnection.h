@@ -32,7 +32,7 @@ class QProcess;
 #define TESTNET_ARMORY_BLOCKSETTLE_NAME "BlockSettle TestNet Server"
 #define TESTNET_ARMORY_BLOCKSETTLE_KEY "03a8649b32b9459961e143c5c111b9a47ffa494116791c1cb35945a8b9bc8254ab"
 #define TESTNET_ARMORY_BLOCKSETTLE_ADDRESS "armory.blocksettle.com"
-#define TESTNET_ARMORY_BLOCKSETTLE_PORT 7681
+#define TESTNET_ARMORY_BLOCKSETTLE_PORT 81 //7681
 
 #define MAINNET_ARMORY_BLOCKSETTLE_NAME "BlockSettle MainNet Server"
 #define MAINNET_ARMORY_BLOCKSETTLE_KEY "03a8649b32b9459961e143c5c111b9a47ffa494116791c1cb35945a8b9bc8254ab"
@@ -146,7 +146,7 @@ public:
 signals:
    void stateChanged(ArmoryConnection::State) const;
    void connectionError(QString) const;
-   void prepareConnection(NetworkType, std::string host, std::string port) const;
+   void prepareConnection(ArmorySettings server) const;
    void progress(BDMPhase, float progress, unsigned int secondsRem, unsigned int numProgress) const;
    void newBlock(unsigned int height) const;
    void zeroConfReceived(const std::vector<bs::TXEntry>) const;

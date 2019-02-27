@@ -8,6 +8,28 @@ namespace {
    int kArmoryServerColumns = 5;
 }
 
+ArmoryServersProvider::ArmoryServersProvider(const std::shared_ptr<ApplicationSettings> &appSettings, QObject *parent)
+   : appSettings_(appSettings)
+   , QObject(parent)
+{
+
+}
+
+QList<ArmorySettings> ArmoryServersProvider::servers()
+{
+   QStringList userServers = appSettings_->get<QStringList>(ApplicationSettings::armoryServers);
+
+   QList<ArmorySettings> servers;
+
+   for (const QString &srv : userServers) {
+      servers.append(ArmorySettings::fromTextSettings(srv));
+   }
+
+   return servers;
+
+}
+
+
 ArmoryServersViewModel::ArmoryServersViewModel(const std::shared_ptr<ApplicationSettings> &appSettings
                                                , QObject *parent)
    : QAbstractTableModel(parent)
@@ -85,7 +107,7 @@ void ArmoryServersViewModel::reloadServers()
 
    QString testNetServer = QStringLiteral("%1:%2:%3:%4:%5")
          .arg(QStringLiteral(TESTNET_ARMORY_BLOCKSETTLE_NAME))
-         .arg(QStringLiteral("0"))
+         .arg(QStringLiteral("1"))
          .arg(QStringLiteral(TESTNET_ARMORY_BLOCKSETTLE_ADDRESS))
          .arg(QString::number(TESTNET_ARMORY_BLOCKSETTLE_PORT))
          .arg(QStringLiteral(TESTNET_ARMORY_BLOCKSETTLE_KEY));
@@ -95,4 +117,5 @@ void ArmoryServersViewModel::reloadServers()
 
    endResetModel();
 }
+
 

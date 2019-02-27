@@ -138,9 +138,9 @@ QWidget *StatusBarView::CreateSeparator()
    return separator;
 }
 
-void StatusBarView::onPrepareArmoryConnection(NetworkType netType, std::string, std::string)
+void StatusBarView::onPrepareArmoryConnection(const ArmorySettings &server)
 {
-   setupBtcIcon(netType);
+   setupBtcIcon(server.netType);
 
    progressBar_->setVisible(false);
    estimateLabel_->setVisible(false);

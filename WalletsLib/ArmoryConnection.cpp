@@ -118,7 +118,7 @@ void ArmoryConnection::setupConnection(const ArmorySettings &settings
         , std::function<bool (const BinaryData &, const std::string &)> bip150PromptUserRoutine)
 {
    needsBreakConnectionLoop_.store(false);
-   emit prepareConnection(settings.netType, settings.armoryDBIp, settings.armoryDBPort);
+   emit prepareConnection(settings);
 
    if (settings.runLocally) {
       if (!startLocalArmoryProcess(settings)) {
@@ -182,14 +182,17 @@ void ArmoryConnection::setupConnection(const ArmorySettings &settings
          }
          cbRemote_ = std::make_shared<ArmoryCallback>(this, logger_);
          logger_->debug("[ArmoryConnection::setupConnection] connecting to Armory {}:{}"
-                        , settings.armoryDBIp, settings.armoryDBPort);
+                        , settings.armoryDBIp.toStdString(), std::to_string(settings.armoryDBPort));
 
          // Get Armory BDV (gateway to the remote ArmoryDB instance). Must set
          // up BIP 150 keys before connecting. BIP 150/151 is transparent to us
          // otherwise. If it fails, the connection will fail.
-         bdv_ = AsyncClient::BlockDataViewer::getNewBDV(settings.armoryDBIp
-            , settings.armoryDBPort, settings.dataDir.toStdString(), true
+         bdv_ = AsyncClient::BlockDataViewer::getNewBDV(settings.armoryDBIp.toStdString()
+            , std::to_string(settings.armoryDBPort)
+            , settings.dataDir.toStdString()
+            , true
             , cbRemote_);
+
          if (!bdv_) {
             logger_->error("[setupConnection (connectRoutine)] failed to "
                "create BDV");

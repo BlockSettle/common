@@ -3,6 +3,7 @@
 #include "BlockDataManagerConfig.h"
 #include "EncryptionUtils.h"
 #include "FastLock.h"
+#include "ArmoryConnection.h"
 
 #include <QCommandLineParser>
 #include <QRect>
@@ -89,8 +90,8 @@ ApplicationSettings::ApplicationSettings(const QString &appName
       { initialized,             SettingDef(QLatin1String("SettingsAccepted"), false) },
       { runArmoryLocally,        SettingDef(QLatin1String("RunArmoryLocally"), false) },
       { netType,                 SettingDef(QLatin1String("Testnet"), (int)NetworkType::MainNet) },
-      { armoryDbIp,              SettingDef(QLatin1String("ArmoryDBIP"), QLatin1String("armory.blocksettle.com")) },
-      { armoryDbPort,            SettingDef(QLatin1String("ArmoryDBPort")) },
+      { armoryDbIp,              SettingDef(QLatin1String("ArmoryDBIP"), QLatin1String(MAINNET_ARMORY_BLOCKSETTLE_ADDRESS)) },
+      { armoryDbPort,            SettingDef(QLatin1String("ArmoryDBPort"), MAINNET_ARMORY_BLOCKSETTLE_PORT) },
       { armoryPathName,          SettingDef(QString(), armoryDBAppPathName) },
       { pubBridgeHost,           SettingDef(QLatin1String("PublicBridgeHost"), QLatin1String("185.213.153.36")) },
       { pubBridgePort,           SettingDef(QLatin1String("PublicBridgePort"), 9091) },
@@ -520,13 +521,13 @@ int ApplicationSettings::GetDefaultArmoryRemotePort(NetworkType networkType)
    }
 }
 
-QString ApplicationSettings::GetArmoryRemotePort(NetworkType networkType) const
+int ApplicationSettings::GetArmoryRemotePort(NetworkType networkType) const
 {
-   QString port;
-   port = get<QString>(ApplicationSettings::armoryDbPort);
-   if (port.isEmpty()) {
-      port = QString::number(GetDefaultArmoryRemotePort(
-         (networkType == NetworkType::Invalid) ? get<NetworkType>(netType) : networkType));
+   int port;
+   port = get<int>(ApplicationSettings::armoryDbPort);
+   if (port == 0) {
+      port = GetDefaultArmoryRemotePort(
+         (networkType == NetworkType::Invalid) ? get<NetworkType>(netType) : networkType);
    }
    return port;
 }
@@ -562,11 +563,11 @@ ArmorySettings ApplicationSettings::GetArmorySettings() const
    settings.netType = get<NetworkType>(netType);
    settings.runLocally = get<bool>(ApplicationSettings::runArmoryLocally);
    if (settings.runLocally) {
-      settings.armoryDBIp = "127.0.0.1";
-      settings.armoryDBPort = std::to_string(GetDefaultArmoryLocalPort(get<NetworkType>(netType)));
+      settings.armoryDBIp = QStringLiteral("127.0.0.1");
+      settings.armoryDBPort = GetDefaultArmoryLocalPort(get<NetworkType>(netType));
    } else {
-      settings.armoryDBIp = get<std::string>(ApplicationSettings::armoryDbIp);
-      settings.armoryDBPort = GetArmoryRemotePort().toStdString();
+      settings.armoryDBIp = get<QString>(ApplicationSettings::armoryDbIp);
+      settings.armoryDBPort = GetArmoryRemotePort();
    }
    settings.socketType = GetArmorySocketType();
 

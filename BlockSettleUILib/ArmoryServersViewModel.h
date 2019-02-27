@@ -10,6 +10,21 @@
 #include "BinaryData.h"
 #include "ApplicationSettings.h"
 
+class ArmoryServersProvider : public QObject
+{
+   Q_OBJECT
+public:
+   ArmoryServersProvider(const std::shared_ptr<ApplicationSettings> &appSettings, QObject *parent);
+
+   QList<ArmorySettings> servers();
+   ArmorySettings serverAt(int index);
+
+   //static
+
+private:
+   std::shared_ptr<ApplicationSettings> appSettings_;
+};
+
 class ArmoryServersViewModel : public QAbstractTableModel
 {
 public:

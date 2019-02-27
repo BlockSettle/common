@@ -32,7 +32,7 @@ public:
    StatusBarView& operator = (StatusBarView&&) = delete;
 
 private slots:
-   void onPrepareArmoryConnection(NetworkType, std::string host, std::string port);
+   void onPrepareArmoryConnection(const ArmorySettings &server);
    void onArmoryStateChanged(ArmoryConnection::State);
    void onArmoryProgress(BDMPhase, float progress, unsigned int secondsRem, unsigned int numProgress);
    void onArmoryError(QString);

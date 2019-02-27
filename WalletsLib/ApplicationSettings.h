@@ -131,7 +131,7 @@ public:
 
    static int GetDefaultArmoryLocalPort(NetworkType networkType);
    static int GetDefaultArmoryRemotePort(NetworkType networkType);
-   QString GetArmoryRemotePort(NetworkType networkType = NetworkType::Invalid) const;
+   int GetArmoryRemotePort(NetworkType networkType = NetworkType::Invalid) const;
 
    QString GetSettingsPath() const;
 
