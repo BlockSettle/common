@@ -8,34 +8,13 @@ namespace {
    int kArmoryServerColumns = 5;
 }
 
-ArmoryServersProvider::ArmoryServersProvider(const std::shared_ptr<ApplicationSettings> &appSettings, QObject *parent)
-   : appSettings_(appSettings)
-   , QObject(parent)
-{
-
-}
-
-QList<ArmorySettings> ArmoryServersProvider::servers()
-{
-   QStringList userServers = appSettings_->get<QStringList>(ApplicationSettings::armoryServers);
-
-   QList<ArmorySettings> servers;
-
-   for (const QString &srv : userServers) {
-      servers.append(ArmorySettings::fromTextSettings(srv));
-   }
-
-   return servers;
-
-}
-
-
-ArmoryServersViewModel::ArmoryServersViewModel(const std::shared_ptr<ApplicationSettings> &appSettings
+ArmoryServersViewModel::ArmoryServersViewModel(const std::shared_ptr<ArmoryServersProvider> &serversProvider
                                                , QObject *parent)
    : QAbstractTableModel(parent)
-   , appSettings_(appSettings)
+   , serversProvider_(serversProvider)
 {
-   reloadServers();
+   update();
+   connect(serversProvider.get(), &ArmoryServersProvider::dataChanged, this, &ArmoryServersViewModel::update);
 }
 
 int ArmoryServersViewModel::columnCount(const QModelIndex&) const
@@ -51,16 +30,23 @@ int ArmoryServersViewModel::rowCount(const QModelIndex&) const
 QVariant ArmoryServersViewModel::data(const QModelIndex &index, int role) const
 {
    if (index.row() >= servers_.size()) return QVariant();
-   QString server = servers_.at(index.row());
-
-   QStringList values = server.split(QStringLiteral(":"));
-   if (values.size() != kArmoryServerColumns) return QVariant();
+   ArmoryServer server = servers_.at(index.row());
 
    if (role == Qt::DisplayRole) {
-      if (index.column() == 1) {
-         return values.at(index.column()) == QStringLiteral("0") ? tr("MainNet") : tr("TestNet");
+      switch (index.column()) {
+      case 0:
+         return server.name;
+      case 1:
+         return server.netType == NetworkType::MainNet ? tr("MainNet") : tr("TestNet");
+      case 2:
+         return server.armoryDBIp;
+      case 3:
+         return server.armoryDBPort;
+      case 4:
+         return server.armoryDBKey;
+      default:
+         break;
       }
-      return values.at(index.column());
    }
    return QVariant();
 }
@@ -91,30 +77,10 @@ QVariant ArmoryServersViewModel::headerData(int section, Qt::Orientation orienta
    return QVariant();
 }
 
-void ArmoryServersViewModel::reloadServers()
+void ArmoryServersViewModel::update()
 {
    beginResetModel();
-
-   servers_ = appSettings_->get<QStringList>(ApplicationSettings::armoryServers);
-
-   // prepend default BlockSettle servers
-   QString mainNetServer = QStringLiteral("%1:%2:%3:%4:%5")
-         .arg(QStringLiteral(MAINNET_ARMORY_BLOCKSETTLE_NAME))
-         .arg(QStringLiteral("0"))
-         .arg(QStringLiteral(MAINNET_ARMORY_BLOCKSETTLE_ADDRESS))
-         .arg(QString::number(MAINNET_ARMORY_BLOCKSETTLE_PORT))
-         .arg(QStringLiteral(MAINNET_ARMORY_BLOCKSETTLE_KEY));
-
-   QString testNetServer = QStringLiteral("%1:%2:%3:%4:%5")
-         .arg(QStringLiteral(TESTNET_ARMORY_BLOCKSETTLE_NAME))
-         .arg(QStringLiteral("1"))
-         .arg(QStringLiteral(TESTNET_ARMORY_BLOCKSETTLE_ADDRESS))
-         .arg(QString::number(TESTNET_ARMORY_BLOCKSETTLE_PORT))
-         .arg(QStringLiteral(TESTNET_ARMORY_BLOCKSETTLE_KEY));
-
-   servers_.prepend(testNetServer);
-   servers_.prepend(mainNetServer);
-
+   servers_ = serversProvider_->servers();
    endResetModel();
 }
 

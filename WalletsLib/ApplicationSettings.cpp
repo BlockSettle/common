@@ -4,6 +4,7 @@
 #include "EncryptionUtils.h"
 #include "FastLock.h"
 #include "ArmoryConnection.h"
+#include "ArmoryServersProvider.h"
 
 #include <QCommandLineParser>
 #include <QRect>
@@ -61,7 +62,6 @@ static const QString zmqSignerKeyFileName = QLatin1String("zmq_conn_srv.pub");
 static const int DefaultSatoshiPort = 8333;
 static const int DefaultTestnetSatoshiPort = 18333;
 
-static const QString ArmoryDefaultIP = QLatin1String("127.0.0.1");
 static const int ArmoryDefaultLocalMainPort = 9001;
 static const int ArmoryDefaultLocalTestPort = 19001;
 static const int ArmoryDefaultRemoteMainPort = 80;
@@ -90,6 +90,7 @@ ApplicationSettings::ApplicationSettings(const QString &appName
       { initialized,             SettingDef(QLatin1String("SettingsAccepted"), false) },
       { runArmoryLocally,        SettingDef(QLatin1String("RunArmoryLocally"), false) },
       { netType,                 SettingDef(QLatin1String("Testnet"), (int)NetworkType::MainNet) },
+      { armoryDbName,            SettingDef(QLatin1String("ArmoryDBName"), QLatin1String("Custom Armory Server")) },
       { armoryDbIp,              SettingDef(QLatin1String("ArmoryDBIP"), QLatin1String(MAINNET_ARMORY_BLOCKSETTLE_ADDRESS)) },
       { armoryDbPort,            SettingDef(QLatin1String("ArmoryDBPort"), MAINNET_ARMORY_BLOCKSETTLE_PORT) },
       { armoryPathName,          SettingDef(QString(), armoryDBAppPathName) },
@@ -155,7 +156,8 @@ ApplicationSettings::ApplicationSettings(const QString &appName
       { zmqLocalSignerPubKeyFilePath,     SettingDef(QLatin1String("ZmqLocalSignerPubKeyFilePath"), AppendToWritableDir(zmqSignerKeyFileName)) },
       { zmqRemoteSignerPubKey,            SettingDef(QLatin1String("ZmqRemoteSignerPubKey")) },
       { rememberLoginUserName,            SettingDef(QLatin1String("RememberLoginUserName"), true) },
-      { armoryServers,                    SettingDef(QLatin1String("ArmoryServers")) }
+      { armoryServers,                    SettingDef(QLatin1String("ArmoryServers")) },
+      { defaultArmoryServersKeys,         SettingDef(QLatin1String("DefaultArmoryServersKeys")) }
    };
 }
 
@@ -556,28 +558,28 @@ void ApplicationSettings::SaveSettings()
    settings_.sync();
 }
 
-ArmorySettings ApplicationSettings::GetArmorySettings() const
-{
-   ArmorySettings settings;
+//ArmorySettings ApplicationSettings::GetArmorySettings() const
+//{
+//   ArmorySettings settings;
 
-   settings.netType = get<NetworkType>(netType);
-   settings.runLocally = get<bool>(ApplicationSettings::runArmoryLocally);
-   if (settings.runLocally) {
-      settings.armoryDBIp = QStringLiteral("127.0.0.1");
-      settings.armoryDBPort = GetDefaultArmoryLocalPort(get<NetworkType>(netType));
-   } else {
-      settings.armoryDBIp = get<QString>(ApplicationSettings::armoryDbIp);
-      settings.armoryDBPort = GetArmoryRemotePort();
-   }
-   settings.socketType = GetArmorySocketType();
+//   settings.netType = get<NetworkType>(netType);
+//   settings.runLocally = get<bool>(ApplicationSettings::runArmoryLocally);
+//   if (settings.runLocally) {
+//      settings.armoryDBIp = QStringLiteral("127.0.0.1");
+//      settings.armoryDBPort = GetDefaultArmoryLocalPort(get<NetworkType>(netType));
+//   } else {
+//      settings.armoryDBIp = get<QString>(ApplicationSettings::armoryDbIp);
+//      settings.armoryDBPort = GetArmoryRemotePort();
+//   }
+//   settings.socketType = GetArmorySocketType();
 
-   settings.armoryExecutablePath = QDir::cleanPath(get<QString>(ApplicationSettings::armoryPathName));
-   settings.dbDir = GetDBDir();
-   settings.bitcoinBlocksDir = GetBitcoinBlocksDir();
-   settings.dataDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+//   settings.armoryExecutablePath = QDir::cleanPath(get<QString>(ApplicationSettings::armoryPathName));
+//   settings.dbDir = GetDBDir();
+//   settings.bitcoinBlocksDir = GetBitcoinBlocksDir();
+//   settings.dataDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
 
-   return settings;
-}
+//   return settings;
+//}
 
 unsigned int ApplicationSettings::GetWalletScanIndex(const std::string &id) const
 {

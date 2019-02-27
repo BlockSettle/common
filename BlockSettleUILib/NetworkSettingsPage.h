@@ -19,26 +19,20 @@ public:
    NetworkSettingsPage(QWidget* parent = nullptr);
    ~NetworkSettingsPage() override;
 
+   void initSettings() override;
+
    void display() override;
    void reset() override;
    void apply() override;
 
-private slots:
-   void onRunArmoryLocallyChecked(bool checked);
-   void onNetworkClicked(bool checked);
-
-   void onArmoryHostChanged();
-   void onArmoryPortChanged();
+   void applyArmoryServers();
 
 signals:
    void reconnectArmory();
 
 private:
-   void DisplayRunArmorySettings(bool runLocally);
-
-private:
    std::unique_ptr<Ui::NetworkSettingsPage> ui_;
-   ArmoryServersViewModel *armoryServerComboBoxModel;
+   ArmoryServersViewModel *armoryServerModel_;
 };
 
 #endif // __NETWORK_SETTINGS_PAGE_H__

@@ -42,6 +42,7 @@ class StatusBarView;
 class StatusViewBlockListener;
 class WalletManagementWizard;
 class WalletsManager;
+class ArmoryServersProvider;
 
 class BSTerminalMainWindow : public QMainWindow
 {
@@ -123,6 +124,7 @@ private:
 
    std::shared_ptr<bs::LogManager>        logMgr_;
    std::shared_ptr<ApplicationSettings>   applicationSettings_;
+   std::shared_ptr<ArmoryServersProvider> armoryServersProvider_;
    std::shared_ptr<WalletsManager>        walletsManager_;
    std::shared_ptr<AuthAddressManager>    authManager_;
    std::shared_ptr<AuthSignManager>       authSignManager_;

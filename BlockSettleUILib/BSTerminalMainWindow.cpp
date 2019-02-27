@@ -54,6 +54,7 @@
 #include "WalletsManager.h"
 #include "ZMQHelperFunctions.h"
 #include "ZmqSecuredDataConnection.h"
+#include "ArmoryServersProvider.h"
 
 #include <spdlog/spdlog.h>
 
@@ -76,6 +77,8 @@ BSTerminalMainWindow::BSTerminalMainWindow(const std::shared_ptr<ApplicationSett
    if (!applicationSettings_->get<bool>(ApplicationSettings::initialized)) {
       applicationSettings_->SetDefaultSettings(true);
    }
+
+   armoryServersProvider_= std::make_shared<ArmoryServersProvider>(applicationSettings_);
 
    auto geom = settings->get<QRect>(ApplicationSettings::GUI_main_geometry);
    if (!geom.isEmpty()) {
@@ -725,7 +728,7 @@ void BSTerminalMainWindow::initArmory()
 
 void BSTerminalMainWindow::connectArmory()
 {
-   armory_->setupConnection(applicationSettings_->GetArmorySettings(), [this](const BinaryData& srvPubKey, const std::string& srvIPPort){
+   armory_->setupConnection(armoryServersProvider_->getArmorySettings(), [this](const BinaryData& srvPubKey, const std::string& srvIPPort){
       std::shared_ptr<std::promise<bool>> promiseObj = std::make_shared<std::promise<bool>>();
       std::future<bool> futureObj = promiseObj->get_future();
       QMetaObject::invokeMethod(this, "showArmoryServerPrompt", Qt::QueuedConnection
@@ -931,7 +934,7 @@ void BSTerminalMainWindow::openAuthDlgVerify(const QString &addrToVerify)
 
 void BSTerminalMainWindow::openConfigDialog()
 {
-   ConfigDialog configDialog(applicationSettings_, this);
+   ConfigDialog configDialog(applicationSettings_, armoryServersProvider_, this);
    connect(&configDialog, &ConfigDialog::reconnectArmory, this, &BSTerminalMainWindow::onArmoryNeedsReconnect);
    configDialog.exec();
 
@@ -1407,30 +1410,61 @@ void BSTerminalMainWindow::onButtonUserClicked() {
 void BSTerminalMainWindow::showArmoryServerPrompt(const BinaryData &srvPubKey, const std::string &srvIPPort, std::shared_ptr<std::promise<bool>> promiseObj)
 {
 
-   const QString &host = applicationSettings_->get<QString>(ApplicationSettings::armoryDbIp);
-   //const QString &port = applicationSettings_->GetArmoryRemotePort(networkType);
+   QList<ArmoryServer> servers = armoryServersProvider_->servers();
+   ArmoryServer server = servers.at(armoryServersProvider_->indexOfIpPort(srvIPPort));
 
+   if (server.armoryDBKey.isEmpty()) {
+      BSMessageBox *box = new BSMessageBox(BSMessageBox::question
+                       , tr("ArmoryDB Key Import")
+                       , tr("Do you wish to import the following ArmoryDB Key?")
+                       , tr("Address: %1\n"
+                            "Port: %2\n"
+                            "Key: %3")
+                                 .arg(QString::fromStdString(srvIPPort).split(QStringLiteral(":")).at(0))
+                                 .arg(QString::fromStdString(srvIPPort).split(QStringLiteral(":")).at(1))
+                                 .arg(QString::fromLatin1(QByteArray::fromStdString(srvPubKey.toBinStr()).toHex()))
+                       , this);
+      box->setMinimumSize(600, 150);
+      box->setMaximumSize(600, 150);
 
-   int netType = applicationSettings_->get<int>(ApplicationSettings::netType);
+      bool answer = (box->exec() == QDialog::Accepted);
+      box->deleteLater();
 
+      if (answer) {
+         armoryServersProvider_->addKey(srvIPPort, srvPubKey);
+      }
 
-   BSMessageBox *box = new BSMessageBox(BSMessageBox::question
-                    , tr("ArmoryDB Key Import")
-                    , tr("Do you wish to import the following ArmoryDB Key?")
-                    , tr("Address: %1\n"
-                         "Port: %2\n"
-                         "Key: %3")
-                              .arg(QString::fromStdString(srvIPPort).split(QStringLiteral(":")).at(0))
-                              .arg(QString::fromStdString(srvIPPort).split(QStringLiteral(":")).at(1))
-                              .arg(QString::fromLatin1(QByteArray::fromStdString(srvPubKey.toBinStr()).toHex()))
-                    , this);
-   box->setMinimumSize(600, 150);
-   box->setMaximumSize(600, 150);
+      promiseObj->set_value(true);
+   }
+   else if (server.armoryDBKey != QString::fromLatin1(QByteArray::fromStdString(srvPubKey.toBinStr()).toHex())) {
+      BSMessageBox *box = new BSMessageBox(BSMessageBox::warning
+                       , tr("ArmoryDB Key")
+                       , tr("ArmoryDB Key was changed.\n"
+                            "Do you want to proceed connection and save new key?")
+                       , tr("Address: %1\n"
+                            "Port: %2\n"
+                            "Old Key: %3\n"
+                            "New Key: %4")
+                                 .arg(QString::fromStdString(srvIPPort).split(QStringLiteral(":")).at(0))
+                                 .arg(QString::fromStdString(srvIPPort).split(QStringLiteral(":")).at(1))
+                                 .arg(QString::fromLatin1(QByteArray::fromStdString(srvPubKey.toBinStr()).toHex()))
+                                 .arg(QString::fromLatin1(QByteArray::fromStdString(srvPubKey.toBinStr()).toHex()))
+                       , this);
+      box->setMinimumSize(600, 150);
+      box->setMaximumSize(600, 150);
 
-   bool answer = (box->exec() == QDialog::Accepted);
-   box->deleteLater();
+      bool answer = (box->exec() == QDialog::Accepted);
+      box->deleteLater();
 
-   promiseObj->set_value(answer);
+      if (answer) {
+         armoryServersProvider_->addKey(srvIPPort, srvPubKey);
+      }
+
+      promiseObj->set_value(answer);
+   }
+   else {
+      promiseObj->set_value(true);
+   }
 }
 
 void BSTerminalMainWindow::onArmoryNeedsReconnect()

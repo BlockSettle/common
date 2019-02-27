@@ -37,6 +37,7 @@ public:
       initialized,
       runArmoryLocally,
       netType,
+      armoryDbName,
       armoryDbIp,
       armoryDbPort,
       armoryPathName,
@@ -104,6 +105,7 @@ public:
       zmqRemoteSignerPubKey,
       rememberLoginUserName,
       armoryServers,
+      defaultArmoryServersKeys,
       _last
    };
 
@@ -138,7 +140,15 @@ public:
    QString  GetHomeDir() const;
    QString  GetBackupDir() const;
 
-   ArmorySettings GetArmorySettings() const;
+   SocketType  GetArmorySocketType() const;
+   QString  GetDBDir() const;
+   QString  GetBitcoinBlocksDir() const;
+
+   QString GetDefaultHomeDir() const;
+   QString GetDefaultBitcoinsDir() const;
+   QString GetDefaultDBDir() const;
+
+   //ArmorySettings GetArmorySettings() const;
 
    std::vector<bs::LogConfig> GetLogsConfig() const;
 
@@ -152,17 +162,10 @@ signals:
    void settingChanged(int setting, QVariant value);
 
 private:
-   SocketType  GetArmorySocketType() const;
-   QString  GetDBDir() const;
-   QString  GetBitcoinBlocksDir() const;
 
    void SetHomeDir(const QString& path);
    void SetBitcoinsDir(const QString& path);
    void SetDBDir(const QString& path);
-
-   QString GetDefaultHomeDir() const;
-   QString GetDefaultBitcoinsDir() const;
-   QString GetDefaultDBDir() const;
 
    QString AppendToWritableDir(const QString &filename) const;
    bs::LogConfig parseLogConfig(const QStringList &) const;

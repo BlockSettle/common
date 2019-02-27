@@ -8,28 +8,17 @@
 #include <bdmenums.h>
 #include "BtcDefinitions.h"
 
-
-struct ArmorySettings
+struct ArmoryServer
 {
-   NetworkType netType;
-
-   SocketType socketType;
-
    QString name;
-   QString armoryDBKey;
+   NetworkType netType = NetworkType::Invalid;
    QString armoryDBIp;
-   int armoryDBPort;
+   int armoryDBPort = 0;
+   QString armoryDBKey;
+   bool runLocally = false;
 
-   bool runLocally;
-
-   QString armoryExecutablePath;
-   QString dbDir;
-   QString bitcoinBlocksDir;
-   QString dataDir;
-
-
-   static ArmorySettings fromTextSettings(const QString &text) {
-      ArmorySettings server;
+   static ArmoryServer fromTextSettings(const QString &text) {
+      ArmoryServer server;
       if (text.split(QStringLiteral(":")).size() != 5) {
          return server;
       }
@@ -39,9 +28,11 @@ struct ArmorySettings
       server.armoryDBIp = data.at(2);
       server.armoryDBPort = data.at(3).toInt();
       server.armoryDBKey = data.at(4);
+
+      return server;
    }
 
-   QString toTextSettings() {
+   QString toTextSettings() const {
       return QStringLiteral("%1:%2:%3:%4:%5")
             .arg(name)
             .arg(netType == NetworkType::MainNet ? 0 : 1)
@@ -49,6 +40,16 @@ struct ArmorySettings
             .arg(armoryDBPort)
             .arg(armoryDBKey);
    }
+};
+
+struct ArmorySettings : public ArmoryServer
+{
+   SocketType socketType;
+
+   QString armoryExecutablePath;
+   QString dbDir;
+   QString bitcoinBlocksDir;
+   QString dataDir;
 };
 
 #endif // __ARMORY_SETTINGS_H__

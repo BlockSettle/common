@@ -11,23 +11,25 @@
 
 
 ConfigDialog::ConfigDialog(const std::shared_ptr<ApplicationSettings>& appSettings
+      , const std::shared_ptr<ArmoryServersProvider> &armoryServersProvider
       , QWidget* parent)
- : QDialog{parent}
- , ui_{new Ui::ConfigDialog{}}
- , applicationSettings_{appSettings}
+ : QDialog(parent)
+ , ui_(new Ui::ConfigDialog)
+ , appSettings_(appSettings)
+ , armoryServersProvider_(armoryServersProvider)
 {
    ui_->setupUi(this);
 
-   if (!applicationSettings_->get<bool>(ApplicationSettings::initialized)) {
-      applicationSettings_->SetDefaultSettings(true);
+   if (!appSettings_->get<bool>(ApplicationSettings::initialized)) {
+      appSettings_->SetDefaultSettings(true);
       ui_->pushButtonCancel->setEnabled(false);
    }
-   prevState_ = applicationSettings_->getState();
+   prevState_ = appSettings_->getState();
 
    pages_ = {ui_->pageGeneral, ui_->pageNetwork, ui_->pageSigner, ui_->pageDealing };
 
    for (const auto &page : pages_) {
-      page->init(applicationSettings_);
+      page->init(appSettings_, armoryServersProvider_);
       connect(page, &SettingsPage::illformedSettings, this, &ConfigDialog::illformedSettings);
    }
 
@@ -57,7 +59,7 @@ void ConfigDialog::onAcceptSettings()
       page->apply();
    }
 
-   applicationSettings_->SaveSettings();
+   appSettings_->SaveSettings();
    accept();
 }
 
@@ -73,6 +75,6 @@ void ConfigDialog::illformedSettings(bool illformed)
 
 void ConfigDialog::reject()
 {
-   applicationSettings_->setState(prevState_);
+   appSettings_->setState(prevState_);
    QDialog::reject();
 }

@@ -9,26 +9,13 @@
 #include "AuthAddressManager.h"
 #include "BinaryData.h"
 #include "ApplicationSettings.h"
+#include "ArmoryServersProvider.h"
 
-class ArmoryServersProvider : public QObject
-{
-   Q_OBJECT
-public:
-   ArmoryServersProvider(const std::shared_ptr<ApplicationSettings> &appSettings, QObject *parent);
-
-   QList<ArmorySettings> servers();
-   ArmorySettings serverAt(int index);
-
-   //static
-
-private:
-   std::shared_ptr<ApplicationSettings> appSettings_;
-};
 
 class ArmoryServersViewModel : public QAbstractTableModel
 {
 public:
-   ArmoryServersViewModel(const std::shared_ptr<ApplicationSettings>& appSettings
+   ArmoryServersViewModel(const std::shared_ptr<ArmoryServersProvider>& serversProvider
                           , QObject *parent = nullptr);
    ~ArmoryServersViewModel() noexcept = default;
 
@@ -45,10 +32,12 @@ public:
    QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
    QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
 
-   void reloadServers();
+public slots:
+   void update();
+
 private:
-   std::shared_ptr<ApplicationSettings> appSettings_;
-   QStringList servers_;
+   std::shared_ptr<ArmoryServersProvider> serversProvider_;
+   QList<ArmoryServer> servers_;
 
    enum ArmoryServersViewViewColumns : int
    {
