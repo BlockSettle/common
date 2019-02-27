@@ -9,23 +9,15 @@ ArmoryServersWidget::ArmoryServersWidget(const std::shared_ptr<ApplicationSettin
    , armoryServersModel(new ArmoryServersViewModel(appSettings))
 {
    ui_->setupUi(this);
-   ui_->lineEditKey->setVisible(false);
-   ui_->labelKey->setVisible(false);
 
    //ui_->tableViewArmory->horizontalHeader()->setStretchLastSection(true);
    ui_->tableViewArmory->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
    ui_->tableViewArmory->setModel(armoryServersModel);
-   ui_->buttonBox->setStandardButtons(QDialogButtonBox::Ok);
-
-   ui_->lineEditKey->setVisible(false);
-   connect(ui_->comboBoxPrivacy, QOverload<int>::of(&QComboBox::currentIndexChanged), [this](int index){
-      ui_->lineEditKey->setVisible(index == 1);
-      ui_->labelKey->setVisible(index == 1);
-   });
 
    connect(ui_->pushButtonAddServer, &QPushButton::clicked, this, &ArmoryServersWidget::onAddServer);
    connect(ui_->pushButtonDeleteServer, &QPushButton::clicked, this, &ArmoryServersWidget::onDeleteServer);
    connect(ui_->pushButtonConnect, &QPushButton::clicked, this, &ArmoryServersWidget::onConnect);
+   connect(ui_->pushButtonClose, &QPushButton::clicked, this, &ArmoryServersWidget::accept);
 
    connect(ui_->tableViewArmory->selectionModel(), &QItemSelectionModel::selectionChanged, this,
            [this](const QItemSelection &selected, const QItemSelection &deselected){
@@ -64,8 +56,12 @@ void ArmoryServersWidget::onDeleteServer()
    if (ui_->tableViewArmory->selectionModel()->selectedRows(0).isEmpty()) {
       return;
    }
+   // dont delete first = default server
+   if (ui_->tableViewArmory->selectionModel()->selectedRows(0).first().row() == 0) {
+      return;
+   }
    QStringList servers = appSettings_->get<QStringList>(ApplicationSettings::armoryServers);
-   servers.removeAt(ui_->tableViewArmory->selectionModel()->selectedRows(0).first().row());
+   servers.removeAt(ui_->tableViewArmory->selectionModel()->selectedRows(0).first().row() - 1);
 
    appSettings_->set(ApplicationSettings::armoryServers, servers);
    armoryServersModel->reloadServers();
@@ -73,5 +69,17 @@ void ArmoryServersWidget::onDeleteServer()
 
 void ArmoryServersWidget::onConnect()
 {
+   if (ui_->tableViewArmory->selectionModel()->selectedRows(0).first().row() == 0) {
+      return;
+   }
+
+   // set server to settings and connect
+   QStringList servers = appSettings_->get<QStringList>(ApplicationSettings::armoryServers);
+   QStringList serverData = servers.at(ui_->tableViewArmory->selectionModel()->selectedRows(0).first().row() - 1)
+         .split(QStringLiteral(":"));
+   appSettings_->set(ApplicationSettings::armoryDbIp, serverData.at(2));
+   appSettings_->set(ApplicationSettings::armoryDbPort, serverData.at(3));
+   appSettings_->set(ApplicationSettings::netType, serverData.at(1).toInt());
+
    emit reconnectArmory();
 }

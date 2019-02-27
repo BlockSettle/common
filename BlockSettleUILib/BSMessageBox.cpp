@@ -46,7 +46,7 @@ BSMessageBox::BSMessageBox(messageBoxType mbType, const QString& title
    connect(ui_->pushButtonCancel, &QPushButton::clicked, this, &BSMessageBox::reject);
 
    setWindowFlags(Qt::Dialog | Qt::MSWindowsFixedSizeDialogHint);
-   layout()->setSizeConstraint(QLayout::SetFixedSize);
+   //layout()->setSizeConstraint(QLayout::SetFixedSize);
 
    // hide the details part of the message box
    hideDetails();

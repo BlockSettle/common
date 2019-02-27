@@ -14,7 +14,6 @@ class ArmoryServersViewModel : public QAbstractTableModel
 {
 public:
    ArmoryServersViewModel(const std::shared_ptr<ApplicationSettings>& appSettings
-                          , bool onlyAddressAndPort = false
                           , QObject *parent = nullptr);
    ~ArmoryServersViewModel() noexcept = default;
 
@@ -35,7 +34,6 @@ public:
 private:
    std::shared_ptr<ApplicationSettings> appSettings_;
    QStringList servers_;
-   bool onlyAddressAndPort_ = false;
 
    enum ArmoryServersViewViewColumns : int
    {

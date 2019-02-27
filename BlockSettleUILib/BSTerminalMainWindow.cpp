@@ -1415,12 +1415,29 @@ void BSTerminalMainWindow::onButtonUserClicked() {
 
 void BSTerminalMainWindow::showArmoryServerPrompt(const BinaryData &srvPubKey, const std::string &srvIPPort, std::shared_ptr<std::promise<bool>> promiseObj)
 {
-   bool answer = BSMessageBox(BSMessageBox::messageBoxType::question
-                    , tr("Armory")
-                    , tr("Check Armory Server Key for %2:\n\n%1").arg(QString::fromLatin1(QByteArray::fromStdString(srvPubKey.toBinStr()).toHex()))
-                              .arg(QString::fromStdString(srvIPPort))
-                    , tr("Press cancel if you don't trust this server.")
-                    , this).exec() == QDialog::Accepted;
+
+   const QString &host = applicationSettings_->get<QString>(ApplicationSettings::armoryDbIp);
+   //const QString &port = applicationSettings_->GetArmoryRemotePort(networkType);
+
+
+   int netType = applicationSettings_->get<int>(ApplicationSettings::netType);
+
+
+   BSMessageBox *box = new BSMessageBox(BSMessageBox::question
+                    , tr("ArmoryDB Key Import")
+                    , tr("Do you wish to import the following ArmoryDB Key?")
+                    , tr("Address: %1\n"
+                         "Port: %2\n"
+                         "Key: %3")
+                              .arg(QString::fromStdString(srvIPPort).split(QStringLiteral(":")).at(0))
+                              .arg(QString::fromStdString(srvIPPort).split(QStringLiteral(":")).at(1))
+                              .arg(QString::fromLatin1(QByteArray::fromStdString(srvPubKey.toBinStr()).toHex()))
+                    , this);
+   box->setMinimumSize(600, 150);
+   box->setMaximumSize(600, 150);
+
+   bool answer = (box->exec() == QDialog::Accepted);
+   box->deleteLater();
 
    promiseObj->set_value(answer);
 }

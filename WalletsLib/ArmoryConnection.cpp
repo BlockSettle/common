@@ -56,7 +56,7 @@ ArmoryConnection::ArmoryConnection(const std::shared_ptr<spdlog::logger> &logger
    qRegisterMetaType<std::vector<bs::TXEntry>>();
 
    // Add BIP 150 server keys
-   const BinaryData curKeyBin = READHEX(BIP150_KEY_1);
+   const BinaryData curKeyBin = READHEX(TESTNET_ARMORY_BLOCKSETTLE_KEY);
    bsBIP150PubKeys.push_back(curKeyBin);
 
 //   bip150PromptUser=[](const BinaryData& srvPubKey

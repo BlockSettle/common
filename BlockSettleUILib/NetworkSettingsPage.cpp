@@ -1,7 +1,10 @@
+#include <QClipboard>
+#include <QFileDialog>
+#include <QStandardPaths>
+
 #include "NetworkSettingsPage.h"
 #include "ui_NetworkSettingsPage.h"
 #include "ApplicationSettings.h"
-
 #include "ArmoryServersWidget.h"
 
 enum EnvConfiguration
@@ -33,7 +36,7 @@ NetworkSettingsPage::NetworkSettingsPage(QWidget* parent)
    connect(ui_->armoryDBHostLineEdit, &QLineEdit::editingFinished, this, &NetworkSettingsPage::onArmoryHostChanged);
    connect(ui_->armoryDBPortLineEdit, &QLineEdit::editingFinished, this, &NetworkSettingsPage::onArmoryPortChanged);
    connect(ui_->pushButtonManageArmory, &QPushButton::clicked, this, [this](){
-      ArmoryServersWidget armoryServersWidget(appSettings_);
+      ArmoryServersWidget armoryServersWidget(appSettings_, this);
       connect(&armoryServersWidget, &ArmoryServersWidget::reconnectArmory, this, [this](){
          emit reconnectArmory();
       });
@@ -43,6 +46,37 @@ NetworkSettingsPage::NetworkSettingsPage(QWidget* parent)
       // todo: refresh current selected server
    });
 
+   connect(ui_->pushButtonArmoryServerKeyCopy, &QPushButton::clicked, this, [this](){
+      qApp->clipboard()->setText(ui_->labelArmoryServerKey->text());
+   });
+   connect(ui_->pushButtonArmoryServerKeySave, &QPushButton::clicked, this, [this](){
+      QString fileName = QFileDialog::getSaveFileName(this
+                                   , tr("Save Armory Public Key")
+                                   , QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation)
+                                   , tr("Key files (*.pub)"));
+
+      QFile file(fileName);
+      if (file.open(QIODevice::WriteOnly)) {
+         file.write(ui_->labelArmoryServerKey->text().toLatin1());
+      }
+   });
+
+   connect(ui_->pushButtonArmoryTerminalKeyCopy, &QPushButton::clicked, this, [this](){
+      qApp->clipboard()->setText(ui_->labelArmoryTerminalKey->text());
+   });
+   connect(ui_->pushButtonArmoryTerminalKeySave, &QPushButton::clicked, this, [this](){
+      QString fileName = QFileDialog::getSaveFileName(this
+                                   , tr("Save Armory Public Key")
+                                   , QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation)
+                                   , tr("Key files (*.pub)"));
+
+      QFile file(fileName);
+      if (file.open(QIODevice::WriteOnly)) {
+         file.write(ui_->labelArmoryTerminalKey->text().toLatin1());
+      }
+   });
+
+
    ui_->ArmorySettingsGroupBoxOld->hide();
    ui_->PublicBridgeSettingsGroup->hide();
 }
@@ -51,7 +85,7 @@ NetworkSettingsPage::~NetworkSettingsPage() = default;
 
 void NetworkSettingsPage::display()
 {
-   armoryServerComboBoxModel = new ArmoryServersViewModel(appSettings_, true);
+   armoryServerComboBoxModel = new ArmoryServersViewModel(appSettings_);
    ui_->checkBoxTestnet->setChecked(appSettings_->get<NetworkType>(ApplicationSettings::netType) == NetworkType::TestNet);
 
    if (appSettings_->get<bool>(ApplicationSettings::runArmoryLocally)) {
@@ -71,19 +105,6 @@ void NetworkSettingsPage::display()
    ui_->lineEditPublicBridgeHost->setText(appSettings_->get<QString>(ApplicationSettings::pubBridgeHost));
    ui_->spinBoxPublicBridgePort->setValue(appSettings_->get<int>(ApplicationSettings::pubBridgePort));
 
-   // load armory servers from ini
-//   ui_->comboBoxArmoryServer->clear();
-//   QStringList servers = appSettings_->get<QStringList>(ApplicationSettings::armoryServers);
-//   for (auto i = servers.begin(); i != servers.end(); ++i) {
-//      QString serverValue = *i;
-//      if (serverValue.split(QStringLiteral("")).size() != 3) {
-//         servers.erase(i);
-//         continue;
-//      }
-//      QStringList values = serverValue.split(QStringLiteral(":"));
-//      values.removeLast();
-//      *i = values.join();
-//   }
    ui_->comboBoxArmoryServer->setModel(armoryServerComboBoxModel);
 }
 
@@ -129,6 +150,10 @@ void NetworkSettingsPage::DisplayRunArmorySettings(bool runLocally)
       ui_->armoryDBPortLineEdit->setText(port);
       ui_->comboBoxArmoryServer->addItem(host + QStringLiteral(":") + port);
       ui_->comboBoxArmoryServer->setCurrentIndex(1);
+
+      ui_->labelArmoryServerNetwork->setText(appSettings_->get<int>(ApplicationSettings::netType) == 0 ? tr("MainNet") : tr("TestNet"));
+      ui_->labelArmoryServerAddress->setText(host);
+      ui_->labelArmoryServerPort->setText(port);
    }
 }
 
