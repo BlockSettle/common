@@ -554,18 +554,17 @@ bool WebSocketClient::processAEADHandshake(const WebSocketMessagePartial& msgObj
       //compute server name
       stringstream ss;
       ss << addr_ << ":" << port_;
-      promptUser(msgbdr, ss.str());
 
-//      if (!bip151Connection_->havePublicKey(msgbdr, ss.str()))
-//      {
-//         //we don't have this key, call user prompt lambda
-//         promptUser(msgbdr, ss.str());
-//      }
-//      else
-//      {
-//         //set server key promise
-//         serverPubkeyProm_->set_value(true);
-//      }
+      if (!bip151Connection_->havePublicKey(msgbdr, ss.str()))
+      {
+         //we don't have this key, call user prompt lambda
+         promptUser(msgbdr, ss.str());
+      }
+      else
+      {
+         //set server key promise
+         serverPubkeyProm_->set_value(true);
+      }
 
       break;
    }
@@ -613,8 +612,6 @@ bool WebSocketClient::processAEADHandshake(const WebSocketMessagePartial& msgObj
          auto fut = serverProm->get_future();
          fut.wait();
          serverPubkeyProm_.reset();
-         if (!fut.get())
-            return false;
       }
 
       //bip151 handshake completed, time for bip150
