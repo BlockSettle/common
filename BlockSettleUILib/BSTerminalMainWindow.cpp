@@ -1452,6 +1452,7 @@ void BSTerminalMainWindow::showArmoryServerPrompt(const BinaryData &srvPubKey, c
                        , this);
       box->setMinimumSize(600, 150);
       box->setMaximumSize(600, 150);
+      box->setCancelVisible(true);
 
       bool answer = (box->exec() == QDialog::Accepted);
       box->deleteLater();

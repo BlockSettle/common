@@ -95,8 +95,11 @@ void ArmoryConnection::setupConnection(const ArmorySettings &settings
         , std::function<bool (const BinaryData &, const std::string &)> bip150PromptUserRoutine)
 {
    // Add BIP 150 server keys
-   const BinaryData curKeyBin = READHEX(settings.armoryDBKey.toStdString());
-   bsBIP150PubKeys_.push_back(curKeyBin);
+   if (!settings.armoryDBKey.isEmpty()) {
+      const BinaryData curKeyBin = READHEX(settings.armoryDBKey.toStdString());
+      bsBIP150PubKeys_.push_back(curKeyBin);
+   }
+
 
    needsBreakConnectionLoop_.store(false);
    emit prepareConnection(settings);
@@ -181,9 +184,13 @@ void ArmoryConnection::setupConnection(const ArmorySettings &settings
             continue;
          }
 
-         for (const auto &x : bsBIP150PubKeys_) {
-            bdv_->addPublicKey(x);
+         try {
+            for (const auto &x : bsBIP150PubKeys_) {
+               bdv_->addPublicKey(x);
+            }
          }
+         catch (...) {}
+
          bdv_->setCheckServerKeyPromptLambda(bip150PromptUserRoutine);
 
          connected = bdv_->connectToRemote();

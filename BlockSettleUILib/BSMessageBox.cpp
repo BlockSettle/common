@@ -62,6 +62,16 @@ void BSMessageBox::showEvent( QShowEvent* )
    }
 }
 
+void BSMessageBox::setOkVisible(bool visible)
+{
+   ui_->pushButtonOk->setVisible(visible);
+}
+
+void BSMessageBox::setCancelVisible(bool visible)
+{
+   ui_->pushButtonCancel->setVisible(visible);
+}
+
 void BSMessageBox::onDetailsPressed() {
    if (detailsVisible()) {
       ui_->pushButtonShowDetails->setText(tr("Show Details"));
