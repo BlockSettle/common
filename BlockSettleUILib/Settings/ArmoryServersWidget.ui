@@ -538,7 +538,7 @@
     </widget>
    </item>
    <item row="1" column="0">
-    <widget class="QWidget" name="widget_2" native="true">
+    <widget class="QWidget" name="widgetControlButtons" native="true">
      <property name="buttonBar" stdset="0">
       <bool>true</bool>
      </property>

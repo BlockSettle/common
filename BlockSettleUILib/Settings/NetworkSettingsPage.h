@@ -19,8 +19,6 @@ public:
    NetworkSettingsPage(QWidget* parent = nullptr);
    ~NetworkSettingsPage() override;
 
-   void applyArmoryServers();
-
 public slots:
    void initSettings() override;
    void display() override;
@@ -34,9 +32,13 @@ signals:
 
 private slots:
    void onEnvSelected(int);
+   void displayArmorySettings();
+   void displayEnvironmentSettings();
 
 private:
    void DetectEnvironmentSettings();
+
+
 
 private:
    std::unique_ptr<Ui::NetworkSettingsPage> ui_;

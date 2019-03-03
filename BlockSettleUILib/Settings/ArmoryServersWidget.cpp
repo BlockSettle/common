@@ -5,12 +5,13 @@
 const int kArmoryDefaultMainNetPort = 80;
 
 ArmoryServersWidget::ArmoryServersWidget(const std::shared_ptr<ArmoryServersProvider> &armoryServersProvider, QWidget *parent) :
-   QDialog(parent)
+   QWidget(parent)
    , armoryServersProvider_(armoryServersProvider)
    , ui_(new Ui::ArmoryServersWidget)
    , armoryServersModel(new ArmoryServersViewModel(armoryServersProvider))
 {
    ui_->setupUi(this);
+
    ui_->pushButtonConnect->setVisible(false);
    ui_->spinBoxPort->setValue(kArmoryDefaultMainNetPort);
 
@@ -27,7 +28,9 @@ ArmoryServersWidget::ArmoryServersWidget(const std::shared_ptr<ArmoryServersProv
    connect(ui_->pushButtonSaveServer, &QPushButton::clicked, this, &ArmoryServersWidget::onSave);
 
 
-   connect(ui_->pushButtonClose, &QPushButton::clicked, this, &ArmoryServersWidget::reject);
+   connect(ui_->pushButtonClose, &QPushButton::clicked, this, [this](){
+      emit needClose();
+   });
 
    connect(ui_->tableViewArmory->selectionModel(), &QItemSelectionModel::selectionChanged, this,
            [this](const QItemSelection &selected, const QItemSelection &deselected){
@@ -43,6 +46,12 @@ ArmoryServersWidget::ArmoryServersWidget(const std::shared_ptr<ArmoryServersProv
 
       resetForm();
    });
+}
+
+void ArmoryServersWidget::adaptForStartupDialog()
+{
+   ui_->widgetControlButtons->hide();
+   ui_->tableViewArmory->hideColumn(4);
 }
 
 ArmoryServersWidget::~ArmoryServersWidget() = default;

@@ -86,6 +86,8 @@ private:
    bool isMDLicenseAccepted() const;
    void saveUserAcceptedMDLicense();
 
+   bool showStartupDialog();
+
 signals:
    void readyToLogin();
    void armoryServerPromptResultReady();

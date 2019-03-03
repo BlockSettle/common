@@ -25,8 +25,6 @@ QList<ArmoryServer> ArmoryServersProvider::servers() const
    QStringList userServers = appSettings_->get<QStringList>(ApplicationSettings::armoryServers);
 
    QList<ArmoryServer> servers;
-   //QList<ArmoryServer> defaultServers = defaultServers_;
-
    QStringList defaultServersKeys = appSettings_->get<QStringList>(ApplicationSettings::defaultArmoryServersKeys);
 
    // #1 add MainNet blocksettle server
