@@ -106,7 +106,8 @@ BSTerminalMainWindow::BSTerminalMainWindow(const std::shared_ptr<ApplicationSett
 
    initArmory();
 
-   authSignManager_ = std::make_shared<AuthSignManager>(logMgr_->logger(), applicationSettings_, celerConnection_);
+   authSignManager_ = std::make_shared<AuthSignManager>(logMgr_->logger(), applicationSettings_
+      , celerConnection_, connectionManager_);
 
    if (!applicationSettings_->get<bool>(ApplicationSettings::initialized)) {
       applicationSettings_->SetDefaultSettings(true);
@@ -518,9 +519,9 @@ void BSTerminalMainWindow::SignerReady()
       auto dialogManager = std::make_shared<DialogManager>(geometry());
 
       ui->widgetRFQ->init(logMgr_->logger(), celerConnection_, authManager_, quoteProvider, assetManager_
-         , dialogManager, signContainer_, armory_);
+         , dialogManager, signContainer_, armory_, connectionManager_);
       ui->widgetRFQReply->init(logMgr_->logger(), celerConnection_, authManager_, quoteProvider, mdProvider_, assetManager_
-         , applicationSettings_, dialogManager, signContainer_, armory_);
+         , applicationSettings_, dialogManager, signContainer_, armory_, connectionManager_);
 
       if (walletsManager_->GetWalletsCount() == 0) {
          createWallet(!walletsManager_->HasPrimaryWallet());
@@ -640,7 +641,7 @@ void BSTerminalMainWindow::InitPortfolioView()
 void BSTerminalMainWindow::InitWalletsView()
 {
    ui->widgetWallets->init(logMgr_->logger("ui"), walletsManager_, signContainer_
-      , applicationSettings_, assetManager_, authManager_, armory_);
+      , applicationSettings_, connectionManager_, assetManager_, authManager_, armory_);
 }
 
 void BSTerminalMainWindow::InitChatView()
@@ -1011,10 +1012,6 @@ void BSTerminalMainWindow::loginToCeler(const std::string& username, const std::
       ui->widgetWallets->setUsername(userName);
       action_logout_->setVisible(false);
       action_login_->setEnabled(false);
-
-      // set button text to this temporary text until the login
-      // completes and button text is changed to the username
-      setLoginButtonText(tr("Logging in..."));
    }
 }
 
@@ -1031,7 +1028,7 @@ void BSTerminalMainWindow::onLogin()
 
 void BSTerminalMainWindow::onReadyToLogin()
 {
-   LoginWindow loginDialog(applicationSettings_, logMgr_->logger("autheID"), this);
+   LoginWindow loginDialog(logMgr_->logger("autheID"), applicationSettings_, connectionManager_, this);
 
    if (loginDialog.exec() == QDialog::Accepted) {
       currentUserLogin_ = loginDialog.getUsername();
@@ -1106,7 +1103,6 @@ void BSTerminalMainWindow::onUserLoggedOut()
    }
    walletsManager_->SetUserId(BinaryData{});
    authManager_->OnDisconnectedFromCeler();
-   setLoginButtonText(loginButtonText_);
 }
 
 void BSTerminalMainWindow::onCelerConnected()
@@ -1315,7 +1311,7 @@ void BSTerminalMainWindow::onPasswordRequested(const bs::hd::WalletInfo &walletI
          }
 
          EnterWalletPassword passwordDialog(AutheIDClient::SignWallet, this);
-         passwordDialog.init(walletInfoCopy, applicationSettings_, WalletKeyWidget::UseType::RequestAuthAsDialog
+         passwordDialog.init(walletInfoCopy, applicationSettings_, connectionManager_, WalletKeyWidget::UseType::RequestAuthAsDialog
                              , QString::fromStdString(prompt), logMgr_->logger("ui"));
 
          if (passwordDialog.exec() == QDialog::Accepted) {
