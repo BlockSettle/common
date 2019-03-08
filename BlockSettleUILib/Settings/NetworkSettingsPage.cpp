@@ -169,9 +169,13 @@ void NetworkSettingsPage::displayEnvironmentSettings()
 
 void NetworkSettingsPage::reset()
 {
-   for (const auto &setting : { ApplicationSettings::runArmoryLocally, ApplicationSettings::netType
-      , ApplicationSettings::pubBridgeHost, ApplicationSettings::pubBridgePort
-      , ApplicationSettings::armoryDbIp, ApplicationSettings::armoryDbPort}) {
+   for (const auto &setting : {
+       // ApplicationSettings::runArmoryLocally,
+        ApplicationSettings::netType,
+        ApplicationSettings::pubBridgeHost,
+        ApplicationSettings::pubBridgePort,
+        ApplicationSettings::armoryDbIp,
+        ApplicationSettings::armoryDbPort}) {
       appSettings_->reset(setting, false);
    }
    display();

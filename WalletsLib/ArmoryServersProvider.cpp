@@ -71,14 +71,14 @@ ArmorySettings ArmoryServersProvider::getArmorySettings() const
    ArmorySettings settings;
 
    settings.netType = appSettings_->get<NetworkType>(ApplicationSettings::netType);
-   settings.runLocally = appSettings_->get<bool>(ApplicationSettings::runArmoryLocally);
-   if (settings.runLocally) {
-      settings.armoryDBIp = QStringLiteral("127.0.0.1");
-      settings.armoryDBPort = appSettings_->GetDefaultArmoryLocalPort(appSettings_->get<NetworkType>(ApplicationSettings::netType));
-   } else {
-      settings.armoryDBIp = appSettings_->get<QString>(ApplicationSettings::armoryDbIp);
-      settings.armoryDBPort = appSettings_->GetArmoryRemotePort();
-   }
+   settings.armoryDBIp = appSettings_->get<QString>(ApplicationSettings::armoryDbIp);
+   settings.armoryDBPort = appSettings_->GetArmoryRemotePort();
+   settings.runLocally = (settings.armoryDBIp == QLatin1String("127.0.0.1"));
+   //settings.runLocally = appSettings_->get<bool>(ApplicationSettings::runArmoryLocally);
+//   if (settings.runLocally) {
+//      settings.armoryDBIp = QStringLiteral("127.0.0.1");
+//      settings.armoryDBPort = appSettings_->GetDefaultArmoryLocalPort(appSettings_->get<NetworkType>(ApplicationSettings::netType));
+//   }
    settings.socketType = appSettings_->GetArmorySocketType();
 
    settings.armoryExecutablePath = QDir::cleanPath(appSettings_->get<QString>(ApplicationSettings::armoryPathName));
@@ -233,7 +233,7 @@ void ArmoryServersProvider::setupServer(int index)
       appSettings_->set(ApplicationSettings::armoryDbIp, server.armoryDBIp);
       appSettings_->set(ApplicationSettings::armoryDbPort, server.armoryDBPort);
       appSettings_->set(ApplicationSettings::netType, static_cast<int>(server.netType));
-      appSettings_->set(ApplicationSettings::runArmoryLocally, server.runLocally);
+      //appSettings_->set(ApplicationSettings::runArmoryLocally, server.runLocally);
 
       emit dataChanged();
    }
