@@ -95,36 +95,3 @@ void StartupDialog::updateStatus()
       }
    }
 }
-
-StartupDialog::RunMode StartupDialog::runMode() const
-{
-   if (ui_->radioButtonArmoryBlockSettle->isChecked()) {
-      return RunMode::BlocksettleSN;
-   }
-   else if (ui_->radioButtonArmoryLocal->isChecked()) {
-      return RunMode::Local;
-   }
-   else if (ui_->radioButtonArmoryCustom->isChecked()) {
-      return RunMode::Custom;
-   }
-}
-
-QString StartupDialog::armoryDbIp() const
-{
-   return ui_->lineEditArmoryDBHost->text();
-}
-
-int StartupDialog::armoryDbPort() const
-{
-   return ui_->spinBoxArmoryDBPort->value();
-}
-
-NetworkType StartupDialog::networkType() const
-{
-   return ui_->checkBoxTestnet->isChecked() ? NetworkType::TestNet : NetworkType::MainNet;
-}
-
-void StartupDialog::updatePort()
-{
-   ui_->spinBoxArmoryDBPort->setValue(ApplicationSettings::GetDefaultArmoryLocalPort(networkType()));
-}

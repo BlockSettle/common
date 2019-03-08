@@ -611,7 +611,6 @@ bool BSTerminalMainWindow::showStartupDialog()
    int result = startupDialog.exec();
 
    if (result == QDialog::Rejected) {
-      //std::exit(EXIT_FAILURE);
       hide();
       return false;
    }

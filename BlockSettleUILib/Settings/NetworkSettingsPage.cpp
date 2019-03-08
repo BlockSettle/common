@@ -1,6 +1,7 @@
 #include <QClipboard>
 #include <QFileDialog>
 #include <QStandardPaths>
+#include <QMetaEnum>
 
 #include "NetworkSettingsPage.h"
 #include "ui_NetworkSettingsPage.h"
@@ -35,25 +36,26 @@ NetworkSettingsPage::NetworkSettingsPage(QWidget* parent)
 {
    ui_->setupUi(this);
 
-   static_assert (int(EnvConfiguration::Count) == 4, "Please update me");
-   ui_->comboBoxEnvironment->addItem(tr("Custom"));
-   ui_->comboBoxEnvironment->addItem(tr("Staging"));
-   ui_->comboBoxEnvironment->addItem(tr("UAT"));
-   ui_->comboBoxEnvironment->addItem(tr("PROD"));
+   QMetaEnum metaEnumEnvConfiguration = QMetaEnum::fromType<ApplicationSettings::EnvConfiguration>();
+   for (int i = 0; i < metaEnumEnvConfiguration.keyCount(); ++i) {
+      ui_->comboBoxEnvironment->addItem(tr(metaEnumEnvConfiguration.valueToKey(i)));
+   }
    ui_->comboBoxEnvironment->setCurrentIndex(-1);
 
    connect(ui_->pushButtonManageArmory, &QPushButton::clicked, this, [this](){
+      // workaround here - wrap widget by QDialog
+      // TODO: fix stylesheet to support popup widgets
+
       QDialog *d = new QDialog(this);
       QVBoxLayout *l = new QVBoxLayout(d);
+      l->setContentsMargins(0,0,0,0);
       d->setLayout(l);
 
       ArmoryServersWidget *armoryServersWidget = new ArmoryServersWidget(armoryServersProvider_, this);
 
-      // TODO: fix stylesheet to support popup widgets
 //      armoryServersWidget->setWindowModality(Qt::ApplicationModal);
 //      armoryServersWidget->setWindowFlags(Qt::Dialog);
       l->addWidget(armoryServersWidget);
-      //connect(armoryServersWidget, &ArmoryServersWidget::destroyed, d, &QDialog::deleteLater);
 
       connect(armoryServersWidget, &ArmoryServersWidget::reconnectArmory, this, [this](){
          emit reconnectArmory();
@@ -63,8 +65,6 @@ NetworkSettingsPage::NetworkSettingsPage(QWidget* parent)
       });
 
       d->exec();
-
-      //armoryServersWidget->show();
    });
 
    connect(ui_->pushButtonArmoryServerKeyCopy, &QPushButton::clicked, this, [this](){
@@ -124,19 +124,19 @@ void NetworkSettingsPage::display()
 
 void NetworkSettingsPage::DetectEnvironmentSettings()
 {
-   EnvConfiguration conf = EnvConfiguration::Custom;
+   ApplicationSettings::EnvConfiguration conf = ApplicationSettings::EnvConfiguration::Custom;
 
    EnvSettings currentConfiguration{
       ui_->lineEditPublicBridgeHost->text(),
-            ui_->spinBoxPublicBridgePort->value()
+      ui_->spinBoxPublicBridgePort->value()
    };
 
    if (currentConfiguration == StagingEnvSettings) {
-      conf = EnvConfiguration::Staging;
+      conf = ApplicationSettings::EnvConfiguration::Staging;
    } else if (currentConfiguration == UATEnvSettings) {
-      conf = EnvConfiguration::UAT;
+      conf = ApplicationSettings::EnvConfiguration::UAT;
    } else if (currentConfiguration == PRODEnvSettings) {
-      conf = EnvConfiguration::PROD;
+      conf = ApplicationSettings::EnvConfiguration::PROD;
    }
 
    ui_->comboBoxEnvironment->setCurrentIndex(int(conf));
@@ -187,9 +187,9 @@ void NetworkSettingsPage::apply()
 
 void NetworkSettingsPage::onEnvSelected(int index)
 {
-   EnvConfiguration conf = EnvConfiguration(index);
+   ApplicationSettings::EnvConfiguration conf = ApplicationSettings::EnvConfiguration(index);
 
-   if (conf == EnvConfiguration::Custom) {
+   if (conf == ApplicationSettings::EnvConfiguration::Custom) {
       ui_->lineEditPublicBridgeHost->setEnabled(true);
       ui_->spinBoxPublicBridgePort->setEnabled(true);
       return;
@@ -198,10 +198,10 @@ void NetworkSettingsPage::onEnvSelected(int index)
    const EnvSettings *settings = nullptr;
 
    switch (conf) {
-   case EnvConfiguration::UAT:
+   case ApplicationSettings::EnvConfiguration::UAT:
       settings = &UATEnvSettings;
       break;
-   case EnvConfiguration::Staging:
+   case ApplicationSettings::EnvConfiguration::Staging:
       settings = &StagingEnvSettings;
       break;
    default:
