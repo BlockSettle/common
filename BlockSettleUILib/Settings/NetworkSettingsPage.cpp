@@ -7,13 +7,6 @@
 #include "ApplicationSettings.h"
 #include "ArmoryServersWidget.h"
 
-enum EnvConfiguration
-{
-   CustomConfiguration,
-   StagingConfiguration,
-   UATConfiguration,
-   PRODConfiguration
-};
 
 struct EnvSettings
 {
@@ -42,10 +35,12 @@ NetworkSettingsPage::NetworkSettingsPage(QWidget* parent)
 {
    ui_->setupUi(this);
 
+   static_assert (int(EnvConfiguration::Count) == 4, "Please update me");
    ui_->comboBoxEnvironment->addItem(tr("Custom"));
    ui_->comboBoxEnvironment->addItem(tr("Staging"));
    ui_->comboBoxEnvironment->addItem(tr("UAT"));
    ui_->comboBoxEnvironment->addItem(tr("PROD"));
+   ui_->comboBoxEnvironment->setCurrentIndex(-1);
 
    connect(ui_->pushButtonManageArmory, &QPushButton::clicked, this, [this](){
       QDialog *d = new QDialog(this);
@@ -129,22 +124,22 @@ void NetworkSettingsPage::display()
 
 void NetworkSettingsPage::DetectEnvironmentSettings()
 {
-   int index = CustomConfiguration;
+   EnvConfiguration conf = EnvConfiguration::Custom;
 
    EnvSettings currentConfiguration{
       ui_->lineEditPublicBridgeHost->text(),
-      ui_->spinBoxPublicBridgePort->value()
+            ui_->spinBoxPublicBridgePort->value()
    };
 
    if (currentConfiguration == StagingEnvSettings) {
-      index = StagingConfiguration;
+      conf = EnvConfiguration::Staging;
    } else if (currentConfiguration == UATEnvSettings) {
-      index = UATConfiguration;
+      conf = EnvConfiguration::UAT;
    } else if (currentConfiguration == PRODEnvSettings) {
-      index = PRODConfiguration;
+      conf = EnvConfiguration::PROD;
    }
 
-   ui_->comboBoxEnvironment->setCurrentIndex(index);
+   ui_->comboBoxEnvironment->setCurrentIndex(int(conf));
 }
 
 void NetworkSettingsPage::displayArmorySettings()
@@ -192,22 +187,30 @@ void NetworkSettingsPage::apply()
 
 void NetworkSettingsPage::onEnvSelected(int index)
 {
-   if (index != CustomConfiguration) {
-      const EnvSettings *settings = nullptr;
-      if (index == StagingConfiguration) {
-         settings = &StagingEnvSettings;
-      } else if (index == UATConfiguration) {
-         settings = &UATEnvSettings;
-      } else  {
-         settings = &PRODEnvSettings;
-      }
+   EnvConfiguration conf = EnvConfiguration(index);
 
-      ui_->lineEditPublicBridgeHost->setText(settings->pubHost);
-      ui_->lineEditPublicBridgeHost->setEnabled(false);
-      ui_->spinBoxPublicBridgePort->setValue(settings->pubPort);
-      ui_->spinBoxPublicBridgePort->setEnabled(false);
-   } else {
+   if (conf == EnvConfiguration::Custom) {
       ui_->lineEditPublicBridgeHost->setEnabled(true);
       ui_->spinBoxPublicBridgePort->setEnabled(true);
+      return;
    }
+
+   const EnvSettings *settings = nullptr;
+
+   switch (conf) {
+   case EnvConfiguration::UAT:
+      settings = &UATEnvSettings;
+      break;
+   case EnvConfiguration::Staging:
+      settings = &StagingEnvSettings;
+      break;
+   default:
+      settings = &PRODEnvSettings;
+      break;
+   }
+
+   ui_->lineEditPublicBridgeHost->setText(settings->pubHost);
+   ui_->lineEditPublicBridgeHost->setEnabled(false);
+   ui_->spinBoxPublicBridgePort->setValue(settings->pubPort);
+   ui_->spinBoxPublicBridgePort->setEnabled(false);
 }
