@@ -170,7 +170,7 @@ void NetworkSettingsPage::displayEnvironmentSettings()
 void NetworkSettingsPage::reset()
 {
    for (const auto &setting : {
-       // ApplicationSettings::runArmoryLocally,
+        ApplicationSettings::runArmoryLocally,
         ApplicationSettings::netType,
         ApplicationSettings::pubBridgeHost,
         ApplicationSettings::pubBridgePort,

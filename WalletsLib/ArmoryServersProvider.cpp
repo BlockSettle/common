@@ -7,8 +7,8 @@
 const QList<ArmoryServer> ArmoryServersProvider::defaultServers_ = {
    ArmoryServer::fromTextSettings(QStringLiteral(MAINNET_ARMORY_BLOCKSETTLE_NAME":0:armory.blocksettle.com:80:")),
    ArmoryServer::fromTextSettings(QStringLiteral(TESTNET_ARMORY_BLOCKSETTLE_NAME":1:armory.blocksettle.com:81:")),
-   ArmoryServer::fromTextSettings(QStringLiteral("Local Node MainNet:0:127.0.0.1::")),
-   ArmoryServer::fromTextSettings(QStringLiteral("Local Node TestNet:1:127.0.0.1::"))
+   ArmoryServer::fromTextSettings(QStringLiteral("Local Auto-launch Node:0:127.0.0.1::")),
+   ArmoryServer::fromTextSettings(QStringLiteral("Local Auto-launch Node:1:127.0.0.1::"))
 };
 
 const int ArmoryServersProvider::kDefaultServersCount = ArmoryServersProvider::defaultServers_.size();
@@ -17,7 +17,6 @@ ArmoryServersProvider::ArmoryServersProvider(const std::shared_ptr<ApplicationSe
    : appSettings_(appSettings)
    , QObject(parent)
 {
-
 }
 
 QList<ArmoryServer> ArmoryServersProvider::servers() const
@@ -46,6 +45,7 @@ QList<ArmoryServer> ArmoryServersProvider::servers() const
    // #3 add localhost node MainNet
    ArmoryServer localMainNet = defaultServers_.at(2);
    localMainNet.armoryDBPort = appSettings_->GetDefaultArmoryLocalPort(NetworkType::MainNet);
+   localMainNet.runLocally = true;
    if (defaultServersKeys.size() >= 3) {
       localMainNet.armoryDBKey = defaultServersKeys.at(2);
    }
@@ -54,6 +54,7 @@ QList<ArmoryServer> ArmoryServersProvider::servers() const
    // #4 add localhost node TestNet
    ArmoryServer localTestNet = defaultServers_.at(3);
    localTestNet.armoryDBPort = appSettings_->GetDefaultArmoryLocalPort(NetworkType::TestNet);
+   localTestNet.runLocally = true;
    if (defaultServersKeys.size() >= 4) {
       localTestNet.armoryDBKey = defaultServersKeys.at(3);
    }
@@ -73,8 +74,7 @@ ArmorySettings ArmoryServersProvider::getArmorySettings() const
    settings.netType = appSettings_->get<NetworkType>(ApplicationSettings::netType);
    settings.armoryDBIp = appSettings_->get<QString>(ApplicationSettings::armoryDbIp);
    settings.armoryDBPort = appSettings_->GetArmoryRemotePort();
-   settings.runLocally = (settings.armoryDBIp == QLatin1String("127.0.0.1"));
-   //settings.runLocally = appSettings_->get<bool>(ApplicationSettings::runArmoryLocally);
+   settings.runLocally = appSettings_->get<bool>(ApplicationSettings::runArmoryLocally);
 //   if (settings.runLocally) {
 //      settings.armoryDBIp = QStringLiteral("127.0.0.1");
 //      settings.armoryDBPort = appSettings_->GetDefaultArmoryLocalPort(appSettings_->get<NetworkType>(ApplicationSettings::netType));
@@ -233,7 +233,7 @@ void ArmoryServersProvider::setupServer(int index)
       appSettings_->set(ApplicationSettings::armoryDbIp, server.armoryDBIp);
       appSettings_->set(ApplicationSettings::armoryDbPort, server.armoryDBPort);
       appSettings_->set(ApplicationSettings::netType, static_cast<int>(server.netType));
-      //appSettings_->set(ApplicationSettings::runArmoryLocally, server.runLocally);
+      appSettings_->set(ApplicationSettings::runArmoryLocally, server.runLocally);
 
       emit dataChanged();
    }

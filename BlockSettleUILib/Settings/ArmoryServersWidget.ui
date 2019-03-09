@@ -168,6 +168,11 @@
            </property>
            <item>
             <property name="text">
+             <string>--Select--</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
              <string>MainNet</string>
             </property>
            </item>
@@ -328,13 +333,13 @@
             </size>
            </property>
            <property name="minimum">
-            <number>1</number>
+            <number>0</number>
            </property>
            <property name="maximum">
             <number>65535</number>
            </property>
            <property name="value">
-            <number>1</number>
+            <number>0</number>
            </property>
           </widget>
          </item>

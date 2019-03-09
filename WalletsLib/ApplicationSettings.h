@@ -43,7 +43,7 @@ public:
 
    enum Setting {
       initialized,
-//      runArmoryLocally,
+      runArmoryLocally,
       netType,
       armoryDbName,
       armoryDbIp,

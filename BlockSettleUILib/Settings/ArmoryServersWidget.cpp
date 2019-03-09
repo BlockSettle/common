@@ -46,6 +46,8 @@ ArmoryServersWidget::ArmoryServersWidget(const std::shared_ptr<ArmoryServersProv
 
       resetForm();
    });
+
+   resetForm();
 }
 
 void ArmoryServersWidget::adaptForStartupDialog()
@@ -60,10 +62,14 @@ void ArmoryServersWidget::onAddServer()
 {
    if (ui_->lineEditName->text().isEmpty() || ui_->lineEditAddress->text().isEmpty())
       return;
+   if (ui_->comboBoxNetworkType->currentIndex() == 0)
+      return;
+   if (ui_->spinBoxPort->value() == 0)
+      return;
 
    ArmoryServer server;
    server.name = ui_->lineEditName->text();
-   server.netType = static_cast<NetworkType>(ui_->comboBoxNetworkType->currentIndex());
+   server.netType = static_cast<NetworkType>(ui_->comboBoxNetworkType->currentIndex() - 1);
    server.armoryDBIp = ui_->lineEditAddress->text();
    server.armoryDBPort = ui_->spinBoxPort->value();
    server.armoryDBKey = ui_->lineEditKey->text();
@@ -101,7 +107,7 @@ void ArmoryServersWidget::onEdit()
    ui_->stackedWidgetAddSave->setCurrentWidget(ui_->pageSaveServerButton);
 
    ui_->lineEditName->setText(server.name);
-   ui_->comboBoxNetworkType->setCurrentIndex(static_cast<int>(server.netType));
+   ui_->comboBoxNetworkType->setCurrentIndex(static_cast<int>(server.netType) + 1);
    ui_->lineEditAddress->setText(server.armoryDBIp);
    ui_->spinBoxPort->setValue(server.armoryDBPort);
    ui_->lineEditKey->setText(server.armoryDBKey);
@@ -123,6 +129,11 @@ void ArmoryServersWidget::onSelect()
 
 void ArmoryServersWidget::onSave()
 {
+   if (ui_->comboBoxNetworkType->currentIndex() == 0)
+      return;
+   if (ui_->spinBoxPort->value() == 0)
+      return;
+
    if (ui_->tableViewArmory->selectionModel()->selectedIndexes().isEmpty()) {
       return;
    }
@@ -134,7 +145,7 @@ void ArmoryServersWidget::onSave()
 
    ArmoryServer server;
    server.name = ui_->lineEditName->text();
-   server.netType = static_cast<NetworkType>(ui_->comboBoxNetworkType->currentIndex());
+   server.netType = static_cast<NetworkType>(ui_->comboBoxNetworkType->currentIndex() - 1);
    server.armoryDBIp = ui_->lineEditAddress->text();
    server.armoryDBPort = ui_->spinBoxPort->value();
    server.armoryDBKey = ui_->lineEditKey->text();
@@ -157,6 +168,8 @@ void ArmoryServersWidget::resetForm()
    ui_->lineEditName->clear();
    ui_->comboBoxNetworkType->setCurrentIndex(0);
    ui_->lineEditAddress->clear();
-   ui_->spinBoxPort->setValue(kArmoryDefaultMainNetPort);
+   //ui_->spinBoxPort->setValue(kArmoryDefaultMainNetPort);
+   ui_->spinBoxPort->setValue(0);
+   ui_->spinBoxPort->setSpecialValueText(QLatin1String("--Select--"));
    ui_->lineEditKey->clear();
 }
