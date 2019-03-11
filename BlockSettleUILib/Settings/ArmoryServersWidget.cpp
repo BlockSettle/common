@@ -170,6 +170,6 @@ void ArmoryServersWidget::resetForm()
    ui_->lineEditAddress->clear();
    //ui_->spinBoxPort->setValue(kArmoryDefaultMainNetPort);
    ui_->spinBoxPort->setValue(0);
-   ui_->spinBoxPort->setSpecialValueText(QLatin1String("--Select--"));
+   ui_->spinBoxPort->setSpecialValueText(tr("--Select--"));
    ui_->lineEditKey->clear();
 }
