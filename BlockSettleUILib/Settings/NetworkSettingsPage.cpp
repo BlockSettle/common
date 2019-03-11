@@ -65,6 +65,7 @@ NetworkSettingsPage::NetworkSettingsPage(QWidget* parent)
       });
 
       d->exec();
+      emit armoryServerChanged();
    });
 
    connect(ui_->pushButtonArmoryServerKeyCopy, &QPushButton::clicked, this, [this](){

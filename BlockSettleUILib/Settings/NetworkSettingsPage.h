@@ -27,8 +27,7 @@ public slots:
 
 signals:
    void reconnectArmory();
-   void onArmoryHostChanged();
-   void onArmoryPortChanged();
+   void armoryServerChanged();
 
 private slots:
    void onEnvSelected(int);
