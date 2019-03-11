@@ -113,7 +113,6 @@ BSTerminalMainWindow::BSTerminalMainWindow(const std::shared_ptr<ApplicationSett
       applicationSettings_->SetDefaultSettings(true);
    }
 
-   LoadWallets();
    InitSigningContainer();
 
    splashScreen.SetProgress(100);
