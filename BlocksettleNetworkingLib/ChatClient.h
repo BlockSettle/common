@@ -89,6 +89,7 @@ signals:
    void ConnectionError(int errorCode);
 
    void LoginFailed();
+   void LoginSuccess(const QString& userId);
    void UsersReplace(const std::vector<std::string>& users);
    void UsersAdd(const std::vector<std::string>& users);
    void UsersDel(const std::vector<std::string>& users);
@@ -97,6 +98,8 @@ signals:
    void MessageIdUpdated(const QString& localId, const QString& serverId,const QString& chatId);
    void MessageStatusUpdated(const QString& messageId, const QString& chatId, int newStatus);
    void RoomsAdd(const std::vector<std::shared_ptr<Chat::ChatRoomData>>& rooms);
+   void ChatChanged(const QString& chatId);
+   void NewMessage(const std::shared_ptr<Chat::MessageData>&);
 
 public slots:
    void onMessageRead(const std::shared_ptr<Chat::MessageData>& message);
@@ -104,8 +107,7 @@ public slots:
 private slots:
    void sendHeartbeat();
    void addMessageState(const std::shared_ptr<Chat::MessageData>& message, Chat::MessageData::State state);
-   
-
+std::shared_ptr<Chat::MessageData> sendOwnMessageInternal(std::shared_ptr<Chat::MessageData>& message, const QString& receiver, autheid::PublicKey pubKey);
 private:
    std::shared_ptr<ConnectionManager>     connectionManager_;
    std::shared_ptr<ApplicationSettings>   appSettings_;
@@ -117,7 +119,7 @@ private:
    std::shared_ptr<UserHasher> hasher_;
 
    // Queue of messages to be sent for each receiver, once we received the public key.
-   std::map<QString, std::queue<QString>>    enqueued_messages_;
+   std::map<QString, std::queue<std::shared_ptr<Chat::MessageData>>>    enqueued_messages_;
 
    QTimer            heartbeatTimer_;
 

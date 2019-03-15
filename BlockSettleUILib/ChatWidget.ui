@@ -474,6 +474,9 @@
               </property>
              </widget>
             </item>
+            <item>
+             <widget class="QListView" name="listViewMessages"/>
+            </item>
            </layout>
           </item>
           <item>

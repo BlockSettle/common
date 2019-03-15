@@ -22,6 +22,7 @@ class ApplicationSettings;
 
 class ChatWidgetState;
 class ChatSearchPopup;
+class ChatMessagesModel;
 
 class ChatWidget : public QWidget
 {
@@ -65,7 +66,7 @@ private:
    QScopedPointer<Ui::ChatWidget> ui_;
    QScopedPointer<ChatUsersViewModel> usersViewModel_;
 
-
+   std::shared_ptr<ChatMessagesModel> chatDisplay_;
    std::shared_ptr<ChatClient>      client_;
    std::shared_ptr<spdlog::logger>  logger_;
 

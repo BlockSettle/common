@@ -6,7 +6,7 @@
 #include "ChatUserListTreeWidget.h"
 #include "ApplicationSettings.h"
 #include "ChatSearchPopup.h"
-
+#include "ChatMessagesModel.h"
 #include <QScrollBar>
 #include <QMouseEvent>
 #include <QApplication>
@@ -131,6 +131,7 @@ public:
       chat_->ui_->input_textEdit->setEnabled(!chat_->currentChat_.isEmpty());
       chat_->ui_->labelActiveChat->setText(QObject::tr("CHAT #") + chat_->currentChat_);
       chat_->ui_->textEditMessages->onSwitchToChat(chat_->currentChat_);
+      chat_->chatDisplay_->switchChat(chat_->currentChat_);
       chat_->client_->retrieveUserMessages(chat_->currentChat_);
 
       // load draft
@@ -154,6 +155,7 @@ public:
       chat_->ui_->input_textEdit->setEnabled(!chat_->currentChat_.isEmpty());
       chat_->ui_->labelActiveChat->setText(QObject::tr("CHAT #") + chat_->currentChat_);
       chat_->ui_->textEditMessages->onSwitchToChat(chat_->currentChat_);
+      chat_->chatDisplay_->switchChat(chat_->currentChat_);
       chat_->client_->retrieveRoomMessages(chat_->currentChat_);
 
       // load draft
@@ -199,8 +201,13 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
 {
    logger_ = logger;
    client_ = std::make_shared<ChatClient>(connectionManager, appSettings, logger);
+   chatDisplay_ = std::make_shared<ChatMessagesModel>(client_, this);
+   ui_->listViewMessages->setModel(chatDisplay_.get());
+   ui_->listViewMessages->setModelColumn((int)ChatMessagesModel::Column::Message);
+   ui_->listViewMessages->setSelectionMode(QListView::ExtendedSelection);
+   
    chatUserListLogicPtr_->init(client_, logger);
-
+   
    connect(client_.get(), &ChatClient::LoginFailed, this, &ChatWidget::onLoginFailed);
 
    // connect(ui_->send, &QPushButton::clicked, this, &ChatWidget::onSendButtonClicked);
