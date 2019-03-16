@@ -1104,6 +1104,8 @@ void BSTerminalMainWindow::onUserLoggedIn()
 
 void BSTerminalMainWindow::onUserLoggedOut()
 {
+   setLoginButtonText(loginButtonText_);
+
    ui_->actionAccountInformation->setEnabled(false);
    ui_->actionAuthenticationAddresses->setEnabled(false);
    ui_->actionEnterColorCoinToken->setEnabled(false);
