@@ -1070,9 +1070,8 @@ void BSTerminalMainWindow::onLogout()
    if (celerConnection_->IsConnected()) {
       celerConnection_->CloseConnection();
    }
-   else {
-       setLoginButtonText(loginButtonText_);
-   }
+   
+   setLoginButtonText(loginButtonText_);
 }
 
 void BSTerminalMainWindow::onUserLoggedIn()
@@ -1104,8 +1103,6 @@ void BSTerminalMainWindow::onUserLoggedIn()
 
 void BSTerminalMainWindow::onUserLoggedOut()
 {
-   setLoginButtonText(loginButtonText_);
-
    ui_->actionAccountInformation->setEnabled(false);
    ui_->actionAuthenticationAddresses->setEnabled(false);
    ui_->actionEnterColorCoinToken->setEnabled(false);
