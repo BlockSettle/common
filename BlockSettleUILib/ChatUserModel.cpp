@@ -74,16 +74,14 @@ bool ChatUserModel::isChatUserExist(const QString &userId) const
 
 bool ChatUserModel::hasUnreadMessages() const
 {
-   ChatUserDataPtr chatUserDataPtr;
-   foreach( chatUserDataPtr, chatUserDataListPtr_ )
+   foreach( const auto &chatRoomDataPtr, chatUserDataListPtr_ )
    {
       if (chatUserDataPtr->haveNewMessage()) {
          return true;
       }
    }
 
-   Chat::ChatRoomDataPtr chatRoomDataPtr;
-   foreach( chatRoomDataPtr, chatRoomDataListPtr_ )
+   foreach( const auto &chatRoomDataPtr, chatRoomDataListPtr_ )
    {
       if (chatRoomDataPtr->haveNewMessage()) {
          return true;
