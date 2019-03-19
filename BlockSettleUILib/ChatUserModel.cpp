@@ -80,7 +80,7 @@ bool ChatUserModel::hasUnreadMessages() const
       }
    }
 
-   for( const auto &chatRoomDataPtr : chatRoomDataListPtr_) {
+   for ( const auto &chatRoomDataPtr : chatRoomDataListPtr_) {
       if (chatRoomDataPtr->haveNewMessage()) {
          return true;
       }
