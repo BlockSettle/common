@@ -75,14 +75,12 @@ bool ChatUserModel::isChatUserExist(const QString &userId) const
 bool ChatUserModel::hasUnreadMessages() const
 {
    for ( const auto &chatUserDataPtr : chatUserDataListPtr_) {
-   {
       if (chatUserDataPtr->haveNewMessage()) {
          return true;
       }
    }
 
-   for( const auto &chatRoomDataPtr : chatRoomDataListPtr_)
-   {
+   for( const auto &chatRoomDataPtr : chatRoomDataListPtr_) {
       if (chatRoomDataPtr->haveNewMessage()) {
          return true;
       }
