@@ -803,7 +803,7 @@ void hd::Wallet::updatePersistence()
 {
    if (db_) {
       initDB();
-      writeToDB();
+      writeToDB(true);
    }
 }
 

@@ -211,6 +211,7 @@ TransactionsViewModel::TransactionsViewModel(const std::shared_ptr<ArmoryConnect
    , allWallets_(false)
 {
    init();
+   initialLoadCompleted_ = false;
    QtConcurrent::run(this, &TransactionsViewModel::loadLedgerEntries);
 }
 
@@ -260,7 +261,7 @@ void TransactionsViewModel::loadAllWallets()
       QtConcurrent::run(this, &TransactionsViewModel::loadLedgerEntries);
    };
    if (initialLoadCompleted_) {
-      armory_->getWalletsLedgerDelegate(cbWalletsLD);
+       initialLoadCompleted_ = !armory_->getWalletsLedgerDelegate(cbWalletsLD);
    }
 }
 
@@ -679,10 +680,9 @@ void TransactionsViewModel::onItemConfirmed(const TransactionPtr item)
 
 void TransactionsViewModel::loadLedgerEntries()
 {
-   if (!initialLoadCompleted_ || !ledgerDelegate_) {
+   if (!ledgerDelegate_) {
       return;
    }
-   initialLoadCompleted_ = false;
 
    const auto &cbPageCount = [this](ReturnMessage<uint64_t> pageCnt)->void {
       try {

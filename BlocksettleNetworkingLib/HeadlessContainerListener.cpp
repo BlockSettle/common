@@ -1550,13 +1550,13 @@ bool HeadlessContainerListener::onSyncAddresses(const std::string &clientId, Blo
       const auto indexData = request.indices(i);
       std::string index;
       bs::Address address;
-      try {
+/*      try {     // Disable direct address creation temporarily
          address = bs::Address(indexData.index());
          if (address.isValid()) {
             index = wallet->getAddressIndex(address);
          }
       }
-      catch (const std::exception &) {}
+      catch (const std::exception &) {}*/
       if (index.empty()) {
          index = indexData.index();
       }

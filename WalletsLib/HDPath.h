@@ -25,6 +25,7 @@ namespace bs {
          }
          bool operator < (const Path &other) const;
 
+         bool set(int index, Elem elem, bool hardened = false);
          void append(Elem elem, bool hardened = false);
          void append(const std::string &key, bool hardened = false);
          size_t length() const { return path_.size(); }

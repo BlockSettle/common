@@ -25,20 +25,7 @@ void WalletImporter::onWalletScanComplete(bs::sync::hd::Group *grp, bs::hd::Path
    if (!rootWallet_) {
       return;
    }
-   if (isValid) {
-      if (grp && (grp->index() == rootWallet_->getXBTGroupType())) {
-/*         const bs::hd::Path::Elem nextWallet = (wallet == UINT32_MAX) ? 0 : wallet + 1;
-         bs::hd::Path path;
-         path.append(bs::hd::purpose, true);
-         path.append(grp->index(), true);
-         path.append(nextWallet, true);
-         const auto createNextWalletReq = signingContainer_->createHDLeaf(rootWallet_->walletId(), path, pwdData_);
-         if (createNextWalletReq) {
-            createNextWalletReqs_[createNextWalletReq] = path;
-         }*/
-      }
-   }
-   else {
+   if (!isValid) {
       if (!((grp->index() == rootWallet_->getXBTGroupType()) && (wallet == 0))) {
          const auto leaf = grp->getLeaf(wallet);
          walletsMgr_->deleteWallet(leaf);
@@ -62,17 +49,17 @@ void WalletImporter::onHDWalletCreated(unsigned int id, std::shared_ptr<bs::sync
    pwdData_.resize(keyRank_.first);
 
    if (rootWallet_->isPrimary()) {
-      authMgr_->CreateAuthWallet(pwdData_, false);
+//      authMgr_->CreateAuthWallet(pwdData_, false);     // auth wallet is not needed yet
    }
-   if (!rootWallet_->isPrimary() || ccList.empty()) {
+//   if (!rootWallet_->isPrimary() || ccList.empty()) {
       if (armory_->state() == ArmoryConnection::State::Ready) {
          rootWallet_->startRescan([this](bs::sync::hd::Group *grp, bs::hd::Path::Elem wallet, bool isValid) {
             onWalletScanComplete(grp, wallet, isValid);
          }, cbReadLast_, cbWriteLast_);
       }
       emit walletCreated(rootWallet_->walletId());
-   }
-   else {
+/*   }
+   else {   // Don't create CC wallets for now
       for (const auto &cc : ccList) {
          bs::hd::Path path;
          path.append(bs::hd::purpose, true);
@@ -83,7 +70,7 @@ void WalletImporter::onHDWalletCreated(unsigned int id, std::shared_ptr<bs::sync
             createCCWalletReqs_[reqId] = cc;
          }
       }
-   }
+   }*/
 }
 
 void WalletImporter::onHDLeafCreated(unsigned int id, const std::shared_ptr<bs::sync::hd::Leaf> &leaf)

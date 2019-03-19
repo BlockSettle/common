@@ -519,23 +519,19 @@ bs::Address hd::Leaf::createAddressWithPath(const bs::hd::Path &path, bool persi
          }
       }
    }
-   auto &lastIndex = (path.get(-2) == addrTypeInternal) ? lastIntIdx_ : lastExtIdx_;
-   const auto prevLastIndex = lastIndex;
-   const auto addrIndex = path.get(-1);
-   const int nbAddresses = addrIndex - lastIndex;
-   if (nbAddresses > 0) {
-      for (const auto &addr : generateAddresses(path.get(-2), lastIndex, nbAddresses, aet)) {
-         lastIndex++;
-         createAddress(addr.first.path, lastIntIdx_ + lastExtIdx_, aet, persistent);
+   if (persistent) {
+      auto &lastIndex = (path.get(-2) == addrTypeInternal) ? lastIntIdx_ : lastExtIdx_;
+      const auto addrIndex = path.get(-1);
+      const int nbAddresses = addrIndex - lastIndex;
+      if (nbAddresses > 0) {
+         for (const auto &addr : generateAddresses(path.get(-2), lastIndex, nbAddresses, aet)) {
+            lastIndex++;
+            createAddress(addr.first.path, lastIntIdx_ + lastExtIdx_, aet, persistent);
+         }
       }
+      lastIndex++;
    }
-   lastIndex++;
-   const auto result = createAddress(addrPath, lastIntIdx_ + lastExtIdx_, aet, persistent);
-   if (!persistent) {
-      lastIndex = prevLastIndex;
-   }
-
-   return result;
+   return createAddress(addrPath, lastIntIdx_ + lastExtIdx_, aet, persistent);
 }
 
 bs::hd::Path::Elem hd::Leaf::getLastAddrPoolIndex(bs::hd::Path::Elem addrType) const

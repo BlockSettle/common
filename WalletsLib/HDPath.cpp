@@ -42,6 +42,29 @@ hd::Path::Elem hd::Path::get(int index) const
    return path_[index];
 }
 
+bool hd::Path::set(int index, Elem elem, bool hardened)
+{
+   if (path_.empty()) {
+      return false;
+   }
+   if (index < 0) {
+      index += (int)length();
+      if (index < 0) {
+         return false;
+      }
+   }
+   else {
+      if (index >= length()) {
+         return false;
+      }
+   }
+   path_[index] = elem;
+   if (hardened) {
+      setHardened(index);
+   }
+   return true;
+}
+
 void hd::Path::clear()
 {
    isAbsolute_ = false;

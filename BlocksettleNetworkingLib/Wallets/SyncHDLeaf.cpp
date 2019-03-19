@@ -273,6 +273,15 @@ void hd::Leaf::onRefresh(std::vector<BinaryData> ids, bool online)
       }
    }
 
+   if (!scanCompleteRegIds_.empty()) {
+      for (const auto &id : ids) {
+         scanCompleteRegIds_.erase(id.toBinStr());
+      }
+      if (scanCompleteRegIds_.empty()) {
+         emit scanComplete(walletId());
+      }
+   }
+
    if (!currentPortion_.registered || (processing_ == (int)currentPortion_.start)) {
       return;
    }
@@ -1146,23 +1155,45 @@ void hd::Leaf::onScanComplete()
    reset();
    const bool hasAddresses = !activeScanAddresses_.empty();
    if (hasAddresses) {
+      if (logger_) {
+         logger_->debug("[{}] {} scan found {} active address[es]", __func__, walletId(), activeScanAddresses_.size());
+      }
       std::vector<std::pair<std::string, AddressEntryType>> newAddrReq;
       newAddrReq.reserve(activeScanAddresses_.size());
+      bs::hd::Path prevPath;
       for (const auto &addr : activeScanAddresses_) {
+         if (prevPath.length() >= 2) {
+            if (prevPath == addr.path) {
+               continue;
+            }
+            if (prevPath.get(-2) != addr.path.get(-2)) {
+               prevPath = addr.path;
+               prevPath.set(-1, static_cast<bs::hd::Path::Elem>(-1));
+            }
+            const size_t gap = addr.path.get(-1) - prevPath.get(-1);
+            if (gap > 1) {
+               for (bs::hd::Path::Elem i = prevPath.get(-1) + 1; i < prevPath.get(-1) + gap; ++i) {
+                  auto gapPath = prevPath;
+                  gapPath.set(-1, i);
+                  newAddrReq.push_back({ gapPath.toString(), addr.aet });
+               }
+            }
+         }
          newAddrReq.push_back({ addr.path.toString(), addr.aet });
+         prevPath = addr.path;
       }
       const auto &cbAddrsAdded = [this](const std::vector<std::pair<bs::Address, std::string>> &addrs) {
          for (const auto &addr : addrs) {
             addAddress(addr.first, addr.second, addr.first.getType(), false);
          }
          topUpAddressPool();
-         registerWallet(armory_, true);
+         const auto regIds = registerWallet(armory_, true);
+         scanCompleteRegIds_.insert(regIds.begin(), regIds.end());
       };
       newAddresses(newAddrReq, cbAddrsAdded);
       activeScanAddresses_.clear();
 
       emit addressAdded();
-      emit scanComplete(walletId());
       if (cbScanNotify_) {
          cbScanNotify_(index(), hasAddresses);
       }

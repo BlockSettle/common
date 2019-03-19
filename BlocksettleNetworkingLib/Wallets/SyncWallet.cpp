@@ -856,6 +856,6 @@ void Wallet::newAddresses(const std::vector<std::pair<std::string, AddressEntryT
    , const CbAddresses &cb, bool persistent)
 {
    if (signContainer_) {
-      signContainer_->syncNewAddresses(walletId(), inData, cb);
+      signContainer_->syncNewAddresses(walletId(), inData, cb, persistent);
    }
 }

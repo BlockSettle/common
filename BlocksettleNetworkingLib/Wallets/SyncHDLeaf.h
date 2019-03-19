@@ -188,6 +188,7 @@ namespace bs {
             std::function<void(const std::string &walletId, unsigned int idx)> cbWriteLast_ = nullptr;
             volatile bool activateAddressesInvoked_ = false;
             BTCNumericTypes::balance_type spendableBalanceCorrection_ = 0;
+            std::unordered_set<std::string>  scanCompleteRegIds_;
 
             struct AddrPrefixedHashes {
                std::set<BinaryData> external;
