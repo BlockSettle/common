@@ -401,7 +401,7 @@ void BSTerminalMainWindow::LoadWallets()
          }
       });
       QTimer::singleShot(5000, this, [this](){
-         if (!initialWalletCreateDialogShown && !armoryKeyDialogShown) {
+         if (!initialWalletCreateDialogShown && !armoryKeyDialogShown_) {
             if (walletsMgr_ && walletsMgr_->hdWalletsCount() == 0) {
                initialWalletCreateDialogShown = true;
                QMetaObject::invokeMethod(this, "createWallet", Qt::QueuedConnection, Q_ARG(bool, true));
@@ -1483,7 +1483,7 @@ void BSTerminalMainWindow::onButtonUserClicked() {
 
 void BSTerminalMainWindow::showArmoryServerPrompt(const BinaryData &srvPubKey, const std::string &srvIPPort, std::shared_ptr<std::promise<bool>> promiseObj)
 {
-   armoryKeyDialogShown = true;
+   armoryKeyDialogShown_ = true;
    QList<ArmoryServer> servers = armoryServersProvider_->servers();
    int serverIndex = armoryServersProvider_->indexOfIpPort(srvIPPort);
    if (serverIndex >= 0) {
