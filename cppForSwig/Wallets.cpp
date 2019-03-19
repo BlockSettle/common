@@ -249,20 +249,10 @@ shared_ptr<AddressAccount> AssetWallet::createAccount(
 
 ////////////////////////////////////////////////////////////////////////////////
 const BinaryData& AssetWallet_Single::createBIP32Account(
-   shared_ptr<AssetEntry_BIP32Root> parentNode, vector<unsigned> derPath,
-   bool isMain)
+   shared_ptr<AssetEntry_BIP32Root> parentNode, 
+   vector<unsigned> derPath, bool isMain)
 {
-   bool canPublicDerive = false;
-   for (auto& path : derPath)
-   {
-      if (path >= 0x80000000)
-      {
-         canPublicDerive = true;
-         break;
-      }
-   }
-
-   shared_ptr<AssetEntry_BIP32Root> root;
+   shared_ptr<AssetEntry_BIP32Root> root = parentNode;
    if (parentNode == nullptr)
       root = dynamic_pointer_cast<AssetEntry_BIP32Root>(root_);
 
@@ -295,10 +285,6 @@ const BinaryData& AssetWallet_Single::createBIP32Account(
    {
       //can't get the private key, if we can derive this only from 
       //the pubkey then do it, otherwise throw
-
-      if (!canPublicDerive)
-         throw AccountException("cannot public derive from this root");
-
       auto pubkey = root->getPubKey()->getCompressedKey();
       auto chaincode = root->getChaincode();
 
@@ -312,6 +298,81 @@ const BinaryData& AssetWallet_Single::createBIP32Account(
       accountTypePtr->setMain(true);
 
    auto accountPtr = createAccount(accountTypePtr);
+   return accountPtr->getID();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+const BinaryData& AssetWallet_Single::createBIP32Account(
+   std::shared_ptr<AssetEntry_BIP32Root> parentNode,
+   std::vector<unsigned> derPath,
+   std::shared_ptr<AccountType_BIP32_Custom> accTypePtr)
+{
+   shared_ptr<AssetEntry_BIP32Root> root = parentNode;
+   if (parentNode == nullptr)
+      root = dynamic_pointer_cast<AssetEntry_BIP32Root>(root_);
+
+   if (root == nullptr)
+      throw AccountException("no valid root to create BIP32 account from");
+
+   bool isDerived = true;
+   if (root->getPrivKey() != nullptr)
+   {
+      //try to decrypt the root's private to get full derivation
+      try
+      {
+         //lock for decryption
+         auto lock = lockDecryptedContainer();
+
+         //decrypt root
+         auto privKey = decryptedData_->getDecryptedPrivateKey(
+            root->getPrivKey());
+         auto chaincode = root->getChaincode();
+
+         //derive account root
+         BIP32_Node bip32Node;
+         bip32Node.initFromPrivateKey(
+            root->getDepth(), root->getLeafID(),
+            privKey, chaincode);
+         for (auto& path : derPath)
+            bip32Node.derivePrivate(path);
+
+         auto derivedKey = bip32Node.movePrivateKey();
+         auto derivedCode = bip32Node.moveChaincode();
+         auto pubkey = CryptoECDSA().ComputePublicKey(derivedKey, true);
+
+         accTypePtr->setChaincode(derivedCode);
+         accTypePtr->setPrivateKey(derivedKey);
+         accTypePtr->setPublicKey(pubkey);
+      }
+      catch (exception&)
+      {
+         isDerived = false;
+      }
+   }
+
+   if (!isDerived)
+   {
+      //can't get the private key, if we can derive this only from 
+      //the pubkey then do it, otherwise throw
+
+      auto pubkey = root->getPubKey()->getCompressedKey();
+      auto chaincode = root->getChaincode();
+
+      BIP32_Node bip32Node;
+      bip32Node.initFromPublicKey(
+         root->getDepth(), root->getLeafID(),
+         pubkey, chaincode);
+      for (auto& path : derPath)
+         bip32Node.derivePrivate(path);
+
+      auto derivedKey = bip32Node.movePublicKey();
+      auto derivedCode = bip32Node.moveChaincode();
+
+      accTypePtr->setChaincode(derivedCode);
+      accTypePtr->setPublicKey(derivedKey);
+   }
+
+   auto accountPtr = createAccount(accTypePtr);
    return accountPtr->getID();
 }
 
@@ -1724,10 +1785,13 @@ AddressEntryType AssetWallet::getAddrTypeForID(const BinaryData& ID)
 shared_ptr<AddressAccount> AssetWallet::getAccountForID(
    const BinaryData& ID) const
 {
+   if (ID.getSize() < 4)
+      throw WalletException("invalid account id");
 
+   auto idRef = ID.getSliceRef(0, 4);
    auto iter = find_if(
       accounts_.begin(), accounts_.end(), 
-      AddressAccount::find_by_id(ID));
+      AddressAccount::find_by_id(idRef));
 
    if (iter == accounts_.end())
       throw WalletException("unknown account ID");
@@ -1789,8 +1853,9 @@ shared_ptr<AddressEntry> AssetWallet::getAddressEntryForID(
          {
             return addrIter->second;
          }
-         else if (aeType | ADDRESS_NESTED_MASK && 
-            aeType | ADDRESS_NESTED_MASK == addrType | ADDRESS_NESTED_MASK)
+         else if (
+            (aeType & ADDRESS_NESTED_MASK) == (addrType & ADDRESS_NESTED_MASK) &&
+            (aeType & ADDRESS_TYPE_MASK) == (addrType & ADDRESS_TYPE_MASK))
          {
             return addrIter->second;
          }
@@ -1857,7 +1922,7 @@ shared_ptr<AssetEntry> AssetWallet::getAssetForID(const BinaryData& ID) const
 ////////////////////////////////////////////////////////////////////////////////
 string AssetWallet::getID(void) const
 {
-   return string(walletID_.getCharPtr(), walletID_.getSize());
+   return string(walletID_.getCharPtr());
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -284,6 +284,11 @@ public:
    {
       decryptedData_->setPassphrasePromptLambda(lambda);
    }
+   
+   void resetPassphrasePromptLambda(void)
+   {
+      decryptedData_->resetPassphraseLambda();
+   }
 
    void addMetaAccount(MetaAccountType);
    std::shared_ptr<MetaDataAccount> getMetaAccount(MetaAccountType);
@@ -349,10 +354,15 @@ public:
    const SecureBinaryData& getPublicRoot(void) const;
    std::shared_ptr<AssetEntry> getAccountRoot(const BinaryData& accountID) const;
    const SecureBinaryData& getArmory135Chaincode(void) const;
+   
    const BinaryData& createBIP32Account(
       std::shared_ptr<AssetEntry_BIP32Root> parentNode,
       std::vector<unsigned> derPath,
       bool isMain = false);
+   const BinaryData& createBIP32Account(
+      std::shared_ptr<AssetEntry_BIP32Root> parentNode,
+      std::vector<unsigned> derPath,
+      std::shared_ptr<AccountType_BIP32_Custom>);
 
    bool isWatchingOnly(void) const;
 
