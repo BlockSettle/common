@@ -123,31 +123,35 @@ void ChatUserModel::setUserState(const QString &userId, const ChatUserData::Stat
    emit chatUserDataListChanged(chatUserDataListPtr_);
 }
 
-void ChatUserModel::setUserHaveNewMessage(const QString &userId, const bool &haveNewMessage) {
+bool ChatUserModel::setUserHaveNewMessage(const QString &userId, const bool &haveNewMessage) {
    ChatUserDataPtr chatUserDataPtr = getUserByUserId(userId);
 
    if (!chatUserDataPtr)
    {
-      return;
+      return false;
    }
 
    chatUserDataPtr->setHaveNewMessage(haveNewMessage);
 
    emit chatUserHaveNewMessageChanged(chatUserDataPtr);
    emit chatUserDataListChanged(chatUserDataListPtr_);
+
+   return true;
 }
 
-void ChatUserModel::setRoomHaveNewMessage(const QString &roomId, const bool &haveNewMessage)
+bool ChatUserModel::setRoomHaveNewMessage(const QString &roomId, const bool &haveNewMessage)
 {
    Chat::ChatRoomDataPtr chatRoomDataPtr = getRoomByRoomId(roomId);
 
    if (!chatRoomDataPtr) {
-      return;
+      return false;
    }
 
    chatRoomDataPtr->setHaveNewMessage(haveNewMessage);
 
    emit chatRoomDataListChanged(chatRoomDataListPtr_);
+
+   return true;
 
 }
 

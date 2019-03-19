@@ -89,22 +89,13 @@ void ChatUserListLogic::onIcomingFriendRequest(const UserIdList &userIdList)
 
 void ChatUserListLogic::onUserHaveNewMessageChanged(const QString &userId, const bool &haveNewMessage, const bool &isInCurrentChat) 
 {
-      ChatUserDataPtr chatUserDataPtr = chatUserModelPtr_->getUserByUserId(userId);
+   const auto &changed = chatUserModelPtr_->setUserHaveNewMessage(userId, haveNewMessage);
+   if (!changed) {
+      chatUserModelPtr_->setRoomHaveNewMessage(userId, haveNewMessage);
+   }
 
-      if (chatUserDataPtr) {
-         chatUserModelPtr_->setUserHaveNewMessage(userId, haveNewMessage);
-      }
-      else {
-
-         Chat::ChatRoomDataPtr chatRoomDataPtr = chatUserModelPtr_->getRoomByRoomId(userId);
-
-         if (chatRoomDataPtr) {
-            chatUserModelPtr_->setRoomHaveNewMessage(userId, haveNewMessage);
-         }
-      }
-
-      bool hasUnreadMessages = chatUserModelPtr_->hasUnreadMessages();
-      NotificationCenter::notify(bs::ui::NotifyType::UpdateUnreadMessage, { tr("New message"), QVariant(isInCurrentChat), QVariant(hasUnreadMessages) });
+   bool hasUnreadMessages = chatUserModelPtr_->hasUnreadMessages();
+   NotificationCenter::notify(bs::ui::NotifyType::UpdateUnreadMessage, { tr("New message"), QVariant(isInCurrentChat), QVariant(hasUnreadMessages) });
 }
 
 void ChatUserListLogic::onAddChatRooms(const std::vector<std::shared_ptr<Chat::ChatRoomData> >& roomList)
