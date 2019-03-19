@@ -82,6 +82,14 @@ bool ChatUserModel::hasUnreadMessages() const
       }
    }
 
+   Chat::ChatRoomDataPtr chatRoomDataPtr;
+   foreach( chatRoomDataPtr, chatRoomDataListPtr_ )
+   {
+      if (chatRoomDataPtr->haveNewMessage()) {
+         return true;
+      }
+   }
+
    return false;
 }
 
@@ -127,6 +135,20 @@ void ChatUserModel::setUserHaveNewMessage(const QString &userId, const bool &hav
 
    emit chatUserHaveNewMessageChanged(chatUserDataPtr);
    emit chatUserDataListChanged(chatUserDataListPtr_);
+}
+
+void ChatUserModel::setRoomHaveNewMessage(const QString &roomId, const bool &haveNewMessage)
+{
+   Chat::ChatRoomDataPtr chatRoomDataPtr = getRoomByRoomId(roomId);
+
+   if (!chatRoomDataPtr) {
+      return;
+   }
+
+   chatRoomDataPtr->setHaveNewMessage(haveNewMessage);
+
+   emit chatRoomDataListChanged(chatRoomDataListPtr_);
+
 }
 
 ChatUserDataPtr ChatUserModel::getUserByUserId(const QString &userId) const

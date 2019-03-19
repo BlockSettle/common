@@ -87,12 +87,20 @@ void ChatUserListLogic::onIcomingFriendRequest(const UserIdList &userIdList)
    }
 }
 
-void ChatUserListLogic::onUserHaveNewMessageChanged(const QString &userId, const bool &userHaveNewMessage, const bool &isInCurrentChat) {
+void ChatUserListLogic::onUserHaveNewMessageChanged(const QString &userId, const bool &haveNewMessage, const bool &isInCurrentChat) 
+{
       ChatUserDataPtr chatUserDataPtr = chatUserModelPtr_->getUserByUserId(userId);
 
-      if (chatUserDataPtr)
-      {
-         chatUserModelPtr_->setUserHaveNewMessage(userId, userHaveNewMessage);
+      if (chatUserDataPtr) {
+         chatUserModelPtr_->setUserHaveNewMessage(userId, haveNewMessage);
+      }
+      else {
+
+         Chat::ChatRoomDataPtr chatRoomDataPtr = chatUserModelPtr_->getRoomByRoomId(userId);
+
+         if (chatRoomDataPtr) {
+            chatUserModelPtr_->setRoomHaveNewMessage(userId, haveNewMessage);
+         }
       }
 
       bool hasUnreadMessages = chatUserModelPtr_->hasUnreadMessages();

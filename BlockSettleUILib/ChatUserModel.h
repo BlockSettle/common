@@ -21,6 +21,7 @@ public:
    void setUserStatus(const QString &userId, const ChatUserData::ConnectionStatus &userStatus);
    void setUserState(const QString &userId, const ChatUserData::State &userState);
    void setUserHaveNewMessage(const QString &userId, const bool &haveNewMessage);
+   void setRoomHaveNewMessage(const QString &roomId, const bool &haveNewMessage);
    void resetModel();
 
    bool isChatUserExist(const QString &userId) const;
