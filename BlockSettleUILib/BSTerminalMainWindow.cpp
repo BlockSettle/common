@@ -393,17 +393,17 @@ void BSTerminalMainWindow::LoadWallets()
       updateControlEnabledState();
 
       connect(armory_.get(), &ArmoryConnection::stateChanged, this, [this](ArmoryConnection::State state) {
-         if (!initialWalletCreateDialogShown) {
+         if (!initialWalletCreateDialogShown_) {
             if (state == ArmoryConnection::State::Connected && walletsMgr_ && walletsMgr_->hdWalletsCount() == 0) {
-               initialWalletCreateDialogShown = true;
+               initialWalletCreateDialogShown_ = true;
                QMetaObject::invokeMethod(this, "createWallet", Qt::QueuedConnection, Q_ARG(bool, true));
             }
          }
       });
       QTimer::singleShot(5000, this, [this](){
-         if (!initialWalletCreateDialogShown && !armoryKeyDialogShown_) {
+         if (!initialWalletCreateDialogShown_ && !armoryKeyDialogShown_) {
             if (walletsMgr_ && walletsMgr_->hdWalletsCount() == 0) {
-               initialWalletCreateDialogShown = true;
+               initialWalletCreateDialogShown_ = true;
                QMetaObject::invokeMethod(this, "createWallet", Qt::QueuedConnection, Q_ARG(bool, true));
             }
          }
