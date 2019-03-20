@@ -249,6 +249,10 @@ void AutheIDClient::processResultReply(const QByteArray &payload)
       return;
    }
 
+   if (reply.status() == rp::RP_CANCELLED) {
+      return;
+   }
+
    if (resultAuth_)
    {
        std::string jwtToken = reply.authentication().jwt();
@@ -258,7 +262,7 @@ void AutheIDClient::processResultReply(const QByteArray &payload)
        }
        else
        {
-            // emit failed(tr("Not authenticated"));
+            emit failed(tr("Not authenticated"));
        }
        return;
    }
