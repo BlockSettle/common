@@ -512,7 +512,7 @@ bool ChatClient::addOrUpdateContact(const QString &userId, const QString &userNa
 void ChatClient::sendFriendRequest(const QString &friendUserId)
 {
    // TODO
-   auto request = std::make_shared<Chat::ContactActionRequest>("", currentUserId_, friendUserId.toStdString(), Chat::ContactsAction::Request);
+   auto request = std::make_shared<Chat::ContactActionRequest>("", currentUserId_, friendUserId.toStdString(), Chat::ContactsAction::Request, appSettings_->GetAuthKeys().second);
    sendRequest(request);
 }
 

@@ -1,11 +1,12 @@
 #include "ContactActionRequest.h"
 
 namespace Chat {
-   ContactActionRequest::ContactActionRequest(const std::string& clientId, const std::string& senderId, const std::string& receiverId, ContactsAction action)
+   ContactActionRequest::ContactActionRequest(const std::string& clientId, const std::string& senderId, const std::string& receiverId, ContactsAction action, autheid::PublicKey publicKey)
       : Request (RequestType::RequestContactsAction, clientId)
       , senderId_(senderId)
       , receiverId_(receiverId)
       , action_(action)
+      , senderPublicKey_(publicKey)
    {
       
    }
@@ -16,6 +17,8 @@ namespace Chat {
       data[SenderIdKey] = QString::fromStdString(senderId_);
       data[ReceiverIdKey] = QString::fromStdString(receiverId_);
       data[ContactActionKey] = static_cast<int>(action_);
+      data[PublicKeyKey] = QString::fromStdString(
+         publicKeyToString(senderPublicKey_));
       return data;
    }
    
@@ -25,7 +28,8 @@ namespace Chat {
       std::string senderId = data[SenderIdKey].toString().toStdString();
       std::string receiverId = data[ReceiverIdKey].toString().toStdString();
       ContactsAction action = static_cast<ContactsAction>(data[ContactActionKey].toInt());
-      return std::make_shared<ContactActionRequest>(clientId, senderId, receiverId, action);
+      autheid::PublicKey publicKey = publicKeyFromString(data[PublicKeyKey].toString().toStdString());
+      return std::make_shared<ContactActionRequest>(clientId, senderId, receiverId, action, publicKey);
    }
    
    void ContactActionRequest::handle(RequestHandler& handler)
