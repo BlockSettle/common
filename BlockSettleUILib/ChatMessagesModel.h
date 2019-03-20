@@ -17,6 +17,14 @@ public:
       Message,
       last
    };
+   
+   enum class Role {
+      DateTimeRole = Qt::UserRole,
+      UserNameRole,
+      MessageStatusRole,
+      MessageDataRole
+   };
+
    explicit ChatMessagesModel(QObject *parent = nullptr);
    explicit ChatMessagesModel(std::shared_ptr<ChatClient> client, QObject *parent = nullptr);
    

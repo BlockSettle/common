@@ -7,6 +7,7 @@
 #include "ApplicationSettings.h"
 #include "ChatSearchPopup.h"
 #include "ChatMessagesModel.h"
+#include "ChatMessageDelegate.h"
 #include <QScrollBar>
 #include <QMouseEvent>
 #include <QApplication>
@@ -202,9 +203,12 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
    logger_ = logger;
    client_ = std::make_shared<ChatClient>(connectionManager, appSettings, logger);
    chatDisplay_ = std::make_shared<ChatMessagesModel>(client_, this);
-   ui_->listViewMessages->setModel(chatDisplay_.get());
-   ui_->listViewMessages->setModelColumn((int)ChatMessagesModel::Column::Message);
-   ui_->listViewMessages->setSelectionMode(QListView::ExtendedSelection);
+   ui_->treeViewMessages->setModel(chatDisplay_.get());
+   ui_->treeViewMessages->setRootIsDecorated(false);
+   //ui_->treeViewMessages->setModelColumn((int)ChatMessagesModel::Column::Message);
+   ui_->treeViewMessages->setSelectionMode(QListView::ExtendedSelection);
+   ui_->treeViewMessages->setItemDelegate(new ChatMessageDelegate());
+   ui_->treeViewMessages->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
    
    chatUserListLogicPtr_->init(client_, logger);
    

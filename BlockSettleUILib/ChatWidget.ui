@@ -475,7 +475,7 @@
              </widget>
             </item>
             <item>
-             <widget class="QListView" name="listViewMessages"/>
+             <widget class="QTreeView" name="treeViewMessages"/>
             </item>
            </layout>
           </item>

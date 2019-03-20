@@ -53,7 +53,7 @@ int ChatMessagesModel::rowCount(const QModelIndex& parent) const
 
 int ChatMessagesModel::columnCount(const QModelIndex& parent) const
 {
-    return static_cast<int>(Column::last);
+    return 1;//static_cast<int>(Column::last);
 }
 
 QVariant ChatMessagesModel::data(const QModelIndex& index, int role) const
@@ -62,27 +62,35 @@ QVariant ChatMessagesModel::data(const QModelIndex& index, int role) const
       return QVariant();
    }
    
-   if (role != Qt::DisplayRole) {
+   std::shared_ptr<Chat::MessageData> message = messages_.value(currentChat_).at(index.row());
+   if (role == Qt::DisplayRole) {
+      
+      switch (static_cast<Column>(index.column())) {
+          case Column::Time:
+              return message->getDateTime();
+          case Column::User:
+              return displayUser(message);
+          case Column::Status:
+              return message->getState();
+          case Column::Message:
+              return  QObject::tr("%1 | %2 | %3 |%4| %5")
+                    .arg(message->getDateTime().toString(QString::fromUtf8("MM/dd/yy hh:mm:ss")))
+                    .arg(displayUser(message))
+                    .arg((int)message->getState())
+                    .arg(message->getId())
+                    .arg(message->getMessageData());
+      }
+   } else if (role == static_cast<int>(Role::DateTimeRole)) {
+      return message->getDateTime();
+   } else if (role == static_cast<int>(Role::UserNameRole)) {
+      return displayUser(message);
+   } else if (role == static_cast<int>(Role::MessageStatusRole)) {
+      return message->getState();
+   } else if (role == static_cast<int>(Role::MessageDataRole)) {
+      return message->getMessageData();
+   } else {
       return QVariant();
    }
-   std::shared_ptr<Chat::MessageData> message = messages_.value(currentChat_).at(index.row());
-   
-   switch (static_cast<Column>(index.column())) {
-       case Column::Time:
-           return message->getDateTime();
-       case Column::User:
-           return displayUser(message);
-       case Column::Status:
-           return message->getState();
-       case Column::Message:
-           return  QObject::tr("%1 | %2 | %3 |%4| %5")
-                 .arg(message->getDateTime().toString(QString::fromUtf8("MM/dd/yy hh:mm:ss")))
-                 .arg(displayUser(message))
-                 .arg((int)message->getState())
-                 .arg(message->getId())
-                 .arg(message->getMessageData());
-   }
-   return QVariant();
 }
 
 QString ChatMessagesModel::displayUser(std::shared_ptr<Chat::MessageData> message) const
