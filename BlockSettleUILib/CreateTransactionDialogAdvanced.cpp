@@ -502,7 +502,8 @@ QLabel* CreateTransactionDialogAdvanced::changeLabel() const
    return ui_->labelReturnAmount;
 }
 
-void CreateTransactionDialogAdvanced::onOutputsClicked(const QModelIndex &index) {
+void CreateTransactionDialogAdvanced::onOutputsClicked(const QModelIndex &index)
+{
    if (!index.isValid()) {
       return;
    }
