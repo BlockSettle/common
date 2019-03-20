@@ -101,7 +101,8 @@ void TransactionOutputsModel::RemoveRecipient(int row)
    endRemoveRows();
 }
 
-bool TransactionOutputsModel::isRemoveColumn(int column) {
+bool TransactionOutputsModel::isRemoveColumn(int column)
+{
    return column == ColumnRemove;
 }
 
