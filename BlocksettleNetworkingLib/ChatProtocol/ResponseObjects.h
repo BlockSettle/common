@@ -2,7 +2,7 @@
 
 #include "ResponseObjects/AskForPublicKeyResponse.h"
 #include "ResponseObjects/ChatroomsListResponse.h"
-#include "ResponseObjects/ContactsActionResponse.h"
+#include "ResponseObjects/ContactsActionResponseDirect.h"
 #include "ResponseObjects/HeartbeatPongResponse.h"
 #include "ResponseObjects/ListResponse.h"
 #include "ResponseObjects/LoginResponse.h"

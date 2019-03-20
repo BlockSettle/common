@@ -9,7 +9,7 @@ namespace Chat {
    class LoginResponse;
    class SendMessageResponse;
    class MessageChangeStatusResponse;
-   class ContactsActionResponse;
+   class ContactsActionResponseDirect;
    class ChatroomsListResponse;
    class SendRoomMessageResponse;
    class RoomMessagesResponse;
@@ -32,7 +32,7 @@ namespace Chat {
       
       virtual void OnSendMessageResponse(const SendMessageResponse&) = 0;
       virtual void OnMessageChangeStatusResponse(const MessageChangeStatusResponse&) = 0;
-      virtual void OnContactsActionResponse(const ContactsActionResponse&) = 0;
+      virtual void OnContactsActionResponse(const ContactsActionResponseDirect&) = 0;
       
       virtual void OnChatroomsList(const ChatroomsListResponse&) = 0;
       virtual void OnRoomMessages(const RoomMessagesResponse&) = 0;
