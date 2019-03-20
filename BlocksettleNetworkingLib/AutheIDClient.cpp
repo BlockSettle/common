@@ -258,7 +258,7 @@ void AutheIDClient::processResultReply(const QByteArray &payload)
        }
        else
        {
-            emit failed(tr("Not authenticated"));
+            // emit failed(tr("Not authenticated"));
        }
        return;
    }
