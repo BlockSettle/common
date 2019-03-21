@@ -667,6 +667,16 @@ HeadlessContainer::RequestId HeadlessContainer::changePassword(const std::string
    return Send(packet);
 }
 
+SignContainer::RequestId HeadlessContainer::customDialogRequest()
+{
+   headless::CustomDialogRequest request;
+
+   headless::RequestPacket packet;
+   packet.set_type(headless::ExecCustomDialogRequestType);
+   packet.set_data(request.SerializeAsString());
+   return Send(packet);
+}
+
 HeadlessContainer::RequestId HeadlessContainer::getDecryptedRootKey(const std::string &walletId
    , const SecureBinaryData &password)
 {

@@ -425,55 +425,58 @@ void WalletsWidget::onNewWallet()
 
 bool WalletsWidget::CreateNewWallet(bool report)
 {
-   NetworkType netType = appSettings_->get<NetworkType>(ApplicationSettings::netType);
+   int createReqId_ = signingContainer_->customDialogRequest();
+   return true;
 
-   bs::core::wallet::Seed walletSeed(netType, CryptoPRNG::generateRandom(32));
+//   NetworkType netType = appSettings_->get<NetworkType>(ApplicationSettings::netType);
 
-   EasyCoDec::Data easyData = walletSeed.toEasyCodeChecksum();
+//   bs::core::wallet::Seed walletSeed(netType, CryptoPRNG::generateRandom(32));
 
-   const auto walletId = walletSeed.getWalletId();
+//   EasyCoDec::Data easyData = walletSeed.toEasyCodeChecksum();
 
-   NewWalletSeedDialog newWalletSeedDialog(QString::fromStdString(walletId)
-      , QString::fromStdString(easyData.part1), QString::fromStdString(easyData.part2), this);
+//   const auto walletId = walletSeed.getWalletId();
 
-   int result = newWalletSeedDialog.exec();
-   if (!result) {
-      return false;
-   }
-   // get the user to confirm the seed
-   NewWalletSeedConfirmDialog dlg(walletId, netType
-      , QString::fromStdString(easyData.part1), QString::fromStdString(easyData.part2), this);
-   result = dlg.exec();
-   if (!result) {
-      return false;
-   }
-   std::shared_ptr<bs::sync::hd::Wallet> newWallet;
+//   NewWalletSeedDialog newWalletSeedDialog(QString::fromStdString(walletId)
+//      , QString::fromStdString(easyData.part1), QString::fromStdString(easyData.part2), this);
+
+//   int result = newWalletSeedDialog.exec();
+//   if (!result) {
+//      return false;
+//   }
+//   // get the user to confirm the seed
+//   NewWalletSeedConfirmDialog dlg(walletId, netType
+//      , QString::fromStdString(easyData.part1), QString::fromStdString(easyData.part2), this);
+//   result = dlg.exec();
+//   if (!result) {
+//      return false;
+//   }
+//   std::shared_ptr<bs::sync::hd::Wallet> newWallet;
+////   CreateWalletDialog createWalletDialog(walletsManager_, signingContainer_
+////      , appSettings_->GetHomeDir(), walletSeed, walletId, username_, appSettings_, this);
 //   CreateWalletDialog createWalletDialog(walletsManager_, signingContainer_
-//      , appSettings_->GetHomeDir(), walletSeed, walletId, username_, appSettings_, this);
-   CreateWalletDialog createWalletDialog(walletsManager_, signingContainer_
-      , walletSeed, walletId, username_, appSettings_, connectionManager_, logger_, this);
-   if (createWalletDialog.exec() == QDialog::Accepted) {
-      if (createWalletDialog.walletCreated()) {
-         newWallet = walletsManager_->getHDWalletById(walletId);
-         if (!newWallet) {
-            showError(tr("Failed to find newly created wallet"));
-            return false;
-         }
+//      , walletSeed, walletId, username_, appSettings_, connectionManager_, logger_, this);
+//   if (createWalletDialog.exec() == QDialog::Accepted) {
+//      if (createWalletDialog.walletCreated()) {
+//         newWallet = walletsManager_->getHDWalletById(walletId);
+//         if (!newWallet) {
+//            showError(tr("Failed to find newly created wallet"));
+//            return false;
+//         }
 
-         if (report) {
-            BSMessageBox(BSMessageBox::success
-               , tr("%1Wallet Created").arg(createWalletDialog.isNewWalletPrimary() ? tr("Primary ") : QString())
-               , tr("Wallet \"%1\" Successfully Created").arg(QString::fromStdString(newWallet->name())), this).exec();
-         }
+//         if (report) {
+//            BSMessageBox(BSMessageBox::success
+//               , tr("%1Wallet Created").arg(createWalletDialog.isNewWalletPrimary() ? tr("Primary ") : QString())
+//               , tr("Wallet \"%1\" Successfully Created").arg(QString::fromStdString(newWallet->name())), this).exec();
+//         }
 
-         return true;
-      } else {
-         showError(tr("Failed to create wallet"));
-         return false;
-      }
-   } else {
-      return false;
-   }
+//         return true;
+//      } else {
+//         showError(tr("Failed to create wallet"));
+//         return false;
+//      }
+//   } else {
+//      return false;
+//   }
 }
 
 bool WalletsWidget::ImportNewWallet(bool report)

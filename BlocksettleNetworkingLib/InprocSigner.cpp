@@ -226,6 +226,11 @@ void InprocSigner::createSettlementWallet(const std::function<void(const std::sh
    }
 }
 
+SignContainer::RequestId InprocSigner::customDialogRequest()
+{
+   return 0;
+}
+
 SignContainer::RequestId InprocSigner::SetUserId(const BinaryData &userId)
 {
    walletsMgr_->setChainCode(userId);

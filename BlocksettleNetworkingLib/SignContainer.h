@@ -151,6 +151,9 @@ public:
       , bs::wallet::KeyRank, const SecureBinaryData &oldPass, bool addNew, bool removeOld, bool dryRun) = 0;
    virtual void createSettlementWallet(const std::function<void(const std::shared_ptr<bs::sync::SettlementWallet> &)> &) {}
 
+   //
+   virtual RequestId customDialogRequest() = 0;
+
    virtual void syncWalletInfo(const std::function<void(std::vector<bs::sync::WalletInfo>)> &) = 0;
    virtual void syncHDWallet(const std::string &id, const std::function<void(bs::sync::HDWalletData)> &) = 0;
    virtual void syncWallet(const std::string &id, const std::function<void(bs::sync::WalletData)> &) = 0;
