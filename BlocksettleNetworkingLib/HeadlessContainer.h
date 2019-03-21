@@ -120,7 +120,6 @@ public:
       , const QString &port, NetworkType netType
       , const std::shared_ptr<ConnectionManager>& connectionManager
       , const std::shared_ptr<ApplicationSettings>& appSettings
-      , const SecureBinaryData& pubKey
       , OpMode opMode = OpMode::Remote);
    ~RemoteSigner() noexcept = default;
 
@@ -147,7 +146,6 @@ protected:
    const QString          port_;
    const NetworkType      netType_;
    std::shared_ptr<ZmqSecuredDataConnection> connection_;
-   SecureBinaryData       zmqSignerPubKey_;
    bool  authPending_ = false;
    std::shared_ptr<ApplicationSettings> appSettings_;
 
@@ -164,7 +162,7 @@ public:
       , NetworkType, const QString &port
       , const std::shared_ptr<ConnectionManager>& connectionManager
       , const std::shared_ptr<ApplicationSettings>& appSettings
-      , const SecureBinaryData& pubKey, SignContainer::OpMode mode = OpMode::Local
+      , SignContainer::OpMode mode = OpMode::Local
       , double asSpendLimit = 0);
    ~LocalSigner() noexcept = default;
 
