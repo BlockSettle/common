@@ -169,7 +169,7 @@ std::shared_ptr<AddressEntry> hd::Leaf::getAddressEntryForAddr(const BinaryData 
    assert(itAddr != addressMap_.end());
 
    const auto addrPair = itAddr->second;
-   const auto asset = std::get<1>(addrPair)->getAsset(-1);
+   const auto asset = std::get<1>(addrPair)->getAsset(WRITE_UINT32_BE(UINT32_MAX));
    const auto addrType = std::get<0>(addrPair).getType();
    return getAddressEntryForAsset(asset, addrType);
 }

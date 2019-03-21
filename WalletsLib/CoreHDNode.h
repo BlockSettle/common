@@ -43,7 +43,7 @@ namespace bs {
             BinaryData pubCompressedKey() const;
             virtual BinaryData pubChainedKey() const { return pubCompressedKey(); }
             BinaryData chainCode() const;
-            std::shared_ptr<AssetEntry_Single> getAsset(int id) const;
+            std::shared_ptr<AssetEntry_Single> getAsset(BinaryData id) const;
             wallet::Seed seed() const;
             std::string getId() const;
 
