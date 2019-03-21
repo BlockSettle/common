@@ -248,7 +248,7 @@
               </size>
              </property>
              <property name="toolTip">
-              <string>A Z85-encoded key (40 bytes) used to connect to the signer. Choose between a file with the key, or manually entering the key.</string>
+              <string>When enabled, both the terminal and signer will verify each other. If not enabled, only the terminal will verify the signer. Both the terminal and the signer must have the same setting for two-way authentication.</string>
              </property>
              <property name="styleSheet">
               <string notr="true">image: url(&quot;:/resources/notification_info@2x.png&quot;);</string>
@@ -393,7 +393,7 @@
               <bool>false</bool>
              </property>
              <property name="placeholderText">
-              <string>Enter ZMQ key</string>
+              <string>Enter signer handshake key (compressed secp256k1 hex key)</string>
              </property>
             </widget>
            </item>
@@ -589,7 +589,7 @@
               </size>
              </property>
              <property name="toolTip">
-              <string>A Z85-encoded key (40 bytes) used to connect to the signer. Choose between a file with the key, or manually entering the key.</string>
+              <string>A 33-byte, hex-encoded key (secp256k1) presented by the signer to the terminal during the initial handshake. Choose between a file with the key, or manually entering the key.</string>
              </property>
              <property name="styleSheet">
               <string notr="true">image: url(&quot;:/resources/notification_info@2x.png&quot;);</string>
@@ -695,7 +695,7 @@
               </size>
              </property>
              <property name="toolTip">
-              <string>A Z85-encoded key (40 bytes) used to connect to the signer.</string>
+              <string>A 33-byte, hex-encoded key (secp256k1) presented by the terminal to the signer during the initial handshake.</string>
              </property>
              <property name="styleSheet">
               <string notr="true">image: url(&quot;:/resources/notification_info@2x.png&quot;);</string>
