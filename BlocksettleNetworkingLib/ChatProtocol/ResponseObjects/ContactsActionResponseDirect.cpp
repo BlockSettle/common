@@ -34,6 +34,6 @@ namespace Chat {
    
    void ContactsActionResponseDirect::handle(ResponseHandler& handler)
    {
-      return handler.OnContactsActionResponse(*this);
+      return handler.OnContactsActionResponseDirect(*this);
    }
 }

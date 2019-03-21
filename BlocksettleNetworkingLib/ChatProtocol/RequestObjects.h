@@ -12,5 +12,6 @@
 #include "RequestObjects/ContactActionRequestServer.h"
 #include "RequestObjects/ChatroomsListRequest.h"
 #include "RequestObjects/SendRoomMessageRequest.h"
+#include "RequestObjects/ContactsListRequest.h"
 
 #include "RequestHandler.h"

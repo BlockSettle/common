@@ -13,9 +13,11 @@ using namespace Chat;
 #include "SendMessageResponse.h"
 #include "MessageChangeStatusResponse.h"
 #include "ContactsActionResponseDirect.h"
+#include "ContactsActionResponseServer.h"
 #include "ChatroomsListResponse.h"
 #include "PendingMessagesResponse.h"
 #include "RoomMessagesResponse.h"
+#include "ContactsListResponse.h"
 
 static std::map<std::string, ResponseType> ResponseTypeFromString
 {
@@ -31,8 +33,10 @@ static std::map<std::string, ResponseType> ResponseTypeFromString
    ,   { "ResponseSendMessage"         ,   ResponseType::ResponseSendMessage         }
    ,   { "ResponseChangeMessageStatus" ,   ResponseType::ResponseChangeMessageStatus }
    ,   { "ResponseContactsActionDirect",   ResponseType::ResponseContactsActionDirect}
+   ,   { "ResponseContactsActionServer",   ResponseType::ResponseContactsActionServer}
    ,   { "ResponseChatroomsList"       ,   ResponseType::ResponseChatroomsList       }
    ,   { "ResponseRoomMessages"        ,   ResponseType::ResponseRoomMessages        }
+   ,   { "ResponseContactsList"        ,   ResponseType::ResponseContactsList        }
 };
 
 
@@ -50,8 +54,10 @@ static std::map<ResponseType, std::string> ResponseTypeToString
    ,   { ResponseType::ResponseSendMessage         ,  "ResponseSendMessage"         }
    ,   { ResponseType::ResponseChangeMessageStatus ,  "ResponseChangeMessageStatus" }
    ,   { ResponseType::ResponseContactsActionDirect,  "ResponseContactsActionDirect"}
+   ,   { ResponseType::ResponseContactsActionServer,  "ResponseContactsActionServer"}
    ,   { ResponseType::ResponseChatroomsList       ,  "ResponseChatroomsList"       }
    ,   { ResponseType::ResponseRoomMessages        ,  "ResponseRoomMessages"        }
+   ,   { ResponseType::ResponseContactsList        ,  "ResponseContactsList"        }
 };
 
 template <typename T>
@@ -114,11 +120,17 @@ std::shared_ptr<Response> Response::fromJSON(const std::string& jsonData)
       
       case ResponseType::ResponseContactsActionDirect:
          return ContactsActionResponseDirect::fromJSON(jsonData);
+
+      case ResponseType::ResponseContactsActionServer:
+         return ContactsActionResponseServer::fromJSON(jsonData);
       
       case ResponseType::ResponseChatroomsList:
          return ChatroomsListResponse::fromJSON(jsonData);
       case ResponseType::ResponseRoomMessages:
          return RoomMessagesResponse::fromJSON(jsonData);
+
+      case ResponseType::ResponseContactsList:
+         return ContactsListResponse::fromJSON(jsonData);
 
       default:
          break;

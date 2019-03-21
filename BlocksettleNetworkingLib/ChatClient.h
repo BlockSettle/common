@@ -50,7 +50,9 @@ public:
    void OnLoginReturned(const Chat::LoginResponse &) override;
    void OnSendMessageResponse(const Chat::SendMessageResponse& ) override;
    void OnMessageChangeStatusResponse(const Chat::MessageChangeStatusResponse&) override;
-   void OnContactsActionResponse(const Chat::ContactsActionResponseDirect&) override;
+   void OnContactsActionResponseDirect(const Chat::ContactsActionResponseDirect&) override;
+   void OnContactsActionResponseServer(const Chat::ContactsActionResponseServer&) override;
+   void OnContactsListResponse(const Chat::ContactsListResponse&) override;
    void OnChatroomsList(const Chat::ChatroomsListResponse&) override;
    void OnRoomMessages(const Chat::RoomMessagesResponse&) override;
 

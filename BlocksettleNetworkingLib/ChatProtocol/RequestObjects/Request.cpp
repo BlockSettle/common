@@ -14,6 +14,7 @@
 #include "ContactActionRequestServer.h"
 #include "ChatroomsListRequest.h"
 #include "SendRoomMessageRequest.h"
+#include "ContactsListRequest.h"
 
 using namespace Chat;
 
@@ -32,6 +33,7 @@ static std::map<std::string, RequestType> RequestTypeFromString
    ,   { "RequestContactsActionServer",   RequestType::RequestContactsActionServer}
    ,   { "RequestChatroomsList"       ,   RequestType::RequestChatroomsList       }
    ,   { "RequestSendRoomMessage"     ,   RequestType::RequestSendRoomMessage     }
+   ,   { "RequestContactsList"        ,   RequestType::RequestContactsList        }
 };
 
 
@@ -50,6 +52,7 @@ static std::map<RequestType, std::string> RequestTypeToString
    ,   { RequestType::RequestContactsActionServer,   "RequestContactsActionServer"}
    ,   { RequestType::RequestChatroomsList       ,   "RequestChatroomsList"       }
    ,   { RequestType::RequestSendRoomMessage     ,   "RequestSendRoomMessage"     }
+   ,   { RequestType::RequestContactsList        ,   "RequestContactsList"        }
 };
 
 template <typename T>
@@ -125,8 +128,12 @@ std::shared_ptr<Request> Request::fromJSON(const std::string& clientId, const st
       case RequestType::RequestChatroomsList:
          return std::make_shared<ChatroomsListRequest>(clientId
                , data[SenderIdKey].toString().toStdString());
+
       case RequestType::RequestSendRoomMessage:
          return SendRoomMessageRequest::fromJSON(clientId, jsonData);
+
+      case RequestType::RequestContactsList:
+         return ContactsListRequest::fromJSON(clientId, jsonData);
 
       default:
          break;

@@ -147,7 +147,7 @@ void ChatClient::OnMessageChangeStatusResponse(const Chat::MessageChangeStatusRe
    return;
 }
 
-void ChatClient::OnContactsActionResponse(const Chat::ContactsActionResponseDirect& response)
+void ChatClient::OnContactsActionResponseDirect(const Chat::ContactsActionResponseDirect& response)
 {
    std::string actionString = "<unknown>";
    switch (response.getAction()) {
@@ -164,10 +164,65 @@ void ChatClient::OnContactsActionResponse(const Chat::ContactsActionResponseDire
          emit IncomingFriendRequest({response.senderId()});
       break;
    }
-   logger_->debug("[ChatClient::OnContactsActionResponse]: Incoming contact action from {}: {}",
+   logger_->debug("[ChatClient::OnContactsActionResponseDirect]: Incoming contact action from {}: {}",
                   response.senderId(),
                   actionString
                   );
+}
+
+void ChatClient::OnContactsActionResponseServer(const Chat::ContactsActionResponseServer & response)
+{
+   std::string actionString = "<unknown>";
+   switch (response.getRequestedAction()) {
+      case Chat::ContactsActionServer::AddContactRecord:
+         actionString = "ContactsActionServer::AddContactRecord";
+      break;
+      case Chat::ContactsActionServer::RemoveContactRecord:
+         actionString = "ContactsActionServer::RemoveContactRecord";
+      break;
+      case Chat::ContactsActionServer::UpdateContactRecord:
+         actionString = "ContactsActionServer::UpdateContactRecord";
+      break;
+      default:
+      break;
+   }
+
+   std::string actionResString = "<unknown>";
+   switch (response.getActionResult()) {
+      case Chat::ContactsActionServerResult::Success:
+         actionResString = "ContactsActionServerResult::Success";
+      break;
+      case Chat::ContactsActionServerResult::Failed:
+         actionResString = "ContactsActionServerResult::Failed";
+      break;
+      default:
+      break;
+   }
+
+   logger_->debug("[ChatClient::OnContactsActionResponseServer]: Reseived response for server contact action:\n"
+                  "userID: {} | contactID: {}"
+                  "requested action: {}",
+                  "action result:    {}",
+                  "message:          {}",
+                  response.userId(),
+                  response.contactId(),
+                  actionString,
+                  actionResString,
+                  response.message()
+                  );
+}
+
+void ChatClient::OnContactsListResponse(const Chat::ContactsListResponse & response)
+{
+   QStringList contactsListStr;
+   const auto& contacts = response.getContactsList();
+   for (auto &contact : contacts){
+      contactsListStr << QString::fromStdString(contact->toJsonString());
+   }
+
+   logger_->debug("[ChatClient::OnContactsListResponse]:Received {} contacts, from server: [{}]"
+               , QString::number(contacts.size()).toStdString()
+               , contactsListStr.join(QLatin1String(", ")).toStdString());
 }
 
 void ChatClient::OnChatroomsList(const Chat::ChatroomsListResponse& response)

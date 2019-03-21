@@ -27,6 +27,7 @@ namespace Chat
    ,   RequestContactsActionServer
    ,   RequestChatroomsList
    ,   RequestSendRoomMessage
+   ,   RequestContactsList
    };
 
 
@@ -44,8 +45,10 @@ namespace Chat
    ,   ResponseSendMessage
    ,   ResponseChangeMessageStatus
    ,   ResponseContactsActionDirect
+   ,   ResponseContactsActionServer
    ,   ResponseChatroomsList
    ,   ResponseRoomMessages
+   ,   ResponseContactsList
    };
    
    enum class ContactsAction {
@@ -63,6 +66,11 @@ namespace Chat
        AddContactRecord,
        RemoveContactRecord,
        UpdateContactRecord
+   };
+
+   enum class ContactsActionServerResult {
+       Success,
+       Failed
    };
    
    static const QString VersionKey   = QStringLiteral("version");
@@ -92,6 +100,8 @@ namespace Chat
    static const QString ContactIdKey = QStringLiteral("contact_id");
    static const QString MessageStateKey = QStringLiteral("message_state");
    static const QString ContactActionKey = QStringLiteral("contacts_action");
+   static const QString ContactActionResultKey = QStringLiteral("contacts_action_result");
+   static const QString ContactActionResultMessageKey = QStringLiteral("contacts_action_result_message");
    static const QString ContactStatusKey = QStringLiteral("contact_status");
    static const QString RoomKeyKey = QStringLiteral("room_id");
    static const QString RoomTitleKey = QStringLiteral("room_title");
