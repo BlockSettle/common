@@ -13,10 +13,10 @@ namespace Chat {
       static std::shared_ptr<Response> fromJSON(const std::string& jsonData);
       void handle(ResponseHandler&) override;
       std::string userId() const;
-      std::string contactId() const {return contactId_;}
-      std::string message() const {return message_;}
-      ContactsActionServer getRequestedAction() const {return requestedAction_;}
-      ContactsActionServerResult getActionResult() const {return actionResult_;}
+      std::string contactId() const;
+      std::string message() const;
+      ContactsActionServer getRequestedAction() const;
+      ContactsActionServerResult getActionResult() const;
 
    private:
       std::string userId_;

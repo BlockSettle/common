@@ -39,4 +39,17 @@ namespace Chat {
    {
       return handler.OnContactsActionResponseServer(*this);
    }
-}
+
+   std::string ContactsActionResponseServer::userId() const
+   {
+      return userId_;
+   }
+
+   std::string ContactsActionResponseServer::contactId() const {return contactId_;}
+
+   std::string ContactsActionResponseServer::message() const {return message_;}
+
+   ContactsActionServer ContactsActionResponseServer::getRequestedAction() const {return requestedAction_;}
+
+   ContactsActionServerResult ContactsActionResponseServer::getActionResult() const {return actionResult_;}
+   }
