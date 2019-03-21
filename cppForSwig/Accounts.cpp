@@ -405,7 +405,7 @@ void AssetAccount::extendPrivateChain(
    ReentrantLock lock(this);
    auto lastIndex = getLastComputedIndex();
 
-   unsigned assetIndex = 0;
+   unsigned assetIndex = UINT32_MAX;
    if (assetPtr != nullptr)
       assetIndex = assetPtr->getIndex();
 
@@ -691,8 +691,10 @@ void AddressAccount::make_new(
             decrData->encryptData(cipher_copy.get(), node.getPrivateKey());
 
          //create assets
+         auto privKeyID = full_account_id;
+         privKeyID.append(WRITE_UINT32_LE(UINT32_MAX));
          auto priv_asset = make_shared<Asset_PrivateKey>(
-            -1, encrypted_root, move(cipher_copy));
+            privKeyID, encrypted_root, move(cipher_copy));
          rootAsset = make_shared<AssetEntry_BIP32Root>(
             -1, full_account_id,
             pubkey, priv_asset,
@@ -1092,6 +1094,21 @@ shared_ptr<AssetEntry> AddressAccount::getAssetForID(const BinaryData& ID) const
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+shared_ptr<AssetEntry> AddressAccount::getAssetForID(unsigned ID, 
+   bool outer) const
+{
+   BinaryDataRef accountID(outerAccount_);
+   if (!outer)
+      accountID.setRef(innerAccount_);
+
+   auto iter = assetAccounts_.find(accountID);
+   if (iter == assetAccounts_.end())
+      throw AccountException("unknown account ID");
+
+   return iter->second->getAssetForID(WRITE_UINT32_BE(ID));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 const pair<BinaryData, AddressEntryType>& 
    AddressAccount::getAssetIDPairForAddr(const BinaryData& scrAddr)
 {
@@ -1367,6 +1384,14 @@ BinaryData AccountType_BIP32_Custom::getInnerAccountID(void) const
       return innerAccount_;
 
    return WRITE_UINT32_BE(UINT32_MAX);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+unsigned AccountType_BIP32_Custom::getAddressLookup() const
+{
+   if (addressLookup_ == UINT32_MAX)
+      throw AccountException("uninitialiazed address lookup");
+   return addressLookup_;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

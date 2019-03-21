@@ -417,7 +417,8 @@ BinaryData Asset_PrivateKey::serialize() const
 {
    BinaryWriter bw;
    bw.put_uint8_t(PRIVKEY_BYTE);
-   bw.put_int32_t(id_);
+   bw.put_var_int(id_.getSize());
+   bw.put_BinaryData(id_);
    bw.put_var_int(data_.getSize());
    bw.put_BinaryData(data_);
 
@@ -505,10 +506,11 @@ shared_ptr<Asset_EncryptedData> Asset_EncryptedData::deserialize(
    case PRIVKEY_BYTE:
    {
       //id
-      auto&& id = brr.get_int32_t();
+      auto len = brr.get_var_int();
+      auto&& id = brr.get_BinaryData(len);
 
       //data
-      auto len = brr.get_var_int();
+      len = brr.get_var_int();
       auto&& data = brr.get_SecureBinaryData(len);
 
       //cipher

@@ -104,19 +104,19 @@ public:
 struct DecryptedPrivateKey
 {
 private:
-   const unsigned id_;
+   const BinaryData id_;
    const SecureBinaryData privateKey_;
 
 private:
    const SecureBinaryData& getData(void) const { return privateKey_; }
 
 public:
-   DecryptedPrivateKey(unsigned id, SecureBinaryData& key) :
+   DecryptedPrivateKey(const BinaryData& id, SecureBinaryData& key) :
       id_(id), privateKey_(std::move(key))
    {}
 
    bool hasData(void) const { return privateKey_.getSize() != 0; }
-   const unsigned& getId(void) const { return id_; }
+   const BinaryData& getId(void) const { return id_; }
    const SecureBinaryData& getDataRef(void) const { return privateKey_; }
 };
 
@@ -273,20 +273,20 @@ struct Asset_PrivateKey : public Asset_EncryptedData
    friend class DecryptedDataContainer;
 
 public:
-   const int id_;
+   const BinaryData id_;
 
 private:
    std::unique_ptr<DecryptedPrivateKey> decrypt(
       const SecureBinaryData& key) const;
 
 public:
-   Asset_PrivateKey(int id,
+   Asset_PrivateKey(const BinaryData& id,
       SecureBinaryData& data, std::unique_ptr<Cipher> cipher) :
       Asset_EncryptedData(data, std::move(cipher)), id_(id)
    {}
 
    BinaryData serialize(void) const;
-   unsigned getId(void) const { return id_; }
+   const BinaryData& getId(void) const { return id_; }
 
    bool isSame(Asset_EncryptedData* const) const;
 };

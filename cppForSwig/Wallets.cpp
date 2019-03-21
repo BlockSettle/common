@@ -298,6 +298,7 @@ const BinaryData& AssetWallet_Single::createBIP32Account(
       accountTypePtr->setMain(true);
 
    auto accountPtr = createAccount(accountTypePtr);
+   accountPtr->extendPrivateChain(decryptedData_, DERIVATION_LOOKUP);
    return accountPtr->getID();
 }
 
@@ -363,7 +364,7 @@ const BinaryData& AssetWallet_Single::createBIP32Account(
          root->getDepth(), root->getLeafID(),
          pubkey, chaincode);
       for (auto& path : derPath)
-         bip32Node.derivePrivate(path);
+         bip32Node.derivePublic(path);
 
       auto derivedKey = bip32Node.movePublicKey();
       auto derivedCode = bip32Node.moveChaincode();
@@ -373,6 +374,7 @@ const BinaryData& AssetWallet_Single::createBIP32Account(
    }
 
    auto accountPtr = createAccount(accTypePtr);
+   accountPtr->extendPrivateChain(decryptedData_, accTypePtr->getAddressLookup());
    return accountPtr->getID();
 }
 
@@ -629,7 +631,7 @@ shared_ptr<AssetWallet_Single> AssetWallet_Single::createFromSeed_BIP32(
       rootNode.getPrivateKey(),
       rootNode.getChaincode(),
       move(accountTypes),
-      lookup - 1);
+      lookup);
 
    //set as main
    {
@@ -741,7 +743,7 @@ shared_ptr<AssetWallet_Single> AssetWallet_Single::createFromBase58_BIP32(
          node.getPrivateKey(),
          node.getChaincode(),
          move(accountTypes),
-         lookup - 1);
+         lookup);
    }
    else
    {
@@ -760,7 +762,7 @@ shared_ptr<AssetWallet_Single> AssetWallet_Single::createFromBase58_BIP32(
          wltMetaPtr,
          pubkey_copy,
          move(accountTypes),
-         lookup - 1);
+         lookup);
    }
 
    //set as main
@@ -797,11 +799,14 @@ shared_ptr<AssetWallet_Single> AssetWallet_Single::createFromSeed_BIP32_Blank(
    auto&& masterID_long = BtcUtils::getHMAC256(
       pubkey, SecureBinaryData(hmacMasterMsg));
    auto&& masterID = BtcUtils::computeID(masterID_long);
-   string masterIDStr(masterID.getCharPtr(), masterID.getSize());
+   string masterIDStr(masterID.getCharPtr());
 
    //create wallet file and dbenv
    stringstream pathSS;
-   pathSS << folder << "/armory_" << masterIDStr << "_wallet.lmdb";
+   pathSS << folder;
+   if (*folder.rbegin() != '/')
+      pathSS << "/";
+   pathSS << "armory_" << masterIDStr << "_wallet.lmdb";
    auto dbenv = getEnvFromFile(pathSS.str(), 2);
 
    initWalletMetaDB(dbenv, masterIDStr);
@@ -1108,7 +1113,7 @@ shared_ptr<AssetWallet_Single> AssetWallet_Single::initWalletDb(
 
    //create encrypted object
    auto rootAsset = make_shared<Asset_PrivateKey>(
-      -1, encryptedRoot, move(rootCipher));
+      WRITE_UINT32_BE(UINT32_MAX), encryptedRoot, move(rootCipher));
 
    bool isBip32 = false;
    unsigned armory135AccCount = 0;
@@ -1808,6 +1813,23 @@ const string& AssetWallet::getDbFilename(void) const
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+void AssetWallet::shutdown()
+{
+   if (db_ != nullptr)
+   {
+      db_->close();
+      delete db_;
+      db_ = nullptr;
+   }
+
+   if (dbEnv_ != nullptr)
+   {
+      dbEnv_->close();
+      dbEnv_ = nullptr;
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 AddressEntryType AssetWallet::getAddrTypeForAccount(const BinaryData& ID)
 {
    auto acc = getAccountForID(ID);
@@ -1870,15 +1892,6 @@ shared_ptr<AddressEntry> AssetWallet::getAddressEntryForID(
 
    auto asset = getAssetForID(ID);
    return getAddressEntryForAsset(asset, aeType);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-const string& AssetWallet::getFilename() const
-{
-   if (dbEnv_ == nullptr)
-      throw runtime_error("null dbenv");
-
-   return dbEnv_->getFilename();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

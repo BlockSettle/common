@@ -277,7 +277,7 @@ public:
    AddressEntryType getAddrTypeForID(const BinaryData& ID);
    std::shared_ptr<AddressEntry> getAddressEntryForID(
       const BinaryData&, AddressEntryType aeType = AddressEntryType_Default);
-   const std::string& getFilename(void) const;
+   void shutdown(void);
 
    void setPassphrasePromptLambda(
       std::function<SecureBinaryData(const BinaryData&)> lambda)

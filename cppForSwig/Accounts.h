@@ -197,7 +197,7 @@ public:
 ////////////////////
 struct AccountType_BIP32 : public AccountType
 {   
-   friend class AccountType_BIP32_Custom;
+   friend struct AccountType_BIP32_Custom;
 private:
    const std::vector<unsigned> derivationPath_;
    unsigned depth_ = 0;
@@ -334,6 +334,7 @@ private:
    BinaryData innerAccount_;
 
    std::set<unsigned> nodes_;
+   unsigned addressLookup_ = UINT32_MAX;
 
 private:
    void setPrivateKey(const SecureBinaryData&);
@@ -352,8 +353,9 @@ public:
          depth, leafId)
    {}
 
-   AccountType_BIP32_Custom(std::vector<unsigned> derPath) :
-      AccountType_BIP32(AccountTypeEnum_BIP32_Custom, derPath, 0, 0)
+   AccountType_BIP32_Custom(void) :
+      AccountType_BIP32(AccountTypeEnum_BIP32_Custom, 
+         std::vector<unsigned>(), 0, 0)
    {}
 
    /***
@@ -378,6 +380,7 @@ public:
    std::set<unsigned> getNodes(void) const { return nodes_; }
    BinaryData getOuterAccountID(void) const;
    BinaryData getInnerAccountID(void) const;
+   unsigned getAddressLookup(void) const;
 
    //set methods
    void setNodes(const std::set<unsigned>& nodes);
@@ -385,7 +388,7 @@ public:
    void setInnerAccountID(const BinaryData&);
    void setAddressTypes(const std::set<AddressEntryType>&);
    void setDefaultAddressType(AddressEntryType);
-
+   void setAddressLookup(unsigned count) { addressLookup_ = count; }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -591,7 +594,13 @@ public:
    std::set<AddressEntryType> getAddressTypeSet(void) const { return addressTypes_; }
    bool hasAddressType(AddressEntryType);
 
+   //get asset by binary string ID
    std::shared_ptr<AssetEntry> getAssetForID(const BinaryData&) const;
+
+   //get asset by integer ID; bool arg defines whether it comes from the
+   //outer account (true) or the inner account (false)
+   std::shared_ptr<AssetEntry> getAssetForID(unsigned, bool) const;
+
    const std::pair<BinaryData, AddressEntryType>& getAssetIDPairForAddr(const BinaryData&);
 
    void updateAddressHashMap(void);
