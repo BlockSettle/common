@@ -975,7 +975,7 @@ void HeadlessContainer::ProcessSyncWallet(unsigned int id, const std::string &da
       if (addr.isNull()) {
          continue;
       }
-      result.addrPool.push_back({ addrInfo.index(), std::move(addr) });
+      result.addrPool.push_back({ addrInfo.index(), std::move(addr), "" });
    }
    for (int i = 0; i < response.txcomments_size(); ++i) {
       const auto txInfo = response.txcomments(i);
