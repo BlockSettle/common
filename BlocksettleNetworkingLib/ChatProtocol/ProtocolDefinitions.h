@@ -99,6 +99,7 @@ namespace Chat
    static const QString RoomIsPrivateKey = QStringLiteral("room_is_private");
    static const QString RoomSendUserUpdatesKey = QStringLiteral("room_send_user_updates");
    static const QString RoomDisplayUserListKey = QStringLiteral("room_display_user_list");
+   static const QString UserIdKey = QStringLiteral("user_id");
 
 
    template <typename T>

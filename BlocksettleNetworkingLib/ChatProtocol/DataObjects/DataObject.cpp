@@ -5,6 +5,7 @@
 
 #include "MessageData.h"
 #include "ChatRoomData.h"
+#include "ContactRecordData.h"
 
 namespace Chat {
    
@@ -14,12 +15,14 @@ namespace Chat {
    {
           { "MessageData" , DataObject::Type::MessageData }
       ,   { "ChatRoomData", DataObject::Type::ChatRoomData}
+      ,   { "ContactRecordData", DataObject::Type::ContactRecordData}
    };
    
    static std::map<DataObject::Type, std::string> DataObjectTypeToString
    {
           { DataObject::Type::MessageData , "MessageData"   }
       ,   { DataObject::Type::ChatRoomData, "ChatRoomData" }
+      ,   { DataObject::Type::ContactRecordData, "ContactRecordData" }
    };
    
    DataObject::DataObject(DataObject::Type type)
@@ -57,6 +60,8 @@ namespace Chat {
             return MessageData::fromJSON(jsonData);
          case DataObject::Type::ChatRoomData:
             return ChatRoomData::fromJSON(jsonData);
+         case DataObject::Type::ContactRecordData:
+            return ContactRecordData::fromJSON(jsonData);
       }
       
       return nullptr;

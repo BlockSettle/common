@@ -2,3 +2,4 @@
 
 #include "DataObjects/MessageData.h"
 #include "DataObjects/ChatRoomData.h"
+#include "DataObjects/ContactRecordData.h"
