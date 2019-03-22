@@ -73,7 +73,7 @@ private:
    QColor colorIncomingFriendRequest_;
    QColor colorUserDefault_;
 };
-
+class BSContextMenu;
 class ChatUserListTreeViewDelegate : public QStyledItemDelegate
 {
    Q_OBJECT
@@ -106,6 +106,7 @@ signals:
 public slots:
    void onChatUserDataListChanged(const ChatUserDataListPtr &chatUserDataListPtr);
    void onChatRoomDataListChanged(const Chat::ChatRoomDataListPtr &roomsDataList);
+   void onCustomContextMenu(const QPoint &);
 
 private slots:
    void onUserListItemClicked(const QModelIndex &index);
@@ -113,6 +114,7 @@ private slots:
 private:
    ChatUserListTreeViewModel *chatUserListModel_;
    ChatUserListTreeViewStyle internalStyle_;
+   BSContextMenu* contextMenu_;
 
 };
 

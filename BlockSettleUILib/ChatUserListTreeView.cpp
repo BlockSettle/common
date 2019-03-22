@@ -1,11 +1,111 @@
 #include "ChatUserListTreeView.h"
 
 #include <QPainter>
+#include <QMenu>
+#include <QDebug>
 
 namespace {
    static const int DOT_RADIUS = 4;
    static const int DOT_SHIFT = 8 + DOT_RADIUS;
 }
+using ItemType = ChatUserListTreeViewModel::ItemType;
+using Role = ChatUserListTreeViewModel::Role;
+class BSContextMenu : public QMenu
+{
+public:
+   BSContextMenu(ChatUserListTreeView* view)
+   : QMenu(view)
+   , view_(view)
+   , addFriend_(new QAction(tr("Request friend"), this))
+   , removeFriend_(new QAction(tr("Remove friend"), this))
+   , acceptFriend_(new QAction(tr("Accept friend"), this))
+   , declineFriend_(new QAction(tr("Decline friend"), this))
+   , roomAction1_(new QAction(tr("Maybe room menu 1"), this))
+   , roomAction2_(new QAction(tr("Maybe room menu 2"), this)){
+      connect(this, &QMenu::aboutToHide, this, &BSContextMenu::clearMenu);
+      connect(addFriend_, &QAction::triggered , this, &BSContextMenu::onAddToContacts);
+      connect(removeFriend_, &QAction::triggered, this, &BSContextMenu::onRemoveFromContacts);
+      connect(acceptFriend_, &QAction::triggered, this, &BSContextMenu::onAcceptFriendRequest);
+      connect(declineFriend_, &QAction::triggered, this, &BSContextMenu::onDeclineFriendRequest);
+   }
+   ~BSContextMenu(){
+      qDebug() << __func__;
+   }
+
+   QAction* execMenu(const QPoint & point){
+      currentIndex_ = view_->indexAt(point);
+      clear();
+      prepareMenu();
+      return exec(view_->viewport()->mapToGlobal(point));
+   }
+private:
+
+   void onAddToContacts(bool) {
+      qDebug() << __func__;
+   }
+
+   void onRemoveFromContacts(bool) {
+      qDebug() << __func__;
+   }
+
+   void onAcceptFriendRequest(bool) {
+      qDebug() << __func__;
+   }
+   void onDeclineFriendRequest(bool) {
+      qDebug() << __func__;
+   }
+
+   void prepareMenu(){
+      ItemType type = static_cast<ItemType>(currentIndex_.data(Role::ItemTypeRole).toInt());
+      switch (type) {
+         case ItemType::UserItem:
+            return prepareUserMenu();
+         case ItemType::RoomItem:
+            return prepareRoomMenu();
+            default:
+               break;
+      }
+   }
+
+   ChatUserData::State userState(){
+      return qvariant_cast<ChatUserData::State>(currentIndex_.data(Role::UserStateRole));
+   }
+
+   void prepareUserMenu(){
+      switch (userState()) {
+         case ChatUserData::State::Unknown:
+            addAction(tr("Remove friend"), this, &BSContextMenu::onAddToContacts);
+            break;
+         case ChatUserData::State::Friend:
+            addAction(tr("Remove friend"), this, &BSContextMenu::onRemoveFromContacts);
+            break;
+         case ChatUserData::State::IncomingFriendRequest:
+            addAction(tr("Accept friend request"), this, &BSContextMenu::onAcceptFriendRequest);
+            addAction(tr("Decline friend request"), this, &BSContextMenu::onDeclineFriendRequest);
+            break;
+
+      }
+   }
+   void prepareRoomMenu(){
+      addAction(tr("Maybe room menu 1"));
+      addAction(tr("Maybe room menu 2"));
+   }
+
+private slots:
+   void clearMenu() {
+      //if call clear() here will be crash!
+   }
+
+private:
+   ChatUserListTreeView* view_;
+   QAction* addFriend_;
+   QAction* removeFriend_;
+   QAction* acceptFriend_;
+   QAction* declineFriend_;
+   QAction* roomAction1_;
+   QAction* roomAction2_;
+   QModelIndex currentIndex_;
+};
 
 ChatUserListTreeView::ChatUserListTreeView(QWidget *parent) : QTreeView(parent), internalStyle_(this)
 {
@@ -15,6 +115,10 @@ ChatUserListTreeView::ChatUserListTreeView(QWidget *parent) : QTreeView(parent),
  
    connect(this, &QAbstractItemView::clicked,
          this, &ChatUserListTreeView::onUserListItemClicked);
+
+   contextMenu_ = new BSContextMenu(this);
+   setContextMenuPolicy(Qt::CustomContextMenu);
+   connect(this, &QAbstractItemView::customContextMenuRequested, this, &ChatUserListTreeView::onCustomContextMenu);
 }
 
 void ChatUserListTreeView::onChatUserDataListChanged(const ChatUserDataListPtr &chatUserDataList)
@@ -26,7 +130,12 @@ void ChatUserListTreeView::onChatUserDataListChanged(const ChatUserDataListPtr &
 void ChatUserListTreeView::onChatRoomDataListChanged(const Chat::ChatRoomDataListPtr &roomsDataList)
 {
    chatUserListModel_->setChatRoomDataList(roomsDataList);
-   expandAll();   
+   expandAll();
+}
+
+void ChatUserListTreeView::onCustomContextMenu(const QPoint & point)
+{
+   contextMenu_->execMenu(point);
 }
 
 void ChatUserListTreeView::onUserListItemClicked(const QModelIndex &index)
