@@ -79,7 +79,10 @@ public:
    bool addOrUpdateContact(const QString &userId,
                            const QString &userName = QStringLiteral(""),
                            const bool &isIncomingFriendRequest = false);
+   bool removeContact(const QString &userId);
    void sendFriendRequest(const QString &friendUserId);
+   void acceptFriendRequest(const QString &friendUserId);
+   void declineFriendRequest(const QString &friendUserId);
    void sendUpdateMessageState(const std::shared_ptr<Chat::MessageData>& message);
 
 private:
@@ -95,6 +98,8 @@ signals:
    void UsersAdd(const std::vector<std::string>& users);
    void UsersDel(const std::vector<std::string>& users);
    void IncomingFriendRequest(const std::vector<std::string>& users);
+   void AcceptFriendRequest(const std::vector<std::string>& users);
+   void RejectFriendRequest(const std::vector<std::string>& users);
    void MessagesUpdate(const std::vector<std::shared_ptr<Chat::MessageData>> &messages, bool isFirstFetch);
    void MessageIdUpdated(const QString& localId, const QString& serverId,const QString& chatId);
    void MessageStatusUpdated(const QString& messageId, const QString& chatId, int newStatus);

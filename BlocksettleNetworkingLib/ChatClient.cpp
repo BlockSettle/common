@@ -154,9 +154,13 @@ void ChatClient::OnContactsActionResponseDirect(const Chat::ContactsActionRespon
       case Chat::ContactsAction::Accept:
          actionString = "ContactsAction::Accept";
          addOrUpdateContact(QString::fromStdString(response.senderId()));
+         emit AcceptFriendRequest({response.senderId()});
+
       break;
       case Chat::ContactsAction::Reject:
          actionString = "ContactsAction::Reject";
+         removeContact(QString::fromStdString(response.senderId()));
+         emit RejectFriendRequest({response.senderId()});
       break;
       case Chat::ContactsAction::Request:
          actionString = "ContactsAction::Request";
@@ -176,12 +180,18 @@ void ChatClient::OnContactsActionResponseServer(const Chat::ContactsActionRespon
    switch (response.getRequestedAction()) {
       case Chat::ContactsActionServer::AddContactRecord:
          actionString = "ContactsActionServer::AddContactRecord";
+         addOrUpdateContact(QString::fromStdString(response.userId()));
+         emit AcceptFriendRequest({response.userId()});
       break;
       case Chat::ContactsActionServer::RemoveContactRecord:
          actionString = "ContactsActionServer::RemoveContactRecord";
+         removeContact(QString::fromStdString(response.userId()));
+         emit RejectFriendRequest({response.userId()});
       break;
       case Chat::ContactsActionServer::UpdateContactRecord:
          actionString = "ContactsActionServer::UpdateContactRecord";
+         addOrUpdateContact(QString::fromStdString(response.userId()), QStringLiteral(""), true);
+         emit IncomingFriendRequest({response.userId()});
       break;
       default:
       break;
@@ -564,10 +574,27 @@ bool ChatClient::addOrUpdateContact(const QString &userId, const QString &userNa
    return chatDb_->addContact(contact);
 }
 
+bool ChatClient::removeContact(const QString &userId)
+{
+   return chatDb_->removeContact(userId);
+}
+
 void ChatClient::sendFriendRequest(const QString &friendUserId)
 {
    // TODO
    auto request = std::make_shared<Chat::ContactActionRequestDirect>("", currentUserId_, friendUserId.toStdString(), Chat::ContactsAction::Request, appSettings_->GetAuthKeys().second);
+   sendRequest(request);
+}
+
+void ChatClient::acceptFriendRequest(const QString &friendUserId)
+{
+   auto request = std::make_shared<Chat::ContactActionRequestDirect>("", currentUserId_, friendUserId.toStdString(), Chat::ContactsAction::Accept, appSettings_->GetAuthKeys().second);
+   sendRequest(request);
+}
+   
+void ChatClient::declineFriendRequest(const QString &friendUserId)
+{
+   auto request = std::make_shared<Chat::ContactActionRequestDirect>("", currentUserId_, friendUserId.toStdString(), Chat::ContactsAction::Reject, appSettings_->GetAuthKeys().second);
    sendRequest(request);
 }
 

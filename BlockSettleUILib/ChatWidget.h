@@ -49,13 +49,15 @@ public:
 private slots:
    void onSendButtonClicked();
    void onUserClicked(const QString& index);
+   void onRoomClicked(const QString& roomId);
    void onMessagesUpdated();
    void onLoginFailed();
    void onUsersDeleted(const std::vector<std::string> &);
    void onSearchUserReturnPressed();
    void onChatUserRemoved(const ChatUserDataPtr &);
-   void onAddUserToContacts(const QString &userId);
-   void onRoomClicked(const QString& roomId);
+   void onSendFriendRequest(const QString &userId);
+   void onAcceptFriendRequest(const QString &userId);
+   void onDeclineFriendRequest(const QString &userId);
 
 signals:
    void LoginFailed();
