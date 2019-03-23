@@ -206,6 +206,10 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
 
    connect(ui_->treeViewUsers, &ChatUserListTreeView::userClicked, this, &ChatWidget::onUserClicked);
    connect(ui_->treeViewUsers, &ChatUserListTreeView::roomClicked, this, &ChatWidget::onRoomClicked);
+   connect(ui_->treeViewUsers, &ChatUserListTreeView::acceptFriendRequest,
+              this, &ChatWidget::onAcceptFriendRequest);
+   connect(ui_->treeViewUsers, &ChatUserListTreeView::declineFriendRequest,
+              this, &ChatWidget::onDeclineFriendRequest);
 
    connect(ui_->input_textEdit, &BSChatInput::sendMessage, this, &ChatWidget::onSendButtonClicked);
 
