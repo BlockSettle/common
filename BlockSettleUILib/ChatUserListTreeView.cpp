@@ -19,6 +19,7 @@ public:
       QMenu(view),
       view_(view)
    {
+      connect(this, &QMenu::aboutToHide, this, &BSContextMenu::clearMenu);
    }
 
    ~BSContextMenu()
@@ -29,12 +30,25 @@ public:
    QAction* execMenu(const QPoint & point)
    {
       currentIndex_ = view_->indexAt(point);
+      
       clear();
-      prepareMenu();
-      return exec(view_->viewport()->mapToGlobal(point));
+
+      ItemType type = static_cast<ItemType>(currentIndex_.data(Role::ItemTypeRole).toInt());
+      if (type == ItemType::UserItem) {
+         prepareUserMenu();
+         return exec(view_->viewport()->mapToGlobal(point));
+      } 
+
+      view_->selectionModel()->clearSelection();
+      return nullptr;
+      
    }
 
 private slots:
+
+   void clearMenu() {
+      view_->selectionModel()->clearSelection();
+   }
 
    void onAddToContacts(bool) 
    {
@@ -56,19 +70,6 @@ private slots:
    {
       const auto &text = currentIndex_.data(Qt::DisplayRole).toString();
       emit view_->declineFriendRequest(text);
-   }
-
-   void prepareMenu()
-   {
-      ItemType type = static_cast<ItemType>(currentIndex_.data(Role::ItemTypeRole).toInt());
-      switch (type) {
-         case ItemType::UserItem:
-            return prepareUserMenu();
-         case ItemType::RoomItem:
-            return prepareRoomMenu();
-            default:
-               break;
-      }
    }
 
    ChatUserData::State userState()
