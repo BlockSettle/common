@@ -1606,13 +1606,10 @@ bool HeadlessContainerListener::onExecCustomDialog(const std::string &clientId, 
    if (cbCustomDialog_) {
       QByteArray ba = QByteArray::fromStdString(request.variantdata());
       QDataStream ds(&ba, QIODevice::ReadOnly);
-
-      QString command;
       QVariant data;
-      ds >> command;
       ds >> data;
 
-      cbCustomDialog_(command, data);
+      cbCustomDialog_(QString::fromStdString(request.dialogname()), data);
    }
    return true;
 }

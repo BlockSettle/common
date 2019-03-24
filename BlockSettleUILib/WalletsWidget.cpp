@@ -36,6 +36,8 @@
 #include "ManageEncryption/WalletBackupDialog.h"
 #include "ManageEncryption/RootWalletPropertiesDialog.h"
 
+#include "SignerUiDefs.h"
+
 class AddressSortFilterModel : public QSortFilterProxyModel
 {
 public:
@@ -425,7 +427,7 @@ void WalletsWidget::onNewWallet()
 
 bool WalletsWidget::CreateNewWallet(bool report)
 {
-   int createReqId_ = signingContainer_->customDialogRequest();
+   int createReqId_ = signingContainer_->customDialogRequest(bs::SignerDialog::CreateWallet);
    return true;
 
 //   NetworkType netType = appSettings_->get<NetworkType>(ApplicationSettings::netType);
@@ -481,58 +483,61 @@ bool WalletsWidget::CreateNewWallet(bool report)
 
 bool WalletsWidget::ImportNewWallet(bool report)
 {
-   bool disablePrimaryImport = false;
-
-   if (!walletsManager_->hasPrimaryWallet() && assetManager_->privateShares(true).empty()) {
-      BSMessageBox q(BSMessageBox::warning, tr("Private Market Import"), tr("Private Market data is missing")
-         , tr("You do not have Private Market data available in the BlockSettle Terminal. You must first log "
-            "into the BlockSettle trading network from the main menu. A successful login will cause the proper data to be "
-            "automatically downloaded. Without this data, you will be unable to receive your Private Market "
-            "balances. Are you absolutely certain that you wish to proceed an import that doesn't include "
-            "Private Market data? (Upon receiving the data, you will have to re-import the wallet in order to "
-            "use the data.)"), this);
-      q.exec();
-      disablePrimaryImport = true;
-   }
-
-   // if signer is not ready - import WO only
-   ImportWalletTypeDialog importWalletDialog(signingContainer_->isOffline(), this);
-
-   if (importWalletDialog.exec() == QDialog::Accepted) {
-      if (importWalletDialog.type() == ImportWalletTypeDialog::Full) {
-         ImportWalletDialog createImportedWallet(walletsManager_
-                                                    , signingContainer_
-                                                    , assetManager_
-                                                    , authMgr_, armory_
-                                                    , importWalletDialog.GetSeedData()
-                                                    , importWalletDialog.GetChainCodeData()
-                                                    , appSettings_
-                                                    , connectionManager_
-                                                    , logger_
-                                                    , username_
-                                                    , importWalletDialog.GetName()
-                                                    , importWalletDialog.GetDescription()
-                                                    , disablePrimaryImport
-                                                    , this);
-
-         if (createImportedWallet.exec() == QDialog::Accepted) {
-            const auto &importer = createImportedWallet.getWalletImporter();
-
-            const auto &walletId = createImportedWallet.getWalletId();
-            walletImporters_[walletId] = importer;
-
-            if (report) {
-               BSMessageBox(BSMessageBox::success
-                  , tr("%1Wallet Imported").arg(createImportedWallet.ImportedAsPrimary() ? tr("Primary ") : QString())
-                  , tr("Wallet \"%1\" Successfully Imported").arg(createImportedWallet.getNewWalletName()), this).exec();
-            }
-         }
-      }
-      else {   //TODO: decide on WO wallet import later
-      }
-   }
-
+   int createReqId_ = signingContainer_->customDialogRequest(bs::SignerDialog::ImportWallet);
    return true;
+
+//   bool disablePrimaryImport = false;
+
+//   if (!walletsManager_->hasPrimaryWallet() && assetManager_->privateShares(true).empty()) {
+//      BSMessageBox q(BSMessageBox::warning, tr("Private Market Import"), tr("Private Market data is missing")
+//         , tr("You do not have Private Market data available in the BlockSettle Terminal. You must first log "
+//            "into the BlockSettle trading network from the main menu. A successful login will cause the proper data to be "
+//            "automatically downloaded. Without this data, you will be unable to receive your Private Market "
+//            "balances. Are you absolutely certain that you wish to proceed an import that doesn't include "
+//            "Private Market data? (Upon receiving the data, you will have to re-import the wallet in order to "
+//            "use the data.)"), this);
+//      q.exec();
+//      disablePrimaryImport = true;
+//   }
+
+//   // if signer is not ready - import WO only
+//   ImportWalletTypeDialog importWalletDialog(signingContainer_->isOffline(), this);
+
+//   if (importWalletDialog.exec() == QDialog::Accepted) {
+//      if (importWalletDialog.type() == ImportWalletTypeDialog::Full) {
+//         ImportWalletDialog createImportedWallet(walletsManager_
+//                                                    , signingContainer_
+//                                                    , assetManager_
+//                                                    , authMgr_, armory_
+//                                                    , importWalletDialog.GetSeedData()
+//                                                    , importWalletDialog.GetChainCodeData()
+//                                                    , appSettings_
+//                                                    , connectionManager_
+//                                                    , logger_
+//                                                    , username_
+//                                                    , importWalletDialog.GetName()
+//                                                    , importWalletDialog.GetDescription()
+//                                                    , disablePrimaryImport
+//                                                    , this);
+
+//         if (createImportedWallet.exec() == QDialog::Accepted) {
+//            const auto &importer = createImportedWallet.getWalletImporter();
+
+//            const auto &walletId = createImportedWallet.getWalletId();
+//            walletImporters_[walletId] = importer;
+
+//            if (report) {
+//               BSMessageBox(BSMessageBox::success
+//                  , tr("%1Wallet Imported").arg(createImportedWallet.ImportedAsPrimary() ? tr("Primary ") : QString())
+//                  , tr("Wallet \"%1\" Successfully Imported").arg(createImportedWallet.getNewWalletName()), this).exec();
+//            }
+//         }
+//      }
+//      else {   //TODO: decide on WO wallet import later
+//      }
+//   }
+
+//   return true;
 }
 
 void WalletsWidget::shortcutActivated(ShortcutType s)

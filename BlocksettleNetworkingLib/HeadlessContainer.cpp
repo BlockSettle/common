@@ -9,6 +9,7 @@
 #include "ZMQHelperFunctions.h"
 
 #include <QCoreApplication>
+#include <QDataStream>
 #include <QDebug>
 #include <QDir>
 #include <QProcess>
@@ -667,9 +668,16 @@ HeadlessContainer::RequestId HeadlessContainer::changePassword(const std::string
    return Send(packet);
 }
 
-SignContainer::RequestId HeadlessContainer::customDialogRequest()
+SignContainer::RequestId HeadlessContainer::customDialogRequest(bs::SignerDialog signerDialog, const QVariant &data)
 {
+   // serialize variant data
+   QByteArray ba;
+   QDataStream stream(&ba, QIODevice::WriteOnly);
+   stream << data;
+
    headless::CustomDialogRequest request;
+   request.set_dialogname(bs::getSignerDialogPath(signerDialog).toStdString());
+   request.set_variantdata(ba.data(), ba.size());
 
    headless::RequestPacket packet;
    packet.set_type(headless::ExecCustomDialogRequestType);

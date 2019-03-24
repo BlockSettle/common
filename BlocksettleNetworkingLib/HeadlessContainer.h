@@ -69,7 +69,7 @@ public:
       , bool addNew, bool removeOld, bool dryRun) override;
 
    //
-   RequestId customDialogRequest() override;
+   RequestId customDialogRequest(bs::SignerDialog signerDialog, const QVariant &data = QVariant()) override;
 
 
    void createSettlementWallet(const std::function<void(const std::shared_ptr<bs::sync::SettlementWallet> &)> &) override;
