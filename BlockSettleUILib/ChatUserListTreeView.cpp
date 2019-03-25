@@ -8,70 +8,77 @@ namespace {
    static const int DOT_RADIUS = 4;
    static const int DOT_SHIFT = 8 + DOT_RADIUS;
 }
+
 using ItemType = ChatUserListTreeViewModel::ItemType;
 using Role = ChatUserListTreeViewModel::Role;
+
 class BSContextMenu : public QMenu
 {
 public:
-   BSContextMenu(ChatUserListTreeView* view)
-   : QMenu(view)
-   , view_(view)
-   , addFriend_(new QAction(tr("Request friend"), this))
-   , removeFriend_(new QAction(tr("Remove friend"), this))
-   , acceptFriend_(new QAction(tr("Accept friend"), this))
-   , declineFriend_(new QAction(tr("Decline friend"), this))
-   , roomAction1_(new QAction(tr("Maybe room menu 1"), this))
-   , roomAction2_(new QAction(tr("Maybe room menu 2"), this)){
+   BSContextMenu(ChatUserListTreeView* view) : 
+      QMenu(view),
+      view_(view)
+   {
       connect(this, &QMenu::aboutToHide, this, &BSContextMenu::clearMenu);
-      connect(addFriend_, &QAction::triggered , this, &BSContextMenu::onAddToContacts);
-      connect(removeFriend_, &QAction::triggered, this, &BSContextMenu::onRemoveFromContacts);
-      connect(acceptFriend_, &QAction::triggered, this, &BSContextMenu::onAcceptFriendRequest);
-      connect(declineFriend_, &QAction::triggered, this, &BSContextMenu::onDeclineFriendRequest);
    }
-   ~BSContextMenu(){
+
+   ~BSContextMenu()
+   {
       qDebug() << __func__;
    }
 
-   QAction* execMenu(const QPoint & point){
+   QAction* execMenu(const QPoint & point)
+   {
       currentIndex_ = view_->indexAt(point);
+      
       clear();
-      prepareMenu();
-      return exec(view_->viewport()->mapToGlobal(point));
-   }
-private:
 
-   void onAddToContacts(bool) {
-      qDebug() << __func__;
-   }
-
-   void onRemoveFromContacts(bool) {
-      qDebug() << __func__;
-   }
-
-   void onAcceptFriendRequest(bool) {
-      qDebug() << __func__;
-   }
-   void onDeclineFriendRequest(bool) {
-      qDebug() << __func__;
-   }
-
-   void prepareMenu(){
       ItemType type = static_cast<ItemType>(currentIndex_.data(Role::ItemTypeRole).toInt());
-      switch (type) {
-         case ItemType::UserItem:
-            return prepareUserMenu();
-         case ItemType::RoomItem:
-            return prepareRoomMenu();
-            default:
-               break;
-      }
+      if (type == ItemType::UserItem) {
+         prepareUserMenu();
+         return exec(view_->viewport()->mapToGlobal(point));
+      } 
+
+      view_->selectionModel()->clearSelection();
+      return nullptr;
+      
    }
 
-   ChatUserData::State userState(){
+private slots:
+
+   void clearMenu() {
+      view_->selectionModel()->clearSelection();
+   }
+
+   void onAddToContacts(bool) 
+   {
+      qDebug() << __func__;
+   }
+
+   void onRemoveFromContacts(bool) 
+   {
+      qDebug() << __func__;
+   }
+
+   void onAcceptFriendRequest(bool)
+   {
+      const auto &text = currentIndex_.data(Qt::DisplayRole).toString();
+      emit view_->acceptFriendRequest(text);
+   }
+
+   void onDeclineFriendRequest(bool)
+   {
+      const auto &text = currentIndex_.data(Qt::DisplayRole).toString();
+      emit view_->declineFriendRequest(text);
+   }
+
+   ChatUserData::State userState()
+   {
       return qvariant_cast<ChatUserData::State>(currentIndex_.data(Role::UserStateRole));
    }
 
-   void prepareUserMenu(){
+   void prepareUserMenu()
+   {
       switch (userState()) {
          case ChatUserData::State::Unknown:
             addAction(tr("Remove friend"), this, &BSContextMenu::onAddToContacts);
@@ -86,24 +93,14 @@ private:
 
       }
    }
-   void prepareRoomMenu(){
-      addAction(tr("Maybe room menu 1"));
-      addAction(tr("Maybe room menu 2"));
-   }
 
-private slots:
-   void clearMenu() {
-      //if call clear() here will be crash!
+   void prepareRoomMenu()
+   {
+      
    }
 
 private:
    ChatUserListTreeView* view_;
-   QAction* addFriend_;
-   QAction* removeFriend_;
-   QAction* acceptFriend_;
-   QAction* declineFriend_;
-   QAction* roomAction1_;
-   QAction* roomAction2_;
    QModelIndex currentIndex_;
 };
 
@@ -141,16 +138,16 @@ void ChatUserListTreeView::onCustomContextMenu(const QPoint & point)
 void ChatUserListTreeView::onUserListItemClicked(const QModelIndex &index)
 {
    const auto &itemType =
-            qvariant_cast<ChatUserListTreeViewModel::ItemType>(index.data(ChatUserListTreeViewModel::ItemTypeRole));
+            qvariant_cast<ItemType>(index.data(Role::ItemTypeRole));
 
    clearSelection();
 
-   if (itemType == ChatUserListTreeViewModel::ItemType::RoomItem) {
-      const QString roomId = index.data(ChatUserListTreeViewModel::RoomIDRole).toString();
+   if (itemType == ItemType::RoomItem) {
+      const QString roomId = index.data(Role::RoomIDRole).toString();
       emit roomClicked(roomId);
 
    }
-   else if (itemType == ChatUserListTreeViewModel::ItemType::UserItem) {
+   else if (itemType == ItemType::UserItem) {
       const QString userId = index.data(Qt::DisplayRole).toString();
       emit userClicked(userId);
    }
@@ -170,18 +167,18 @@ ChatUserListTreeViewDelegate::ChatUserListTreeViewDelegate(const ChatUserListTre
 void ChatUserListTreeViewDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const
 {
    const auto &itemType =
-            qvariant_cast<ChatUserListTreeViewModel::ItemType>(index.data(ChatUserListTreeViewModel::ItemTypeRole));
+            qvariant_cast<ItemType>(index.data(Role::ItemTypeRole));
 
    QStyleOptionViewItem itemOption(option);
 
-   if (itemType == ChatUserListTreeViewModel::ItemType::RoomItem) {
+   if (itemType == ItemType::RoomItem) {
       itemOption.palette.setColor(QPalette::Text, internalStyle_.colorRoom());
       itemOption.palette.setColor(QPalette::HighlightedText, internalStyle_.colorRoom());
       QStyledItemDelegate::paint(painter, itemOption, index);
       
       // draw dot
       const bool haveMessage =
-            qvariant_cast<bool>(index.data(ChatUserListTreeViewModel::HaveNewMessageRole));
+            qvariant_cast<bool>(index.data(Role::HaveNewMessageRole));
       if (haveMessage) {
          auto text = index.data(Qt::DisplayRole).toString();
          QFontMetrics fm(itemOption.font, painter->device());
@@ -195,13 +192,13 @@ void ChatUserListTreeViewDelegate::paint(QPainter* painter, const QStyleOptionVi
       }
 
    } 
-   else if (itemType == ChatUserListTreeViewModel::ItemType::UserItem) {
+   else if (itemType == ItemType::UserItem) {
       // set default text color
       itemOption.palette.setColor(QPalette::Text, internalStyle_.colorUserDefault());
       itemOption.palette.setColor(QPalette::HighlightedText, internalStyle_.colorUserDefault());
 
       const auto &userState =
-            qvariant_cast<ChatUserData::State>(index.data(ChatUserListTreeViewModel::UserStateRole));
+            qvariant_cast<ChatUserData::State>(index.data(Role::UserStateRole));
 
       // text color for friend request
       if (userState == ChatUserData::State::IncomingFriendRequest) {
@@ -211,7 +208,7 @@ void ChatUserListTreeViewDelegate::paint(QPainter* painter, const QStyleOptionVi
       }
 
       const auto &userStatus =
-            qvariant_cast<ChatUserData::ConnectionStatus>(index.data(ChatUserListTreeViewModel::UserConnectionStatusRole));
+            qvariant_cast<ChatUserData::ConnectionStatus>(index.data(Role::UserConnectionStatusRole));
 
       // text color for user online status
       if (userStatus == ChatUserData::ConnectionStatus::Online) {
@@ -223,7 +220,7 @@ void ChatUserListTreeViewDelegate::paint(QPainter* painter, const QStyleOptionVi
 
       // draw dot
       const bool haveMessage =
-            qvariant_cast<bool>(index.data(ChatUserListTreeViewModel::HaveNewMessageRole));
+            qvariant_cast<bool>(index.data(Role::HaveNewMessageRole));
       if (haveMessage) {
          auto text = index.data(Qt::DisplayRole).toString();
          QFontMetrics fm(itemOption.font, painter->device());

@@ -378,15 +378,15 @@ bool ChatDB::addContact(const ContactUserData &contact)
    return true;
 }
 
-bool ChatDB::removeContact(const ContactUserData &contact)
+bool ChatDB::removeContact(const QString &userId)
 {
-   if (!isContactExist(contact.userId())) {
+   if (!isContactExist(userId)) {
       return false;
    }
 
    QSqlQuery query(QLatin1String(
       "DELETE FROM contacts WHERE user_id=:user_id;"), db_);
-   query.bindValue(0, contact.userId());
+   query.bindValue(0, userId);
 
    if (!query.exec()) {
       logger_->error("[ChatDB::removeContact] failed to delete contact.");

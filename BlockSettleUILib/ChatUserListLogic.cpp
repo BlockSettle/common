@@ -73,17 +73,30 @@ void ChatUserListLogic::onReplaceChatUsers(const UserIdList &userIdList)
    onAddChatUsers(userIdList);
 }
 
-void ChatUserListLogic::onIcomingFriendRequest(const UserIdList &userIdList)
+void ChatUserListLogic::onIncomingFriendRequest(const UserIdList &userIdList)
 {
    for (const std::string &userId : userIdList)
    {
-      QString searchUserId = QString::fromStdString(userId);
-      ChatUserDataPtr chatUserDataPtr = chatUserModelPtr_->getUserByUserId(searchUserId);
+      const QString searchUserId = QString::fromStdString(userId);
+      chatUserModelPtr_->setUserState(searchUserId, ChatUserData::State::IncomingFriendRequest);
+   }
+}
 
-      if (chatUserDataPtr)
-      {
-         chatUserModelPtr_->setUserState(searchUserId, ChatUserData::State::IncomingFriendRequest);
-      }
+void ChatUserListLogic::onAcceptFriendRequest(const UserIdList &userIdList)
+{
+   for (const std::string &userId : userIdList)
+   {
+      const QString searchUserId = QString::fromStdString(userId);
+      chatUserModelPtr_->setUserState(searchUserId, ChatUserData::State::Friend);
+   }
+}
+
+void ChatUserListLogic::onDeclineFriendRequest(const UserIdList &userIdList)
+{
+   for (const std::string &userId : userIdList)
+   {
+      const QString searchUserId = QString::fromStdString(userId);
+      chatUserModelPtr_->setUserState(searchUserId, ChatUserData::State::Unknown);
    }
 }
 

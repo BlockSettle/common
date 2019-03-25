@@ -206,6 +206,10 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
 
    connect(ui_->treeViewUsers, &ChatUserListTreeView::userClicked, this, &ChatWidget::onUserClicked);
    connect(ui_->treeViewUsers, &ChatUserListTreeView::roomClicked, this, &ChatWidget::onRoomClicked);
+   connect(ui_->treeViewUsers, &ChatUserListTreeView::acceptFriendRequest,
+              this, &ChatWidget::onAcceptFriendRequest);
+   connect(ui_->treeViewUsers, &ChatUserListTreeView::declineFriendRequest,
+              this, &ChatWidget::onDeclineFriendRequest);
 
    connect(ui_->input_textEdit, &BSChatInput::sendMessage, this, &ChatWidget::onSendButtonClicked);
 
@@ -216,7 +220,11 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
    connect(client_.get(), &ChatClient::UsersDel,
            chatUserListLogicPtr_.get(), &ChatUserListLogic::onRemoveChatUsers);
    connect(client_.get(), &ChatClient::IncomingFriendRequest,
-           chatUserListLogicPtr_.get(), &ChatUserListLogic::onIcomingFriendRequest);
+           chatUserListLogicPtr_.get(), &ChatUserListLogic::onIncomingFriendRequest);
+   connect(client_.get(), &ChatClient::AcceptFriendRequest,
+           chatUserListLogicPtr_.get(), &ChatUserListLogic::onAcceptFriendRequest);
+   connect(client_.get(), &ChatClient::RejectFriendRequest,
+           chatUserListLogicPtr_.get(), &ChatUserListLogic::onDeclineFriendRequest);
    connect(chatUserListLogicPtr_.get()->chatUserModelPtr().get(), &ChatUserModel::chatUserRemoved,
            this, &ChatWidget::onChatUserRemoved);
    connect(client_.get(), &ChatClient::RoomsAdd,
@@ -349,8 +357,8 @@ void ChatWidget::onSearchUserReturnPressed()
    if (!popup_)
    {
       popup_ = new ChatSearchPopup(this);
-      connect(popup_, &ChatSearchPopup::addUserToContacts,
-              this, &ChatWidget::onAddUserToContacts);
+      connect(popup_, &ChatSearchPopup::sendFriendRequest,
+              this, &ChatWidget::onSendFriendRequest);
       qApp->installEventFilter(this);
    }
 
@@ -404,7 +412,7 @@ bool ChatWidget::eventFilter(QObject *obj, QEvent *event)
    return QWidget::eventFilter(obj, event);
 }
 
-void ChatWidget::onAddUserToContacts(const QString &userId)
+void ChatWidget::onSendFriendRequest(const QString &userId)
 {
    // check if user isn't already in contacts
    ChatUserModelPtr chatUserModelPtr = chatUserListLogicPtr_->chatUserModelPtr();
@@ -423,6 +431,40 @@ void ChatWidget::onAddUserToContacts(const QString &userId)
    popup_->deleteLater();
    popup_ = nullptr;
    qApp->removeEventFilter(this);
+}
+
+void ChatWidget::onAcceptFriendRequest(const QString &userId)
+{
+   // check if user isn't already in contacts
+   ChatUserModelPtr chatUserModelPtr = chatUserListLogicPtr_->chatUserModelPtr();
+
+   if (chatUserModelPtr && !chatUserModelPtr->isChatUserInContacts(userId))
+   {
+      // add user to contacts as friend
+      chatUserModelPtr->setUserState(userId, ChatUserData::State::Friend);
+      ChatUserDataPtr chatUserDataPtr = chatUserModelPtr->getUserByUserId(userId);
+      // save user in DB
+      client_->addOrUpdateContact(chatUserDataPtr->userId(), chatUserDataPtr->userName());
+      // and accept friend request to ChatClient
+      client_->acceptFriendRequest(chatUserDataPtr->userId());
+   }
+}
+
+void ChatWidget::onDeclineFriendRequest(const QString &userId)
+{
+   // check if user isn't already in contacts
+   ChatUserModelPtr chatUserModelPtr = chatUserListLogicPtr_->chatUserModelPtr();
+
+   if (chatUserModelPtr && !chatUserModelPtr->isChatUserInContacts(userId))
+   {
+      // add user to contacts as friend
+      chatUserModelPtr->setUserState(userId, ChatUserData::State::Unknown);
+      ChatUserDataPtr chatUserDataPtr = chatUserModelPtr->getUserByUserId(userId);
+      // remove user in DB
+      client_->removeContact(chatUserDataPtr->userId());
+      // and declien friend request to ChatClient
+      client_->declineFriendRequest(chatUserDataPtr->userId());
+   }
 }
 
 void ChatWidget::onRoomClicked(const QString& roomId)

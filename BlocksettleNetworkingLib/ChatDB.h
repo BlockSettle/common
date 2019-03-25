@@ -67,7 +67,7 @@ public:
 
    bool isContactExist(const QString &userId);
    bool addContact(const ContactUserData &contact);
-   bool removeContact(const ContactUserData &contact);
+   bool removeContact(const QString &userId);
    bool getContacts(ContactUserDataList &contactList);
    bool updateContact(const ContactUserData &contact);
 

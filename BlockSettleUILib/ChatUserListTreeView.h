@@ -102,6 +102,8 @@ public:
 signals:
    void userClicked(const QString &userId);
    void roomClicked(const QString &roomId);
+   void acceptFriendRequest(const QString &userId);
+   void declineFriendRequest(const QString &userId);
 
 public slots:
    void onChatUserDataListChanged(const ChatUserDataListPtr &chatUserDataListPtr);
