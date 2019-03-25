@@ -81,7 +81,7 @@ private slots:
    {
       switch (userState()) {
          case ChatUserData::State::Unknown:
-            addAction(tr("Remove friend"), this, &BSContextMenu::onAddToContacts);
+            addAction(tr("Add friend"), this, &BSContextMenu::onAddToContacts);
             break;
          case ChatUserData::State::Friend:
             addAction(tr("Remove friend"), this, &BSContextMenu::onRemoveFromContacts);
