@@ -220,9 +220,10 @@ void ChatClient::OnContactsActionResponseServer(const Chat::ContactsActionRespon
    }
 
    logger_->debug("[ChatClient::OnContactsActionResponseServer]: Reseived response for server contact action:\n"
-                  "userID: {} | contactID: {}"
-                  "requested action: {}",
-                  "action result:    {}",
+                  "userID: {}\n"
+                  "contactID: {}\n"
+                  "requested action: {}\n"
+                  "action result:    {}\n"
                   "message:          {}",
                   response.userId(),
                   response.contactId(),
