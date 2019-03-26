@@ -90,6 +90,10 @@ private slots:
             addAction(tr("Accept friend request"), this, &BSContextMenu::onAcceptFriendRequest);
             addAction(tr("Decline friend request"), this, &BSContextMenu::onDeclineFriendRequest);
             break;
+         case ChatUserData::State::OutgoingFriendRequest:
+            addAction(tr("This request not accepted"));
+         default:
+            break;
 
       }
    }
@@ -204,6 +208,10 @@ void ChatUserListTreeViewDelegate::paint(QPainter* painter, const QStyleOptionVi
       if (userState == ChatUserData::State::IncomingFriendRequest) {
          itemOption.palette.setColor(QPalette::Text, internalStyle_.colorIncomingFriendRequest());
          itemOption.palette.setColor(QPalette::HighlightedText, internalStyle_.colorIncomingFriendRequest());
+         return QStyledItemDelegate::paint(painter, itemOption, index);
+      } else if (userState == ChatUserData::State::OutgoingFriendRequest) {
+         itemOption.palette.setColor(QPalette::Text, internalStyle_.colorOutgoingFriendRequest());
+         itemOption.palette.setColor(QPalette::HighlightedText, internalStyle_.colorOutgoingFriendRequest());
          return QStyledItemDelegate::paint(painter, itemOption, index);
       }
 

@@ -82,7 +82,7 @@ void ChatUserListLogic::onIncomingFriendRequest(const UserIdList &userIdList)
    }
 }
 
-void ChatUserListLogic::onAcceptFriendRequest(const UserIdList &userIdList)
+void ChatUserListLogic::onFriendRequestAccepted(const UserIdList &userIdList)
 {
    for (const std::string &userId : userIdList)
    {
@@ -91,7 +91,7 @@ void ChatUserListLogic::onAcceptFriendRequest(const UserIdList &userIdList)
    }
 }
 
-void ChatUserListLogic::onDeclineFriendRequest(const UserIdList &userIdList)
+void ChatUserListLogic::onFriendRequestRejected(const UserIdList &userIdList)
 {
    for (const std::string &userId : userIdList)
    {
@@ -148,9 +148,17 @@ void ChatUserListLogic::readUsersFromDB()
    for (const ContactUserData &contactUserData : contactUserDataList)
    {
       ChatUserDataPtr newChatUserData = std::make_shared<ChatUserData>();
-      if (contactUserData.incomingFriendRequest())
+      if (contactUserData.status() == ContactUserData::Status::Incoming)
       {
          newChatUserData->setUserState(ChatUserData::State::IncomingFriendRequest);
+      }
+      else if (contactUserData.status() == ContactUserData::Status::Outgoing)
+      {
+         newChatUserData->setUserState(ChatUserData::State::OutgoingFriendRequest);
+      }
+      else if (contactUserData.status() == ContactUserData::Status::Rejected)
+      {
+         newChatUserData->setUserState(ChatUserData::State::Unknown);
       }
       else
       {

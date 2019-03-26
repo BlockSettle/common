@@ -16,6 +16,8 @@ class ChatUserListTreeViewStyle : public QWidget
               WRITE setColorUserOnline)
    Q_PROPERTY(QColor color_incoming_friend_request READ colorIncomingFriendRequest
               WRITE setColorIncomingFriendRequest)
+   Q_PROPERTY(QColor color_outgoing_friend_request READ colorOutgoingFriendRequest
+              WRITE setColorOutgoinggFriendRequest)
    Q_PROPERTY(QColor color_user_default READ colorUserDefault
               WRITE setColorUserDefault)
     
@@ -66,12 +68,24 @@ public:
    {
       colorUserDefault_ = colorUserDefault;
    }
-    
+
+   QColor colorOutgoingFriendRequest() const
+   {
+      return colorOutgoingFriendRequest_;
+   }
+
+public slots:
+   void setColorOutgoinggFriendRequest(QColor color_outgoing_friend_request)
+   {
+      colorOutgoingFriendRequest_ = color_outgoing_friend_request;
+   }
+
 private:
    QColor colorRoom_;
    QColor colorUserOnline_;
    QColor colorIncomingFriendRequest_;
    QColor colorUserDefault_;
+   QColor colorOutgoingFriendRequest_;
 };
 class BSContextMenu;
 class ChatUserListTreeViewDelegate : public QStyledItemDelegate

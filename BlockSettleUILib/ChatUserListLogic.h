@@ -33,8 +33,8 @@ public slots:
    void onRemoveChatUsers(const UserIdList &userIdList);
    void onReplaceChatUsers(const UserIdList &userIdList);
    void onIncomingFriendRequest(const UserIdList &userIdList);
-   void onAcceptFriendRequest(const UserIdList &userIdList);
-   void onDeclineFriendRequest(const UserIdList &userIdList);
+   void onFriendRequestAccepted(const UserIdList &userIdList);
+   void onFriendRequestRejected(const UserIdList &userIdList);
    void onUserHaveNewMessageChanged(const QString &userId, const bool &userHaveNewMessage, const bool &isInCurrentChat);
    
    void onAddChatRooms(const std::vector<std::shared_ptr<Chat::ChatRoomData> >& roomList);

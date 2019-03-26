@@ -221,10 +221,10 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
            chatUserListLogicPtr_.get(), &ChatUserListLogic::onRemoveChatUsers);
    connect(client_.get(), &ChatClient::IncomingFriendRequest,
            chatUserListLogicPtr_.get(), &ChatUserListLogic::onIncomingFriendRequest);
-   connect(client_.get(), &ChatClient::AcceptFriendRequest,
-           chatUserListLogicPtr_.get(), &ChatUserListLogic::onAcceptFriendRequest);
-   connect(client_.get(), &ChatClient::RejectFriendRequest,
-           chatUserListLogicPtr_.get(), &ChatUserListLogic::onDeclineFriendRequest);
+   connect(client_.get(), &ChatClient::FriendRequestAccepted,
+           chatUserListLogicPtr_.get(), &ChatUserListLogic::onFriendRequestAccepted);
+   connect(client_.get(), &ChatClient::FriendRequestRejected,
+           chatUserListLogicPtr_.get(), &ChatUserListLogic::onFriendRequestRejected);
    connect(chatUserListLogicPtr_.get()->chatUserModelPtr().get(), &ChatUserModel::chatUserRemoved,
            this, &ChatWidget::onChatUserRemoved);
    connect(client_.get(), &ChatClient::RoomsAdd,
@@ -420,10 +420,10 @@ void ChatWidget::onSendFriendRequest(const QString &userId)
    if (chatUserModelPtr && !chatUserModelPtr->isChatUserInContacts(userId))
    {
       // add user to contacts as friend
-      chatUserModelPtr->setUserState(userId, ChatUserData::State::Friend);
+      chatUserModelPtr->setUserState(userId, ChatUserData::State::OutgoingFriendRequest);
       ChatUserDataPtr chatUserDataPtr = chatUserModelPtr->getUserByUserId(userId);
       // save user in DB
-      client_->addOrUpdateContact(chatUserDataPtr->userId(), chatUserDataPtr->userName());
+      client_->addOrUpdateContact(chatUserDataPtr->userId(),ContactUserData::Status::Outgoing, chatUserDataPtr->userName());
       // and send friend request to ChatClient
       client_->sendFriendRequest(chatUserDataPtr->userId());
    }
@@ -438,13 +438,13 @@ void ChatWidget::onAcceptFriendRequest(const QString &userId)
    // check if user isn't already in contacts
    ChatUserModelPtr chatUserModelPtr = chatUserListLogicPtr_->chatUserModelPtr();
 
-   if (chatUserModelPtr && !chatUserModelPtr->isChatUserInContacts(userId))
+   if (chatUserModelPtr && chatUserModelPtr->isChatUserInContacts(userId))
    {
       // add user to contacts as friend
       chatUserModelPtr->setUserState(userId, ChatUserData::State::Friend);
       ChatUserDataPtr chatUserDataPtr = chatUserModelPtr->getUserByUserId(userId);
       // save user in DB
-      client_->addOrUpdateContact(chatUserDataPtr->userId(), chatUserDataPtr->userName());
+      client_->addOrUpdateContact(chatUserDataPtr->userId(),ContactUserData::Status::Friend, chatUserDataPtr->userName());
       // and accept friend request to ChatClient
       client_->acceptFriendRequest(chatUserDataPtr->userId());
    }
@@ -455,13 +455,14 @@ void ChatWidget::onDeclineFriendRequest(const QString &userId)
    // check if user isn't already in contacts
    ChatUserModelPtr chatUserModelPtr = chatUserListLogicPtr_->chatUserModelPtr();
 
-   if (chatUserModelPtr && !chatUserModelPtr->isChatUserInContacts(userId))
+   if (chatUserModelPtr && chatUserModelPtr->isChatUserInContacts(userId))
    {
       // add user to contacts as friend
       chatUserModelPtr->setUserState(userId, ChatUserData::State::Unknown);
       ChatUserDataPtr chatUserDataPtr = chatUserModelPtr->getUserByUserId(userId);
       // remove user in DB
-      client_->removeContact(chatUserDataPtr->userId());
+      //client_->removeContact(chatUserDataPtr->userId());
+      client_->addOrUpdateContact(chatUserDataPtr->userId(),ContactUserData::Status::Rejected, chatUserDataPtr->userName());
       // and declien friend request to ChatClient
       client_->declineFriendRequest(chatUserDataPtr->userId());
    }
