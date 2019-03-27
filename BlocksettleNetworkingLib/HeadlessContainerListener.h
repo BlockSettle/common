@@ -99,8 +99,7 @@ private:
    bool onSyncAddresses(const std::string &clientId, Blocksettle::Communication::headless::RequestPacket packet);
    bool onExecCustomDialog(const std::string &clientId, Blocksettle::Communication::headless::RequestPacket packet);
 
-   void AuthResponse(const std::string &clientId, Blocksettle::Communication::headless::RequestPacket packet
-      , const std::string &errMsg = {});
+   bool AuthResponse(const std::string &clientId, Blocksettle::Communication::headless::RequestPacket packet);
    void SignTXResponse(const std::string &clientId, unsigned int id, Blocksettle::Communication::headless::RequestType reqType
       , const std::string &error, const BinaryData &tx = {}, bool cancelledByUser = false);
    void CreateHDWalletResponse(const std::string &clientId, unsigned int id, const std::string &errorOrWalletId
@@ -128,8 +127,6 @@ private:
 
    bool CheckSpendLimit(uint64_t value, bool autoSign, const std::string &walletId);
 
-   SecureBinaryData authTicket(const std::string &clientId) const;
-
    bool isRequestAllowed(Blocksettle::Communication::headless::RequestType) const;
 
 private:
@@ -141,7 +138,6 @@ private:
    const NetworkType                   netType_;
    SignContainer::Limits               limits_;
    const bool                          watchingOnly_;
-   std::unordered_map<std::string, SecureBinaryData>  authTickets_;
    std::unordered_set<std::string>     connectedClients_;
 
    std::unordered_map<std::string, std::vector<PasswordReceivedCb>>  passwordCallbacks_;
