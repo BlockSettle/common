@@ -369,9 +369,10 @@ void ChatWidget::onSearchUserReturnPressed()
    }
 
    QRegularExpression rx_email(QLatin1String(R"(^[a-zA-Z0-9._-]+@([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,6}$)"), QRegularExpression::CaseInsensitiveOption);
-   if (rx_email.match(userToAdd).matchType() == QRegularExpression::MatchType::NormalMatch) {
+   QRegularExpressionMatch match = rx_email.match(userToAdd);
+   if (match.hasMatch()) {
       userToAdd = client_->deriveKey(userToAdd);
-   } else if (UserHasher::KeyLength >= userToAdd.length()) {
+   } else if (UserHasher::KeyLength < userToAdd.length()) {
       return; //Initially max key is 12 symbols
    }
    client_->sendSearchUsersRequest(userToAdd);
