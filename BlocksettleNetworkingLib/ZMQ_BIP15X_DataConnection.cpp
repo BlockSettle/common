@@ -9,6 +9,42 @@
 
 using namespace std;
 
+// Reset a partial message.
+//
+// INPUT:  None
+// OUTPUT: None
+// RETURN: None
+void ZmqBIP15XClientPartialMsg::reset(void)
+{
+   packets_.clear();
+   message_.reset();
+}
+
+// Insert data into a partial message.
+//
+// INPUT:  The data to insert. (BinaryData&)
+// OUTPUT: None
+// RETURN: A reference to the packet data. (BinaryDataRef)
+BinaryDataRef ZmqBIP15XClientPartialMsg::insertDataAndGetRef(BinaryData& data)
+{
+   auto&& data_pair = std::make_pair(counter_++, std::move(data));
+   auto iter = packets_.insert(std::move(data_pair));
+   return iter.first->second.getRef();
+}
+
+// Erase the last packet in a partial message.
+//
+// INPUT:  None
+// OUTPUT: None
+// RETURN: None
+void ZmqBIP15XClientPartialMsg::eraseLast(void)
+{
+   if (counter_ == 0)
+      return;
+
+   packets_.erase(counter_--);
+}
+
 // The constructor to use.
 //
 // INPUT:  Logger object. (const shared_ptr<spdlog::logger>&)
@@ -114,14 +150,14 @@ bool ZmqBIP15XDataConnection::send(const string& data)
    string sendData = data;
    size_t dataLen = sendData.size();
    if (bip151Connection_->getBIP150State() == BIP150State::SUCCESS) {
-      ZmqBIP15XMsg msg;
+      ZmqBIP15XMessageCodec msg;
       BIP151Connection* connPtr = nullptr;
       if (bip151HandshakeCompleted_) {
          connPtr = bip151Connection_.get();
       }
       BinaryData payload(data);
       vector<BinaryData> encData = msg.serialize(payload.getDataVector()
-         , connPtr, ZMQ_MSGTYPE_SINGLEPACKET, 0);
+         , connPtr, ZMQ_MSGTYPE_FRAGMENTEDPACKET_HEADER, 0);
       sendData = encData[0].toBinStr();
       dataLen = sendData.size();
    }
@@ -152,7 +188,7 @@ bool ZmqBIP15XDataConnection::send(const string& data)
 // RETURN: True if success, false if failure.
 bool ZmqBIP15XDataConnection::startBIP151Handshake()
 {
-   ZmqBIP15XMsg msg;
+   ZmqBIP15XMessageCodec msg;
    BinaryData nullPayload;
 
    vector<BinaryData> outData = msg.serialize(nullPayload.getDataVector()
@@ -169,8 +205,51 @@ bool ZmqBIP15XDataConnection::startBIP151Handshake()
 void ZmqBIP15XDataConnection::onRawDataReceived(const string& rawData)
 {
    // Place the data in the processing queue and process the queue.
-   pendingData_.append(rawData);
-   ProcessIncomingData();
+//   pendingData_.append(rawData);
+
+   //
+   BinaryData payload(rawData);
+   if (payload.getSize() == 0) {
+      logger_->error("[{}] Empty data packet ({}).", __func__, connectionName_);
+      return;
+   }
+
+   if (leftOverData_.getSize() != 0)
+   {
+      leftOverData_.append(payload);
+      payload = move(leftOverData_);
+      leftOverData_.clear();
+   }
+
+   if (bip151Connection_->connectionComplete())
+   {
+      //decrypt packet
+      auto result = bip151Connection_->decryptPacket(
+         payload.getPtr(), payload.getSize(),
+         payload.getPtr(), payload.getSize());
+
+      if (result != 0)
+      {
+         // If decryption fails but the result indicates fragmentation, save the
+         // fragment and wait before doing anything, otherwise treat it as a
+         // legit error.
+         if (result <= ZMQ_MESSAGE_PACKET_SIZE && result > -1)
+         {
+            leftOverData_ = move(payload);
+            return;
+         }
+         else
+         {
+            logger_->error("[{}] Packet decryption failed - Error {}", __func__
+               , result);
+            return;
+         }
+      }
+
+      payload.resize(payload.getSize() - POLY1305MACLEN);
+   }
+
+   ProcessIncomingData(payload);
 }
 
 // Close the connection.
@@ -187,38 +266,38 @@ bool ZmqBIP15XDataConnection::closeConnection()
 // The function that processes raw ZMQ connection data. It processes the BIP
 // 150/151 handshake (if necessary) and decrypts the raw data.
 //
-// INPUT:  None
+// INPUT:  Reformed message. (const BinaryData&) // TO DO: FIX UP MSG
 // OUTPUT: None
 // RETURN: None
-void ZmqBIP15XDataConnection::ProcessIncomingData()
+void ZmqBIP15XDataConnection::ProcessIncomingData(BinaryData& payload)
 {
-   size_t position;
+   // Deserialize packet.
+   auto payloadRef = currentReadMessage_.insertDataAndGetRef(payload);
+   auto result = currentReadMessage_.message_.parsePacket(payloadRef);
+   if (!result)
+   {
+      currentReadMessage_.reset();
+      return;
+   }
 
-   // Process all incoming data while clearing the buffer.
-   BinaryData payload(pendingData_);
-   pendingData_.clear();
+   if (!currentReadMessage_.message_.isReady())
+      return;
 
-   // If we've completed the BIP 151 handshake, decrypt.
-   if (bip151HandshakeCompleted_) {
-      //decrypt packet
-      auto result = bip151Connection_->decryptPacket(
-         payload.getPtr(), payload.getSize(),
-         payload.getPtr(), payload.getSize());
-
-      if (result != 0) {
-         if (logger_) {
-            logger_->error("[ZmqBIP15XDataConnection::{}] Decryption failed "
-               "(connection {}) - error code {}", __func__, connectionName_
-               , result);
-         }
+   if (currentReadMessage_.message_.getType() > ZMQ_MSGTYPE_AEAD_THRESHOLD)
+   {
+      if (!processAEADHandshake(currentReadMessage_.message_))
+      {
+         //invalid AEAD message, kill connection
+         // TO DO: LOGGER ERROR
          return;
       }
 
-      payload.resize(payload.getSize() - POLY1305MACLEN);
+      currentReadMessage_.reset();
+      return;
    }
 
    // Deserialize the packet.
-   ZmqBIP15XMsg inMsg;
+   ZmqBIP15XMsgPartial inMsg;
    if (!inMsg.parsePacket(payload.getRef())) {
       if (logger_) {
          logger_->error("[ZmqBIP15XDataConnection::{}] Packet parsing failed "
@@ -255,8 +334,10 @@ void ZmqBIP15XDataConnection::ProcessIncomingData()
 //   auto& msgid = inMsg.getId();
 
    // Pass the final data up the chain.
-   auto&& outMsg = inMsg.getSingleBinaryMessage();
-   if (outMsg.getSize() == 0) {
+//   auto&& outMsg = inMsg.getSingleBinaryMessage();
+   BinaryDataRef outMsg = currentReadMessage_.message_.getSingleBinaryMessage();
+   if (outMsg.getSize() == 0)
+   {
       logger_->error("[{}] - Incoming packet is empty", __func__);
       return;
    }
@@ -302,11 +383,11 @@ bool ZmqBIP15XDataConnection::recvData()
 // INPUT:  The handshake packet. (const ZmqBIP15XMsg&)
 // OUTPUT: None
 // RETURN: True if success, false if failure.
-bool ZmqBIP15XDataConnection::processAEADHandshake(const ZmqBIP15XMsg& msgObj)
+bool ZmqBIP15XDataConnection::processAEADHandshake(const ZmqBIP15XMsgPartial& msgObj)
 {
    // Function used to send data out on the wire.
    auto writeData = [this](BinaryData& payload, uint8_t type, bool encrypt) {
-      ZmqBIP15XMsg msg;
+      ZmqBIP15XMessageCodec msg;
       BIP151Connection* connPtr = nullptr;
       if (encrypt) {
          connPtr = bip151Connection_.get();

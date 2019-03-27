@@ -105,6 +105,7 @@ bool ZmqBIP15XServerConnection::ReadFromDataSocket()
       logger_->error("[{}] {} broken protocol", __func__, connectionName_);
       return false;
    }
+
    // Process the incoming data.
    ProcessIncomingData(data.ToString(), clientId.ToString());
 
@@ -132,8 +133,8 @@ bool ZmqBIP15XServerConnection::SendDataToClient(const string& clientId
          connPtr = socketConnMap_[clientId]->encData_.get();
       }
       const BinaryData payload(data);
-      const auto outData = ZmqBIP15XMsg::serialize(payload.getDataVector()
-         , connPtr, ZMQ_MSGTYPE_SINGLEPACKET, 0);
+      const auto outData = ZmqBIP15XMessageCodec::serialize(payload.getDataVector()
+         , connPtr, ZMQ_MSGTYPE_FRAGMENTEDPACKET_HEADER, 0);
       if (outData.empty()) {
          logger_->error("[ZmqBIP15XServerConnection::{}] failed to serialize data (size {})"
             , __func__, data.size());
@@ -152,72 +153,94 @@ bool ZmqBIP15XServerConnection::SendDataToClient(const string& clientId
 // INPUT:  None
 // OUTPUT: None
 // RETURN: None
-void ZmqBIP15XServerConnection::ProcessIncomingData(const string& encData_
+void ZmqBIP15XServerConnection::ProcessIncomingData(const string& encData
    , const string& clientID)
 {
    // Backstop in case the callbacks haven't been used.
-   if (socketConnMap_[clientID] == nullptr) {
+   if (socketConnMap_[clientID] == nullptr)
+   {
       setBIP151Connection(clientID);
    }
 
-   // Process all incoming data.
-   BinaryData packetData(encData_);
-   if (packetData.getSize() == 0) {
+   BinaryData payload(encData);
+   if (payload.getSize() == 0)
+   {
       logger_->error("[{}] Empty data packet ({}).", __func__, connectionName_);
       return;
    }
 
+   if (leftOverData_.getSize() != 0)
+   {
+      leftOverData_.append(payload);
+      payload = move(leftOverData_);
+      leftOverData_.clear();
+   }
+
    const auto &connData = socketConnMap_[clientID];
-   if (!connData) {
+   if (!connData)
+   {
       logger_->error("[{}] failed to find connection data for client {}"
          , __func__, BinaryData(clientID).toHexStr());
       return;
    }
 
    // Decrypt only if the BIP 151 handshake is complete.
-   if (connData->bip151HandshakeCompleted_) {
-      size_t plainTextSize = packetData.getSize() - POLY1305MACLEN;
+   if (connData->bip151HandshakeCompleted_)
+   {
+      //decrypt packet
       auto result = socketConnMap_[clientID]->encData_->decryptPacket(
-         packetData.getPtr(), packetData.getSize()
-         , (uint8_t*)packetData.getPtr(), packetData.getSize());
+         payload.getPtr(), payload.getSize(),
+         payload.getPtr(), payload.getSize());
 
-      // Did decryption succeed? If packets ever have to be split up, we may
-      // have to make like Armory's WS implementation and look for fragments.
-      if (result != 0) {
-         logger_->error("[{}] - Failed decryption - Result = {}", __func__
-            , result);
-         return;
+      if (result != 0)
+      {
+         // If decryption fails but the result indicates fragmentation, save the
+         // fragment and wait before doing anything, otherwise treat it as a
+         // legit error.
+         if (result <= ZMQ_MESSAGE_PACKET_SIZE && result > -1)
+         {
+            leftOverData_ = move(payload);
+            return;
+         }
+         else
+         {
+            logger_->error("[{}] Packet decryption failed - Error {}", __func__
+               , result);
+            return;
+         }
       }
 
-      // After decryption, the Poly1305 MAC has been removed.
-      packetData.resize(plainTextSize);
+      payload.resize(payload.getSize() - POLY1305MACLEN);
    }
 
    // If the BIP 150/151 handshake isn't complete, take the next handshake step.
    uint8_t msgType =
-      ZmqBIP15XMsg::getPacketType(packetData.getRef());
-   if (msgType > ZMQ_MSGTYPE_AEAD_THRESHOLD) {
-      processAEADHandshake(move(packetData), clientID);
+      ZmqBIP15XMsgPartial::getPacketType(payload.getRef());
+   if (msgType > ZMQ_MSGTYPE_AEAD_THRESHOLD)
+   {
+      processAEADHandshake(move(payload), clientID);
       return;
    }
 
    // We shouldn't get here but just in case....
    if (socketConnMap_[clientID]->encData_->getBIP150State() !=
-      BIP150State::SUCCESS) {
+      BIP150State::SUCCESS)
+   {
       //can't get this far without fully setup AEAD
       return;
    }
 
    // Parse the incoming message.
-   ZmqBIP15XMsg msgObj;
-   msgObj.parsePacket(packetData.getRef());
-   if (msgObj.getType() != ZMQ_MSGTYPE_SINGLEPACKET) {
+   ZmqBIP15XMsgPartial msgObj;
+   msgObj.parsePacket(payload.getRef());
+   if (msgObj.getType() != ZMQ_MSGTYPE_SINGLEPACKET)
+   {
       logger_->error("[{}] - Failed packet parsing", __func__);
       return;
    }
-
    auto&& outMsg = msgObj.getSingleBinaryMessage();
-   if (outMsg.getSize() == 0) {
+   if (outMsg.getSize() == 0)
+   {
       logger_->error("[{}] - Incoming packet is empty", __func__);
       return;
    }
@@ -238,7 +261,7 @@ bool ZmqBIP15XServerConnection::processAEADHandshake(const BinaryData& msgObj
    // Function used to actually send data to the client.
    auto writeToClient = [this, clientID](uint8_t type, const BinaryDataRef& msg
       , bool encrypt)->bool {
-      ZmqBIP15XMsg outMsg;
+      ZmqBIP15XMessageCodec outMsg;
       BIP151Connection* connPtr = nullptr;
       if (encrypt) {
          connPtr = socketConnMap_[clientID]->encData_.get();
@@ -252,7 +275,7 @@ bool ZmqBIP15XServerConnection::processAEADHandshake(const BinaryData& msgObj
    auto processHandshake = [this, &writeToClient, clientID](
       const BinaryData& msgdata)->bool {
       // Parse the packet.
-      ZmqBIP15XMsg zmqMsg;
+      ZmqBIP15XMsgPartial zmqMsg;
 
       if (!zmqMsg.parsePacket(msgdata.getRef())) {
          //invalid packet
@@ -473,7 +496,7 @@ bool ZmqBIP15XServerConnection::processAEADHandshake(const BinaryData& msgObj
 
 // Function used to reset the BIP 150/151 handshake data. Called when a
 // connection is shut down.
-// 
+//
 // INPUT:  The client ID. (const string&)
 // OUTPUT: None
 // RETURN: None
@@ -492,7 +515,7 @@ void ZmqBIP15XServerConnection::resetBIP151Connection(
 
 // Function used to set the BIP 150/151 handshake data. Called when a connection
 // is created.
-// 
+//
 // INPUT:  The client ID. (const string&)
 // OUTPUT: None
 // RETURN: None

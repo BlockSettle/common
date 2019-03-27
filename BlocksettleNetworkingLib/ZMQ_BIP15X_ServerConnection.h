@@ -24,7 +24,8 @@ public:
 };
 
 // The class establishing ZMQ sockets and establishing BIP 150/151 handshakes
-// before encrypting/decrypting the on-the-wire data using BIP 150/151.
+// before encrypting/decrypting the on-the-wire data using BIP 150/151. Used by
+// the server in a connection.
 class ZmqBIP15XServerConnection : public ZmqServerConnection
 {
 public:
@@ -63,6 +64,7 @@ private:
 
    std::shared_ptr<AuthorizedPeers> authPeers_;
    std::map<std::string, std::unique_ptr<ZmqBIP15XPerConnData>> socketConnMap_;
+   BinaryData leftOverData_;
    const uint64_t id_;
    QStringList trustedClients_;
 };
