@@ -644,7 +644,7 @@ void ChatClient::sendSearchUsersRequest(const QString &userIdPattern)
    sendRequest(request);
 }
 
-QString ChatClient::deriveKey(const QString &email)
+QString ChatClient::deriveKey(const QString &email) const
 {
-   return hasher_->deriveKey(email);
+   return QString::fromStdString(hasher_->deriveKey(email.toStdString()));
 }
