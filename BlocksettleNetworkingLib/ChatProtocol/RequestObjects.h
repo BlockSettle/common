@@ -13,5 +13,6 @@
 #include "RequestObjects/ChatroomsListRequest.h"
 #include "RequestObjects/SendRoomMessageRequest.h"
 #include "RequestObjects/ContactsListRequest.h"
+#include "RequestObjects/SearchUsersRequest.h"
 
 #include "RequestHandler.h"

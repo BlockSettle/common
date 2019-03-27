@@ -2,10 +2,10 @@
 using namespace Chat;
 
 ContactsListResponse::ContactsListResponse(std::vector<std::string> dataList)
-   :ListResponse (ResponseType::ResponseContactsList, dataList)
+   : ListResponse (ResponseType::ResponseContactsList, dataList)
 {
    contactsList_.reserve(dataList_.size());
-   for (const auto& contactData: dataList_){
+   for (const auto& contactData : dataList_){
       contactsList_.push_back(ContactRecordData::fromJSON(contactData));
    }
 }

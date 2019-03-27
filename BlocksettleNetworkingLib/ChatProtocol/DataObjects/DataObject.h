@@ -10,7 +10,8 @@ namespace Chat {
       enum class Type {
             MessageData,
             ChatRoomData,
-            ContactRecordData
+            ContactRecordData,
+            ChatUserData
          };
    protected:
       DataObject(Type type);

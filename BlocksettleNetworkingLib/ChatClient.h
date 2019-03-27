@@ -55,6 +55,7 @@ public:
    void OnContactsListResponse(const Chat::ContactsListResponse&) override;
    void OnChatroomsList(const Chat::ChatroomsListResponse&) override;
    void OnRoomMessages(const Chat::RoomMessagesResponse&) override;
+   void OnSearchUsersResponse(const Chat::SearchUsersResponse&) override;
 
    void OnDataReceived(const std::string& data) override;
    void OnConnected() override;
@@ -104,6 +105,7 @@ signals:
    void MessageIdUpdated(const QString& localId, const QString& serverId,const QString& chatId);
    void MessageStatusUpdated(const QString& messageId, const QString& chatId, int newStatus);
    void RoomsAdd(const std::vector<std::shared_ptr<Chat::ChatRoomData>>& rooms);
+   void IncomingSearchUserList(const std::vector<std::shared_ptr<Chat::ChatUserData>>& users);
 
 public slots:
    void onMessageRead(const std::shared_ptr<Chat::MessageData>& message);

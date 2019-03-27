@@ -18,6 +18,14 @@ QJsonObject ContactsListRequest::toJson() const
     return data;
 }
 
+std::shared_ptr<Request> ContactsListRequest::fromJSON(const std::string &clientId, const std::string &jsonData)
+{
+   QJsonObject data = QJsonDocument::fromJson(QString::fromStdString(jsonData).toUtf8()).object();
+   return std::make_shared<ContactsListRequest>(
+                     clientId
+                    , data[AuthIdKey].toString().toStdString());
+}
+
 void ContactsListRequest::handle(RequestHandler & handler)
 {
    handler.OnRequestContactsList(*this);

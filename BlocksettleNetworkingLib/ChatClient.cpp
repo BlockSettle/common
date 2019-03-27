@@ -17,6 +17,8 @@ Q_DECLARE_METATYPE(std::shared_ptr<Chat::MessageData>)
 Q_DECLARE_METATYPE(std::vector<std::shared_ptr<Chat::MessageData>>)
 Q_DECLARE_METATYPE(std::shared_ptr<Chat::ChatRoomData>)
 Q_DECLARE_METATYPE(std::vector<std::shared_ptr<Chat::ChatRoomData>>)
+Q_DECLARE_METATYPE(std::shared_ptr<Chat::ChatUserData>)
+Q_DECLARE_METATYPE(std::vector<std::shared_ptr<Chat::ChatUserData>>)
 
 //We have current flags
 //We have upladed flags
@@ -282,6 +284,20 @@ void ChatClient::OnRoomMessages(const Chat::RoomMessagesResponse& response)
    }
 
    emit MessagesUpdate(messages, false);
+}
+
+void ChatClient::OnSearchUsersResponse(const Chat::SearchUsersResponse & response)
+{
+   QStringList users;
+
+   std::vector<std::shared_ptr<Chat::ChatUserData>> userList = response.getUsersList();
+   for (auto user : userList){
+      users << QString::fromStdString(user->toJsonString());
+   }
+   emit IncomingSearchUserList(userList);
+   logger_->debug("[ChatClient::OnSearchUsersResponse]: Received user list from server: {}",
+                  users.join(QLatin1String(", ")).prepend(QLatin1Char('[')).append(QLatin1Char(']')).toStdString()
+                  );
 }
 
 void ChatClient::logout()

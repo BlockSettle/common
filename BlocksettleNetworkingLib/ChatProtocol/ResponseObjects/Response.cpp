@@ -18,6 +18,7 @@ using namespace Chat;
 #include "PendingMessagesResponse.h"
 #include "RoomMessagesResponse.h"
 #include "ContactsListResponse.h"
+#include "SearchUsersResponse.h"
 
 static std::map<std::string, ResponseType> ResponseTypeFromString
 {
@@ -37,6 +38,7 @@ static std::map<std::string, ResponseType> ResponseTypeFromString
    ,   { "ResponseChatroomsList"       ,   ResponseType::ResponseChatroomsList       }
    ,   { "ResponseRoomMessages"        ,   ResponseType::ResponseRoomMessages        }
    ,   { "ResponseContactsList"        ,   ResponseType::ResponseContactsList        }
+   ,   { "ResponseSearchUsers"         ,   ResponseType::ResponseSearchUsers         }
 };
 
 
@@ -58,6 +60,7 @@ static std::map<ResponseType, std::string> ResponseTypeToString
    ,   { ResponseType::ResponseChatroomsList       ,  "ResponseChatroomsList"       }
    ,   { ResponseType::ResponseRoomMessages        ,  "ResponseRoomMessages"        }
    ,   { ResponseType::ResponseContactsList        ,  "ResponseContactsList"        }
+   ,   { ResponseType::ResponseSearchUsers         ,  "ResponseSearchUsers"         }
 };
 
 template <typename T>
@@ -131,6 +134,9 @@ std::shared_ptr<Response> Response::fromJSON(const std::string& jsonData)
 
       case ResponseType::ResponseContactsList:
          return ContactsListResponse::fromJSON(jsonData);
+
+      case ResponseType::ResponseSearchUsers:
+         return SearchUsersResponse::fromJSON(jsonData);
 
       default:
          break;

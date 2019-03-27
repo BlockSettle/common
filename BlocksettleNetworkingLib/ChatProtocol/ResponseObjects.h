@@ -15,5 +15,6 @@
 #include "ResponseObjects/UsersListResponse.h"
 #include "ResponseObjects/RoomMessagesResponse.h"
 #include "ResponseObjects/ContactsListResponse.h"
+#include "ResponseObjects/SearchUsersResponse.h"
 
 #include "ResponseHandler.h"

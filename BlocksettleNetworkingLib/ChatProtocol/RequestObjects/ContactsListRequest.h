@@ -11,6 +11,8 @@ namespace Chat {
 
    public:
       QJsonObject toJson() const override;
+      static std::shared_ptr<Request> fromJSON(const std::string& clientId
+                                     , const std::string& jsonData);
       void handle(RequestHandler &) override;
       std::string getAuthId() const;
    private:
