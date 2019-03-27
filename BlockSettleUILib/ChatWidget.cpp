@@ -10,6 +10,7 @@
 #include <QApplication>
 #include <QObject>
 #include <QDebug>
+#include "UserHasher.h"
 
 #include <thread>
 #include <spdlog/spdlog.h>
@@ -366,6 +367,14 @@ void ChatWidget::onSearchUserReturnPressed()
    if (userToAdd.isEmpty() || userToAdd.length() < 3) {
       return;
    }
+
+   QRegularExpression rx_email(QLatin1String(R"(^[a-zA-Z0-9._-]+@([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,6}$)"), QRegularExpression::CaseInsensitiveOption);
+   if (rx_email.match(userToAdd).matchType() == QRegularExpression::MatchType::NormalMatch) {
+      userToAdd = client_->deriveKey(userToAdd);
+   } else if (UserHasher::KeyLength >= userToAdd.length()) {
+      return; //Initially max key is 12 symbols
+   }
+   client_->sendSearchUsersRequest(userToAdd);
    
    auto chatUserDataPtr = chatUserListLogicPtr_->chatUserModelPtr()->getUserByEmail(userToAdd);
    if (!chatUserDataPtr) { // email exists?

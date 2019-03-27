@@ -85,6 +85,8 @@ public:
    void acceptFriendRequest(const QString &friendUserId);
    void declineFriendRequest(const QString &friendUserId);
    void sendUpdateMessageState(const std::shared_ptr<Chat::MessageData>& message);
+   void sendSearchUsersRequest(const QString& userIdPattern);
+   QString deriveKey(const QString& email);
 
 private:
    void sendRequest(const std::shared_ptr<Chat::Request>& request);
@@ -105,7 +107,7 @@ signals:
    void MessageIdUpdated(const QString& localId, const QString& serverId,const QString& chatId);
    void MessageStatusUpdated(const QString& messageId, const QString& chatId, int newStatus);
    void RoomsAdd(const std::vector<std::shared_ptr<Chat::ChatRoomData>>& rooms);
-   void IncomingSearchUserList(const std::vector<std::shared_ptr<Chat::ChatUserData>>& users);
+   void SearchUserListReceived(const std::vector<std::shared_ptr<Chat::ChatUserData>>& users);
 
 public slots:
    void onMessageRead(const std::shared_ptr<Chat::MessageData>& message);

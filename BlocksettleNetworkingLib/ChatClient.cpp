@@ -294,8 +294,9 @@ void ChatClient::OnSearchUsersResponse(const Chat::SearchUsersResponse & respons
    for (auto user : userList){
       users << QString::fromStdString(user->toJsonString());
    }
-   emit IncomingSearchUserList(userList);
-   logger_->debug("[ChatClient::OnSearchUsersResponse]: Received user list from server: {}",
+   emit SearchUserListReceived(userList);
+   logger_->debug("[ChatClient::OnSearchUsersResponse]: Received user list from server: "
+                  "{}",
                   users.join(QLatin1String(", ")).prepend(QLatin1Char('[')).append(QLatin1Char(']')).toStdString()
                   );
 }
@@ -635,4 +636,15 @@ void ChatClient::sendUpdateMessageState(const std::shared_ptr<Chat::MessageData>
 {
    auto request = std::make_shared<Chat::MessageChangeStatusRequest>(currentUserId_, message->getId().toStdString(), message->getState());
    sendRequest(request);
+}
+
+void ChatClient::sendSearchUsersRequest(const QString &userIdPattern)
+{
+   auto request = std::make_shared<Chat::SearchUsersRequest>("", currentUserId_, userIdPattern.toStdString());
+   sendRequest(request);
+}
+
+QString ChatClient::deriveKey(const QString &email)
+{
+   return hasher_->deriveKey(email);
 }
