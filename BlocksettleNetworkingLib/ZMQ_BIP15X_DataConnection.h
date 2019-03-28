@@ -74,6 +74,7 @@ private:
    std::atomic_flag lockSocket_ = ATOMIC_FLAG_INIT;
    bool bip150HandshakeCompleted_ = false;
    bool bip151HandshakeCompleted_ = false;
+   uint32_t msgID = 0;
 };
 
 #endif // __ZMQ_BIP15X_DATACONNECTION_H__

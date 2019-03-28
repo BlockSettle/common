@@ -57,6 +57,7 @@ ZmqBIP15XDataConnection::ZmqBIP15XDataConnection(
    , bool monitored)
    : ZmqDataConnection(logger, monitored)
 {
+   currentReadMessage_.reset();
    string datadir =
       QStandardPaths::writableLocation(QStandardPaths::AppDataLocation).toStdString();
    string filename(CLIENT_AUTH_PEER_FILENAME);
@@ -69,6 +70,9 @@ ZmqBIP15XDataConnection::ZmqBIP15XDataConnection(
    else {
       authPeers_ = make_shared<AuthorizedPeers>();
    }
+
+   // Create a random four-byte ID for the client.
+   msgID = READ_UINT32_LE(CryptoPRNG::generateRandom(4));
 
    // BIP 151 connection setup. Technically should be per-socket or something
    // similar but data connections will only connect to one machine at a time.
@@ -150,15 +154,15 @@ bool ZmqBIP15XDataConnection::send(const string& data)
    string sendData = data;
    size_t dataLen = sendData.size();
    if (bip151Connection_->getBIP150State() == BIP150State::SUCCESS) {
-      ZmqBIP15XMessageCodec msg;
+      ZmqBIP15XSerializedMessage msg;
       BIP151Connection* connPtr = nullptr;
       if (bip151HandshakeCompleted_) {
          connPtr = bip151Connection_.get();
       }
       BinaryData payload(data);
-      vector<BinaryData> encData = msg.serialize(payload.getDataVector()
-         , connPtr, ZMQ_MSGTYPE_FRAGMENTEDPACKET_HEADER, 0);
-      sendData = encData[0].toBinStr();
+      msg.construct(payload.getDataVector()
+         , connPtr, ZMQ_MSGTYPE_FRAGMENTEDPACKET_HEADER, msgID);
+      sendData = msg.getNextPacket().toBinStr();
       dataLen = sendData.size();
    }
 
@@ -188,12 +192,13 @@ bool ZmqBIP15XDataConnection::send(const string& data)
 // RETURN: True if success, false if failure.
 bool ZmqBIP15XDataConnection::startBIP151Handshake()
 {
-   ZmqBIP15XMessageCodec msg;
+   ZmqBIP15XSerializedMessage msg;
    BinaryData nullPayload;
 
-   vector<BinaryData> outData = msg.serialize(nullPayload.getDataVector()
-      , nullptr, ZMQ_MSGTYPE_AEAD_SETUP, 0);
-   return send(move(outData[0].toBinStr()));
+   msg.construct(nullPayload.getDataVector(), nullptr, ZMQ_MSGTYPE_AEAD_SETUP,
+      0);
+   auto& packet = msg.getNextPacket();
+   return send(packet.toBinStr());
 }
 
 // The function that handles raw data coming in from the socket. The data may or
@@ -205,9 +210,6 @@ bool ZmqBIP15XDataConnection::startBIP151Handshake()
 void ZmqBIP15XDataConnection::onRawDataReceived(const string& rawData)
 {
    // Place the data in the processing queue and process the queue.
-//   pendingData_.append(rawData);
-
-   //
    BinaryData payload(rawData);
    if (payload.getSize() == 0) {
       logger_->error("[{}] Empty data packet ({}).", __func__, connectionName_);
@@ -223,15 +225,16 @@ void ZmqBIP15XDataConnection::onRawDataReceived(const string& rawData)
 
    if (bip151Connection_->connectionComplete())
    {
-      //decrypt packet
+      // Decrypt packet. Failure isn't necessarily a problem if we're dealing
+      // with fragments.
       auto result = bip151Connection_->decryptPacket(
          payload.getPtr(), payload.getSize(),
          payload.getPtr(), payload.getSize());
 
       if (result != 0)
       {
-         // If decryption fails but the result indicates fragmentation, save the
-         // fragment and wait before doing anything, otherwise treat it as a
+         // If decryption "fails" but the result indicates fragmentation, save
+         // the fragment and wait before doing anything, otherwise treat it as a
          // legit error.
          if (result <= ZMQ_MESSAGE_PACKET_SIZE && result > -1)
          {
@@ -280,9 +283,17 @@ void ZmqBIP15XDataConnection::ProcessIncomingData(BinaryData& payload)
       return;
    }
 
+   // Fragmented messages may not be ready yet. That's fine. Just wait for the
+   // other fragments.
    if (!currentReadMessage_.message_.isReady())
+   {
+      BinaryData inMsg;
+      currentReadMessage_.message_.getMessage(&inMsg);
+      pendingData_.append(inMsg.toBinStr());
       return;
+   }
 
+   // If we're still handshaking, take the next step.
    if (currentReadMessage_.message_.getType() > ZMQ_MSGTYPE_AEAD_THRESHOLD)
    {
       if (!processAEADHandshake(currentReadMessage_.message_))
@@ -295,29 +306,9 @@ void ZmqBIP15XDataConnection::ProcessIncomingData(BinaryData& payload)
       currentReadMessage_.reset();
       return;
    }
-
-   // Deserialize the packet.
-   ZmqBIP15XMsgPartial inMsg;
-   if (!inMsg.parsePacket(payload.getRef())) {
-      if (logger_) {
-         logger_->error("[ZmqBIP15XDataConnection::{}] Packet parsing failed "
-            "(connection {})", __func__, connectionName_);
-      }
-      return;
-   }
-
-   // If the BIP 150/151 handshake isn't complete, take the next handshake step.
-   if (inMsg.getType() > ZMQ_MSGTYPE_AEAD_THRESHOLD) {
-      if (!processAEADHandshake(inMsg)) {
-         if (logger_) {
-            logger_->error("[ZmqBIP15XDataConnection::{}] Encryption "
-               "handshake failed (connection {})", __func__, connectionName_);
-         }
-         return;
-      }
-
-      return;
-   }
+   BinaryData inMsg;
+   currentReadMessage_.message_.getMessage(&inMsg);
+   pendingData_.append(inMsg.toBinStr());
 
    // We shouldn't get here but just in case....
    if (bip151Connection_->getBIP150State() != BIP150State::SUCCESS) {
@@ -331,17 +322,22 @@ void ZmqBIP15XDataConnection::ProcessIncomingData(BinaryData& payload)
    // For now, ignore the message ID. ZMQ_CALLBACK_ID is the only type we may
    // care about. If we need callbacks later, we can go back to what's in Armory
    // and add support.
-//   auto& msgid = inMsg.getId();
+   auto& msgid = currentReadMessage_.message_.getId();
+   switch (msgid)
+   {
+   case ZMQ_CALLBACK_ID:
+   {
+      break;
+   }
+
+   default:
+      break;
+   }
 
    // Pass the final data up the chain.
-//   auto&& outMsg = inMsg.getSingleBinaryMessage();
-   BinaryDataRef outMsg = currentReadMessage_.message_.getSingleBinaryMessage();
-   if (outMsg.getSize() == 0)
-   {
-      logger_->error("[{}] - Incoming packet is empty", __func__);
-      return;
-   }
-   ZmqDataConnection::notifyOnData(outMsg.toBinStr());
+   ZmqDataConnection::notifyOnData(pendingData_);
+   currentReadMessage_.reset();
+   pendingData_.clear();
 }
 
 // Create the data socket.
@@ -387,15 +383,15 @@ bool ZmqBIP15XDataConnection::processAEADHandshake(const ZmqBIP15XMsgPartial& ms
 {
    // Function used to send data out on the wire.
    auto writeData = [this](BinaryData& payload, uint8_t type, bool encrypt) {
-      ZmqBIP15XMessageCodec msg;
+      ZmqBIP15XSerializedMessage msg;
       BIP151Connection* connPtr = nullptr;
       if (encrypt) {
          connPtr = bip151Connection_.get();
       }
 
-      vector<BinaryData> outData = msg.serialize(payload.getDataVector()
-         , connPtr, type, 0);
-      send(move(outData[0].toBinStr()));
+      msg.construct(payload.getDataVector(), connPtr, type, 0);
+      auto& packet = msg.getNextPacket();
+      send(packet.toBinStr());
    };
 
    // Read the message, get the type, and process as needed. Code mostly copied

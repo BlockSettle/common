@@ -117,34 +117,56 @@ bool ZmqBIP15XServerConnection::ReadFromDataSocket()
 // Whether or not the raw data is used, it will be placed in a ZmqBIP15XMsg
 // object.
 //
-// INPUT:  The data to send. It'll be encrypted here if needed. (const string&)
+// INPUT:  The ZMQ client ID. (const string&)
+//         The data to send and the 4-byte message ID. (const string&)
+//         A post-send callback. Optional. (const SendResultCb&)
 // OUTPUT: None
 // RETURN: True if success, false if failure.
 bool ZmqBIP15XServerConnection::SendDataToClient(const string& clientId
-   , const string& data, const SendResultCb &cb)
+   , const string& data, const SendResultCb& cb)
 {
-   string sendStr = data;
+   bool retVal = false;
 
    // Encrypt data here if the BIP 150 handshake is complete.
    if (socketConnMap_[clientId]->encData_->getBIP150State() ==
       BIP150State::SUCCESS) {
+      string sendStr = data;
       BIP151Connection* connPtr = nullptr;
       if (socketConnMap_[clientId]->bip151HandshakeCompleted_) {
          connPtr = socketConnMap_[clientId]->encData_.get();
       }
+
       const BinaryData payload(data);
-      const auto outData = ZmqBIP15XMessageCodec::serialize(payload.getDataVector()
-         , connPtr, ZMQ_MSGTYPE_FRAGMENTEDPACKET_HEADER, 0);
-      if (outData.empty()) {
-         logger_->error("[ZmqBIP15XServerConnection::{}] failed to serialize data (size {})"
-            , __func__, data.size());
-         return false;
+      ZmqBIP15XSerializedMessage msg;
+      msg.construct(payload.getDataVector(), connPtr
+         , ZMQ_MSGTYPE_FRAGMENTEDPACKET_HEADER, socketConnMap_[clientId]->msgID_);
+
+      // Cycle through all packets.
+      while (!msg.isDone())
+      {
+         auto& packet = msg.getNextPacket();
+         if (packet.getSize() == 0) {
+            logger_->error("[ZmqBIP15XServerConnection::{}] failed to serialize data (size {})"
+               , __func__, data.size());
+            return retVal;
+         }
+
+         retVal = QueueDataToSend(clientId, packet.toBinStr(), cb, false);
+         if (!retVal)
+         {
+            logger_->error("[ZmqBIP15XServerConnection::{}] fragment send failed"
+               , __func__, data.size());
+            return retVal;
+         }
       }
-      sendStr = outData[0].toBinStr();
+   }
+   else
+   {
+      // Queue up the untouched data for straight transmission.
+      retVal = QueueDataToSend(clientId, data, cb, false);
    }
 
-   // Queue up the data for transmission.
-   return QueueDataToSend(clientId, sendStr, cb, false);
+   return retVal;
 }
 
 // The function that processes raw ZMQ connection data. It processes the BIP
@@ -213,6 +235,7 @@ void ZmqBIP15XServerConnection::ProcessIncomingData(const string& encData
       payload.resize(payload.getSize() - POLY1305MACLEN);
    }
 
+   socketConnMap_[clientID]->msgID_ = ZmqBIP15XMessageCodec::getMessageId(payload.getRef());
    // If the BIP 150/151 handshake isn't complete, take the next handshake step.
    uint8_t msgType =
       ZmqBIP15XMsgPartial::getPacketType(payload.getRef());
@@ -261,14 +284,16 @@ bool ZmqBIP15XServerConnection::processAEADHandshake(const BinaryData& msgObj
    // Function used to actually send data to the client.
    auto writeToClient = [this, clientID](uint8_t type, const BinaryDataRef& msg
       , bool encrypt)->bool {
-      ZmqBIP15XMessageCodec outMsg;
+      ZmqBIP15XSerializedMessage outMsg;
       BIP151Connection* connPtr = nullptr;
       if (encrypt) {
          connPtr = socketConnMap_[clientID]->encData_.get();
       }
 
-      vector<BinaryData> outData = outMsg.serialize(msg, connPtr, type, 0);
-      return SendDataToClient(clientID, move(outData[0].toBinStr()));
+      // Construct the message and fire it down the pipe.
+      outMsg.construct(msg, connPtr, type, 0);
+      auto& packet = outMsg.getNextPacket();
+      return SendDataToClient(clientID, packet.toBinStr());
    };
 
    // Handshake function. Code mostly copied from Armory.

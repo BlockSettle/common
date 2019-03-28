@@ -21,6 +21,7 @@ public:
    bool bip150HandshakeCompleted_ = false;
    bool bip151HandshakeCompleted_ = false;
    std::chrono::time_point<std::chrono::system_clock> outKeyTimePoint_;
+   uint32_t msgID_ = 0;
 };
 
 // The class establishing ZMQ sockets and establishing BIP 150/151 handshakes

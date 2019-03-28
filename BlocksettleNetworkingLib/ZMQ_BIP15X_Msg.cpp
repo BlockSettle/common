@@ -4,9 +4,6 @@ using namespace std;
 
 // NB: Data is mostly copied from Armory's WebSocket code, with mods as needed.
 
-// TO DO: REMOVE THIS EVENTUALLY, OR ALTER IT AS NEEDED.
-#define LWS_PRE 0
-
 // Reset the message.
 //
 // INPUT:  None
@@ -287,7 +284,7 @@ vector<BinaryData> ZmqBIP15XMessageCodec::serializePacketWithoutId(
       throw runtime_error("payload is too large to serialize");
    }
 
-   //skip LWS_PRE, copy in packet size
+   // Copy in packet size.
    memcpy(plainText.getPtr(), &size, 4);
    size += 4;
 
@@ -368,7 +365,7 @@ vector<BinaryData> ZmqBIP15XMessageCodec::serialize(const BinaryDataRef& payload
    /***
    Fragmented packet seralization
 
-   If the payload is less than (WEBSOCKET_MESSAGE_PACKET_SIZE - 9 - LWS_PRE -
+   If the payload is less than (WEBSOCKET_MESSAGE_PACKET_SIZE - 9  -
    POLY1305MACLEN), use:
     Single packet header:
      uint32_t packet size
@@ -459,14 +456,14 @@ vector<BinaryData> ZmqBIP15XMessageCodec::serialize(const BinaryDataRef& payload
       //+4 to shave off payload size, +1 for type
       headerRoom = payloadRoom + 5;
 
-      memcpy(headerPacket.getPtr() + LWS_PRE, &headerRoom, 4);
-      headerPacket.getPtr()[LWS_PRE + 4] = ZMQ_MSGTYPE_FRAGMENTEDPACKET_HEADER;
-      memcpy(headerPacket.getPtr() + LWS_PRE + 5, &id, 4);
-      memcpy(headerPacket.getPtr() + LWS_PRE + 9, &fragmentCount, 2);
-      memcpy(headerPacket.getPtr() + LWS_PRE + 11, payload.getPtr(), pos);
+      memcpy(headerPacket.getPtr() , &headerRoom, 4);
+      headerPacket.getPtr()[4] = ZMQ_MSGTYPE_FRAGMENTEDPACKET_HEADER;
+      memcpy(headerPacket.getPtr() + 5, &id, 4);
+      memcpy(headerPacket.getPtr() + 9, &fragmentCount, 2);
+      memcpy(headerPacket.getPtr() + 11, payload.getPtr(), pos);
       encryptAndAdd(headerPacket);
 
-      size_t fragmentOverhead = 10 + LWS_PRE + POLY1305MACLEN;
+      size_t fragmentOverhead = 10 + POLY1305MACLEN;
       for (unsigned i = 1; i < fragmentCount; i++)
       {
          if (i == 253)
@@ -479,13 +476,13 @@ vector<BinaryData> ZmqBIP15XMessageCodec::serialize(const BinaryDataRef& payload
 
          BinaryData fragmentPacket(dataSize + fragmentOverhead);
          uint32_t packetSize =
-            dataSize + fragmentOverhead - LWS_PRE - POLY1305MACLEN - 4;
+            dataSize + fragmentOverhead  - POLY1305MACLEN - 4;
 
-         memcpy(fragmentPacket.getPtr() + LWS_PRE, &packetSize, 4);
-         fragmentPacket.getPtr()[LWS_PRE + 4] = ZMQ_MSGTYPE_FRAGMENTEDPACKET_FRAGMENT;
-         memcpy(fragmentPacket.getPtr() + LWS_PRE + 5, &id, 4);
+         memcpy(fragmentPacket.getPtr() , &packetSize, 4);
+         fragmentPacket.getPtr()[4] = ZMQ_MSGTYPE_FRAGMENTEDPACKET_FRAGMENT;
+         memcpy(fragmentPacket.getPtr()  + 5, &id, 4);
 
-         size_t offset = LWS_PRE + 9;
+         size_t offset = + 9;
          if (i < 253)
          {
             uint8_t fragID = i;
@@ -523,7 +520,7 @@ uint32_t ZmqBIP15XMessageCodec::getMessageId(const BinaryDataRef& packet)
       return UINT32_MAX;
    }
 
-   return *(uint32_t*)(packet.getPtr() + 4);
+   return *(uint32_t*)(packet.getPtr() + 5);
 }
 
 // A frontend that takes packets and reconstructed the fragmented message.
