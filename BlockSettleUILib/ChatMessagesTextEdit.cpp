@@ -63,7 +63,7 @@ QString ChatMessagesTextEdit::data(const int &row, const Column &column)
          QString sender = messages_[currentChatId_][row]->getSenderId();
          if (sender == ownUserId_) {
             sender = ownSender;
-         } else if (isGroupRoom) {
+         } else if (isGroupRoom_) {
             sender = toHtmlUsername(sender);
          }
          return sender;
