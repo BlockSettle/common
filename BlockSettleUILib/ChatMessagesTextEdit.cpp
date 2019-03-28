@@ -228,7 +228,7 @@ void ChatMessagesTextEdit::onMessageStatusChanged(const QString& messageId, cons
    std::shared_ptr<Chat::MessageData> message = findMessage(chatId, messageId);
    
    if (message != nullptr){
-      message->setFlag((Chat::MessageData::State)newStatus);
+      message->updateState(newStatus);
       notifyMessageChanged(message);
    }
 }
