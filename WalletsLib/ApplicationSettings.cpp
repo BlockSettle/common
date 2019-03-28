@@ -61,8 +61,8 @@ static const QString zmqSignerKeyFileName = QLatin1String("zmq_conn_srv.pub");
 
 static const int ArmoryDefaultLocalMainPort = 9001;
 static const int ArmoryDefaultLocalTestPort = 19001;
-static const int ArmoryDefaultRemoteMainPort = 80;
-static const int ArmoryDefaultRemoteTestPort = 81;
+static const int ArmoryDefaultRemoteMainPort = 9001;
+static const int ArmoryDefaultRemoteTestPort = 19001;
 
 #ifndef NDEBUG
 static const QString chatServerIPName = QLatin1String("chatserver-ip");
@@ -213,10 +213,11 @@ void ApplicationSettings::set(Setting s, const QVariant &val, bool toFile)
          itSD->second.read = true;
          if (val != itSD->second.value) {
             itSD->second.value = val;
-            if (toFile && !itSD->second.path.isEmpty()) {
-               settings_.setValue(itSD->second.path, val);
-            }
             emit settingChanged(s, val);
+         }
+
+         if (toFile && !itSD->second.path.isEmpty()) {
+            settings_.setValue(itSD->second.path, val);
          }
       }
    }
@@ -231,10 +232,11 @@ void ApplicationSettings::reset(Setting s, bool toFile)
       itSD->second.read = true;
       if (itSD->second.value != itSD->second.defVal) {
          itSD->second.value = itSD->second.defVal;
-         if (toFile && !itSD->second.path.isEmpty()) {
-            settings_.setValue(itSD->second.path, itSD->second.value);
-         }
          emit settingChanged(s, itSD->second.defVal);
+      }
+      
+      if (toFile && !itSD->second.path.isEmpty()) {
+         settings_.setValue(itSD->second.path, itSD->second.value);
       }
    }
 }
