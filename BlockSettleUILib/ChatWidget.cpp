@@ -129,7 +129,7 @@ public:
       chat_->setIsRoom(false);
       chat_->ui_->input_textEdit->setEnabled(!chat_->currentChat_.isEmpty());
       chat_->ui_->labelActiveChat->setText(QObject::tr("CHAT #") + chat_->currentChat_);
-      chat_->ui_->textEditMessages->onSwitchToChat(chat_->currentChat_);
+      chat_->ui_->textEditMessages->switchToChat(chat_->currentChat_);
       chat_->client_->retrieveUserMessages(chat_->currentChat_);
 
       // load draft
@@ -152,7 +152,7 @@ public:
       chat_->setIsRoom(true);
       chat_->ui_->input_textEdit->setEnabled(!chat_->currentChat_.isEmpty());
       chat_->ui_->labelActiveChat->setText(QObject::tr("CHAT #") + chat_->currentChat_);
-      chat_->ui_->textEditMessages->onSwitchToChat(chat_->currentChat_);
+      chat_->ui_->textEditMessages->switchToChat(chat_->currentChat_, true);
       chat_->client_->retrieveRoomMessages(chat_->currentChat_);
 
       // load draft
@@ -254,6 +254,8 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
 
    connect(ui_->textEditMessages, &ChatMessagesTextEdit::userHaveNewMessageChanged, 
            chatUserListLogicPtr_.get(), &ChatUserListLogic::onUserHaveNewMessageChanged);
+   connect(ui_->textEditMessages, &ChatMessagesTextEdit::sendFriendRequest,
+            this, &ChatWidget::onSendFriendRequest);
 
    changeState(State::LoggedOut); //Initial state is LoggedOut
 }
