@@ -27,6 +27,13 @@
 // Message ID (4 bytes)
 // Packet number (2 bytes - 1-65535)
 // Payload  (N bytes)
+//
+// Note that fragments need not be reassembled before decrypting them. It is
+// important to note the packet number and parse out the decrypted fragments in
+// order. Otherwise, the fragments aren't special in terms of handling. That
+// said, to make things easier, it's best to run a map of them through
+// ZmqBIP15XMessageCodec, which can output single messages for fragmented and
+// non-fragmented.
 
 #define ZMQ_MSGTYPE_SINGLEPACKET              1
 #define ZMQ_MSGTYPE_FRAGMENTEDPACKET_HEADER   2

@@ -18,7 +18,7 @@ private:
    int counter_ = 0;
 
 public:
-   std::map<int, BinaryData> packets_;
+   std::map<uint16_t, BinaryData> packets_;
    ZmqBIP15XMsgPartial message_;
 
    void reset(void);
@@ -69,7 +69,6 @@ private:
    uint32_t outerRekeyCount_ = 0;
    uint32_t innerRekeyCount_ = 0;
    ZmqBIP15XClientPartialMsg currentReadMessage_;
-   std::string pendingData_; // POSSIBLY REMOVE
    BinaryData leftOverData_;
    std::atomic_flag lockSocket_ = ATOMIC_FLAG_INIT;
    bool bip150HandshakeCompleted_ = false;

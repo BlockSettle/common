@@ -160,8 +160,8 @@ bool ZmqBIP15XDataConnection::send(const string& data)
          connPtr = bip151Connection_.get();
       }
       BinaryData payload(data);
-      msg.construct(payload.getDataVector()
-         , connPtr, ZMQ_MSGTYPE_FRAGMENTEDPACKET_HEADER, msgID);
+      msg.construct(payload.getDataVector(), connPtr
+         , ZMQ_MSGTYPE_FRAGMENTEDPACKET_HEADER, msgID);
       sendData = msg.getNextPacket().toBinStr();
       dataLen = sendData.size();
    }
@@ -279,6 +279,7 @@ void ZmqBIP15XDataConnection::ProcessIncomingData(BinaryData& payload)
    auto result = currentReadMessage_.message_.parsePacket(payloadRef);
    if (!result)
    {
+      // Failure
       currentReadMessage_.reset();
       return;
    }
@@ -289,7 +290,6 @@ void ZmqBIP15XDataConnection::ProcessIncomingData(BinaryData& payload)
    {
       BinaryData inMsg;
       currentReadMessage_.message_.getMessage(&inMsg);
-      pendingData_.append(inMsg.toBinStr());
       return;
    }
 
@@ -308,7 +308,6 @@ void ZmqBIP15XDataConnection::ProcessIncomingData(BinaryData& payload)
    }
    BinaryData inMsg;
    currentReadMessage_.message_.getMessage(&inMsg);
-   pendingData_.append(inMsg.toBinStr());
 
    // We shouldn't get here but just in case....
    if (bip151Connection_->getBIP150State() != BIP150State::SUCCESS) {
@@ -335,9 +334,8 @@ void ZmqBIP15XDataConnection::ProcessIncomingData(BinaryData& payload)
    }
 
    // Pass the final data up the chain.
-   ZmqDataConnection::notifyOnData(pendingData_);
+   ZmqDataConnection::notifyOnData(inMsg.toBinStr());
    currentReadMessage_.reset();
-   pendingData_.clear();
 }
 
 // Create the data socket.
