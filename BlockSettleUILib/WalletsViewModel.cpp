@@ -581,6 +581,7 @@ void WalletsViewModel::LoadWallets(bool keepSelection)
       for (int i = 0; i < rowCount(); i++) {
          treeView->expand(index(i, 0));
       }
+
       if (!selection.empty()) {
          treeView->setCurrentIndex(selection[0]);
          treeView->selectionModel()->select(selection[0], QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);

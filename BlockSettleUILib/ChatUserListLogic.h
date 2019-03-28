@@ -26,6 +26,8 @@ public:
 
    ChatUserModelPtr chatUserModelPtr() const;
 
+   void addChatRooms(const std::vector<std::shared_ptr<Chat::ChatRoomData> >& roomList);
+
 signals:
 
 public slots:
@@ -37,8 +39,6 @@ public slots:
    void onFriendRequestRejected(const UserIdList &userIdList);
    void onUserHaveNewMessageChanged(const QString &userId, const bool &userHaveNewMessage, const bool &isInCurrentChat);
    
-   void onAddChatRooms(const std::vector<std::shared_ptr<Chat::ChatRoomData> >& roomList);
-
 private:
    ChatUserModelPtr chatUserModelPtr_;
    std::shared_ptr<ChatClient>      client_;

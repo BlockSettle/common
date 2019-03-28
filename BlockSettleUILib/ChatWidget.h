@@ -58,6 +58,9 @@ private slots:
    void onSendFriendRequest(const QString &userId);
    void onAcceptFriendRequest(const QString &userId);
    void onDeclineFriendRequest(const QString &userId);
+   void onAddUserToContacts(const QString &userId);
+   void onRoomClicked(const QString& roomId);
+   void onAddChatRooms(const std::vector<std::shared_ptr<Chat::ChatRoomData> >& roomList);
 
 signals:
    void LoginFailed();
@@ -77,6 +80,7 @@ private:
    std::shared_ptr<ChatWidgetState> stateCurrent_;
    ChatUserListLogicPtr chatUserListLogicPtr_;
    QMap<QString, QString> draftMessages_;
+   bool needsToStartFirstRoom_;
 
 private:
    bool isRoom();
