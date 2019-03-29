@@ -43,6 +43,8 @@ ChatClient::ChatClient(const std::shared_ptr<ConnectionManager>& connectionManag
    qRegisterMetaType<std::vector<std::shared_ptr<Chat::MessageData>>>();
    qRegisterMetaType<std::shared_ptr<Chat::ChatRoomData>>();
    qRegisterMetaType<std::vector<std::shared_ptr<Chat::ChatRoomData>>>();
+   qRegisterMetaType<std::shared_ptr<Chat::ChatUserData>>();
+   qRegisterMetaType<std::vector<std::shared_ptr<Chat::ChatUserData>>>();
 
    chatDb_ = make_unique<ChatDB>(logger, appSettings_->get<QString>(ApplicationSettings::chatDbFile));
    if (!chatDb_->loadKeys(pubKeys_)) {

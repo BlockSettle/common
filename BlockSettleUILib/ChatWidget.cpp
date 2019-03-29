@@ -231,6 +231,8 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
            this, &ChatWidget::onChatUserRemoved);
    connect(client_.get(), &ChatClient::RoomsAdd,
            this, &ChatWidget::onAddChatRooms);
+   connect(client_.get(), &ChatClient::SearchUserListReceived,
+           this, &ChatWidget::onSearchUserListReceived);
 
    connect(client_.get(), &ChatClient::MessagesUpdate, ui_->textEditMessages
                         , &ChatMessagesTextEdit::onMessagesUpdate);
@@ -268,7 +270,8 @@ void ChatWidget::onChatUserRemoved(const ChatUserDataPtr &chatUserDataPtr)
    }
 }
 
-void ChatWidget::onAddChatRooms(const std::vector<std::shared_ptr<Chat::ChatRoomData> >& roomList) {
+void ChatWidget::onAddChatRooms(const std::vector<std::shared_ptr<Chat::ChatRoomData> >& roomList)
+{
    chatUserListLogicPtr_->addChatRooms(roomList);
 
    if (roomList.size() > 0 && needsToStartFirstRoom_) {
@@ -276,6 +279,20 @@ void ChatWidget::onAddChatRooms(const std::vector<std::shared_ptr<Chat::ChatRoom
       onRoomClicked(firstRoom->getId());
       needsToStartFirstRoom_ = false;
    }
+}
+
+void ChatWidget::onSearchUserListReceived(const std::vector<std::shared_ptr<Chat::ChatUserData>>& users)
+{
+   if (users.size() < 1) {
+      return;
+   }
+
+   std::shared_ptr<Chat::ChatUserData> firstUser = users.at(0);
+   qDebug()<<"searchResult:"<<firstUser->getUserId()<<","<<users.size();
+   popup_->setText(firstUser->getUserId());
+   popup_->setGeometry(0, 0, ui_->chatSearchLineEdit->width(), static_cast<int>(ui_->chatSearchLineEdit->height() * 1.2));
+   popup_->setCustomPosition(ui_->chatSearchLineEdit, 0, 5);
+   popup_->show();  
 }
 
 void ChatWidget::onUserClicked(const QString& userId)
@@ -391,22 +408,22 @@ void ChatWidget::onSearchUserReturnPressed()
    }
    client_->sendSearchUsersRequest(userToAdd);
    
-   auto chatUserDataPtr = chatUserListLogicPtr_->chatUserModelPtr()->getUserByEmail(userToAdd);
-   if (!chatUserDataPtr) { // email exists?
-      chatUserDataPtr = chatUserListLogicPtr_->chatUserModelPtr()->getUserByUserIdPrefix(userToAdd); // user ID autocomplete?
-      if (!chatUserDataPtr)
-      {
-         return;
-      }
-   }
+   // auto chatUserDataPtr = chatUserListLogicPtr_->chatUserModelPtr()->getUserByEmail(userToAdd);
+   // if (!chatUserDataPtr) { // email exists?
+   //    chatUserDataPtr = chatUserListLogicPtr_->chatUserModelPtr()->getUserByUserIdPrefix(userToAdd); // user ID autocomplete?
+   //    if (!chatUserDataPtr)
+   //    {
+   //       return;
+   //    }
+   // }
    
-   userToAdd = chatUserDataPtr->userId();
+   // userToAdd = chatUserDataPtr->userId();
 
-   // qDebug() << userToAdd;
-   popup_->setText(userToAdd);
-   popup_->setGeometry(0, 0, ui_->chatSearchLineEdit->width(), static_cast<int>(ui_->chatSearchLineEdit->height() * 1.2));
-   popup_->setCustomPosition(ui_->chatSearchLineEdit, 0, 5);
-   popup_->show();
+   // // qDebug() << userToAdd;
+   // popup_->setText(userToAdd);
+   // popup_->setGeometry(0, 0, ui_->chatSearchLineEdit->width(), static_cast<int>(ui_->chatSearchLineEdit->height() * 1.2));
+   // popup_->setCustomPosition(ui_->chatSearchLineEdit, 0, 5);
+   // popup_->show();
 }
 
 bool ChatWidget::eventFilter(QObject *obj, QEvent *event)
