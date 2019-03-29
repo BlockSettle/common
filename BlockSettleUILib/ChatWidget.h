@@ -59,6 +59,7 @@ private slots:
    void onAcceptFriendRequest(const QString &userId);
    void onDeclineFriendRequest(const QString &userId);
    void onAddChatRooms(const std::vector<std::shared_ptr<Chat::ChatRoomData> >& roomList);
+   void onSearchUserListReceived(const std::vector<std::shared_ptr<Chat::ChatUserData>>& users);
 
 signals:
    void LoginFailed();
