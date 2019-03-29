@@ -1,17 +1,16 @@
-#include "PortfolioWidget.h"
-
 #include "ui_PortfolioWidget.h"
+#include "PortfolioWidget.h"
+#include <QSortFilterProxyModel>
+#include <QMenu>
+#include <QClipboard>
 
 #include "ApplicationSettings.h"
 #include "CreateTransactionDialogAdvanced.h"
 #include "BSMessageBox.h"
-#include "MetaData.h"
 #include "TransactionDetailDialog.h"
 #include "TransactionsViewModel.h"
-#include "WalletsManager.h"
-
-#include <QSortFilterProxyModel>
-#include <QMenu>
+#include "Wallets/SyncWalletsManager.h"
+#include "Wallets/SyncWallet.h"
 
 
 class UnconfirmedTransactionFilter : public QSortFilterProxyModel
@@ -60,6 +59,16 @@ PortfolioWidget::PortfolioWidget(QWidget* parent)
    connect(ui_->treeViewUnconfirmedTransactions, &QTreeView::activated, this, &PortfolioWidget::showTransactionDetails);
    ui_->treeViewUnconfirmedTransactions->header()->setSectionResizeMode(QHeaderView::ResizeToContents);
 
+   actionCopyAddr_ = new QAction(tr("&Copy Address"));
+   connect(actionCopyAddr_, &QAction::triggered, [this]() {
+      qApp->clipboard()->setText(curAddress_);
+   });
+
+   actionCopyTx_ = new QAction(tr("Copy &Transaction Hash"));
+   connect(actionCopyTx_, &QAction::triggered, [this]() {
+      qApp->clipboard()->setText(curTx_);
+   });
+
    actionRBF_ = new QAction(tr("Replace-By-Fee (RBF)"), this);
    connect(actionRBF_, &QAction::triggered, this, &PortfolioWidget::onCreateRBFDialog);
 
@@ -88,7 +97,7 @@ void PortfolioWidget::init(const std::shared_ptr<ApplicationSettings> &appSettin
    , const std::shared_ptr<SignContainer> &container
    , const std::shared_ptr<ArmoryConnection> &armory
    , const std::shared_ptr<spdlog::logger> &logger
-   , const std::shared_ptr<WalletsManager> &walletsMgr)
+   , const std::shared_ptr<bs::sync::WalletsManager> &walletsMgr)
 {
    signContainer_ = container;
    armory_ = armory;
@@ -108,7 +117,7 @@ void PortfolioWidget::showTransactionDetails(const QModelIndex& index)
 {
    if (filter_) {
       QModelIndex sourceIndex = filter_->mapToSource(index);
-      auto txItem = model_->getItem(sourceIndex);
+      const auto txItem = model_->getItem(sourceIndex);
 
       TransactionDetailDialog transactionDetailDialog(txItem, walletsManager_, armory_, this);
       transactionDetailDialog.exec();
@@ -122,6 +131,9 @@ void PortfolioWidget::showContextMenu(const QPoint &point)
    }
 
    const auto sourceIndex = filter_->mapToSource(ui_->treeViewUnconfirmedTransactions->indexAt(point));
+   auto addressIndex = model_->index(sourceIndex.row(), static_cast<int>(TransactionsViewModel::Columns::Address));
+   curAddress_ = model_->data(addressIndex).toString();
+
    const auto txNode = model_->getNode(sourceIndex);
    contextMenu_.clear();
    if (!txNode || !txNode->item() || !txNode->item()->initialized) {
@@ -140,6 +152,15 @@ void PortfolioWidget::showContextMenu(const QPoint &point)
       actionCPFP_->setData(sourceIndex);
    } else {
       actionCPFP_->setData(-1);
+   }
+
+   // save transaction id and add context menu for copying it to clipboard
+   curTx_ = QString::fromStdString(txNode->item()->txEntry.txHash.toHexStr(true));
+   contextMenu_.addAction(actionCopyTx_);
+
+   // allow copy address only if there is only 1 address
+   if (txNode->item()->addressCount == 1) {
+      contextMenu_.addAction(actionCopyAddr_);
    }
 
    if (!contextMenu_.isEmpty()) {
