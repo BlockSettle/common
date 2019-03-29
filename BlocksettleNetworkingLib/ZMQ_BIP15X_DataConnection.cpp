@@ -14,7 +14,7 @@ using namespace std;
 // INPUT:  None
 // OUTPUT: None
 // RETURN: None
-void ZmqBIP15XClientPartialMsg::reset(void)
+void ZmqBIP15XMsgFragments::reset(void)
 {
    packets_.clear();
    message_.reset();
@@ -25,7 +25,7 @@ void ZmqBIP15XClientPartialMsg::reset(void)
 // INPUT:  The data to insert. (BinaryData&)
 // OUTPUT: None
 // RETURN: A reference to the packet data. (BinaryDataRef)
-BinaryDataRef ZmqBIP15XClientPartialMsg::insertDataAndGetRef(BinaryData& data)
+BinaryDataRef ZmqBIP15XMsgFragments::insertDataAndGetRef(BinaryData& data)
 {
    auto&& data_pair = std::make_pair(counter_++, std::move(data));
    auto iter = packets_.insert(std::move(data_pair));
@@ -37,7 +37,7 @@ BinaryDataRef ZmqBIP15XClientPartialMsg::insertDataAndGetRef(BinaryData& data)
 // INPUT:  None
 // OUTPUT: None
 // RETURN: None
-void ZmqBIP15XClientPartialMsg::eraseLast(void)
+void ZmqBIP15XMsgFragments::eraseLast(void)
 {
    if (counter_ == 0)
       return;
@@ -211,7 +211,8 @@ void ZmqBIP15XDataConnection::onRawDataReceived(const string& rawData)
 {
    // Place the data in the processing queue and process the queue.
    BinaryData payload(rawData);
-   if (payload.getSize() == 0) {
+   if (payload.getSize() == 0)
+   {
       logger_->error("[{}] Empty data packet ({}).", __func__, connectionName_);
       return;
    }
@@ -223,14 +224,14 @@ void ZmqBIP15XDataConnection::onRawDataReceived(const string& rawData)
       leftOverData_.clear();
    }
 
+   // Perform decryption if we're ready.
    if (bip151Connection_->connectionComplete())
    {
-      // Decrypt packet. Failure isn't necessarily a problem if we're dealing
-      // with fragments.
       auto result = bip151Connection_->decryptPacket(
          payload.getPtr(), payload.getSize(),
          payload.getPtr(), payload.getSize());
 
+      // Failure isn't necessarily a problem if we're dealing with fragments.
       if (result != 0)
       {
          // If decryption "fails" but the result indicates fragmentation, save
@@ -262,7 +263,7 @@ void ZmqBIP15XDataConnection::onRawDataReceived(const string& rawData)
 // RETURN: True if success, false if failure.
 bool ZmqBIP15XDataConnection::closeConnection()
 {
-//   bip151Connection_.reset();
+   currentReadMessage_.reset();
    return ZmqDataConnection::closeConnection();
 }
 
@@ -279,33 +280,39 @@ void ZmqBIP15XDataConnection::ProcessIncomingData(BinaryData& payload)
    auto result = currentReadMessage_.message_.parsePacket(payloadRef);
    if (!result)
    {
-      // Failure
+      if (logger_) {
+         logger_->error("[ZmqBIP15XDataConnection::{}] Deserialization failed "
+            "(connection {})", __func__, connectionName_);
+      }
+
       currentReadMessage_.reset();
       return;
    }
 
-   // Fragmented messages may not be ready yet. That's fine. Just wait for the
-   // other fragments.
+   // Fragmented messages may not be marked as fragmented when decrypted but may
+   // still be a fragment. That's fine. Just wait for the other fragments.
    if (!currentReadMessage_.message_.isReady())
    {
-      BinaryData inMsg;
-      currentReadMessage_.message_.getMessage(&inMsg);
       return;
    }
 
-   // If we're still handshaking, take the next step.
+   // If we're still handshaking, take the next step. (No fragments allowed.)
    if (currentReadMessage_.message_.getType() > ZMQ_MSGTYPE_AEAD_THRESHOLD)
    {
       if (!processAEADHandshake(currentReadMessage_.message_))
       {
-         //invalid AEAD message, kill connection
-         // TO DO: LOGGER ERROR
+         if (logger_) {
+            logger_->error("[ZmqBIP15XDataConnection::{}] Handshake failed "
+               "(connection {})", __func__, connectionName_);
+         }
          return;
       }
 
       currentReadMessage_.reset();
       return;
    }
+
+   // We can now safely obtain the full message.
    BinaryData inMsg;
    currentReadMessage_.message_.getMessage(&inMsg);
 
@@ -318,10 +325,9 @@ void ZmqBIP15XDataConnection::ProcessIncomingData(BinaryData& payload)
       return;
    }
 
-   // For now, ignore the message ID. ZMQ_CALLBACK_ID is the only type we may
-   // care about. If we need callbacks later, we can go back to what's in Armory
-   // and add support.
-   auto& msgid = currentReadMessage_.message_.getId();
+   // For now, ignore the BIP message ID. If we need callbacks later, we can go
+   // back to what's in Armory and add support based off that.
+/*   auto& msgid = currentReadMessage_.message_.getId();
    switch (msgid)
    {
    case ZMQ_CALLBACK_ID:
@@ -331,7 +337,7 @@ void ZmqBIP15XDataConnection::ProcessIncomingData(BinaryData& payload)
 
    default:
       break;
-   }
+   }*/
 
    // Pass the final data up the chain.
    ZmqDataConnection::notifyOnData(inMsg.toBinStr());

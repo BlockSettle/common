@@ -130,4 +130,21 @@ public:
    static uint8_t getPacketType(const BinaryDataRef&);
 };
 
+// A struct containing fragments from a decrypted packet. Can be used to easily
+// generate a single, final decrypted packet. Incoming packets must already be
+// decrypted.
+struct ZmqBIP15XMsgFragments
+{
+private:
+   int counter_ = 0;
+
+public:
+   std::map<uint16_t, BinaryData> packets_;
+   ZmqBIP15XMsgPartial message_;
+
+   void reset(void);
+   BinaryDataRef insertDataAndGetRef(BinaryData& data);
+   void eraseLast(void);
+};
+
 #endif // __ZMQ_BIP15X_MSG_H__

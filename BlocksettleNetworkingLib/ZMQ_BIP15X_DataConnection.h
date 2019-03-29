@@ -11,21 +11,6 @@
 
 #define CLIENT_AUTH_PEER_FILENAME "client.peers"
 
-////////////////////////////////////////////////////////////////////////////////
-struct ZmqBIP15XClientPartialMsg
-{
-private:
-   int counter_ = 0;
-
-public:
-   std::map<uint16_t, BinaryData> packets_;
-   ZmqBIP15XMsgPartial message_;
-
-   void reset(void);
-   BinaryDataRef insertDataAndGetRef(BinaryData& data);
-   void eraseLast(void);
-};
-
 class ZmqBIP15XDataConnection : public QObject, public ZmqDataConnection
 {
    Q_OBJECT
@@ -68,7 +53,7 @@ private:
    std::chrono::time_point<std::chrono::system_clock> outKeyTimePoint_;
    uint32_t outerRekeyCount_ = 0;
    uint32_t innerRekeyCount_ = 0;
-   ZmqBIP15XClientPartialMsg currentReadMessage_;
+   ZmqBIP15XMsgFragments currentReadMessage_;
    BinaryData leftOverData_;
    std::atomic_flag lockSocket_ = ATOMIC_FLAG_INIT;
    bool bip150HandshakeCompleted_ = false;

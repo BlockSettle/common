@@ -22,6 +22,7 @@ public:
    bool bip151HandshakeCompleted_ = false;
    std::chrono::time_point<std::chrono::system_clock> outKeyTimePoint_;
    uint32_t msgID_ = 0;
+   ZmqBIP15XMsgFragments currentReadMessage_;
 };
 
 // The class establishing ZMQ sockets and establishing BIP 150/151 handshakes
@@ -58,7 +59,7 @@ protected:
 private:
    void ProcessIncomingData(const std::string& encData
       , const std::string& clientID);
-   bool processAEADHandshake(const BinaryData& msgObj
+   bool processAEADHandshake(const ZmqBIP15XMsgPartial& msgObj
       , const std::string& clientID);
    void promptUser(const BinaryDataRef& newKey, const std::string& srvAddrPort);
    AuthPeersLambdas getAuthPeerLambda();
