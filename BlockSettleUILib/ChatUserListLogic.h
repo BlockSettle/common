@@ -26,6 +26,8 @@ public:
 
    ChatUserModelPtr chatUserModelPtr() const;
 
+   void addChatRooms(const std::vector<std::shared_ptr<Chat::ChatRoomData> >& roomList);
+
 signals:
 
 public slots:
@@ -33,11 +35,12 @@ public slots:
    void onRemoveChatUsers(const UserIdList &userIdList);
    void onReplaceChatUsers(const UserIdList &userIdList);
    void onIcomingFriendRequest(const UserIdList &userIdList);
-
+   void onUserHaveNewMessageChanged(const QString &userId, const bool &userHaveNewMessage, const bool &isInCurrentChat);
+   
 private:
-   ChatUserModelPtr _chatUserModelPtr;
-   std::shared_ptr<ChatClient>      _client;
-   std::shared_ptr<spdlog::logger>  _logger;
+   ChatUserModelPtr chatUserModelPtr_;
+   std::shared_ptr<ChatClient>      client_;
+   std::shared_ptr<spdlog::logger>  logger_;
 };
 
 using ChatUserListLogicPtr = std::shared_ptr<ChatUserListLogic>;

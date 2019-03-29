@@ -35,14 +35,14 @@ void UsedInputsModel::clear()
 QVariant UsedInputsModel::data(const QModelIndex & index, int role) const
 {
    if (role == Qt::SizeHintRole && index.column() == 1) {
-      return QSize(50, 22); // workaround used here
+      return QSize(50, 14); // workaround used here
                             // TODO: move "Delete output button"
                             // from CreateTransactionDialogAdvanced::onOutputsInserted to model delegate
    }
 
    switch (role) {
    case Qt::TextAlignmentRole:
-      return Qt::AlignLeft | Qt::AlignVCenter;
+      return int(Qt::AlignLeft | Qt::AlignVCenter);
    case Qt::DisplayRole:
       return getRowData(index.column(), inputs_[index.row()]);
    }

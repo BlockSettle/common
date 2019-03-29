@@ -22,6 +22,7 @@ Handle codec and socketing for armory client
 #include "BlockDataManagerConfig.h"
 #include "WebSocketClient.h"
 #include "ClientClasses.h"
+#include "SocketWritePayload.h"
 
 class WalletManager;
 class WalletContainer;
@@ -217,6 +218,7 @@ namespace AsyncClient
          std::function<void(ReturnMessage<std::vector<AddressBookEntry>>)>) const;
 
       std::string setUnconfirmedTarget(unsigned);
+      std::string walletID(void) const { return walletID_; }
    };
 
    /////////////////////////////////////////////////////////////////////////////
@@ -359,6 +361,8 @@ namespace AsyncClient
          ::Codec_BDVCommand::StaticMethods);
 
       std::pair<unsigned, unsigned> getRekeyCount(void) const;
+      void setCheckServerKeyPromptLambda(
+         std::function<bool(const BinaryData&, const std::string&)>);
    };
 
    ////////////////////////////////////////////////////////////////////////////

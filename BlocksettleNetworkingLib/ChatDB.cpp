@@ -26,7 +26,7 @@ ChatDB::ChatDB(const std::shared_ptr<spdlog::logger> &logger, const QString &dbF
    createTable_ = {
       {QLatin1String("user_keys"), [db = db_] {
          const QLatin1String query("CREATE TABLE IF NOT EXISTS user_keys ("\
-            "user_id CHAR(8) PRIMARY KEY,"\
+            "user_id CHAR(16) PRIMARY KEY,"\
             "user_name CHAR(64),"\
             "key TEXT"\
             ");");
@@ -38,7 +38,7 @@ ChatDB::ChatDB(const std::shared_ptr<spdlog::logger> &logger, const QString &dbF
 
       {QLatin1String("contacts"), [db = db_] {
          const QLatin1String query("CREATE TABLE IF NOT EXISTS contacts ("\
-            "user_id CHAR(8) PRIMARY KEY,"\
+            "user_id CHAR(16) PRIMARY KEY,"\
             "user_name CHAR(64),"\
             "incoming_friend_request BOOLEAN);");
            if (!QSqlQuery(db).exec(query)) {
@@ -72,7 +72,7 @@ ChatDB::ChatDB(const std::shared_ptr<spdlog::logger> &logger, const QString &dbF
          const QLatin1String query("CREATE TABLE IF NOT EXISTS messages ("\
             "id CHAR(16) NOT NULL,"\
             "timestamp INTEGER NOT NULL,"\
-            "sender CHAR(8) NOT NULL,"\
+            "sender CHAR(16) NOT NULL,"\
             "receiver CHAR(32),"\
             "enctext TEXT,"\
             "state INTEGER,"\
@@ -124,6 +124,29 @@ bool ChatDB::createMissingTables()
    return result;
 }
 
+bool ChatDB::isRoomMessagesExist(const QString &roomId)
+{
+   // QSqlQuery qryAdd(QLatin1String("INSERT INTO messages(id, timestamp, sender, receiver, enctext, state, reference)"\
+      // " VALUES(?, ?, ?, ?, ?, ?, ?);"), db_);
+
+   QSqlQuery query(db_);
+   if (!query.prepare(QLatin1String("SELECT receiver FROM messages WHERE receiver=:room_id;"))) {
+      logger_->error("[ChatDB::isContactExist] failed to prepare query: {}", query.lastError().text().toStdString());
+      return false;
+   }
+   query.bindValue(QString::fromStdString(":room_id"), roomId);
+   if (!query.exec()) {
+      logger_->error("[ChatDB::isContactExist] failed to exec query: {}", query.lastError().text().toStdString());
+      return false;
+   }
+
+   if (query.next()) {
+      return true;
+   }
+
+   return false;
+}
+
 bool ChatDB::add(const Chat::MessageData &msg)
 {
    QSqlQuery qryAdd(QLatin1String("INSERT INTO messages(id, timestamp, sender, receiver, enctext, state, reference)"\
@@ -143,15 +166,81 @@ bool ChatDB::add(const Chat::MessageData &msg)
    return true;
 }
 
-std::vector<std::shared_ptr<Chat::MessageData>> ChatDB::getUserMessages(const QString &userId)
+bool ChatDB::syncMessageId(const QString& localId, const QString& serverId)
+{
+   const QString cmd = QLatin1String("UPDATE messages SET id = :server_mid, state = state | :set_flags WHERE (id = :local_mid);");
+   QSqlQuery query(db_);
+
+   query.prepare(cmd);
+   query.bindValue(QLatin1String(":server_mid"), serverId);
+   query.bindValue(QLatin1String(":local_mid"), localId);
+   query.bindValue(QLatin1String(":set_flags"), static_cast<int>(Chat::MessageData::State::Sent));
+   
+   if (!query.exec()) {
+      logger_->error("[ChatDB::syncMessageId] failed to synchronize local message id with server message id; Error: {}",
+                     query.lastError().text().toStdString()
+                     );
+      return false;
+   }
+   return true;
+}
+
+bool ChatDB::updateMessageStatus(const QString& messageId, int ustatus)
+{
+   const QString cmd = QLatin1String("UPDATE messages SET"
+                                     " state = state & :unset | :set"
+                                     " WHERE (id = :mid);");
+   /*
+    * Logic is next:
+    * We have new message status that should be updated
+    * but this message status is for message in the memory
+    * and this message in the memory have unset Encrypted flag
+    * But we can't change this flag in DB, we want to store messages in encrypted state
+    * 
+    * So we have mask that show what flags allowed to be changed
+    * using this mask we extracting flags that should be set (mask & ustatus)
+    * and flags that should be unset (~(set ^ mask))
+    * 
+    * Then we use this flags set and unset for change status in the DB without
+    * pulling status itself from DB
+    * 
+    * So just update status in the message in memory and use this method with updated status
+    * And it will set all flags in DB to updated state except Encrypted
+   */
+   
+    // Mask its allowed for change flags
+   int mask = ~static_cast<int>(Chat::MessageData::State::Encrypted);
+   int set = mask & ustatus;
+   int unset = ~(set ^ mask);
+   
+   QSqlQuery query(db_);
+
+   query.prepare(cmd);
+   query.bindValue(QLatin1String(":mid"), messageId);
+   query.bindValue(QLatin1String(":set"), set);
+   query.bindValue(QLatin1String(":unset"), unset);
+   
+   if (!query.exec()) {
+      logger_->error("[ChatDB::updateMessageStatus] failed to update message status with server message id: {}; Error: {}\nQuery: {}",
+                     messageId.toStdString(),
+                     query.lastError().text().toStdString(),
+                     query.executedQuery().toStdString()
+                     );
+      return false;
+   }
+   return true;
+}
+
+std::vector<std::shared_ptr<Chat::MessageData>> ChatDB::getUserMessages(const QString &ownUserId, const QString &userId)
 {
    QSqlQuery query(db_);
    if (!query.prepare(QLatin1String("SELECT sender, receiver, id, timestamp, enctext, state FROM messages "\
-      "WHERE sender=:user OR receiver=:user"))) {
+      "WHERE (sender=:user AND receiver=:owner) OR (receiver=:user AND sender=:owner)"))) {
       logger_->error("[ChatDB::getUserMessages] failed to prepare query: {}", query.lastError().text().toStdString());
       return {};
    }
    query.bindValue(QString::fromStdString(":user"), userId);
+   query.bindValue(QString::fromStdString(":owner"), ownUserId);
    if (!query.exec()) {
       logger_->error("[ChatDB::getUserMessages] failed to exec query: {}", query.lastError().text().toStdString());
       return {};
@@ -171,6 +260,51 @@ std::vector<std::shared_ptr<Chat::MessageData>> ChatDB::getUserMessages(const QS
    return records;
 }
 
+std::vector<std::shared_ptr<Chat::MessageData> > ChatDB::getRoomMessages(const QString& roomId)
+{
+   QSqlQuery query(db_);
+   if (!query.prepare(QLatin1String("SELECT sender, receiver, id, timestamp, enctext, state FROM messages "\
+      "WHERE (receiver=:roomid);"))) {
+      logger_->error("[ChatDB::getRoomMessages] failed to prepare query: {}", query.lastError().text().toStdString());
+      return {};
+   }
+   query.bindValue(QString::fromStdString(":roomid"), roomId);
+   if (!query.exec()) {
+      logger_->error("[ChatDB::getRoomMessages] failed to exec query: {}", query.lastError().text().toStdString());
+      return {};
+   }
+
+   std::vector<std::shared_ptr<Chat::MessageData>> records;
+   while (query.next()) {
+      const auto msg = std::make_shared<Chat::MessageData>(query.value(0).toString()
+         , query.value(1).toString(), query.value(2).toString(), query.value(3).toDateTime()
+         , query.value(4).toString(), query.value(5).toInt());
+      records.push_back(msg);
+   }
+   std::sort(records.begin(), records.end(), [](const std::shared_ptr<Chat::MessageData> &a
+      , const std::shared_ptr<Chat::MessageData> &b) {
+      return (a->getDateTime().toMSecsSinceEpoch() < b->getDateTime().toMSecsSinceEpoch());
+   });
+   return records;
+}
+
+bool ChatDB::removeRoomMessages(const QString &roomId) {
+   if (!isRoomMessagesExist(roomId)) {
+      return false;
+   }
+
+   QSqlQuery query(QLatin1String(
+      "DELETE FROM messages WHERE receiver=:room_id;"), db_);
+   query.bindValue(0, roomId);
+
+   if (!query.exec()) {
+      logger_->error("[ChatDB::removeContact] failed to delete contact.");
+      return false;
+   }
+
+   return true;
+}
+
 bool ChatDB::loadKeys(std::map<QString, autheid::PublicKey>& keys_out)
 {
    QSqlQuery query(db_);
@@ -184,7 +318,7 @@ bool ChatDB::loadKeys(std::map<QString, autheid::PublicKey>& keys_out)
    }
 
    while (query.next()) {
-      keys_out[query.value(0).toString()] = autheid::publicKeyFromString(
+      keys_out[query.value(0).toString()] = Chat::publicKeyFromString(
          query.value(1).toString().toStdString());
    }
    return true;
@@ -195,7 +329,7 @@ bool ChatDB::addKey(const QString& user, const autheid::PublicKey& key)
    QSqlQuery qryAdd(QLatin1String(
       "INSERT INTO user_keys(user_id, key) VALUES(?, ?);"), db_);
    qryAdd.bindValue(0, user);
-   qryAdd.bindValue(1, QString::fromStdString(autheid::publicKeyToString(key)));
+   qryAdd.bindValue(1, QString::fromStdString(Chat::publicKeyToString(key)));
 
    if (!qryAdd.exec()) {
       logger_->error("[ChatDB::addKey] failed to insert new public key value to user_keys.");

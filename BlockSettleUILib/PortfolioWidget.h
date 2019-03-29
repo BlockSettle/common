@@ -12,7 +12,12 @@ namespace spdlog {
 }
 namespace Ui {
     class PortfolioWidget;
-};
+}
+namespace bs {
+   namespace sync {
+      class WalletsManager;
+   }
+}
 
 class QAction;
 
@@ -23,7 +28,6 @@ class MarketDataProvider;
 class SignContainer;
 class TransactionsViewModel;
 class UnconfirmedTransactionFilter;
-class WalletsManager;
 
 class PortfolioWidget : public TabWithShortcut
 {
@@ -41,7 +45,7 @@ public:
              , const std::shared_ptr<SignContainer> &
              , const std::shared_ptr<ArmoryConnection> &
              , const std::shared_ptr<spdlog::logger> &
-             , const std::shared_ptr<WalletsManager> &);
+             , const std::shared_ptr<bs::sync::WalletsManager> &);
 
    void shortcutActivated(ShortcutType s) override;
 
@@ -60,9 +64,13 @@ private:
    QMenu    contextMenu_;
    QAction  *actionRBF_;
    QAction  *actionCPFP_;
+   QAction  *actionCopyAddr_;
+   QAction  *actionCopyTx_;
+   QString  curAddress_;
+   QString  curTx_;
    std::shared_ptr<SignContainer>      signContainer_;
    std::shared_ptr<ArmoryConnection>   armory_;
-   std::shared_ptr<WalletsManager>     walletsManager_;
+   std::shared_ptr<bs::sync::WalletsManager> walletsManager_;
 };
 
 #endif // __PORFOLIO_WIDGET_H__

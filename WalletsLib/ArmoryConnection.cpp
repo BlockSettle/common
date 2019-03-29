@@ -25,6 +25,7 @@ Q_DECLARE_METATYPE(NodeStatus)
 Q_DECLARE_METATYPE(bs::TXEntry)
 Q_DECLARE_METATYPE(std::vector<bs::TXEntry>)
 
+
 ArmoryConnection::ArmoryConnection(const std::shared_ptr<spdlog::logger> &logger
    , const std::string &txCacheFN, bool cbInMainThread)
    : QObject(nullptr)
@@ -41,11 +42,6 @@ ArmoryConnection::ArmoryConnection(const std::shared_ptr<spdlog::logger> &logger
    qRegisterMetaType<NodeStatus>();
    qRegisterMetaType<bs::TXEntry>();
    qRegisterMetaType<std::vector<bs::TXEntry>>();
-
-   // Add BIP 150 server keys
-   const BinaryData curKeyBin = READHEX(BIP150_KEY_1);
-   bsBIP150PubKeys.push_back(curKeyBin);
-
 }
 
 ArmoryConnection::~ArmoryConnection() noexcept
@@ -82,10 +78,14 @@ bool ArmoryConnection::startLocalArmoryProcess(const ArmorySettings &settings)
       default: break;
       }
 
+//      args.append(QLatin1String("--db-type=DB_FULL"));
+      args.append(QLatin1String("--listen-port=") + QString::number(settings.armoryDBPort));
       args.append(QLatin1String("--satoshi-datadir=\"") + settings.bitcoinBlocksDir + QLatin1String("\""));
       args.append(QLatin1String("--dbdir=\"") + settings.dbDir + QLatin1String("\""));
       args.append(QLatin1String("--public"));
 
+      logger_->debug("[{}] running {} {}", __func__, settings.armoryExecutablePath.toStdString()
+         , args.join(QLatin1Char(' ')).toStdString());
       armoryProcess_->start(settings.armoryExecutablePath, args);
       if (armoryProcess_->waitForStarted(DefaultArmoryDBStartTimeoutMsec)) {
          return true;
@@ -95,9 +95,18 @@ bool ArmoryConnection::startLocalArmoryProcess(const ArmorySettings &settings)
    return false;
 }
 
-void ArmoryConnection::setupConnection(const ArmorySettings &settings)
+void ArmoryConnection::setupConnection(const ArmorySettings &settings
+        , std::function<bool (const BinaryData &, const std::string &)> bip150PromptUserRoutine)
 {
-   emit prepareConnection(settings.netType, settings.armoryDBIp, settings.armoryDBPort);
+   // Add BIP 150 server keys
+   if (!settings.armoryDBKey.isEmpty()) {
+      const BinaryData curKeyBin = READHEX(settings.armoryDBKey.toStdString());
+      bsBIP150PubKeys_.push_back(curKeyBin);
+   }
+
+
+   needsBreakConnectionLoop_.store(false);
+   emit prepareConnection(settings);
 
    if (settings.runLocally) {
       if (!startLocalArmoryProcess(settings)) {
@@ -138,12 +147,12 @@ void ArmoryConnection::setupConnection(const ArmorySettings &settings)
       logger_->debug("[ArmoryConnection::setupConnection] completed");
    };
 
-   const auto &connectRoutine = [this, settings, registerRoutine] {
+   const auto &connectRoutine = [this, settings, registerRoutine, bip150PromptUserRoutine] {
       if (connThreadRunning_) {
          return;
       }
       connThreadRunning_ = true;
-      setState(State::Unknown);
+      setState(State::Connecting);
       stopServiceThreads();
       if (bdv_) {
          bdv_->unregisterFromDB();
@@ -155,16 +164,23 @@ void ArmoryConnection::setupConnection(const ArmorySettings &settings)
       isOnline_ = false;
       bool connected = false;
       do {
+         if (needsBreakConnectionLoop_.load()) {
+            setState(State::Canceled);
+            break;
+         }
          cbRemote_ = std::make_shared<ArmoryCallback>(this, logger_);
          logger_->debug("[ArmoryConnection::setupConnection] connecting to Armory {}:{}"
-                        , settings.armoryDBIp, settings.armoryDBPort);
+                        , settings.armoryDBIp.toStdString(), std::to_string(settings.armoryDBPort));
 
          // Get Armory BDV (gateway to the remote ArmoryDB instance). Must set
          // up BIP 150 keys before connecting. BIP 150/151 is transparent to us
          // otherwise. If it fails, the connection will fail.
-         bdv_ = AsyncClient::BlockDataViewer::getNewBDV(settings.armoryDBIp
-            , settings.armoryDBPort, settings.dataDir.toStdString(), true
+         bdv_ = AsyncClient::BlockDataViewer::getNewBDV(settings.armoryDBIp.toStdString()
+            , std::to_string(settings.armoryDBPort)
+            , settings.dataDir.toStdString()
+            , true // enable ephemeralPeers, because we manage armory keys ourself
             , cbRemote_);
+
          if (!bdv_) {
             logger_->error("[setupConnection (connectRoutine)] failed to "
                "create BDV");
@@ -172,9 +188,21 @@ void ArmoryConnection::setupConnection(const ArmorySettings &settings)
             continue;
          }
 
-         for (const auto &x : bsBIP150PubKeys) {
-            bdv_->addPublicKey(x);
+         // There is a problem with armory keys: we must delete old keys before importing them
+         // (AuthorizedPeers does not replace them, see AuthorizedPeers::addPeer for details).
+         // Because we manage keys using bip150PromptUserRoutine callback this cause a problem
+         // when Armory key changes (it will NOT be replaced despite we accept it trough the callback).
+         // If we don't add keys there it works fine.
+#if 0
+         try {
+            for (const auto &x : bsBIP150PubKeys_) {
+               bdv_->addPublicKey(x);
+            }
          }
+         catch (...) {}
+#endif
+
+         bdv_->setCheckServerKeyPromptLambda(bip150PromptUserRoutine);
 
          connected = bdv_->connectToRemote();
          if (!connected) {
@@ -251,7 +279,8 @@ bool ArmoryConnection::broadcastZC(const BinaryData& rawTx)
 }
 
 std::string ArmoryConnection::registerWallet(std::shared_ptr<AsyncClient::BtcWallet> &wallet
-   , const std::string &walletId, const std::vector<BinaryData> &addrVec, std::function<void()> cb
+   , const std::string &walletId, const std::vector<BinaryData> &addrVec
+   , std::function<void(const std::string &regId)> cb
    , bool asNew)
 {
    if (!bdv_ || ((state_ != State::Ready) && (state_ != State::Connected))) {
@@ -268,10 +297,10 @@ std::string ArmoryConnection::registerWallet(std::shared_ptr<AsyncClient::BtcWal
    else {
       if (cb) {
          if (cbInMainThread_) {
-            QMetaObject::invokeMethod(this, [cb] { cb(); });
+            QMetaObject::invokeMethod(this, [cb, regId] { cb(regId); });
          }
          else {
-            cb();
+            cb(regId);
          }
       }
    }
@@ -353,7 +382,7 @@ bool ArmoryConnection::getWalletsLedgerDelegate(std::function<void(const std::sh
       try {
          auto ld = std::make_shared< AsyncClient::LedgerDelegate>(delegate.get());
          if (cbInMainThread_) {
-            QMetaObject::invokeMethod(this, [this, cb, ld]{
+            QMetaObject::invokeMethod(this, [cb, ld]{
                cb(ld);
             });
          }
@@ -693,34 +722,59 @@ void ArmoryConnection::onRefresh(std::vector<BinaryData> ids)
          if (regIdIt != preOnlineRegIds_.end()) {
             logger_->debug("[{}] found preOnline registration id: {}", __func__
                            , id.toBinStr());
+            const auto regId = regIdIt->first;
+            const auto cb = regIdIt->second;
             if (cbInMainThread_) {
-               QMetaObject::invokeMethod(this, [cb = regIdIt->second]{ cb(); });
+               QMetaObject::invokeMethod(this, [cb, regId]{ cb(regId); });
             }
             else {
-               regIdIt->second();
+               cb(regId);
             }
             preOnlineRegIds_.erase(regIdIt);
          }
       }
    }
-   if (state_ == ArmoryConnection::State::Ready) {
+   const bool online = (state_ == ArmoryConnection::State::Ready);
+   if (logger_->level() <= spdlog::level::debug) {
       std::string idString;
       for (const auto &id : ids) {
          idString += id.toBinStr() + " ";
       }
-      logger_->debug("[{}] {}", __func__, idString);
-      emit refresh(ids);
+      logger_->debug("[{}] online={} {}", __func__, online, idString);
    }
+   emit refresh(ids, online);
 }
 
 void ArmoryConnection::onZCsReceived(const std::vector<ClientClasses::LedgerEntry> &entries)
 {
    const auto txEntries = bs::TXEntry::fromLedgerEntries(entries);
+   for (const auto &entry : txEntries) {
+      zcEntries_[entry.txHash] = entry;
+   }
    if (cbInMainThread_) {
       QMetaObject::invokeMethod(this, [this, txEntries] {emit zeroConfReceived(txEntries); });
    }
    else {
       emit zeroConfReceived(txEntries);
+   }
+}
+
+void ArmoryConnection::onZCsInvalidated(const std::set<BinaryData> &ids)
+{
+   std::vector<bs::TXEntry> zcInvEntries;
+   for (const auto &id : ids) {
+      const auto &itEntry = zcEntries_.find(id);
+      if (itEntry != zcEntries_.end()) {
+         zcInvEntries.emplace_back(std::move(itEntry->second));
+         zcEntries_.erase(itEntry);
+      }
+   }
+
+   if (cbInMainThread_) {
+      QMetaObject::invokeMethod(this, [this, zcInvEntries] { emit zeroConfInvalidated(zcInvEntries); });
+   }
+   else {
+      emit zeroConfInvalidated(zcInvEntries);
    }
 }
 
@@ -752,11 +806,15 @@ void ArmoryCallback::run(BDMAction action, void* ptr, int block)
       emit connection_->newBlock((unsigned int)block);
       break;
 
-   case BDMAction_ZC: {
+   case BDMAction_ZC:
       logger_->debug("[{}] BDMAction_ZC", __func__);
       connection_->onZCsReceived(*reinterpret_cast<std::vector<ClientClasses::LedgerEntry>*>(ptr));
       break;
-   }
+
+   case BDMAction_InvalidatedZC:
+      logger_->debug("[{}] BDMAction_InvalidateZC", __func__);
+      connection_->onZCsInvalidated(*reinterpret_cast<std::set<BinaryData> *>(ptr));
+      break;
 
    case BDMAction_Refresh:
       logger_->debug("[{}] BDMAction_Refresh", __func__);
@@ -796,7 +854,9 @@ void ArmoryCallback::disconnected()
 {
    logger_->debug("[{}]", __func__);
    connection_->regThreadRunning_ = false;
-   connection_->setState(ArmoryConnection::State::Offline);
+   if (connection_->state() != ArmoryConnection::State::Canceled) {
+      connection_->setState(ArmoryConnection::State::Offline);
+   }
 }
 
 

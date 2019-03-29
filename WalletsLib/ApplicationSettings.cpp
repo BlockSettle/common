@@ -3,6 +3,8 @@
 #include "BlockDataManagerConfig.h"
 #include "EncryptionUtils.h"
 #include "FastLock.h"
+#include "ArmoryConnection.h"
+#include "ArmoryServersProvider.h"
 
 #include <QCommandLineParser>
 #include <QRect>
@@ -13,15 +15,15 @@
 #if defined (Q_OS_WIN)
 static const QString appDirName = QLatin1String("Blocksettle");
 static const QString bitcoinDirName = QLatin1String("Bitcoin");
-static const QString armoryDBAppPathName = QLatin1String("C:/Program Files/BitcoinArmory/ArmoryDB.exe");
+static const QString armoryDBAppPathName = QLatin1String("C:/Program Files/ArmoryDB/ArmoryDB.exe");
 #elif defined (Q_OS_MACOS)
 static const QString appDirName = QLatin1String("Blocksettle");
 static const QString bitcoinDirName = QLatin1String("Bitcoin");
-static const QString armoryDBAppPathName = QLatin1String("/opt/ArmoryDB/ArmoryDB");
+static const QString armoryDBAppPathName = QLatin1String("/usr/bin/ArmoryDB");
 #elif defined (Q_OS_LINUX)
 static const QString appDirName = QLatin1String(".blocksettle");
 static const QString bitcoinDirName = QLatin1String(".bitcoin");
-static const QString armoryDBAppPathName = QLatin1String("/opt/ArmoryDB/ArmoryDB");
+static const QString armoryDBAppPathName = QLatin1String("/usr/bin/ArmoryDB");
 #endif
 
 static const QString SettingsCompanyName = QLatin1String("BlockSettle");
@@ -57,14 +59,10 @@ static const QString regtestSubdir = QLatin1String("regtest");
 
 static const QString zmqSignerKeyFileName = QLatin1String("zmq_conn_srv.pub");
 
-static const int DefaultSatoshiPort = 8333;
-static const int DefaultTestnetSatoshiPort = 18333;
-
-static const QString ArmoryDefaultIP = QLatin1String("127.0.0.1");
 static const int ArmoryDefaultLocalMainPort = 9001;
 static const int ArmoryDefaultLocalTestPort = 19001;
-static const int ArmoryDefaultRemoteMainPort = 80;
-static const int ArmoryDefaultRemoteTestPort = 81;
+static const int ArmoryDefaultRemoteMainPort = 9001;
+static const int ArmoryDefaultRemoteTestPort = 19001;
 
 #ifndef NDEBUG
 static const QString chatServerIPName = QLatin1String("chatserver-ip");
@@ -89,19 +87,20 @@ ApplicationSettings::ApplicationSettings(const QString &appName
       { initialized,             SettingDef(QLatin1String("SettingsAccepted"), false) },
       { runArmoryLocally,        SettingDef(QLatin1String("RunArmoryLocally"), false) },
       { netType,                 SettingDef(QLatin1String("Testnet"), (int)NetworkType::MainNet) },
-      { armoryDbIp,              SettingDef(QLatin1String("ArmoryDBIP"), QLatin1String("armory.blocksettle.com")) },
-      { armoryDbPort,            SettingDef(QLatin1String("ArmoryDBPort")) },
+      { armoryDbName,            SettingDef(QLatin1String("ArmoryDBName"), QLatin1String(ARMORY_BLOCKSETTLE_NAME)) },
+      { armoryDbIp,              SettingDef(QLatin1String("ArmoryDBIP"), QLatin1String(MAINNET_ARMORY_BLOCKSETTLE_ADDRESS)) },
+      { armoryDbPort,            SettingDef(QLatin1String("ArmoryDBPort"), MAINNET_ARMORY_BLOCKSETTLE_PORT) },
       { armoryPathName,          SettingDef(QString(), armoryDBAppPathName) },
       { pubBridgeHost,           SettingDef(QLatin1String("PublicBridgeHost"), QLatin1String("185.213.153.36")) },
       { pubBridgePort,           SettingDef(QLatin1String("PublicBridgePort"), 9091) },
       { pubBridgePubKey,         SettingDef(QString(), QLatin1String("AEJL[u[3-i>v#4D?v3Te!B}S0nO7cG!QOsmI*--g")) },
-      { authServerHost,          SettingDef(QLatin1String("AuthServerHost"), QLatin1String("zmq.autheid.com")) },
-      { authServerPort,          SettingDef(QLatin1String("AuthServerPort"), 9094) },
-      { authServerPubKey,        SettingDef(QString(), QLatin1String("(=?/gEARFR3jjIi>>JBGtv=uKW/)ujUm#%wq#v}f")) },
+      { envConfiguration,        SettingDef(QLatin1String("envConfiguration"), 0) },
       { celerHost,               SettingDef(QString()) },
       { celerPort,               SettingDef(QString()) },
       { mdServerHost,            SettingDef(QString()) },
       { mdServerPort,            SettingDef(QString()) },
+      { mdhsHost,                SettingDef(QString()) },
+      { mdhsPort,                SettingDef(QString()) },
       { chatServerHost,          SettingDef(QString()) },
       { chatServerPort,          SettingDef(QString()) },
       { chatServerPubKey,        SettingDef(QString(), QLatin1String("@:2IFYqVXa}+eRpKW9Q310j4cB%%nKe8$-v6bSOg")) },
@@ -134,11 +133,11 @@ ApplicationSettings::ApplicationSettings(const QString &appName
       { Filter_MD_RFQ_Portfolio, SettingDef(QLatin1String("Filter/MD/RFQ_Portfolio")) },
       { Filter_MD_QN,            SettingDef(QLatin1String("Filter/MD/QN")) },
       { Filter_MD_QN_cnt,        SettingDef(QLatin1String("Filter/MD/QN/counters")) },
-      { ChangeLog_Base_Url,      SettingDef(QString(), QLatin1String("http://185.213.153.44/ChangeLog"))},
-      { Binaries_Dl_Url,         SettingDef(QString(), QLatin1String("https://pubb.blocksettle.com/terminal/downloads"))},
+      { ChangeLog_Base_Url,      SettingDef(QString(), QLatin1String("https://pubb.blocksettle.com/Changelog/changelog.json"))},
+      { Binaries_Dl_Url,         SettingDef(QString(), QLatin1String("https://pubb.blocksettle.com/downloads/terminal"))},
       { ResetPassword_Url,       SettingDef(QString(), QLatin1String("https://pubb.blocksettle.com/pub-forgot-password"))},
-      { GetAccount_Url,          SettingDef(QString(), QLatin1String("https://pubb.blbocksettle.com/pub-registration")) },
-      { GettingStartedGuide_Url,  SettingDef(QString(), QLatin1String("http://pubb.blocksettle.com/PDF/BlockSettle%20Getting%20Started.pdf")) },
+      { GetAccount_Url,          SettingDef(QString(), QLatin1String("http://www.blocksettle.com")) },
+      { GettingStartedGuide_Url, SettingDef(QString(), QLatin1String("http://pubb.blocksettle.com/PDF/BlockSettle%20Getting%20Started.pdf")) },
       { WalletFiltering,         SettingDef(QLatin1String("WalletWidgetFilteringFlags"), 0x06) },
       { FxRfqLimit,              SettingDef(QLatin1String("FxRfqLimit"), 5) },
       { XbtRfqLimit,             SettingDef(QLatin1String("XbtRfqLimit"), 5) },
@@ -153,7 +152,9 @@ ApplicationSettings::ApplicationSettings(const QString &appName
       { authPrivKey,                      SettingDef(QLatin1String("AuthPrivKey")) },
       { zmqLocalSignerPubKeyFilePath,     SettingDef(QLatin1String("ZmqLocalSignerPubKeyFilePath"), AppendToWritableDir(zmqSignerKeyFileName)) },
       { zmqRemoteSignerPubKey,            SettingDef(QLatin1String("ZmqRemoteSignerPubKey")) },
-      { rememberLoginUserName,            SettingDef(QLatin1String("RememberLoginUserName"), true) }
+      { rememberLoginUserName,            SettingDef(QLatin1String("RememberLoginUserName"), true) },
+      { armoryServers,                    SettingDef(QLatin1String("ArmoryServers")) },
+      { defaultArmoryServersKeys,         SettingDef(QLatin1String("DefaultArmoryServersKeys")) }
    };
 }
 
@@ -214,10 +215,11 @@ void ApplicationSettings::set(Setting s, const QVariant &val, bool toFile)
          itSD->second.read = true;
          if (val != itSD->second.value) {
             itSD->second.value = val;
-            if (toFile && !itSD->second.path.isEmpty()) {
-               settings_.setValue(itSD->second.path, val);
-            }
             emit settingChanged(s, val);
+         }
+
+         if (toFile && !itSD->second.path.isEmpty()) {
+            settings_.setValue(itSD->second.path, val);
          }
       }
    }
@@ -232,10 +234,11 @@ void ApplicationSettings::reset(Setting s, bool toFile)
       itSD->second.read = true;
       if (itSD->second.value != itSD->second.defVal) {
          itSD->second.value = itSD->second.defVal;
-         if (toFile && !itSD->second.path.isEmpty()) {
-            settings_.setValue(itSD->second.path, itSD->second.value);
-         }
          emit settingChanged(s, itSD->second.defVal);
+      }
+
+      if (toFile && !itSD->second.path.isEmpty()) {
+         settings_.setValue(itSD->second.path, itSD->second.value);
       }
    }
 }
@@ -381,12 +384,12 @@ bool ApplicationSettings::LoadApplicationSettings(const QStringList& argList)
 
 #ifndef NDEBUG
    if (parser.isSet(chatServerIPName)) {
-	   QString vcip = parser.value(chatServerIPName);
-	   set(chatServerHost, vcip);
+      QString vcip = parser.value(chatServerIPName);
+      set(chatServerHost, vcip);
    }
    if (parser.isSet(chatServerPortName)) {
-	   int vcp = parser.value(chatServerPortName).toInt();
-	   set(chatServerPort, vcp);
+      int vcp = parser.value(chatServerPortName).toInt();
+      set(chatServerPort, vcp);
    }
 #endif // NDEBUG
 
@@ -401,10 +404,6 @@ void ApplicationSettings::SetDefaultSettings(bool toFile)
    reset(pubBridgeHost, toFile);
    reset(pubBridgePort, toFile);
 
-   reset(runArmoryLocally, toFile);
-   reset(netType, toFile);
-   reset(armoryDbIp, toFile);
-   reset(armoryDbPort, toFile);
    reset(celerHost, toFile);
    reset(celerPort, toFile);
    reset(launchToTray, toFile);
@@ -519,13 +518,13 @@ int ApplicationSettings::GetDefaultArmoryRemotePort(NetworkType networkType)
    }
 }
 
-QString ApplicationSettings::GetArmoryRemotePort(NetworkType networkType) const
+int ApplicationSettings::GetArmoryRemotePort(NetworkType networkType) const
 {
-   QString port;
-   port = get<QString>(ApplicationSettings::armoryDbPort);
-   if (port.isEmpty()) {
-      port = QString::number(GetDefaultArmoryRemotePort(
-         (networkType == NetworkType::Invalid) ? get<NetworkType>(netType) : networkType));
+   int port;
+   port = get<int>(ApplicationSettings::armoryDbPort);
+   if (port == 0) {
+      port = GetDefaultArmoryRemotePort(
+         (networkType == NetworkType::Invalid) ? get<NetworkType>(netType) : networkType);
    }
    return port;
 }
@@ -552,29 +551,6 @@ QString ApplicationSettings::AppendToWritableDir(const QString &filename) const
 void ApplicationSettings::SaveSettings()
 {
    settings_.sync();
-}
-
-ArmorySettings ApplicationSettings::GetArmorySettings() const
-{
-   ArmorySettings settings;
-
-   settings.netType = get<NetworkType>(netType);
-   settings.runLocally = get<bool>(ApplicationSettings::runArmoryLocally);
-   if (settings.runLocally) {
-      settings.armoryDBIp = "127.0.0.1";
-      settings.armoryDBPort = std::to_string(GetDefaultArmoryLocalPort(get<NetworkType>(netType)));
-   } else {
-      settings.armoryDBIp = get<std::string>(ApplicationSettings::armoryDbIp);
-      settings.armoryDBPort = GetArmoryRemotePort().toStdString();
-   }
-   settings.socketType = GetArmorySocketType();
-
-   settings.armoryExecutablePath = QDir::cleanPath(get<QString>(ApplicationSettings::armoryPathName));
-   settings.dbDir = GetDBDir();
-   settings.bitcoinBlocksDir = GetBitcoinBlocksDir();
-   settings.dataDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-
-   return settings;
 }
 
 unsigned int ApplicationSettings::GetWalletScanIndex(const std::string &id) const
