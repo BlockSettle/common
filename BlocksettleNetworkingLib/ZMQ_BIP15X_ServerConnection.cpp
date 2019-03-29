@@ -3,8 +3,6 @@
 
 #include "ZMQ_BIP15X_ServerConnection.h"
 #include "MessageHolder.h"
-#include "ZMQ_BIP15X_Msg.h"
-#include "ZMQHelperFunctions.h"
 
 using namespace std;
 
@@ -126,7 +124,7 @@ bool ZmqBIP15XServerConnection::ReadFromDataSocket()
 // object.
 //
 // INPUT:  The ZMQ client ID. (const string&)
-//         The data to send and the 4-byte message ID. (const string&)
+//         The data to send. (const string&)
 //         A post-send callback. Optional. (const SendResultCb&)
 // OUTPUT: None
 // RETURN: True if success, false if failure.
@@ -155,8 +153,8 @@ bool ZmqBIP15XServerConnection::SendDataToClient(const string& clientId
       {
          auto& packet = msg.getNextPacket();
          if (packet.getSize() == 0) {
-            logger_->error("[ZmqBIP15XServerConnection::{}] failed to serialize data (size {})"
-               , __func__, data.size());
+            logger_->error("[ZmqBIP15XServerConnection::{}] failed to "
+               "serialize data (size {})", __func__, data.size());
             return retVal;
          }
 
@@ -246,8 +244,10 @@ void ZmqBIP15XServerConnection::ProcessIncomingData(const string& encData
    }
 
    // Deserialize packet.
-   auto payloadRef = socketConnMap_[clientID]->currentReadMessage_.insertDataAndGetRef(payload);
-   auto result = socketConnMap_[clientID]->currentReadMessage_.message_.parsePacket(payloadRef);
+   auto payloadRef =
+      socketConnMap_[clientID]->currentReadMessage_.insertDataAndGetRef(payload);
+   auto result =
+      socketConnMap_[clientID]->currentReadMessage_.message_.parsePacket(payloadRef);
    if (!result)
    {
       if (logger_)
@@ -588,8 +588,7 @@ bool ZmqBIP15XServerConnection::processAEADHandshake(
 // INPUT:  The client ID. (const string&)
 // OUTPUT: None
 // RETURN: None
-void ZmqBIP15XServerConnection::resetBIP151Connection(
-   const string& clientID)
+void ZmqBIP15XServerConnection::resetBIP151Connection(const string& clientID)
 {
    if (socketConnMap_[clientID] != nullptr)
    {

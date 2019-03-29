@@ -1,11 +1,9 @@
 #include <chrono>
 #include <QStandardPaths>
-#include "zmq.h"
 
 #include "FastLock.h"
 #include "MessageHolder.h"
 #include "ZMQ_BIP15X_DataConnection.h"
-#include "ZMQ_BIP15X_Msg.h"
 
 using namespace std;
 
