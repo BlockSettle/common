@@ -219,12 +219,9 @@ void ZmqBIP15XServerConnection::ProcessIncomingData(const string& encData
    }
 
    BinaryData payload(encData);
-   if (payload.getSize() == 0)
-   {
-      logger_->error("[{}] Empty data packet ({}).", __func__, connectionName_);
-      return;
-   }
 
+   // If decryption "failed" due to fragmentation, put the pieces together.
+   // (Unlikely but we need to plan for it.)
    if (leftOverData_.getSize() != 0)
    {
       leftOverData_.append(payload);
@@ -293,6 +290,9 @@ void ZmqBIP15XServerConnection::ProcessIncomingData(const string& encData
    {
       return;
    }
+
+   socketConnMap_[clientID]->msgID_ =
+      socketConnMap_[clientID]->currentReadMessage_.message_.getId();
 
    // If we're still handshaking, take the next step. (No fragments allowed.)
    if (socketConnMap_[clientID]->currentReadMessage_.message_.getType() >

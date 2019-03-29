@@ -68,7 +68,7 @@ ZmqBIP15XDataConnection::ZmqBIP15XDataConnection(
    }
 
    // Create a random four-byte ID for the client.
-   msgID = READ_UINT32_LE(CryptoPRNG::generateRandom(4));
+   msgID_ = READ_UINT32_LE(CryptoPRNG::generateRandom(4));
 
    // BIP 151 connection setup. Technically should be per-socket or something
    // similar but data connections will only connect to one machine at a time.
@@ -157,7 +157,7 @@ bool ZmqBIP15XDataConnection::send(const string& data)
       }
       BinaryData payload(data);
       msg.construct(payload.getDataVector(), connPtr
-         , ZMQ_MSGTYPE_FRAGMENTEDPACKET_HEADER, msgID);
+         , ZMQ_MSGTYPE_FRAGMENTEDPACKET_HEADER, msgID_);
       sendData = msg.getNextPacket().toBinStr();
       dataLen = sendData.size();
    }
@@ -206,14 +206,10 @@ bool ZmqBIP15XDataConnection::startBIP151Handshake(const std::function<void()> &
 // RETURN: None
 void ZmqBIP15XDataConnection::onRawDataReceived(const string& rawData)
 {
-   // Place the data in the processing queue and process the queue.
    BinaryData payload(rawData);
-   if (payload.getSize() == 0)
-   {
-      logger_->error("[{}] Empty data packet ({}).", __func__, connectionName_);
-      return;
-   }
 
+   // If decryption "failed" due to fragmentation, put the pieces together.
+   // (Unlikely but we need to plan for it.)
    if (leftOverData_.getSize() != 0)
    {
       leftOverData_.append(payload);

@@ -63,7 +63,7 @@ private:
    std::atomic_flag lockSocket_ = ATOMIC_FLAG_INIT;
    bool bip150HandshakeCompleted_ = false;
    bool bip151HandshakeCompleted_ = false;
-   uint32_t msgID = 0;
+   uint32_t msgID_ = 0;
    std::function<void()>   cbCompleted_ = nullptr;
 };
 

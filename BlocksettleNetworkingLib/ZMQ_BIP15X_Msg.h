@@ -61,7 +61,7 @@
 #define ZMQ_MAGIC_WORD 0x56E1
 #define AEAD_REKEY_INVERVAL_SECONDS 600
 
-// Class that actually constructs the packets.
+// Class that actually handles the nuts & bolts of message construction.
 class ZmqBIP15XMessageCodec
 {
 public:
