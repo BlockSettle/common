@@ -41,7 +41,7 @@ public:
    QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
 
    void setChatUserDataList(const ChatUserDataListPtr &chatUserDataListPtr);
-   void setChatRoomDataList(const Chat::ChatRoomDataListPtr &roomsDataList);
+   void setChatRoomDataList(const Chat::RoomDataListPtr &roomsDataList);
 
 private:
    ChatUserListTreeItem *rootItem_;

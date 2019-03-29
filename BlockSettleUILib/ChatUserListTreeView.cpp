@@ -128,7 +128,7 @@ void ChatUserListTreeView::onChatUserDataListChanged(const ChatUserDataListPtr &
    expandAll();
 }
 
-void ChatUserListTreeView::onChatRoomDataListChanged(const Chat::ChatRoomDataListPtr &roomsDataList)
+void ChatUserListTreeView::onChatRoomDataListChanged(const Chat::RoomDataListPtr &roomsDataList)
 {
    chatUserListModel_->setChatRoomDataList(roomsDataList);
    expandAll();

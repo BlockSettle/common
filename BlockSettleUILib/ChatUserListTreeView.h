@@ -121,7 +121,7 @@ signals:
 
 public slots:
    void onChatUserDataListChanged(const ChatUserDataListPtr &chatUserDataListPtr);
-   void onChatRoomDataListChanged(const Chat::ChatRoomDataListPtr &roomsDataList);
+   void onChatRoomDataListChanged(const Chat::RoomDataListPtr &roomsDataList);
    void onCustomContextMenu(const QPoint &);
 
 private slots:
