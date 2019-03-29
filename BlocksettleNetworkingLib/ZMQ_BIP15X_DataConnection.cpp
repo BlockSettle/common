@@ -46,13 +46,11 @@ void ZmqBIP15XMsgFragments::eraseLast(void)
 // The constructor to use.
 //
 // INPUT:  Logger object. (const shared_ptr<spdlog::logger>&)
-//         Server info. (const ArmoryServersProvider&) (REMOVE?)
 //         Ephemeral peer usage. Not recommended. (const bool&)
 // OUTPUT: None
 ZmqBIP15XDataConnection::ZmqBIP15XDataConnection(
    const shared_ptr<spdlog::logger>& logger
-   , const ArmoryServersProvider& trustedServer, const bool& ephemeralPeers
-   , bool monitored)
+   , const bool& ephemeralPeers, bool monitored)
    : ZmqDataConnection(logger, monitored)
 {
    currentReadMessage_.reset();
@@ -188,9 +186,10 @@ bool ZmqBIP15XDataConnection::send(const string& data)
 // INPUT:  None
 // OUTPUT: None
 // RETURN: True if success, false if failure.
-bool ZmqBIP15XDataConnection::startBIP151Handshake()
+bool ZmqBIP15XDataConnection::startBIP151Handshake(const std::function<void()> &cbCompleted)
 {
    ZmqBIP15XSerializedMessage msg;
+   cbCompleted_ = cbCompleted;
    BinaryData nullPayload;
 
    msg.construct(nullPayload.getDataVector(), nullptr, ZMQ_MSGTYPE_AEAD_SETUP,
@@ -574,6 +573,9 @@ bool ZmqBIP15XDataConnection::processAEADHandshake(const ZmqBIP15XMsgPartial& ms
       bip151Connection_->bip150HandshakeRekey();
       outKeyTimePoint_ = chrono::system_clock::now();
       emit bip15XCompleted();
+      if (cbCompleted_) {
+         cbCompleted_();
+      }
 
       break;
    }
@@ -605,4 +607,11 @@ void ZmqBIP15XDataConnection::promptUser(const BinaryDataRef& newKey
    else {
       serverPubkeyProm_->set_value(true);
    }
+}
+
+SecureBinaryData ZmqBIP15XDataConnection::getOwnPubKey() const
+{
+   const auto pubKey = authPeers_->getOwnPublicKey();
+   return SecureBinaryData(pubKey.pubkey, pubKey.compressed
+      ? BTC_ECKEY_COMPRESSED_LENGTH : BTC_ECKEY_UNCOMPRESSED_LENGTH);
 }
