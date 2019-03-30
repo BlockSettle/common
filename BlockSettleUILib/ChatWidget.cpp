@@ -236,6 +236,8 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
 
    connect(client_.get(), &ChatClient::MessagesUpdate, ui_->textEditMessages
                         , &ChatMessagesTextEdit::onMessagesUpdate);
+   connect(client_.get(), &ChatClient::RoomMessagesUpdate, ui_->textEditMessages
+                        , &ChatMessagesTextEdit::onRoomMessagesUpdate);
    connect(ui_->textEditMessages, &ChatMessagesTextEdit::rowsInserted,
            this, &ChatWidget::onMessagesUpdated);
    

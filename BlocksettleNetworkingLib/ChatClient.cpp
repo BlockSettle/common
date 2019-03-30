@@ -285,7 +285,7 @@ void ChatClient::OnRoomMessages(const Chat::RoomMessagesResponse& response)
       //sendUpdateMessageState(msg);
    }
 
-   emit MessagesUpdate(messages, false);
+   emit RoomMessagesUpdate(messages, false);
 }
 
 void ChatClient::OnSearchUsersResponse(const Chat::SearchUsersResponse & response)
@@ -575,7 +575,7 @@ void ChatClient::retrieveRoomMessages(const QString& roomId)
             }
          }
       }
-      emit MessagesUpdate(messages, true);
+      emit RoomMessagesUpdate(messages, true);
    }
 }
 

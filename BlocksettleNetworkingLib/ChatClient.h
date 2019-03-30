@@ -104,6 +104,7 @@ signals:
    void FriendRequestAccepted(const std::vector<std::string>& users);
    void FriendRequestRejected(const std::vector<std::string>& users);
    void MessagesUpdate(const std::vector<std::shared_ptr<Chat::MessageData>> &messages, bool isFirstFetch);
+   void RoomMessagesUpdate(const std::vector<std::shared_ptr<Chat::MessageData>> &messages, bool isFirstFetch);
    void MessageIdUpdated(const QString& localId, const QString& serverId,const QString& chatId);
    void MessageStatusUpdated(const QString& messageId, const QString& chatId, int newStatus);
    void RoomsAdd(const std::vector<std::shared_ptr<Chat::RoomData>>& rooms);
