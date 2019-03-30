@@ -122,6 +122,11 @@ ChatUserListTreeView::ChatUserListTreeView(QWidget *parent) : QTreeView(parent),
    connect(this, &QAbstractItemView::customContextMenuRequested, this, &ChatUserListTreeView::onCustomContextMenu);
 }
 
+void ChatUserListTreeView::selectFirstRoom()
+{
+   chatUserListModel_->selectFirstRoom();
+}
+
 void ChatUserListTreeView::onChatUserDataChanged(const ChatUserDataPtr &chatUserDataPtr)
 {
    chatUserListModel_->setChatUserData(chatUserDataPtr);

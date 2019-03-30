@@ -45,6 +45,8 @@ public:
    void setChatUserDataList(const ChatUserDataListPtr &chatUserDataListPtr);
    void setChatRoomDataList(const Chat::RoomDataListPtr &roomsDataList);
 
+   void selectFirstRoom();
+
 private:
    ChatUserListTreeItem *rootItem_;
 

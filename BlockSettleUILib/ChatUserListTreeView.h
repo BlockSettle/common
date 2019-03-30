@@ -113,6 +113,8 @@ public:
 
    ChatUserListTreeViewModel *chatUserListModel() const;
 
+   void selectFirstRoom();
+
 signals:
    void userClicked(const QString &userId);
    void roomClicked(const QString &roomId);

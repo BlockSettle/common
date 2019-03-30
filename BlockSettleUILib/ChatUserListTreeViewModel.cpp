@@ -1,4 +1,5 @@
 #include "ChatUserListTreeViewModel.h"
+#include <QTreeView>
 
 const QString contactsListDescription = QObject::tr("Contacts");
 const QString allUsersListDescription = QObject::tr("All users");
@@ -243,4 +244,17 @@ ChatUserListTreeItem *ChatUserListTreeViewModel::getItem(const QModelIndex &inde
    }
 
    return rootItem_;
+}
+
+void ChatUserListTreeViewModel::selectFirstRoom()
+{
+   ChatUserListTreeItem *roomsItem = rootItem_->child(ChatUserListTreeItem::RoomCategory);
+
+   if (roomsItem->childCount() > 0) {
+      ChatUserListTreeItem *firstRoomItem = roomsItem->child(0);
+      const auto &index = createIndex(0, 0, firstRoomItem);
+
+      const auto treeView = qobject_cast<QTreeView *>(QObject::parent());
+      treeView->selectionModel()->select(index, QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
+   }
 }

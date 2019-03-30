@@ -279,6 +279,7 @@ void ChatWidget::onAddChatRooms(const std::vector<std::shared_ptr<Chat::RoomData
    chatUserListLogicPtr_->addChatRooms(roomList);
 
    if (roomList.size() > 0 && needsToStartFirstRoom_) {
+      ui_->treeViewUsers->selectFirstRoom();
       const auto &firstRoom = roomList.at(0);
       onRoomClicked(firstRoom->getId());
       needsToStartFirstRoom_ = false;

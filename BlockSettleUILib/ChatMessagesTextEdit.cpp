@@ -140,7 +140,7 @@ void ChatMessagesTextEdit::switchToChat(const QString& chatId, bool isGroupRoom)
    clear();
    table = NULL;
 
-   emit userHaveNewMessageChanged(chatId, true, false);
+   emit userHaveNewMessageChanged(chatId, false, false);
 }
 
 void  ChatMessagesTextEdit::urlActivated(const QUrl &link) {
