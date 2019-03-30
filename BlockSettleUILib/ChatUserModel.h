@@ -50,6 +50,8 @@ signals:
    void chatUserStatusChanged(const ChatUserDataPtr &chatUserDataPtr);
    void chatUserStateChanged(const ChatUserDataPtr &chatUserDataPtr);
    void chatUserHaveNewMessageChanged(const ChatUserDataPtr &chatUserDataPtr);
+   void chatUserDataChanged(const ChatUserDataPtr &chatUserDataPtr);
+   void chatRoomDataChanged(const Chat::RoomDataPtr &chatRoomDataPtr);
    void chatRoomAdded(const std::shared_ptr<Chat::RoomData> &chatRoomDataPtr);
    void chatRoomRemoved(const std::shared_ptr<Chat::RoomData>& chatRoomDataPtr);
 

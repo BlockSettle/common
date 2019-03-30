@@ -120,7 +120,9 @@ signals:
    void declineFriendRequest(const QString &userId);
 
 public slots:
+   void onChatUserDataChanged(const ChatUserDataPtr &chatUserDataPtr);
    void onChatUserDataListChanged(const ChatUserDataListPtr &chatUserDataListPtr);
+   void onChatRoomDataChanged(const Chat::RoomDataPtr &roomsDataPtr);
    void onChatRoomDataListChanged(const Chat::RoomDataListPtr &roomsDataList);
    void onCustomContextMenu(const QPoint &);
 

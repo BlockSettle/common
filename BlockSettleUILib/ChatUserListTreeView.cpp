@@ -122,9 +122,21 @@ ChatUserListTreeView::ChatUserListTreeView(QWidget *parent) : QTreeView(parent),
    connect(this, &QAbstractItemView::customContextMenuRequested, this, &ChatUserListTreeView::onCustomContextMenu);
 }
 
+void ChatUserListTreeView::onChatUserDataChanged(const ChatUserDataPtr &chatUserDataPtr)
+{
+   chatUserListModel_->setChatUserData(chatUserDataPtr);
+   expandAll();
+}
+
 void ChatUserListTreeView::onChatUserDataListChanged(const ChatUserDataListPtr &chatUserDataList)
 {
    chatUserListModel_->setChatUserDataList(chatUserDataList);
+   expandAll();
+}
+
+void ChatUserListTreeView::onChatRoomDataChanged(const Chat::RoomDataPtr &roomsDataPtr)
+{
+   chatUserListModel_->setChatRoomData(roomsDataPtr);
    expandAll();
 }
 
@@ -143,8 +155,6 @@ void ChatUserListTreeView::onUserListItemClicked(const QModelIndex &index)
 {
    const auto &itemType =
             qvariant_cast<ItemType>(index.data(Role::ItemTypeRole));
-
-   clearSelection();
 
    if (itemType == ItemType::RoomItem) {
       const QString roomId = index.data(Role::RoomIDRole).toString();

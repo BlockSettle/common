@@ -248,9 +248,13 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
 
    connect(ui_->chatSearchLineEdit, &ChatSearchLineEdit::returnPressed, this, &ChatWidget::onSearchUserReturnPressed);
    
+   connect(chatUserListLogicPtr_.get()->chatUserModelPtr().get(), &ChatUserModel::chatUserDataChanged,
+           ui_->treeViewUsers, &ChatUserListTreeView::onChatUserDataChanged);
    connect(chatUserListLogicPtr_.get()->chatUserModelPtr().get(), &ChatUserModel::chatUserDataListChanged,
            ui_->treeViewUsers, &ChatUserListTreeView::onChatUserDataListChanged);
 
+   connect(chatUserListLogicPtr_->chatUserModelPtr().get(), &ChatUserModel::chatRoomDataChanged,
+           ui_->treeViewUsers, &ChatUserListTreeView::onChatRoomDataChanged);
    connect(chatUserListLogicPtr_->chatUserModelPtr().get(), &ChatUserModel::chatRoomDataListChanged,
            ui_->treeViewUsers, &ChatUserListTreeView::onChatRoomDataListChanged);
 

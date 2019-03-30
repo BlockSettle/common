@@ -130,7 +130,7 @@ bool ChatUserModel::setUserHaveNewMessage(const QString &userId, const bool &hav
    chatUserDataPtr->setHaveNewMessage(haveNewMessage);
 
    emit chatUserHaveNewMessageChanged(chatUserDataPtr);
-   emit chatUserDataListChanged(chatUserDataListPtr_);
+   emit chatUserDataChanged(chatUserDataPtr);
 
    return true;
 }
@@ -145,7 +145,7 @@ bool ChatUserModel::setRoomHaveNewMessage(const QString &roomId, const bool &hav
 
    chatRoomDataPtr->setHaveNewMessage(haveNewMessage);
 
-   emit chatRoomDataListChanged(chatRoomDataListPtr_);
+   emit chatRoomDataChanged(chatRoomDataPtr);
 
    return true;
 
