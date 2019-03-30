@@ -2,7 +2,6 @@
 #include <QTreeView>
 
 const QString contactsListDescription = QObject::tr("Contacts");
-const QString allUsersListDescription = QObject::tr("All users");
 const QString publicRoomListDescription = QObject::tr("Public");
 
 ChatUserListTreeViewModel::ChatUserListTreeViewModel(QObject* parent)
@@ -11,7 +10,6 @@ ChatUserListTreeViewModel::ChatUserListTreeViewModel(QObject* parent)
    rootItem_ = new ChatUserListTreeItem();
    rootItem_->addCategoryAsChild(ChatUserListTreeItem::RoomCategory);
    rootItem_->addCategoryAsChild(ChatUserListTreeItem::ContactCategory);
-   rootItem_->addCategoryAsChild(ChatUserListTreeItem::UserCategory);
 }
 
 QString ChatUserListTreeViewModel::resolveCategoryDisplay(const QModelIndex &index) const
@@ -22,9 +20,6 @@ QString ChatUserListTreeViewModel::resolveCategoryDisplay(const QModelIndex &ind
 
       case ChatUserListTreeItem::ContactCategory:
          return contactsListDescription;
-
-      case ChatUserListTreeItem::UserCategory:
-         return allUsersListDescription;
    }
 
    return {};
@@ -165,21 +160,12 @@ QVariant ChatUserListTreeViewModel::data(const QModelIndex &index, int role) con
 void ChatUserListTreeViewModel::setChatUserData(const ChatUserDataPtr &chatUserDataPtr)
 {
    ChatUserListTreeItem *contactsItem = rootItem_->child(ChatUserListTreeItem::ContactCategory);
-   ChatUserListTreeItem *usersItem = rootItem_->child(ChatUserListTreeItem::UserCategory);
 
    int i;
    for (i = 0; i < contactsItem->childCount(); i++) {
       ChatUserListTreeItem *contactItem = contactsItem->child(i);
       if (contactItem->userData()->userId() == chatUserDataPtr->userId()) {
          const auto &index = createIndex(i, 0, contactItem);
-         emit dataChanged(index, index);
-      }
-   }
-
-   for (i = 0; i < usersItem->childCount(); i++) {
-      ChatUserListTreeItem *userItem = usersItem->child(i);
-      if (userItem->userData()->userId() == chatUserDataPtr->userId()) {
-         const auto &index = createIndex(i, 0, userItem);
          emit dataChanged(index, index);
       }
    }
@@ -204,16 +190,11 @@ void ChatUserListTreeViewModel::setChatUserDataList(const ChatUserDataListPtr &c
    beginResetModel();
 
    ChatUserListTreeItem *contactsItem = rootItem_->child(ChatUserListTreeItem::ContactCategory);
-   ChatUserListTreeItem *usersItem = rootItem_->child(ChatUserListTreeItem::UserCategory);
    
    contactsItem->removeChildren();
-   usersItem->removeChildren();
 
    for (const auto &dataPtr : chatUserDataListPtr) {
-      if (dataPtr->userState() == ChatUserData::State::Unknown) {
-         usersItem->addUserAsChild(dataPtr);
-      }
-      else {
+      if (dataPtr->userState() != ChatUserData::State::Unknown) {
          contactsItem->addUserAsChild(dataPtr);
       }
    }
