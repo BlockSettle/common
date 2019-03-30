@@ -384,6 +384,10 @@ void ChatClient::OnMessages(const Chat::MessagesResponse &response)
    std::vector<std::shared_ptr<Chat::MessageData>> messages;
    for (const auto &msgStr : response.getDataList()) {
       const auto msg = Chat::MessageData::fromJSON(msgStr);
+      if (!chatDb_->isContactExist(msg->getSenderId())) {
+         continue;
+      }
+
       msg->setFlag(Chat::MessageData::State::Acknowledged);
       chatDb_->add(*msg);
 
