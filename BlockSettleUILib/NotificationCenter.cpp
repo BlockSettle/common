@@ -70,8 +70,8 @@ void NotificationTabResponder::respond(bs::ui::NotifyType nt, bs::ui::NotifyMess
 {
    if (nt == bs::ui::NotifyType::UpdateUnreadMessage) {
       const int chatIndex = mainWinUi_->tabWidget->indexOf(mainWinUi_->widgetChat);
-      const bool isInCurrentChat = msg[1].toBool();
-      const bool hasUnreadMessages = msg[2].toBool();
+      const bool isInCurrentChat = msg[2].toBool();
+      const bool hasUnreadMessages = msg[3].toBool();
 
       if (hasUnreadMessages) {
          mainWinUi_->tabWidget->setTabIcon(chatIndex, iconDot_);
@@ -142,6 +142,8 @@ void NotificationTrayIconResponder::respond(bs::ui::NotifyType nt, bs::ui::Notif
    QString title, text;
    int msecs = 10000;
    newVersionMessage_ = false;
+   bool isInCurrentChat;
+   bool hasUnreadMessages;
 
    switch (nt) {
    case bs::ui::NotifyType::BlockchainTX:
@@ -192,6 +194,22 @@ void NotificationTrayIconResponder::respond(bs::ui::NotifyType nt, bs::ui::Notif
       text = tr("Click this message to download it from BlockSettle's official site");
       msecs = 30000;
       newVersionMessage_ = true;
+      break;
+
+   case bs::ui::NotifyType::UpdateUnreadMessage:
+      isInCurrentChat = msg[2].toBool();
+      hasUnreadMessages = msg[3].toBool();
+
+      if (!hasUnreadMessages && !isInCurrentChat) {
+         return;
+      }
+
+      if (QApplication::activeWindow()) {
+         return;
+      }
+
+      title = msg[0].toString();
+      text = msg[1].toString();
       break;
 
    default: return;
