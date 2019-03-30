@@ -183,7 +183,7 @@ void ChatUserListTreeViewModel::setChatUserDataList(const ChatUserDataListPtr &c
    endResetModel();
 }
 
-void ChatUserListTreeViewModel::setChatRoomDataList(const Chat::ChatRoomDataListPtr &roomsDataList)
+void ChatUserListTreeViewModel::setChatRoomDataList(const Chat::RoomDataListPtr &roomsDataList)
 {
    beginResetModel();
    

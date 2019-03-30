@@ -270,7 +270,7 @@ void ChatWidget::onChatUserRemoved(const ChatUserDataPtr &chatUserDataPtr)
    }
 }
 
-void ChatWidget::onAddChatRooms(const std::vector<std::shared_ptr<Chat::ChatRoomData> >& roomList)
+void ChatWidget::onAddChatRooms(const std::vector<std::shared_ptr<Chat::RoomData> >& roomList)
 {
    chatUserListLogicPtr_->addChatRooms(roomList);
 
@@ -281,14 +281,13 @@ void ChatWidget::onAddChatRooms(const std::vector<std::shared_ptr<Chat::ChatRoom
    }
 }
 
-void ChatWidget::onSearchUserListReceived(const std::vector<std::shared_ptr<Chat::ChatUserData>>& users)
+void ChatWidget::onSearchUserListReceived(const std::vector<std::shared_ptr<Chat::UserData>>& users)
 {
    if (users.size() < 1) {
       return;
    }
 
-   std::shared_ptr<Chat::ChatUserData> firstUser = users.at(0);
-   qDebug()<<"searchResult:"<<firstUser->getUserId()<<","<<users.size();
+   std::shared_ptr<Chat::UserData> firstUser = users.at(0);
    popup_->setText(firstUser->getUserId());
    popup_->setGeometry(0, 0, ui_->chatSearchLineEdit->width(), static_cast<int>(ui_->chatSearchLineEdit->height() * 1.2));
    popup_->setCustomPosition(ui_->chatSearchLineEdit, 0, 5);
