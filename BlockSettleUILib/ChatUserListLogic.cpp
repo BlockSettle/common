@@ -108,7 +108,7 @@ void ChatUserListLogic::onUserHaveNewMessageChanged(const QString &userId, const
    }
 
    bool hasUnreadMessages = chatUserModelPtr_->hasUnreadMessages();
-   NotificationCenter::notify(bs::ui::NotifyType::UpdateUnreadMessage, { tr("New message"), QVariant(isInCurrentChat), QVariant(hasUnreadMessages) });
+   NotificationCenter::notify(bs::ui::NotifyType::UpdateUnreadMessage, { userId, tr("New message"), QVariant(isInCurrentChat), QVariant(hasUnreadMessages) });
 }
 
 void ChatUserListLogic::addChatRooms(const std::vector<std::shared_ptr<Chat::RoomData> >& roomList)
