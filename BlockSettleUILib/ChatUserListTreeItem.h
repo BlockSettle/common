@@ -17,7 +17,6 @@ public:
       NoneCategory = -1,
       RoomCategory,
       ContactCategory,
-      UserCategory,
       CategoryCount
    };
 
