@@ -19,7 +19,7 @@ NotificationCenter::NotificationCenter(const std::shared_ptr<ApplicationSettings
    qRegisterMetaType<bs::ui::NotifyMessage>("NotifyMessage");
 
    addResponder(std::make_shared<NotificationTabResponder>(mainWinUi, appSettings, this));
-   addResponder(std::make_shared<NotificationTrayIconResponder>(trayIcon, appSettings, this));
+   addResponder(std::make_shared<NotificationTrayIconResponder>(mainWinUi, trayIcon, appSettings, this));
 }
 
 void NotificationCenter::createInstance(const std::shared_ptr<ApplicationSettings> &appSettings, const Ui::BSTerminalMainWindow *ui
@@ -112,9 +112,10 @@ NotificationTabResponder::TabAction NotificationTabResponder::getTabActionFor(bs
 }
 
 
-NotificationTrayIconResponder::NotificationTrayIconResponder(const std::shared_ptr<QSystemTrayIcon> &trayIcon
+NotificationTrayIconResponder::NotificationTrayIconResponder(const Ui::BSTerminalMainWindow *mainWinUi
+   , const std::shared_ptr<QSystemTrayIcon> &trayIcon
    , const std::shared_ptr<ApplicationSettings> &appSettings, QObject *parent)
-   : NotificationResponder(parent), trayIcon_(trayIcon), appSettings_(appSettings)
+   : NotificationResponder(parent), mainWinUi_(mainWinUi), trayIcon_(trayIcon), appSettings_(appSettings)
    , notifMode_(QSystemTray)
 #ifdef BS_USE_DBUS
    , dbus_(new DBusNotification(tr("BlockSettle Terminal"), this))
@@ -144,6 +145,9 @@ void NotificationTrayIconResponder::respond(bs::ui::NotifyType nt, bs::ui::Notif
    newVersionMessage_ = false;
    bool isInCurrentChat;
    bool hasUnreadMessages;
+   
+   const int chatIndex = mainWinUi_->tabWidget->indexOf(mainWinUi_->widgetChat);
+   const bool isChatTab = mainWinUi_->tabWidget->currentIndex() == chatIndex;
 
    switch (nt) {
    case bs::ui::NotifyType::BlockchainTX:
@@ -204,7 +208,7 @@ void NotificationTrayIconResponder::respond(bs::ui::NotifyType nt, bs::ui::Notif
          return;
       }
 
-      if (QApplication::activeWindow()) {
+      if (isChatTab && QApplication::activeWindow()) {
          return;
       }
 
