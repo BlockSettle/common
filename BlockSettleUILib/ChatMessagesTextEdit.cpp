@@ -33,7 +33,6 @@ ChatMessagesTextEdit::ChatMessagesTextEdit(QWidget* parent)
 
    connect(this, &QTextBrowser::anchorClicked, this, &ChatMessagesTextEdit::urlActivated);
 
-   setContextMenuPolicy(Qt::CustomContextMenu);
    userMenu_ = new QMenu(this);
    QAction *addUserToContactsAction = userMenu_->addAction(QObject::tr("Add to contacts"));
    addUserToContactsAction->setStatusTip(QObject::tr("Click to add user to contact list"));
