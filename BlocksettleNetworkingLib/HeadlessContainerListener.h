@@ -52,7 +52,7 @@ public:
       , const std::function<void(int64_t, bool)> &cbXbtSpent
       , const std::function<void(const std::string &)> &cbAsAct
       , const std::function<void(const std::string &)> &cbAsDeact
-      , const std::function<void(const QString &, const QVariant &)> &cbCustomDialog);
+      , const std::function<void(const std::string &, const std::string &)> &cbCustomDialog);
 
    void passwordReceived(const std::string &walletId
       , const SecureBinaryData &password, bool cancelledByUser);
@@ -162,7 +162,7 @@ private:
    std::function<void(int64_t, bool)> cbXbtSpent_ = nullptr;
    std::function<void(const std::string &)> cbAsAct_ = nullptr;
    std::function<void(const std::string &)> cbAsDeact_ = nullptr;
-   std::function<void(const QString &, const QVariant &)> cbCustomDialog_ = nullptr;
+   std::function<void(const std::string &, const std::string &)> cbCustomDialog_ = nullptr;
 };
 
 #endif // __HEADLESS_CONTAINER_LISTENER_H__

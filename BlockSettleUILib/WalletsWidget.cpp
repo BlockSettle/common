@@ -427,7 +427,7 @@ void WalletsWidget::onNewWallet()
 
 bool WalletsWidget::CreateNewWallet(bool report)
 {
-   int createReqId_ = signingContainer_->customDialogRequest(bs::SignerDialog::CreateWallet);
+   int createReqId_ = signingContainer_->customDialogRequest(SignerUiDefs::SignerDialog::CreateWallet);
    return true;
 
 //   NetworkType netType = appSettings_->get<NetworkType>(ApplicationSettings::netType);
@@ -483,7 +483,7 @@ bool WalletsWidget::CreateNewWallet(bool report)
 
 bool WalletsWidget::ImportNewWallet(bool report)
 {
-   int createReqId_ = signingContainer_->customDialogRequest(bs::SignerDialog::ImportWallet);
+   int createReqId_ = signingContainer_->customDialogRequest(SignerUiDefs::SignerDialog::ImportWallet);
    return true;
 
 //   bool disablePrimaryImport = false;

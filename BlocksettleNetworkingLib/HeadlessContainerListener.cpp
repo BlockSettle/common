@@ -36,7 +36,7 @@ void HeadlessContainerListener::setCallbacks(const std::function<void(const std:
    , const std::function<void(int64_t, bool)> &cbXbtSpent
    , const std::function<void(const std::string &)> &cbAsAct
    , const std::function<void(const std::string &)> &cbAsDeact
-   , const std::function<void(const QString &, const QVariant &)> &cbCustomDialog)
+   , const std::function<void(const std::string &, const std::string &)> &cbCustomDialog)
 {
    const auto &cbWrapXbtSpent = [this, cbXbtSpent](int64_t value, bool autoSign) {
       onXbtSpent(value, autoSign);
@@ -1515,12 +1515,14 @@ bool HeadlessContainerListener::onExecCustomDialog(const std::string &clientId, 
    }
 
    if (cbCustomDialog_) {
-      QByteArray ba = QByteArray::fromStdString(request.variantdata());
-      QDataStream ds(&ba, QIODevice::ReadOnly);
-      QVariant data;
-      ds >> data;
+      cbCustomDialog_(request.dialogname(), request.variantdata());
 
-      cbCustomDialog_(QString::fromStdString(request.dialogname()), data);
+//      QByteArray ba = QByteArray::fromStdString(request.variantdata());
+//      QDataStream ds(&ba, QIODevice::ReadOnly);
+//      QVariant data;
+//      ds >> data;
+
+//      cbCustomDialog_(QString::fromStdString(request.dialogname()), data);
    }
    return true;
 }

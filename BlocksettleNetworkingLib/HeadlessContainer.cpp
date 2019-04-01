@@ -630,7 +630,7 @@ HeadlessContainer::RequestId HeadlessContainer::changePassword(const std::string
    return Send(packet);
 }
 
-SignContainer::RequestId HeadlessContainer::customDialogRequest(bs::SignerDialog signerDialog, const QVariant &data)
+SignContainer::RequestId HeadlessContainer::customDialogRequest(SignerUiDefs::SignerDialog signerDialog, const QVariant &data)
 {
    // serialize variant data
    QByteArray ba;
@@ -638,7 +638,7 @@ SignContainer::RequestId HeadlessContainer::customDialogRequest(bs::SignerDialog
    stream << data;
 
    headless::CustomDialogRequest request;
-   request.set_dialogname(bs::getSignerDialogPath(signerDialog).toStdString());
+   request.set_dialogname(SignerUiDefs::getSignerDialogPath(signerDialog).toStdString());
    request.set_variantdata(ba.data(), ba.size());
 
    headless::RequestPacket packet;
@@ -1257,7 +1257,7 @@ QStringList LocalSigner::args() const
    }
 
    QStringList result;
-   result << QLatin1String("--headless");
+   result << QLatin1String("--guimode") << QLatin1String("lightgui");
    switch (netType_) {
    case NetworkType::TestNet:
    case NetworkType::RegTest:
@@ -1275,6 +1275,7 @@ QStringList LocalSigner::args() const
    if (asSpendLimit_ > 0) {
       result << QLatin1String("--auto_sign_spend_limit") << QString::number(asSpendLimit_, 'f', 8);
    }
+
    return result;
 }
 
