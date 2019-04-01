@@ -1,5 +1,6 @@
 #include <QDebug>
 #include <QDesktopServices>
+#include <set>
 #include "ChatMessagesTextEdit.h"
 #include "ChatClient.h"
 #include "ChatProtocol/ChatProtocol.h"
@@ -408,11 +409,9 @@ void ChatMessagesTextEdit::onRoomMessagesUpdate(const std::vector<std::shared_pt
       for (const auto &msg : messages) {
          if (msg->getReceiverId() == currentChatId_) {
             insertMessage(msg);
-            
          }
          else {
             messages_[msg->getReceiverId()].push_back(msg);
-
          }
       }
       for (const QString& recv : receivers) {
