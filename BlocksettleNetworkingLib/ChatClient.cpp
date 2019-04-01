@@ -303,6 +303,21 @@ void ChatClient::OnSearchUsersResponse(const Chat::SearchUsersResponse & respons
                   );
 }
 
+void ChatClient::OnSearchUsersResponse(const Chat::SearchUsersResponse & response)
+{
+   QStringList users;
+
+   std::vector<std::shared_ptr<Chat::ChatUserData>> userList = response.getUsersList();
+   for (auto user : userList){
+      users << QString::fromStdString(user->toJsonString());
+   }
+   emit SearchUserListReceived(userList);
+   logger_->debug("[ChatClient::OnSearchUsersResponse]: Received user list from server: "
+                  "{}",
+                  users.join(QLatin1String(", ")).prepend(QLatin1Char('[')).append(QLatin1Char(']')).toStdString()
+                  );
+}
+
 void ChatClient::logout()
 {
    loggedIn_ = false;
