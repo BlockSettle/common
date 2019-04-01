@@ -405,7 +405,7 @@ void ChatWidget::onSearchUserReturnPressed()
       return;
    }
 
-   QRegularExpression rx_email(QLatin1String(R"(^[a-zA-Z0-9._-]+@([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,6}$)"), QRegularExpression::CaseInsensitiveOption);
+   QRegularExpression rx_email(QLatin1String(R"(^[a-z0-9._-]+@([a-z0-9-]+\.)+[a-z]+$)"), QRegularExpression::CaseInsensitiveOption);
    QRegularExpressionMatch match = rx_email.match(userToAdd);
    if (match.hasMatch()) {
       userToAdd = client_->deriveKey(userToAdd);
