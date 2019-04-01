@@ -407,6 +407,7 @@ void ChatMessagesTextEdit::onRoomMessagesUpdate(const std::vector<std::shared_pt
    else {
       std::set<QString> receivers;
       for (const auto &msg : messages) {
+         receivers.insert(msg->getReceiverId());
          if (msg->getReceiverId() == currentChatId_) {
             insertMessage(msg);
          }
