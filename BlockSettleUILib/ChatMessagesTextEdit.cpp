@@ -404,17 +404,19 @@ void ChatMessagesTextEdit::onRoomMessagesUpdate(const std::vector<std::shared_pt
       }
    }
    else {
+      std::set<QString> receivers;
       for (const auto &msg : messages) {
          if (msg->getReceiverId() == currentChatId_) {
             insertMessage(msg);
             
-            emit userHaveNewMessageChanged(msg->getReceiverId(), false, true);
          }
          else {
             messages_[msg->getReceiverId()].push_back(msg);
 
-            emit userHaveNewMessageChanged(msg->getReceiverId(), true, false);
          }
+      }
+      for (const QString& recv : receivers) {
+         emit userHaveNewMessageChanged(recv, recv != currentChatId_, recv == currentChatId_);
       }
    }
 
