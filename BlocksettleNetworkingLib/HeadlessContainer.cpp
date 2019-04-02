@@ -630,7 +630,7 @@ HeadlessContainer::RequestId HeadlessContainer::changePassword(const std::string
    return Send(packet);
 }
 
-SignContainer::RequestId HeadlessContainer::customDialogRequest(SignerUiDefs::SignerDialog signerDialog, const QVariant &data)
+SignContainer::RequestId HeadlessContainer::customDialogRequest(bs::signer::ui::DialogType signerDialog, const QVariantMap &data)
 {
    // serialize variant data
    QByteArray ba;
@@ -638,7 +638,7 @@ SignContainer::RequestId HeadlessContainer::customDialogRequest(SignerUiDefs::Si
    stream << data;
 
    headless::CustomDialogRequest request;
-   request.set_dialogname(SignerUiDefs::getSignerDialogPath(signerDialog).toStdString());
+   request.set_dialogname(bs::signer::ui::getSignerDialogPath(signerDialog).toStdString());
    request.set_variantdata(ba.data(), ba.size());
 
    headless::RequestPacket packet;

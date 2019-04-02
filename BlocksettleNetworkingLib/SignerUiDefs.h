@@ -4,45 +4,50 @@
 #include "QObject"
 #include "QString"
 
-class SignerUiDefs
-{
-   Q_GADGET
-public:
-   // List of callable Signer dialogs
-   enum class SignerDialog {
-      CreateWallet,
-      ImportWallet,
-      BackupWallet,
-      DeleteWallet,
-      ManageWallet
-   };
+namespace bs {
+namespace signer {
+namespace ui {
 
-   static QString getSignerDialogPath(SignerDialog signerDialog) {
-      switch (signerDialog) {
-      case SignerDialog::CreateWallet:
-         return QStringLiteral("createNewWalletDialog");
-      case SignerDialog::ImportWallet:
-         return QStringLiteral("importWalletDialog");
-      case SignerDialog::BackupWallet:
-         return QStringLiteral("backupWalletDialog");
-      case SignerDialog::DeleteWallet:
-         return QStringLiteral("deleteWalletDialog");
-      case SignerDialog::ManageWallet:
-         return QStringLiteral("manageEncryptionDialog");
+Q_NAMESPACE
 
-      default:
-         return QStringLiteral("");
-      }
-   }
-
-
-   enum class SignerRunMode {
-      fullgui,
-      lightgui,
-      headless,
-      cli
-   };
-   Q_ENUM(SignerRunMode)
+// List of callable Signer dialogs
+enum class DialogType {
+   CreateWallet,
+   ImportWallet,
+   BackupWallet,
+   DeleteWallet,
+   ManageWallet
 };
+
+inline QString getSignerDialogPath(DialogType signerDialog) {
+   switch (signerDialog) {
+   case DialogType::CreateWallet:
+      return QStringLiteral("createNewWalletDialog");
+   case DialogType::ImportWallet:
+      return QStringLiteral("importWalletDialog");
+   case DialogType::BackupWallet:
+      return QStringLiteral("backupWalletDialog");
+   case DialogType::DeleteWallet:
+      return QStringLiteral("deleteWalletDialog");
+   case DialogType::ManageWallet:
+      return QStringLiteral("manageEncryptionDialog");
+
+   default:
+      return QStringLiteral("");
+   }
+}
+
+// List of callable Signer dialogs
+enum class RunMode {
+   fullgui,
+   lightgui,
+   headless,
+   cli
+};
+Q_ENUM_NS(RunMode)
+
+}
+}
+}
 
 #endif

@@ -226,7 +226,7 @@ void InprocSigner::createSettlementWallet(const std::function<void(const std::sh
    }
 }
 
-SignContainer::RequestId InprocSigner::customDialogRequest(SignerUiDefs::SignerDialog signerDialog, const QVariant &data)
+SignContainer::RequestId InprocSigner::customDialogRequest(bs::signer::ui::DialogType signerDialog, const QVariantMap &data)
 {
    return 0;
 }

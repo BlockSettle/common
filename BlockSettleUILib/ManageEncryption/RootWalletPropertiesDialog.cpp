@@ -116,7 +116,8 @@ RootWalletPropertiesDialog::~RootWalletPropertiesDialog() = default;
 
 void RootWalletPropertiesDialog::onDeleteWallet()
 {
-   int createReqId_ = signingContainer_->customDialogRequest(SignerUiDefs::SignerDialog::DeleteWallet, walletInfo_.rootId());
+   int createReqId_ = signingContainer_->customDialogRequest(bs::signer::ui::DialogType::DeleteWallet
+                                                             , {{ QLatin1String("rootId"), walletInfo_.rootId() }});
    close();
 
 //   WalletDeleteDialog delDlg(wallet_, walletsManager_, signingContainer_
@@ -128,7 +129,8 @@ void RootWalletPropertiesDialog::onDeleteWallet()
 
 void RootWalletPropertiesDialog::onBackupWallet()
 {
-   int createReqId_ = signingContainer_->customDialogRequest(SignerUiDefs::SignerDialog::BackupWallet, walletInfo_.rootId());
+   int createReqId_ = signingContainer_->customDialogRequest(bs::signer::ui::DialogType::BackupWallet
+                                                             , {{ QLatin1String("rootId"), walletInfo_.rootId() }});
    close();
 
 //   WalletBackupAndVerify(wallet_, signingContainer_, appSettings_, connectionManager_, logger_
@@ -137,7 +139,8 @@ void RootWalletPropertiesDialog::onBackupWallet()
 
 void RootWalletPropertiesDialog::onChangePassword()
 {
-   int createReqId_ = signingContainer_->customDialogRequest(SignerUiDefs::SignerDialog::ManageWallet, walletInfo_.rootId());
+   int createReqId_ = signingContainer_->customDialogRequest(bs::signer::ui::DialogType::ManageWallet
+                                                             , {{ QLatin1String("rootId"), walletInfo_.rootId() }});
    close();
 
 //   ManageEncryptionDialog manageEncryptionDialog(logger_, signingContainer_, wallet_
