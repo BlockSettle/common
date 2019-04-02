@@ -321,6 +321,7 @@ public:
    virtual const AssetEntryType getType(void) const { return type_; }
    bool needsCommit(void) const { return needsCommit_; }
    void doNotCommit(void) { needsCommit_ = false; }
+   void flagForCommit(void) { needsCommit_ = true; }
    BinaryData getDbKey(void) const;
 
    //virtual
@@ -380,6 +381,7 @@ public:
    virtual BinaryData serialize(void) const;
    bool hasPrivateKey(void) const;
    const BinaryData& getPrivateEncryptionKeyId(void) const;
+   virtual std::shared_ptr<AssetEntry_Single> getPublicCopy(void);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -433,6 +435,8 @@ public:
    BinaryData serialize(void) const;
    const AssetEntryType getType(void) const override 
    { return AssetEntryType_BIP32Root; }
+
+   std::shared_ptr<AssetEntry_Single> getPublicCopy(void);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -505,11 +509,15 @@ public:
    virtual BinaryData getDbKey(void) const = 0;
    virtual void deserializeDBValue(const BinaryDataRef&) = 0;
    virtual void clear(void) = 0;
+   virtual std::shared_ptr<MetaData> copy(void) const = 0;
 
    //locals
    bool needsCommit(void) { return needsCommit_; }
    void flagForCommit(void) { needsCommit_ = true; }
    MetaType type(void) const { return type_; }
+
+   const BinaryData& getAccountID(void) const { return accountID_; }
+   unsigned getIndex(void) const { return index_; }
 
    //static
    static std::shared_ptr<MetaData> deserialize(
@@ -533,6 +541,7 @@ public:
    BinaryData getDbKey(void) const;
    void deserializeDBValue(const BinaryDataRef&);
    void clear(void);
+   std::shared_ptr<MetaData> copy(void) const;
 
    //locals
    void addName(const std::string&);
@@ -565,6 +574,7 @@ public:
    BinaryData getDbKey(void) const;
    void deserializeDBValue(const BinaryDataRef&);
    void clear(void);
+   std::shared_ptr<MetaData> copy(void) const;
 
    //locals
    void set(const std::string&, const SecureBinaryData&);
@@ -593,12 +603,12 @@ public:
    BinaryData getDbKey(void) const;
    void deserializeDBValue(const BinaryDataRef&);
    void clear(void);
+   std::shared_ptr<MetaData> copy(void) const;
 
    //locals
    void set(const SecureBinaryData& key, const SecureBinaryData& sig);
    const SecureBinaryData& getKey(void) const { return publicKey_; }
    const SecureBinaryData& getSig(void) const { return signature_; }
-
 };
 
 #endif

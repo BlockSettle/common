@@ -80,12 +80,6 @@ enum SocketType
    SocketSimple
 };
 
-enum NodeType
-{
-   Node_BTC,
-   Node_UnitTest
-};
-
 enum BDV_Action
 {
    BDV_Init,

@@ -460,6 +460,7 @@ public:
 
    size_t getAssetCount(void) const { return assets_.size(); }
    int getLastComputedIndex(void) const;
+   unsigned getHighestUsedIndex(void) const { return lastUsedIndex_; }
    std::shared_ptr<AssetEntry> getLastAssetWithPrivateKey(void) const;
 
    std::shared_ptr<AssetEntry> getNewAsset(void);
@@ -617,6 +618,9 @@ public:
    //Lockable virtuals
    void initAfterLock(void) {}
    void cleanUpBeforeUnlock(void) {}
+
+   std::shared_ptr<AddressAccount> getWatchingOnlyCopy(
+      std::shared_ptr<LMDBEnv>, LMDB*) const;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -675,6 +679,8 @@ public:
    void readFromDisk(const BinaryData& key);
    void commit(void);
    void updateOnDisk(void);
+   std::shared_ptr<MetaDataAccount> copy(
+      std::shared_ptr<LMDBEnv>, LMDB* db) const;
 
    //setup methods
    void reset(void);

@@ -41,7 +41,7 @@
 #define WALLETMETA_DBNAME "WalletHeader"
 
 #define VERSION_MAJOR      2
-#define VERSION_MINOR      0
+#define VERSION_MINOR      1
 #define VERSION_REVISION   0
  
 class WalletException : public std::runtime_error
@@ -302,8 +302,11 @@ public:
    virtual const SecureBinaryData& getDecryptedValue(
       std::shared_ptr<Asset_PrivateKey>) = 0;
 
+   static std::string forkWathcingOnly(const std::string&);
+
    //static
-   static std::shared_ptr<AssetWallet> loadMainWalletFromFile(const std::string& path);
+   static std::shared_ptr<AssetWallet> loadMainWalletFromFile(
+      const std::string& path);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -342,6 +345,10 @@ protected:
    static BinaryData computeWalletID(
       std::shared_ptr<DerivationScheme>,
       std::shared_ptr<AssetEntry>);
+
+private:
+   static void copyPublicData(
+      std::shared_ptr<AssetWallet_Single>, std::shared_ptr<LMDBEnv>);
 
 public:
    //tors
@@ -435,8 +442,6 @@ public:
       std::vector<std::shared_ptr<AssetWallet>> wallets,
       unsigned M,
       unsigned lookup = UINT32_MAX);
-
-
 
    //local
 };

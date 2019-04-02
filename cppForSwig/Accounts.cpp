@@ -1182,6 +1182,59 @@ shared_ptr<AssetEntry> AddressAccount::getOutterAssetRoot() const
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+shared_ptr<AddressAccount> AddressAccount::getWatchingOnlyCopy(
+   shared_ptr<LMDBEnv> dbEnv, LMDB* db) const
+{
+   auto woAcc = make_shared<AddressAccount>(dbEnv, db);
+
+   //id
+   woAcc->ID_ = ID_;
+
+   //address
+   woAcc->defaultAddressEntryType_ = defaultAddressEntryType_;
+   woAcc->addressTypes_ = addressTypes_;
+   woAcc->addressHashes_ = addressHashes_;
+
+   //account ids
+   woAcc->outerAccount_ = outerAccount_;
+   woAcc->innerAccount_ = innerAccount_;
+
+   //asset accounts
+   for (auto& assetAccPair : assetAccounts_)
+   {
+      auto assetAccPtr = assetAccPair.second;
+      auto rootSingle = dynamic_pointer_cast<AssetEntry_Single>(assetAccPtr->root_);
+      if (rootSingle == nullptr)
+         throw AccountException("invalid account root");
+      auto woRoot = rootSingle->getPublicCopy();
+
+      auto woAccPtr = make_shared<AssetAccount>(
+         assetAccPtr->id_, assetAccPtr->parent_id_,
+         woRoot,
+         assetAccPtr->derScheme_,
+         dbEnv, db);
+
+      woAccPtr->lastUsedIndex_ = assetAccPtr->lastUsedIndex_;
+
+      for (auto& assetPair : assetAccPtr->assets_)
+      {
+         auto assetSingle = 
+            dynamic_pointer_cast<AssetEntry_Single>(assetPair.second);
+         if (assetSingle == nullptr)
+            throw AccountException("unexpect asset type");
+
+         auto assetWo = assetSingle->getPublicCopy();
+         assetWo->flagForCommit();
+         woAccPtr->assets_.insert(make_pair(assetPair.first, assetWo));
+      }
+
+      woAcc->addAccount(woAccPtr);
+   }
+
+   return woAcc;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 //// AccountType
 ////////////////////////////////////////////////////////////////////////////////
@@ -1660,6 +1713,25 @@ void MetaDataAccount::eraseMetaDataByIndex(unsigned id)
       return;
 
    iter->second->clear();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+shared_ptr<MetaDataAccount> MetaDataAccount::copy(
+   shared_ptr<LMDBEnv> dbEnv, LMDB* db) const
+{
+   auto copyPtr = make_shared<MetaDataAccount>(dbEnv, db);
+   
+   copyPtr->type_ = type_;
+   copyPtr->ID_ = ID_;
+
+   for (auto& assetPair : assets_)
+   {
+      auto assetCopy = assetPair.second->copy();
+      assetCopy->flagForCommit();
+      copyPtr->assets_.insert(make_pair(assetPair.first, assetCopy));
+   }
+
+   return copyPtr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

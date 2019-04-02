@@ -28,6 +28,8 @@
 #define DEFAULT_ZCTHREAD_COUNT 100
 #define WEBSOCKET_PORT 7681
 
+class BitcoinP2P;
+
 ////////////////////////////////////////////////////////////////////////////////
 struct BlockDataManagerConfig
 {
@@ -54,7 +56,7 @@ public:
    std::string dbDir_;
    std::string logFilePath_;
 
-   NodeType nodeType_ = Node_BTC;
+   std::shared_ptr<BitcoinP2P> nodePtr_ = nullptr;
    std::string btcPort_;
    std::string listenPort_;
    std::string rpcPort_;
