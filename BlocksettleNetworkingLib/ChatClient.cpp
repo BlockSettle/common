@@ -15,10 +15,10 @@
 
 Q_DECLARE_METATYPE(std::shared_ptr<Chat::MessageData>)
 Q_DECLARE_METATYPE(std::vector<std::shared_ptr<Chat::MessageData>>)
-Q_DECLARE_METATYPE(std::shared_ptr<Chat::ChatRoomData>)
-Q_DECLARE_METATYPE(std::vector<std::shared_ptr<Chat::ChatRoomData>>)
-Q_DECLARE_METATYPE(std::shared_ptr<Chat::ChatUserData>)
-Q_DECLARE_METATYPE(std::vector<std::shared_ptr<Chat::ChatUserData>>)
+Q_DECLARE_METATYPE(std::shared_ptr<Chat::RoomData>)
+Q_DECLARE_METATYPE(std::vector<std::shared_ptr<Chat::RoomData>>)
+Q_DECLARE_METATYPE(std::shared_ptr<Chat::UserData>)
+Q_DECLARE_METATYPE(std::vector<std::shared_ptr<Chat::UserData>>)
 
 //We have current flags
 //We have upladed flags
@@ -41,10 +41,10 @@ ChatClient::ChatClient(const std::shared_ptr<ConnectionManager>& connectionManag
 {
    qRegisterMetaType<std::shared_ptr<Chat::MessageData>>();
    qRegisterMetaType<std::vector<std::shared_ptr<Chat::MessageData>>>();
-   qRegisterMetaType<std::shared_ptr<Chat::ChatRoomData>>();
-   qRegisterMetaType<std::vector<std::shared_ptr<Chat::ChatRoomData>>>();
-   qRegisterMetaType<std::shared_ptr<Chat::ChatUserData>>();
-   qRegisterMetaType<std::vector<std::shared_ptr<Chat::ChatUserData>>>();
+   qRegisterMetaType<std::shared_ptr<Chat::RoomData>>();
+   qRegisterMetaType<std::vector<std::shared_ptr<Chat::RoomData>>>();
+   qRegisterMetaType<std::shared_ptr<Chat::UserData>>();
+   qRegisterMetaType<std::vector<std::shared_ptr<Chat::UserData>>>();
 
    chatDb_ = make_unique<ChatDB>(logger, appSettings_->get<QString>(ApplicationSettings::chatDbFile));
    if (!chatDb_->loadKeys(pubKeys_)) {
@@ -104,6 +104,12 @@ void ChatClient::OnLoginReturned(const Chat::LoginResponse &response)
       loggedIn_ = false;
       emit LoginFailed();
    }
+}
+
+void ChatClient::OnLogoutResponse(const Chat::LogoutResponse & response)
+{
+   logger_->debug("[ChatClient::OnLogoutResponse]: Server sent logout response with data: {}", response.getData());
+   logout(false);
 }
 
 void ChatClient::OnSendMessageResponse(const Chat::SendMessageResponse& response)
@@ -254,7 +260,7 @@ void ChatClient::OnChatroomsList(const Chat::ChatroomsListResponse& response)
 {
    QStringList rooms;
    
-   std::vector<std::shared_ptr<Chat::ChatRoomData>> roomList = response.getChatRoomList();
+   std::vector<std::shared_ptr<Chat::RoomData>> roomList = response.getChatRoomList();
    for (auto room : roomList){
       rooms << QString::fromStdString(room->toJsonString());
       chatDb_->removeRoomMessages(room->getId());
@@ -285,14 +291,14 @@ void ChatClient::OnRoomMessages(const Chat::RoomMessagesResponse& response)
       //sendUpdateMessageState(msg);
    }
 
-   emit MessagesUpdate(messages, false);
+   emit RoomMessagesUpdate(messages, false);
 }
 
 void ChatClient::OnSearchUsersResponse(const Chat::SearchUsersResponse & response)
 {
    QStringList users;
 
-   std::vector<std::shared_ptr<Chat::ChatUserData>> userList = response.getUsersList();
+   std::vector<std::shared_ptr<Chat::UserData>> userList = response.getUsersList();
    for (auto user : userList){
       users << QString::fromStdString(user->toJsonString());
    }
@@ -303,7 +309,7 @@ void ChatClient::OnSearchUsersResponse(const Chat::SearchUsersResponse & respons
                   );
 }
 
-void ChatClient::logout()
+void ChatClient::logout(bool send)
 {
    loggedIn_ = false;
 
@@ -312,11 +318,15 @@ void ChatClient::logout()
       return;
    }
 
-   auto request = std::make_shared<Chat::LogoutRequest>("", currentUserId_, "");
-   sendRequest(request);
+   if (send) {
+      auto request = std::make_shared<Chat::LogoutRequest>("", currentUserId_, "");
+      sendRequest(request);
+   }
 
    currentUserId_.clear();
    connection_.reset();
+
+   emit LoggedOut();
 }
 
 void ChatClient::sendRequest(const std::shared_ptr<Chat::Request>& request)
@@ -384,6 +394,10 @@ void ChatClient::OnMessages(const Chat::MessagesResponse &response)
    std::vector<std::shared_ptr<Chat::MessageData>> messages;
    for (const auto &msgStr : response.getDataList()) {
       const auto msg = Chat::MessageData::fromJSON(msgStr);
+      if (!chatDb_->isContactExist(msg->getSenderId())) {
+         continue;
+      }
+
       msg->setFlag(Chat::MessageData::State::Acknowledged);
       chatDb_->add(*msg);
 
@@ -575,7 +589,7 @@ void ChatClient::retrieveRoomMessages(const QString& roomId)
             }
          }
       }
-      emit MessagesUpdate(messages, true);
+      emit RoomMessagesUpdate(messages, true);
    }
 }
 

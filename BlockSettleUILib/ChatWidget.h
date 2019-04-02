@@ -45,6 +45,8 @@ public:
    std::string login(const std::string& email, const std::string& jwt);
    void logout();
    bool hasUnreadMessages();
+public slots:
+   void onLoggedOut();
 
 private slots:
    void onSendButtonClicked();
@@ -58,11 +60,12 @@ private slots:
    void onSendFriendRequest(const QString &userId);
    void onAcceptFriendRequest(const QString &userId);
    void onDeclineFriendRequest(const QString &userId);
-   void onAddChatRooms(const std::vector<std::shared_ptr<Chat::ChatRoomData> >& roomList);
-   void onSearchUserListReceived(const std::vector<std::shared_ptr<Chat::ChatUserData>>& users);
+   void onAddChatRooms(const std::vector<std::shared_ptr<Chat::RoomData> >& roomList);
+   void onSearchUserListReceived(const std::vector<std::shared_ptr<Chat::UserData>>& users);
 
 signals:
    void LoginFailed();
+   void LogOut();
 
 private:
    QScopedPointer<Ui::ChatWidget> ui_;
