@@ -16,6 +16,7 @@ ZmqSecuredDataConnection::ZmqSecuredDataConnection(const std::shared_ptr<spdlog:
 bool ZmqSecuredDataConnection::SetServerPublicKey(const BinaryData& key)
 {
    // CLASS WILL BE REMOVED EVENTUALLY
+   return false;
 }
 
 bool ZmqSecuredDataConnection::ConfigureDataSocket(const ZmqContext::sock_ptr& s)
