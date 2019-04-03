@@ -24,7 +24,7 @@ std::shared_ptr<SignContainer> CreateSigner(const std::shared_ptr<spdlog::logger
    , const std::shared_ptr<ConnectionManager>& connectionManager)
 {
    if (connectionManager == nullptr) {
-      logger->error("[CreateSigner] need connection manager to create signer");
+      logger->error("[{}] need connection manager to create signer", __func__);
       return nullptr;
    }
 
@@ -47,7 +47,7 @@ std::shared_ptr<SignContainer> CreateSigner(const std::shared_ptr<spdlog::logger
          , netType, port, connectionManager, appSettings);
 
    default:
-      logger->error("[CreateSigner] Unknown signer run mode {}", (int)runMode);
+      logger->error("[{}] Unknown signer run mode {}", __func__, (int)runMode);
       break;
    }
    return nullptr;

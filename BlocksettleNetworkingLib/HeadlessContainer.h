@@ -10,6 +10,7 @@
 #include "ApplicationSettings.h"
 #include "DataConnectionListener.h"
 #include "SignContainer.h"
+#include "ZMQ_BIP15X_DataConnection.h"
 
 #include "headless.pb.h"
 
@@ -22,14 +23,15 @@ namespace bs {
       class Wallet;
    }
 }
+
 class ApplicationSettings;
+//class ArmoryServersProvider;
 class ConnectionManager;
 class DataConnection;
 class HeadlessListener;
 class QProcess;
 class WalletsManager;
-class ZmqSecuredDataConnection;
-
+class ZmqBIP15XDataConnection;
 
 class HeadlessContainer : public SignContainer
 {
@@ -67,6 +69,8 @@ public:
    RequestId changePassword(const std::string &walletId, const std::vector<bs::wallet::PasswordData> &newPass
       , bs::wallet::KeyRank, const SecureBinaryData &oldPass
       , bool addNew, bool removeOld, bool dryRun) override;
+   RequestId customDialogRequest(bs::signer::ui::DialogType signerDialog, const QVariantMap &data = QVariantMap()) override;
+
    void createSettlementWallet(const std::function<void(const std::shared_ptr<bs::sync::SettlementWallet> &)> &) override;
 
    void syncWalletInfo(const std::function<void(std::vector<bs::sync::WalletInfo>)> &) override;
@@ -134,20 +138,21 @@ protected slots:
    void onAuthenticated();
    void onConnected();
    void onDisconnected();
+   void onBIP15XCompleted();
    void onConnError(const QString &err);
    void onPacketReceived(Blocksettle::Communication::headless::RequestPacket);
 
 private:
    void ConnectHelper();
    void Authenticate();
+   void startBIP151Handshake();
 
 protected:
-   const QString          host_;
-   const QString          port_;
-   const NetworkType      netType_;
-   std::shared_ptr<ZmqSecuredDataConnection> connection_;
-   bool  authPending_ = false;
-   std::shared_ptr<ApplicationSettings> appSettings_;
+   const QString                              host_;
+   const QString                              port_;
+   const NetworkType                          netType_;
+   std::shared_ptr<ZmqBIP15XDataConnection>   connection_;
+   std::shared_ptr<ApplicationSettings>       appSettings_;
 
 private:
    std::shared_ptr<ConnectionManager> connectionManager_;
@@ -196,8 +201,6 @@ public:
    HeadlessContainer::RequestId Send(Blocksettle::Communication::headless::RequestPacket
       , bool updateId = true);
    HeadlessContainer::RequestId newRequestId() { return ++id_; }
-   void resetAuthTicket() { authTicket_.clear(); }
-   bool isAuthenticated() const { return !authTicket_.isNull(); }
    bool hasUI() const { return hasUI_; }
 
 signals:
@@ -213,7 +216,6 @@ private:
    std::shared_ptr<DataConnection>  connection_;
    const NetworkType                netType_;
    HeadlessContainer::RequestId     id_ = 0;
-   SecureBinaryData  authTicket_;
    bool     hasUI_ = false;
 };
 

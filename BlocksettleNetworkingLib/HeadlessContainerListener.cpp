@@ -6,6 +6,8 @@
 #include "CoreWalletsManager.h"
 #include "WalletEncryption.h"
 #include "ZmqSecuredServerConnection.h"
+#include <QDataStream>
+#include <QDebug>
 
 
 using namespace Blocksettle::Communication;
@@ -33,7 +35,8 @@ void HeadlessContainerListener::setCallbacks(const std::function<void(const std:
    , const std::function<void(const BinaryData &)> &cbCancelTxSign
    , const std::function<void(int64_t, bool)> &cbXbtSpent
    , const std::function<void(const std::string &)> &cbAsAct
-   , const std::function<void(const std::string &)> &cbAsDeact)
+   , const std::function<void(const std::string &)> &cbAsDeact
+   , const std::function<void(const std::string &, const std::string &)> &cbCustomDialog)
 {
    const auto &cbWrapXbtSpent = [this, cbXbtSpent](int64_t value, bool autoSign) {
       onXbtSpent(value, autoSign);
@@ -49,6 +52,7 @@ void HeadlessContainerListener::setCallbacks(const std::function<void(const std:
    cbXbtSpent_ = cbWrapXbtSpent;
    cbAsAct_ = cbAsAct;
    cbAsDeact_ = cbAsDeact;
+   cbCustomDialog_ = cbCustomDialog;
 }
 
 HeadlessContainerListener::~HeadlessContainerListener() noexcept
@@ -63,19 +67,12 @@ bool HeadlessContainerListener::disconnect(const std::string &clientId)
 {
    headless::RequestPacket packet;
    packet.set_data("");
-   packet.set_authticket(authTicket(clientId).toBinStr());
    packet.set_type(headless::DisconnectionRequestType);
    const auto &serializedPkt = packet.SerializeAsString();
 
    bool rc = sendData(serializedPkt, clientId);
    if (rc && !clientId.empty()) {
       OnClientDisconnected(clientId);
-   }
-   if (clientId.empty()) {
-      authTickets_.clear();
-   }
-   else {
-      authTickets_.erase(clientId);
    }
    return rc;
 }
@@ -134,52 +131,15 @@ void HeadlessContainerListener::OnDataFromClient(const std::string &clientId, co
       return;
    }
 
-   const auto authTkt = authTicket(clientId);
-   if ((packet.type() != headless::AuthenticationRequestType)
-      && (authTkt.isNull() || (SecureBinaryData(packet.authticket()) != authTkt))) {
-      if (packet.authticket().empty() && authTkt.isNull()) {
-         logger_->info("[HeadlessContainerListener] request {} ignored due to empty auth ticket", packet.type());
-      }
-      else {
-         logger_->error("[HeadlessContainerListener] auth ticket mismatch for {}!", toHex(clientId));
-      }
-      disconnect(clientId);
-      return;
-   }
-
-   if (packet.type() == headless::AuthenticationRequestType) {
-      if (!authTkt.isNull()) {
-         logger_->warn("[HeadlessContainerListener] {} already authenticated", toHex(clientId));
-//         AuthResponse(clientId, packet, "already authenticated");
-      }
-
-      headless::AuthenticationRequest request;
-      if (!request.ParseFromString(packet.data())) {
-         logger_->error("[HeadlessContainerListener] failed to parse auth request");
-         AuthResponse(clientId, packet, "Failed to parse request");
-         return;
-      }
-      if (mapNetworkType(request.nettype()) != netType_) {
-         logger_->warn("[HeadlessContainerListener] remote network type mismatch");
-         AuthResponse(clientId, packet, "Wrong Bitcoin network type");
-         return;
-      }
-
-      const auto authTicket = CryptoPRNG::generateRandom(8);
-      logger_->debug("[HeadlessContainerListener] setting authTicket {} for {}", authTicket.toHexStr(), toHex(clientId));
-      authTickets_[clientId] = authTicket;
-      AuthResponse(clientId, packet);
-   }
-   else {
-      if (!onRequestPacket(clientId, packet)) {
-         packet.set_data("");
-         sendData(packet.SerializeAsString(), clientId);
-      }
+   if (!onRequestPacket(clientId, packet)) {
+      packet.set_data("");
+      sendData(packet.SerializeAsString(), clientId);
    }
 }
 
 void HeadlessContainerListener::OnPeerConnected(const std::string &ip)
 {
+   logger_->debug("[{}] IP {} connected", __func__, ip);
    if (cbPeerConn_) {
       cbPeerConn_(ip);
    }
@@ -187,42 +147,10 @@ void HeadlessContainerListener::OnPeerConnected(const std::string &ip)
 
 void HeadlessContainerListener::OnPeerDisconnected(const std::string &ip)
 {
+   logger_->debug("[{}] IP {} disconnected", __func__, ip);
    if (cbPeerDisconn_) {
       cbPeerDisconn_(ip);
    }
-}
-
-SecureBinaryData HeadlessContainerListener::authTicket(const std::string &clientId) const
-{
-   const auto itTicket = authTickets_.find(clientId);
-   if (itTicket == authTickets_.end()) {
-      return {};
-   }
-   return itTicket->second;
-}
-
-void HeadlessContainerListener::AuthResponse(const std::string &clientId, headless::RequestPacket packet
-   , const std::string &errMsg)
-{
-   headless::AuthenticationReply response;
-   if (errMsg.empty()) {
-      response.set_authticket(authTicket(clientId).toBinStr());
-      if (cbPwd_) {
-         response.set_hasui(true);
-      }
-   }
-   else {
-      response.set_error(errMsg);
-   }
-   response.set_nettype((netType_ == NetworkType::TestNet) ? headless::TestNetType : headless::MainNetType);
-   packet.set_data(response.SerializeAsString());
-   if (!sendData(packet.SerializeAsString(), clientId)) {
-      logger_->error("[HeadlessContainerListener] failed to send response auth packet");
-      return;
-   }
-   logger_->info("[HeadlessContainerListener] client {} authenticated", toHex(clientId));
-   connectedClients_.insert(clientId);
-//   emit clientAuthenticated(clientId, connection_->GetClientInfo(clientId));
 }
 
 bool HeadlessContainerListener::isRequestAllowed(Blocksettle::Communication::headless::RequestType reqType) const
@@ -248,6 +176,7 @@ bool HeadlessContainerListener::isRequestAllowed(Blocksettle::Communication::hea
 
 bool HeadlessContainerListener::onRequestPacket(const std::string &clientId, headless::RequestPacket packet)
 {
+   connection_->GetClientInfo(clientId);
    if (!isRequestAllowed(packet.type())) {
       logger_->info("[{}] request {} is not applicable at this state", __func__, (int)packet.type());
       return false;
@@ -260,6 +189,10 @@ bool HeadlessContainerListener::onRequestPacket(const std::string &clientId, hea
          logger_->error("[HeadlessContainerListener] failed to send response hearbeat packet");
          return false;
       }
+      break;
+
+   case headless::AuthenticationRequestType:
+      return AuthResponse(clientId, packet);
       break;
 
    case headless::CancelSignTxRequestType:
@@ -320,11 +253,25 @@ bool HeadlessContainerListener::onRequestPacket(const std::string &clientId, hea
    case headless::SyncAddressesType:
       return onSyncAddresses(clientId, packet);
 
+   case headless::ExecCustomDialogRequestType:
+      return onExecCustomDialog(clientId, packet);
+
    default:
       logger_->error("[HeadlessContainerListener] unknown request type {}", packet.type());
       return false;
    }
    return true;
+}
+
+bool HeadlessContainerListener::AuthResponse(const std::string &clientId, headless::RequestPacket packet)
+{
+   headless::AuthenticationReply response;
+   response.set_authticket("");  // no auth tickets after moving to BIP150/151
+   response.set_hasui(cbPwd_ != nullptr);
+   response.set_nettype((netType_ == NetworkType::TestNet) ? headless::TestNetType : headless::MainNetType);
+
+   packet.set_data(response.SerializeAsString());
+   return sendData(packet.SerializeAsString(), clientId);
 }
 
 bool HeadlessContainerListener::onSignTXRequest(const std::string &clientId, const headless::RequestPacket &packet, bool partial)
@@ -589,7 +536,6 @@ void HeadlessContainerListener::SignTXResponse(const std::string &clientId, unsi
 
    headless::RequestPacket packet;
    packet.set_id(id);
-   packet.set_authticket(authTicket(clientId).toBinStr());
    packet.set_type(reqType);
    packet.set_data(response.SerializeAsString());
 
@@ -633,14 +579,7 @@ void HeadlessContainerListener::passwordReceived(const std::string &clientId, co
    }
    if (autoSignPwdReqs_.find(walletId) != autoSignPwdReqs_.end()) {
       autoSignPwdReqs_.erase(walletId);
-      if (clientId.empty()) {
-         for (const auto &authTicket : authTickets_) {
-            activateAutoSign(authTicket.first, walletId, password);
-         }
-      }
-      else {
-         activateAutoSign(clientId, walletId, password);
-      }
+      activateAutoSign(clientId, walletId, password);
    }
 }
 
@@ -778,7 +717,6 @@ bool HeadlessContainerListener::RequestPassword(const std::string &clientId, con
       }
 
       headless::RequestPacket packet;
-      packet.set_authticket(authTicket(clientId).toBinStr());
       packet.set_type(headless::PasswordRequestType);
       packet.set_data(request.SerializeAsString());
       return sendData(packet.SerializeAsString(), clientId);
@@ -796,7 +734,6 @@ bool HeadlessContainerListener::onSetUserId(const std::string &clientId, headles
    walletsMgr_->setChainCode(request.userid());
 
    headless::RequestPacket response;
-   response.set_authticket(authTicket(clientId).toBinStr());
    response.set_type(headless::SetUserIdRequestType);
    sendData(response.SerializeAsString(), clientId);
    return true;
@@ -987,7 +924,6 @@ void HeadlessContainerListener::CreateHDWalletResponse(const std::string &client
 
    headless::RequestPacket packet;
    packet.set_id(id);
-   packet.set_authticket(authTicket(clientId).toBinStr());
    packet.set_type(headless::CreateHDWalletRequestType);
    packet.set_data(response.SerializeAsString());
 
@@ -1119,7 +1055,6 @@ void HeadlessContainerListener::GetRootKeyResponse(const std::string &clientId, 
 
    headless::RequestPacket packet;
    packet.set_id(id);
-   packet.set_authticket(authTicket(clientId).toBinStr());
    packet.set_type(headless::GetRootKeyRequestType);
    packet.set_data(response.SerializeAsString());
 
@@ -1169,7 +1104,6 @@ void HeadlessContainerListener::GetHDWalletInfoResponse(const std::string &clien
 
    headless::RequestPacket packet;
    packet.set_id(id);
-   packet.set_authticket(authTicket(clientId).toBinStr());
    packet.set_type(headless::GetHDWalletInfoRequestType);
    packet.set_data(response.SerializeAsString());
 
@@ -1224,7 +1158,6 @@ void HeadlessContainerListener::ChangePasswordResponse(const std::string &client
 
    headless::RequestPacket packet;
    packet.set_id(id);
-   packet.set_authticket(authTicket(clientId).toBinStr());
    packet.set_type(headless::ChangePasswordRequestType);
    packet.set_data(response.SerializeAsString());
 
@@ -1245,7 +1178,6 @@ void HeadlessContainerListener::AutoSignActiveResponse(const std::string &client
 
    headless::RequestPacket packet;
    packet.set_id(id);
-   packet.set_authticket(authTicket(clientId).toBinStr());
    packet.set_type(headless::SetLimitsRequestType);
    packet.set_data(response.SerializeAsString());
 
@@ -1314,14 +1246,7 @@ void HeadlessContainerListener::activateAutoSign(const std::string &clientId, co
    if (cbAsAct_) {
       cbAsAct_(wallet->walletId());
    }
-   if (clientId.empty()) {
-      for (const auto &authTicket : authTickets_) {
-         AutoSignActiveResponse(authTicket.first, wallet->walletId(), true);
-      }
-   }
-   else {
-      AutoSignActiveResponse(clientId, wallet->walletId(), true);
-   }
+   AutoSignActiveResponse(clientId, wallet->walletId(), true);
 }
 
 void HeadlessContainerListener::deactivateAutoSign(const std::string &clientId, const std::string &walletId
@@ -1336,14 +1261,7 @@ void HeadlessContainerListener::deactivateAutoSign(const std::string &clientId, 
    if (cbAsDeact_) {
       cbAsDeact_(walletId);
    }
-   if (clientId.empty()) {
-      for (const auto &authTicket : authTickets_) {
-         AutoSignActiveResponse(authTicket.first, walletId, false, reason);
-      }
-   }
-   else {
-      AutoSignActiveResponse(clientId, walletId, false, reason);
-   }
+   AutoSignActiveResponse(clientId, walletId, false, reason);
 }
 
 bool HeadlessContainerListener::isAutoSignActive(const std::string &walletId) const
@@ -1586,4 +1504,25 @@ bool HeadlessContainerListener::onSyncAddresses(const std::string &clientId, Blo
 
    packet.set_data(response.SerializeAsString());
    return sendData(packet.SerializeAsString(), clientId);
+}
+
+bool HeadlessContainerListener::onExecCustomDialog(const std::string &clientId, headless::RequestPacket packet)
+{
+   headless::CustomDialogRequest request;
+   if (!request.ParseFromString(packet.data())) {
+      logger_->error("[HeadlessContainerListener] failed to parse CustomDialogRequest");
+      return false;
+   }
+
+   if (cbCustomDialog_) {
+      cbCustomDialog_(request.dialogname(), request.variantdata());
+
+//      QByteArray ba = QByteArray::fromStdString(request.variantdata());
+//      QDataStream ds(&ba, QIODevice::ReadOnly);
+//      QVariant data;
+//      ds >> data;
+
+//      cbCustomDialog_(QString::fromStdString(request.dialogname()), data);
+   }
+   return true;
 }

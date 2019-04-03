@@ -8,6 +8,7 @@
 #include "ZmqSecuredDataConnection.h"
 
 #include <QCoreApplication>
+#include <QDataStream>
 #include <QDebug>
 #include <QDir>
 #include <QProcess>
@@ -41,33 +42,12 @@ void HeadlessListener::OnDataReceived(const std::string& data)
       emit error(tr("reply id inconsistency"));
       return;
    }
-   if ((packet.type() != headless::AuthenticationRequestType)
-      && (authTicket_.isNull() || (SecureBinaryData(packet.authticket()) != authTicket_))) {
-      if (packet.type() == headless::DisconnectionRequestType) {
-         if (packet.authticket().empty()) {
-            emit authFailed();
-         }
-         return;
-      }
-      if (packet.type() != headless::HeartbeatType) {
-         logger_->error("[HeadlessListener] {} auth ticket mismatch ({} vs {})!", packet.type()
-            , authTicket_.toHexStr(), BinaryData(packet.authticket()).toHexStr());
-         emit error(tr("auth ticket mismatch"));
-      }
-      return;
-   }
 
    if (packet.type() == headless::DisconnectionRequestType) {
       OnDisconnected();
       return;
    }
-
-   if (packet.type() == headless::AuthenticationRequestType) {
-      if (!authTicket_.isNull()) {
-         logger_->error("[HeadlessListener] already authenticated");
-         emit error(tr("already authenticated"));
-         return;
-      }
+   else if (packet.type() == headless::AuthenticationRequestType) {
       headless::AuthenticationReply response;
       if (!response.ParseFromString(packet.data())) {
          logger_->error("[HeadlessListener] failed to parse auth reply");
@@ -80,17 +60,9 @@ void HeadlessListener::OnDataReceived(const std::string& data)
          return;
       }
 
-      if (!response.authticket().empty()) {
-         authTicket_ = response.authticket();
-         hasUI_ = response.hasui();
-         logger_->debug("[HeadlessListener] successfully authenticated");
-         emit authenticated();
-      }
-      else {
-         logger_->error("[HeadlessListener] authentication failure: {}", response.error());
-         emit error(QString::fromStdString(response.error()));
-         return;
-      }
+      // BIP 150/151 should be be complete by this point.
+      hasUI_ = response.hasui();
+      emit authenticated();
    }
    else {
       emit PacketReceived(packet);
@@ -122,7 +94,6 @@ HeadlessContainer::RequestId HeadlessListener::Send(headless::RequestPacket pack
       id = newRequestId();
       packet.set_id(id);
    }
-   packet.set_authticket(authTicket_.toBinStr());
    if (!connection_->send(packet.SerializeAsString())) {
       logger_->error("[HeadlessListener] Failed to send request packet");
       emit disconnected();
@@ -498,10 +469,6 @@ HeadlessContainer::RequestId HeadlessContainer::SetUserId(const BinaryData &user
       return 0;
    }
 
-   if (!listener_->isAuthenticated()) {
-      logger_->warn("[HeadlessContainer] setting userid without being authenticated is not allowed");
-      return 0;
-   }
    headless::SetUserIdRequest request;
    if (!userId.isNull()) {
       request.set_userid(userId.toBinStr());
@@ -618,10 +585,6 @@ void HeadlessContainer::setLimits(const std::string &walletId, const SecureBinar
       logger_->error("[HeadlessContainer] no walletId for SetLimits");
       return;
    }
-   if (!listener_->isAuthenticated()) {
-      logger_->warn("[HeadlessContainer] setting limits without being authenticated is not allowed");
-      return;
-   }
    headless::SetLimitsRequest request;
    request.set_rootwalletid(walletId);
    if (!pass.isNull()) {
@@ -666,6 +629,23 @@ HeadlessContainer::RequestId HeadlessContainer::changePassword(const std::string
    return Send(packet);
 }
 
+SignContainer::RequestId HeadlessContainer::customDialogRequest(bs::signer::ui::DialogType signerDialog, const QVariantMap &data)
+{
+   // serialize variant data
+   QByteArray ba;
+   QDataStream stream(&ba, QIODevice::WriteOnly);
+   stream << data;
+
+   headless::CustomDialogRequest request;
+   request.set_dialogname(bs::signer::ui::getSignerDialogPath(signerDialog).toStdString());
+   request.set_variantdata(ba.data(), ba.size());
+
+   headless::RequestPacket packet;
+   packet.set_type(headless::ExecCustomDialogRequestType);
+   packet.set_data(request.SerializeAsString());
+   return Send(packet);
+}
+
 HeadlessContainer::RequestId HeadlessContainer::getDecryptedRootKey(const std::string &walletId
    , const SecureBinaryData &password)
 {
@@ -697,7 +677,7 @@ HeadlessContainer::RequestId HeadlessContainer::GetInfo(const std::string &rootW
 
 bool HeadlessContainer::isReady() const
 {
-   return (listener_ && listener_->isAuthenticated());
+   return (listener_ != nullptr);
 }
 
 bool HeadlessContainer::isWalletOffline(const std::string &walletId) const
@@ -1019,15 +999,14 @@ void HeadlessContainer::ProcessSyncAddresses(unsigned int id, const std::string 
 
 
 RemoteSigner::RemoteSigner(const std::shared_ptr<spdlog::logger> &logger
-                           , const QString &host, const QString &port
-                           , NetworkType netType
-                           , const std::shared_ptr<ConnectionManager>& connectionManager
-                           , const std::shared_ptr<ApplicationSettings>& appSettings
-                           , OpMode opMode)
+   , const QString &host, const QString &port, NetworkType netType
+   , const std::shared_ptr<ConnectionManager>& connectionManager
+   , const std::shared_ptr<ApplicationSettings>& appSettings
+   , OpMode opMode)
    : HeadlessContainer(logger, opMode)
    , host_(host), port_(port), netType_(netType)
-   , appSettings_{appSettings}
    , connectionManager_{connectionManager}
+   , appSettings_{appSettings}
 {}
 
 // Establish the remote connection to the signer.
@@ -1037,8 +1016,7 @@ bool RemoteSigner::Start()
       return true;
    }
 
-   connection_ = connectionManager_->CreateSecuredDataConnection(true);
-
+   connection_ = connectionManager_->CreateZMQBIP15XDataConnection(true);
    if (opMode() == OpMode::RemoteInproc) {
       connection_->SetZMQTransport(ZMQTransport::InprocTransport);
    }
@@ -1046,12 +1024,18 @@ bool RemoteSigner::Start()
    {
       std::lock_guard<std::mutex> lock(mutex_);
       listener_ = std::make_shared<HeadlessListener>(logger_, connection_, netType_);
-      connect(listener_.get(), &HeadlessListener::connected, this, &RemoteSigner::onConnected, Qt::QueuedConnection);
-      connect(listener_.get(), &HeadlessListener::authenticated, this, &RemoteSigner::onAuthenticated, Qt::QueuedConnection);
-      connect(listener_.get(), &HeadlessListener::authFailed, [this] { authPending_ = false; });
-      connect(listener_.get(), &HeadlessListener::disconnected, this, &RemoteSigner::onDisconnected, Qt::QueuedConnection);
-      connect(listener_.get(), &HeadlessListener::error, this, &RemoteSigner::onConnError, Qt::QueuedConnection);
-      connect(listener_.get(), &HeadlessListener::PacketReceived, this, &RemoteSigner::onPacketReceived, Qt::QueuedConnection);
+      connect(listener_.get(), &HeadlessListener::connected, this
+         , &RemoteSigner::onConnected, Qt::QueuedConnection);
+      connect(listener_.get(), &HeadlessListener::authenticated, this
+         , &RemoteSigner::onAuthenticated, Qt::QueuedConnection);
+      connect(listener_.get(), &HeadlessListener::disconnected, this
+         , &RemoteSigner::onDisconnected, Qt::QueuedConnection);
+      connect(listener_.get(), &HeadlessListener::error, this
+         , &RemoteSigner::onConnError, Qt::QueuedConnection);
+      connect(listener_.get(), &HeadlessListener::PacketReceived, this
+         , &RemoteSigner::onPacketReceived, Qt::QueuedConnection);
+      connect(connection_.get(), &ZmqBIP15XDataConnection::bip15XCompleted
+         , this, &RemoteSigner::onBIP15XCompleted, Qt::QueuedConnection);
    }
 
    return Connect();
@@ -1071,7 +1055,8 @@ bool RemoteSigner::Connect()
 void RemoteSigner::ConnectHelper()
 {
    if (!connection_->isActive()) {
-      if (connection_->openConnection(host_.toStdString(), port_.toStdString(), listener_.get())) {
+      if (connection_->openConnection(host_.toStdString(), port_.toStdString()
+         , listener_.get())) {
          emit connected();
       }
       else {
@@ -1080,7 +1065,6 @@ void RemoteSigner::ConnectHelper()
          return;
       }
    }
-   Authenticate();
 }
 
 bool RemoteSigner::Disconnect()
@@ -1099,20 +1083,13 @@ bool RemoteSigner::Disconnect()
 void RemoteSigner::Authenticate()
 {
    mutex_.lock();
-
    if (!listener_) {
       mutex_.unlock();
       emit connectionError(tr("listener missing on authenticate"));
       return;
    }
-   if (listener_->isAuthenticated() || authPending_) {
-      mutex_.unlock();
-      return;
-   }
-
    mutex_.unlock();
 
-   authPending_ = true;
    headless::AuthenticationRequest request;
    request.set_nettype((netType_ == NetworkType::TestNet) ? headless::TestNetType : headless::MainNetType);
 
@@ -1122,14 +1099,23 @@ void RemoteSigner::Authenticate()
    Send(packet);
 }
 
+void RemoteSigner::startBIP151Handshake()
+{
+   mutex_.lock();
+   if (!listener_) {
+      mutex_.unlock();
+      emit connectionError(tr("listener missing on authenticate"));
+      return;
+   }
+   mutex_.unlock();
+
+   connection_->startBIP151Handshake();
+}
+
 bool RemoteSigner::isOffline() const
 {
    std::lock_guard<std::mutex> lock(mutex_);
-
-   if (!listener_) {
-      return true;
-   }
-   return !listener_->isAuthenticated();
+   return (listener_ == nullptr);
 }
 
 bool RemoteSigner::hasUI() const
@@ -1141,27 +1127,27 @@ bool RemoteSigner::hasUI() const
 
 void RemoteSigner::onConnected()
 {
-   Connect();
+   startBIP151Handshake();
 }
 
 void RemoteSigner::onAuthenticated()
 {
-   authPending_ = false;
+   // Once the BIP 150/151 handshake is complete, it's safe to start sending
+   // app-level data to the signer.
    emit authenticated();
    emit ready();
+}
+
+void RemoteSigner::onBIP15XCompleted()
+{
+   // Once the BIP 150/151 handshake is complete, it's safe to start sending
+   // app-level data to the signer.
+   Authenticate();
 }
 
 void RemoteSigner::onDisconnected()
 {
    missingWallets_.clear();
-
-   {
-      std::lock_guard<std::mutex> lock(mutex_);
-
-      if (listener_) {
-         listener_->resetAuthTicket();
-      }
-   }
 
    std::set<RequestId> tmpReqs = signRequests_;
    signRequests_.clear();
@@ -1252,12 +1238,12 @@ void RemoteSigner::onPacketReceived(headless::RequestPacket packet)
 
 
 LocalSigner::LocalSigner(const std::shared_ptr<spdlog::logger> &logger
-                         , const QString &homeDir, NetworkType netType, const QString &port
-                         , const std::shared_ptr<ConnectionManager>& connectionManager
-                         , const std::shared_ptr<ApplicationSettings> &appSettings
-                         , SignContainer::OpMode mode, double asSpendLimit)
+   , const QString &homeDir, NetworkType netType, const QString &port
+   , const std::shared_ptr<ConnectionManager>& connectionManager
+   , const std::shared_ptr<ApplicationSettings> &appSettings
+   , SignContainer::OpMode mode, double asSpendLimit)
    : RemoteSigner(logger, QLatin1String("127.0.0.1"), port, netType
-                  , connectionManager, appSettings, mode)
+   , connectionManager, appSettings, mode)
    , homeDir_(homeDir), asSpendLimit_(asSpendLimit)
 {
 }
@@ -1270,7 +1256,7 @@ QStringList LocalSigner::args() const
    }
 
    QStringList result;
-   result << QLatin1String("--headless");
+   result << QLatin1String("--guimode") << QLatin1String("lightgui");
    switch (netType_) {
    case NetworkType::TestNet:
    case NetworkType::RegTest:
@@ -1288,6 +1274,7 @@ QStringList LocalSigner::args() const
    if (asSpendLimit_ > 0) {
       result << QLatin1String("--auto_sign_spend_limit") << QString::number(asSpendLimit_, 'f', 8);
    }
+
    return result;
 }
 
@@ -1308,7 +1295,7 @@ bool LocalSigner::Start()
    bundleDir.cdUp();
    bundleDir.cdUp();
    bundleDir.cdUp();
-   const auto signerAppPath = bundleDir.absoluteFilePath(QLatin1String("Blocksettle Signer.app/Contents/MacOS/Blocksettle Signer"));
+   const auto signerAppPath = bundleDir.absoluteFilePath(QLatin1String("blocksettle_signer"));
 #else
    const auto signerAppPath = QCoreApplication::applicationDirPath() + QLatin1String("/blocksettle_signer");
 #endif
@@ -1343,6 +1330,9 @@ bool LocalSigner::Start()
          , __func__, pidFileName().toStdString());
    }
    logger_->debug("[LocalSigner::{}] child process started", __func__);
+
+   // Give the signer a little time to get set up.
+   QThread::msleep(250);
 
    return RemoteSigner::Start();
 }

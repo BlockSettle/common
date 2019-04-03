@@ -99,6 +99,8 @@ ApplicationSettings::ApplicationSettings(const QString &appName
       { celerPort,               SettingDef(QString()) },
       { mdServerHost,            SettingDef(QString()) },
       { mdServerPort,            SettingDef(QString()) },
+      { mdhsHost,                SettingDef(QString()) },
+      { mdhsPort,                SettingDef(QString()) },
       { chatServerHost,          SettingDef(QString()) },
       { chatServerPort,          SettingDef(QString()) },
       { chatServerPubKey,        SettingDef(QString(), QLatin1String("@:2IFYqVXa}+eRpKW9Q310j4cB%%nKe8$-v6bSOg")) },
@@ -132,10 +134,10 @@ ApplicationSettings::ApplicationSettings(const QString &appName
       { Filter_MD_QN,            SettingDef(QLatin1String("Filter/MD/QN")) },
       { Filter_MD_QN_cnt,        SettingDef(QLatin1String("Filter/MD/QN/counters")) },
       { ChangeLog_Base_Url,      SettingDef(QString(), QLatin1String("https://pubb.blocksettle.com/Changelog/changelog.json"))},
-      { Binaries_Dl_Url,         SettingDef(QString(), QLatin1String("https://pubb.blocksettle.com/terminal/downloads"))},
+      { Binaries_Dl_Url,         SettingDef(QString(), QLatin1String("https://pubb.blocksettle.com/downloads/terminal"))},
       { ResetPassword_Url,       SettingDef(QString(), QLatin1String("https://pubb.blocksettle.com/pub-forgot-password"))},
       { GetAccount_Url,          SettingDef(QString(), QLatin1String("http://www.blocksettle.com")) },
-      { GettingStartedGuide_Url,  SettingDef(QString(), QLatin1String("http://pubb.blocksettle.com/PDF/BlockSettle%20Getting%20Started.pdf")) },
+      { GettingStartedGuide_Url, SettingDef(QString(), QLatin1String("http://pubb.blocksettle.com/PDF/BlockSettle%20Getting%20Started.pdf")) },
       { WalletFiltering,         SettingDef(QLatin1String("WalletWidgetFilteringFlags"), 0x06) },
       { FxRfqLimit,              SettingDef(QLatin1String("FxRfqLimit"), 5) },
       { XbtRfqLimit,             SettingDef(QLatin1String("XbtRfqLimit"), 5) },
@@ -382,12 +384,12 @@ bool ApplicationSettings::LoadApplicationSettings(const QStringList& argList)
 
 #ifndef NDEBUG
    if (parser.isSet(chatServerIPName)) {
-	   QString vcip = parser.value(chatServerIPName);
-	   set(chatServerHost, vcip);
+      QString vcip = parser.value(chatServerIPName);
+      set(chatServerHost, vcip);
    }
    if (parser.isSet(chatServerPortName)) {
-	   int vcp = parser.value(chatServerPortName).toInt();
-	   set(chatServerPort, vcp);
+      int vcp = parser.value(chatServerPortName).toInt();
+      set(chatServerPort, vcp);
    }
 #endif // NDEBUG
 
