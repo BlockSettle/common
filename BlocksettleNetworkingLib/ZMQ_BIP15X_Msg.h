@@ -52,6 +52,8 @@
 #define ZMQ_MSGTYPE_AUTH_REPLY                22
 #define ZMQ_MSGTYPE_AUTH_PROPOSE              23
 
+#define ZMQ_MSGTYPE_HEARTBEAT                 30
+
 // NOTE: Due to fragmentation, the maximum message size is (65535 * 1500) =
 // ~98 MiB. Larger messages will have to be split up in other ways.
 #define ZMQ_MESSAGE_PACKET_SIZE 1500
@@ -59,7 +61,7 @@
 #define ZMQ_CALLBACK_ID 0xFFFFFFFD
 #define ZMQ_AEAD_HANDSHAKE_ID 0xFFFFFFFC
 #define ZMQ_MAGIC_WORD 0x56E1
-#define AEAD_REKEY_INVERVAL_SECONDS 600
+#define ZMQ_AEAD_REKEY_INVERVAL_SECS 600
 
 // Class that actually handles the nuts & bolts of message construction.
 class ZmqBIP15XMessageCodec

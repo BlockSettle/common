@@ -15,12 +15,13 @@ namespace Ui {
 namespace spdlog {
    class logger;
 }
+
 class ChatClient;
 class ConnectionManager;
 class ApplicationSettings;
-
 class ChatWidgetState;
 class ChatSearchPopup;
+class OTCRequestViewModel;
 
 class ChatWidget : public QWidget
 {
@@ -45,6 +46,8 @@ public:
    std::string login(const std::string& email, const std::string& jwt);
    void logout();
    bool hasUnreadMessages();
+public slots:
+   void onLoggedOut();
 
 private slots:
    void onSendButtonClicked();
@@ -63,6 +66,7 @@ private slots:
 
 signals:
    void LoginFailed();
+   void LogOut();
 
 private:
    QScopedPointer<Ui::ChatWidget> ui_;
@@ -80,6 +84,9 @@ private:
    ChatUserListLogicPtr chatUserListLogicPtr_;
    QMap<QString, QString> draftMessages_;
    bool needsToStartFirstRoom_;
+
+private:
+   OTCRequestViewModel *otcRequestViewModel_ = nullptr;
 
 private:
    bool isRoom();

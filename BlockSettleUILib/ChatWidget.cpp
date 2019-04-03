@@ -5,6 +5,8 @@
 #include "ApplicationSettings.h"
 #include "ChatSearchPopup.h"
 
+#include "OTCRequestViewModel.h"
+
 #include <QScrollBar>
 #include <QMouseEvent>
 #include <QApplication>
@@ -30,6 +32,7 @@ public:
 
    virtual std::string login(const std::string& email, const std::string& jwt) = 0;
    virtual void logout() = 0;
+   virtual void onLoggedOut() { }
    virtual void onSendButtonClicked() = 0;
    virtual void onUserClicked(const QString& userId) = 0;
    virtual void onMessagesUpdated() = 0;
@@ -96,6 +99,9 @@ public:
 
    void logout() override {
       chat_->client_->logout();
+   }
+
+   void onLoggedOut() override {
       chat_->changeState(ChatWidget::LoggedOut);
    }
 
@@ -118,6 +124,8 @@ public:
    }
 
    void onUserClicked(const QString& userId)  override {
+
+      chat_->ui_->stackedWidgetMessages->setCurrentIndex(0);
 
       // save draft
       if (!chat_->currentChat_.isEmpty()) {
@@ -142,6 +150,12 @@ public:
    }
    
    void onRoomClicked(const QString& roomId) override {
+      if (roomId == QLatin1Literal("otc_chat")) {
+         chat_->ui_->stackedWidgetMessages->setCurrentIndex(1);
+      } else {
+         chat_->ui_->stackedWidgetMessages->setCurrentIndex(0);
+      }
+
       // save draft
       if (!chat_->currentChat_.isEmpty()) {
          QString messageText = chat_->ui_->input_textEdit->toPlainText();
@@ -189,6 +203,9 @@ ChatWidget::ChatWidget(QWidget *parent)
 
    chatUserListLogicPtr_ = std::make_shared<ChatUserListLogic>(this);
 
+   otcRequestViewModel_ = new OTCRequestViewModel(this);
+   ui_->treeViewOTCRequests->setModel(otcRequestViewModel_);
+
    qRegisterMetaType<std::vector<std::string>>();
 }
 
@@ -203,6 +220,7 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
    chatUserListLogicPtr_->init(client_, logger);
 
    connect(client_.get(), &ChatClient::LoginFailed, this, &ChatWidget::onLoginFailed);
+   connect(client_.get(), &ChatClient::LoggedOut, this, &ChatWidget::onLoggedOut);
 
    // connect(ui_->send, &QPushButton::clicked, this, &ChatWidget::onSendButtonClicked);
 
@@ -388,6 +406,12 @@ bool ChatWidget::hasUnreadMessages()
    } else {
       return false;
    }
+}
+
+void ChatWidget::onLoggedOut()
+{
+   stateCurrent_->onLoggedOut();
+   emit LogOut();
 }
 
 void ChatWidget::onSearchUserReturnPressed()
