@@ -4,7 +4,7 @@
 #include <spdlog/spdlog.h>
 #include "botan/base64.h"
 
-#include "ZMQ_BIP15X_ServerConnection.h"
+#include "ZMQ_BIP15X_DataConnection.h"
 #include "ChatDB.h"
 #include "ConnectionManager.h"
 #include "ApplicationSettings.h"
@@ -79,7 +79,7 @@ std::string ChatClient::loginToServer(const std::string& email, const std::strin
 
    connection_ = connectionManager_->CreateZMQBIP15XDataConnection();
    BinaryData inSrvPubKey(appSettings_->get<std::string>(ApplicationSettings::chatServerPubKey));
-   connection_->SetServerPublicKey(inSrvPubKey);
+   //connection_->SetServerPublicKey(inSrvPubKey);
    if (!connection_->openConnection(appSettings_->get<std::string>(ApplicationSettings::chatServerHost)
                             , appSettings_->get<std::string>(ApplicationSettings::chatServerPort), this))
    {
