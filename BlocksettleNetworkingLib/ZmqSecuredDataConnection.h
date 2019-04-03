@@ -29,9 +29,6 @@ protected:
    bool ConfigureDataSocket(const ZmqContext::sock_ptr& socket) override;
 
 private:
-   SecureBinaryData publicKey_;
-   SecureBinaryData privateKey_;
-   BinaryData serverPublicKey_;
    std::atomic_flag lockSocket_ = ATOMIC_FLAG_INIT;
 };
 

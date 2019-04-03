@@ -6,7 +6,6 @@
 #include "Wallets/SyncHDWallet.h"
 #include "Wallets/SyncWalletsManager.h"
 #include "ZmqSecuredDataConnection.h"
-#include "ZMQHelperFunctions.h"
 
 #include <QCoreApplication>
 #include <QDataStream>
@@ -1331,7 +1330,6 @@ bool LocalSigner::Start()
          , __func__, pidFileName().toStdString());
    }
    logger_->debug("[LocalSigner::{}] child process started", __func__);
-
 
    // Give the signer a little time to get set up.
    QThread::msleep(250);

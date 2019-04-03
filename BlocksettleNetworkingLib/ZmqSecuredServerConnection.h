@@ -18,9 +18,6 @@ public:
    ZmqSecuredServerConnection(ZmqSecuredServerConnection&&) = delete;
    ZmqSecuredServerConnection& operator = (ZmqSecuredServerConnection&&) = delete;
 
-   bool SetKeyPair(const SecureBinaryData& zmqPubKey
-      , const SecureBinaryData& zmqPrvKey);
-
    bool SendDataToClient(const std::string& clientId, const std::string& data
       , const SendResultCb &cb = nullptr) override;
 
@@ -29,10 +26,6 @@ protected:
    bool ConfigDataSocket(const ZmqContext::sock_ptr& dataSocket) override;
 
    bool ReadFromDataSocket() override;
-
-private:
-   SecureBinaryData publicKey_;
-   SecureBinaryData privateKey_;
 };
 
 #endif // __ZMQ_SECURED_SERVER_CONNECTION_H__

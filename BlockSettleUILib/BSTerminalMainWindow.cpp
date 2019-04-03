@@ -54,7 +54,6 @@
 #include "UiUtils.h"
 #include "Wallets/SyncHDWallet.h"
 #include "Wallets/SyncWalletsManager.h"
-#include "ZMQHelperFunctions.h"
 #include "ZmqSecuredDataConnection.h"
 
 #include <spdlog/spdlog.h>

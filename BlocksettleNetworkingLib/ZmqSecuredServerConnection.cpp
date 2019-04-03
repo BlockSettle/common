@@ -12,15 +12,6 @@ ZmqSecuredServerConnection::ZmqSecuredServerConnection(const std::shared_ptr<spd
  : ZmqServerConnection(logger, context)
 {}
 
-bool ZmqSecuredServerConnection::SetKeyPair(const SecureBinaryData& zmqPubKey
-   , const SecureBinaryData& zmqPrvKey)
-{
-   publicKey_ = zmqPubKey;
-   privateKey_ = zmqPrvKey;
-
-   return true;
-}
-
 ZmqContext::sock_ptr ZmqSecuredServerConnection::CreateDataSocket()
 {
    return context_->CreateServerSocket();
@@ -28,27 +19,6 @@ ZmqContext::sock_ptr ZmqSecuredServerConnection::CreateDataSocket()
 
 bool ZmqSecuredServerConnection::ConfigDataSocket(const ZmqContext::sock_ptr& dataSocket)
 {
-   if (publicKey_.getSize() == 0 || privateKey_.getSize() == 0) {
-      logger_->error("[ZmqSecuredServerConnection::ConfigDataSocket] missing key pair for {}"
-         , connectionName_);
-      return false;
-   }
-
-   int isServer = 1;
-   int result = zmq_setsockopt(dataSocket.get(), ZMQ_CURVE_SERVER, &isServer, sizeof(isServer));
-   if (result != 0) {
-      logger_->error("[ZmqSecuredServerConnection::ConfigDataSocket] {} failed to config socket to be a server : {}"
-         , connectionName_, zmq_strerror(zmq_errno()));
-      return false;
-   }
-
-   result = zmq_setsockopt(dataSocket.get(), ZMQ_CURVE_SECRETKEY, privateKey_.getCharPtr(), privateKey_.getSize());
-   if (result != 0) {
-      logger_->error("[ZmqSecuredServerConnection::ConfigDataSocket] {} failed to set server private key: {}"
-         , connectionName_, zmq_strerror(zmq_errno()));
-      return false;
-   }
-
    return ZmqServerConnection::ConfigDataSocket(dataSocket);
 }
 
