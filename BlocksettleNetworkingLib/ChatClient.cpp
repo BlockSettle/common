@@ -77,7 +77,7 @@ std::string ChatClient::loginToServer(const std::string& email, const std::strin
    //currentUserId_ = QString::fromStdString(autheid::base64Encode(bytesHash).substr(0, 8)).toLower().toStdString();
    currentUserId_ = hasher_->deriveKey(email);
 
-   connection_ = connectionManager_->CreateSecuredDataConnection();
+   connection_ = connectionManager_->CreateZMQBIP15XDataConnection();
    BinaryData inSrvPubKey(appSettings_->get<std::string>(ApplicationSettings::chatServerPubKey));
    connection_->SetServerPublicKey(inSrvPubKey);
    if (!connection_->openConnection(appSettings_->get<std::string>(ApplicationSettings::chatServerHost)
