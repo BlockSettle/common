@@ -4,7 +4,7 @@
 #include <spdlog/spdlog.h>
 #include "botan/base64.h"
 
-#include "ZmqSecuredDataConnection.h"
+#include "ZMQ_BIP15X_ServerConnection.h"
 #include "ChatDB.h"
 #include "ConnectionManager.h"
 #include "ApplicationSettings.h"
