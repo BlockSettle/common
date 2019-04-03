@@ -51,6 +51,13 @@ public:
    {}
 };
 
+class NoAssetException : public std::runtime_error
+{
+public:
+   NoAssetException(const std::string& msg) : std::runtime_error(msg)
+   {}
+};
+
 class NoEntryInWalletException
 {};
 
@@ -297,6 +304,8 @@ public:
    const std::string& getDbFilename(void) const;
    std::shared_ptr<LMDBEnv> getDbEnv(void) const { return dbEnv_; }
 
+   std::set<BinaryData> getAccountIDs(void) const;
+
    //virtual
    virtual std::set<BinaryData> getAddrHashSet();
    virtual const SecureBinaryData& getDecryptedValue(
@@ -450,7 +459,7 @@ public:
 class ResolverFeed_AssetWalletSingle : public ResolverFeed
 {
 private:
-   std::shared_ptr<AssetWallet> wltPtr_;
+   std::shared_ptr<AssetWallet_Single> wltPtr_;
 
 protected:
    std::map<BinaryDataRef, BinaryDataRef> hash_to_preimage_;
@@ -491,11 +500,68 @@ private:
       }
    }
 
+   std::pair<std::shared_ptr<AssetEntry>, AddressEntryType>
+      getAssetPairForKey(const BinaryData& key)
+   {
+      //run through accounts
+      auto& accountSet = wltPtr_->accounts_;
+      for (auto& accPtr : accountSet)
+      {
+         /*
+         Accounts store script hashes with their relevant prefix, resolver
+         asks uses unprefixed hashes as found in the actual outputs. Hence,
+         all possible script prefixes will be prepended to the key to
+         look for the relevant asset ID
+         */
+
+         auto prefixSet = accPtr->getAddressTypeSet();
+         auto& hashMap = accPtr->getAddressHashMap();
+         std::set<uint8_t> usedPrefixes;
+
+         for (auto& addrType : prefixSet)
+         {
+            BinaryWriter prefixedKey;
+            try
+            {
+               auto prefix = AddressEntry::getPrefixByte(addrType);
+
+               //skip prefixes already used
+               auto insertIter = usedPrefixes.insert(prefix);
+               if (!insertIter.second)
+                  continue;
+
+               prefixedKey.put_uint8_t(prefix);
+            }
+            catch (AddressException&)
+            {}
+
+            prefixedKey.put_BinaryData(key);
+
+            auto iter = hashMap.find(prefixedKey.getData());
+            if (iter == hashMap.end())
+               continue;
+
+            //sanity check: address types should match
+            if (addrType != iter->second.second)
+               continue;
+
+            //we have a hit for this address type, create it and return the
+            //predecessor
+            auto asset =
+               accPtr->getAssetForID(iter->second.first.getSliceRef(4, 8));
+            return std::make_pair(asset, addrType);
+         }
+      }
+
+      return std::make_pair(nullptr, AddressEntryType_Default);
+   }
+
 public:
    //tors
    ResolverFeed_AssetWalletSingle(std::shared_ptr<AssetWallet_Single> wltPtr) :
       wltPtr_(wltPtr)
    {
+      //precache most likely candidates
       auto& addrMap = wltPtr->addresses_;
       for (auto& addr : addrMap)
          addToMap(addr.second);
@@ -504,23 +570,122 @@ public:
    //virtual
    BinaryData getByVal(const BinaryData& key)
    {
-      //find id for the key
+      //check cached hits first
       auto iter = hash_to_preimage_.find(key);
-      if (iter == hash_to_preimage_.end())
-         throw std::runtime_error("invalid value");
+      if (iter != hash_to_preimage_.end())
+         return iter->second;
 
-      return iter->second;
+      //short of that, try to get the asset for this key
+      auto assetPair = getAssetPairForKey(key);
+      if (assetPair.first == nullptr ||
+         assetPair.second == AddressEntryType_Default)
+         throw std::runtime_error("could not resolve key");
+
+      auto addrPtr = AddressEntry::instantiate(
+         assetPair.first, assetPair.second);
+
+      /*
+      We cache all hits at this stage to speed up further resolution.
+
+      In the case of nested addresses, we have to cache the predessors
+      anyways as they are most likely going to be requested later, yet
+      there is no guarantee the account address hashmap which our
+      resolution is based on carries the predecessor hashes. addToMap
+      takes care of this for us.
+      */
+
+      addToMap(addrPtr);
+      return addrPtr->getPreimage();
    }
+
 
    virtual const SecureBinaryData& getPrivKeyForPubkey(const BinaryData& pubkey)
    {
+      //check cache first
       auto pubkeyref = BinaryDataRef(pubkey);
       auto iter = pubkey_to_asset_.find(pubkeyref);
-      if (iter == pubkey_to_asset_.end())
-         throw std::runtime_error("invalid value");
+      if (iter != pubkey_to_asset_.end())
+      {
+         const auto& privkeyAsset = iter->second->getPrivKey();
+         return wltPtr_->getDecryptedValue(privkeyAsset);
+      }
 
-      const auto& privkeyAsset = iter->second->getPrivKey();
-      return wltPtr_->getDecryptedValue(privkeyAsset);
+      /*
+      Lacking a cache hit, we need to get the asset for this pubkey. All
+      pubkeys are carried as assets, and all assets are expressed all
+      possible script hash variations within each accounts address hash
+      map.
+
+      Therefor, converting this pubkey to one of the eligible script hash
+      variation should yield a hit from the key to asset resolution logic.
+
+      From that asset object, we can then get the private key.
+
+      Conveniently, the only hash ever used on public keys is
+      BtcUtils::getHash160
+      */
+
+      auto&& hash = BtcUtils::getHash160(pubkey);
+      auto assetPair = getAssetPairForKey(pubkey);
+      if (assetPair.first = nullptr)
+         throw NoAssetException("invalid pubkey");
+
+      auto assetSingle =
+         std::dynamic_pointer_cast<AssetEntry_Single>(assetPair.first);
+      if (assetSingle == nullptr)
+         throw std::logic_error("invalid pubkey");
+
+      auto privKeyPtr = assetSingle->getPrivKey();
+      if (privKeyPtr == nullptr)
+         throw std::logic_error("invalid pubkey");
+
+      return wltPtr_->getDecryptedValue(privKeyPtr);
+
+      /*
+      In case of NoAssetException failure, it is still possible this public key 
+      is used in an exotic script (multisig or other).
+      Use ResolverFeed_AssetWalletSingle_Exotic for a wallet carrying
+      that kind of scripts.
+
+      logic_error means the asset was found but it does not carry the private 
+      key.
+
+      DecryptedDataContainerException means the wallet failed to decrypt the 
+      encrypted pubkey (bad passphrase or unlocked wallet most likely).
+      */
+   }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+class ResolverFeed_AssetWalletSingle_Exotic : 
+   public ResolverFeed_AssetWalletSingle
+{
+   //tors
+   ResolverFeed_AssetWalletSingle_Exotic(
+      std::shared_ptr<AssetWallet_Single> wltPtr) :
+      ResolverFeed_AssetWalletSingle(wltPtr)
+   {}
+
+   //virtual
+   const SecureBinaryData& getPrivKeyForPubkey(const BinaryData& pubkey)
+   {
+      try
+      {
+         return ResolverFeed_AssetWalletSingle::getPrivKeyForPubkey(pubkey);
+      }
+      catch (NoAssetException&)
+      {}
+      
+      /*
+      Failed to get the asset for the pukbey by hashing it, run through
+      all assets linearly instead.
+      */
+
+      //grab account
+
+      //grab asset account
+
+      //run through assets, check pubkeys
    }
 };
 

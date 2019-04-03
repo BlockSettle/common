@@ -88,6 +88,7 @@ public:
    //static
    static std::shared_ptr<AddressEntry> instantiate(
       std::shared_ptr<AssetEntry>, AddressEntryType);
+   static uint8_t getPrefixByte(AddressEntryType);
 };
 
 ////////////////////////////////////////////////////////////////////////////////

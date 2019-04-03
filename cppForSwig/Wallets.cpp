@@ -2315,3 +2315,13 @@ void AssetWallet_Single::copyPublicData(
 
    db.close();
 }
+
+////////////////////////////////////////////////////////////////////////////////
+set<BinaryData> AssetWallet::getAccountIDs(void) const
+{
+   set<BinaryData> result;
+   for (auto& accPtr : accounts_)
+      result.insert(accPtr->getID());
+
+   return result;
+}
