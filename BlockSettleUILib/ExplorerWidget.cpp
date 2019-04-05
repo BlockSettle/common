@@ -26,6 +26,10 @@ ExplorerWidget::ExplorerWidget(QWidget *parent) :
       this, &ExplorerWidget::onSearchStarted);
    connect(ui_->btnReset, &QPushButton::clicked,
       this, &ExplorerWidget::onReset);
+   connect(ui_->btnBack, &QPushButton::clicked,
+           this, &ExplorerWidget::onBackButtonClicked);
+   connect(ui_->btnForward, &QPushButton::clicked,
+           this, &ExplorerWidget::onForwardButtonClicked);
 }
 
 ExplorerWidget::~ExplorerWidget() = default;
@@ -146,4 +150,14 @@ void ExplorerWidget::onReset()
 {
    ui_->stackedWidget->setCurrentIndex(BlockPage);
    ui_->searchBox->clear();
+}
+
+void ExplorerWidget::onBackButtonClicked()
+{
+    //TODO
+}
+
+void ExplorerWidget::onForwardButtonClicked()
+{
+    //TODO
 }

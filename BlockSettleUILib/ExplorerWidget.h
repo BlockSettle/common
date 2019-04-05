@@ -34,6 +34,8 @@ protected slots:
    void onTransactionClicked(QString txId);
    void onAddressClicked(QString addressId);
    void onReset();
+   void onBackButtonClicked();
+   void onForwardButtonClicked();
 
 private:
    std::unique_ptr<Ui::ExplorerWidget> ui_;
