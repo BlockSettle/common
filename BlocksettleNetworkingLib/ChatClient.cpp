@@ -325,6 +325,7 @@ void ChatClient::logout(bool send)
 
    currentUserId_.clear();
    currentJwt_.clear();
+   connection_->closeConnection();
 
 
    emit LoggedOut();
