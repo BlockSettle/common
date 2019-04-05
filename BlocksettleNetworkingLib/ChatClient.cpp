@@ -325,7 +325,7 @@ void ChatClient::logout(bool send)
 
    currentUserId_.clear();
    currentJwt_.clear();
-   connection_.reset();
+
 
    emit LoggedOut();
 }
@@ -476,6 +476,7 @@ void ChatClient::OnConnected()
 void ChatClient::OnDisconnected()
 {
    logger_->debug("[ChatClient::OnDisconnected]");
+   connection_.reset();
 }
 
 void ChatClient::OnError(DataConnectionError errorCode)
