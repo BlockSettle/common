@@ -74,6 +74,7 @@ void BSMarketDataProvider::onDataFromMD(const std::string& data)
       break;
    case Blocksettle::Communication::BlocksettleMarketData::IncrementalUpdateType:
       OnIncrementalUpdate(header.data());
+      break;
    case Blocksettle::Communication::BlocksettleMarketData::NewSettledTreadeUpdateType:
       OnNewTradeUpdate(header.data());
       break;
@@ -202,6 +203,7 @@ void BSMarketDataProvider::OnNewTradeUpdate(const std::string& data)
    default:
       logger_->error("[BSMarketDataProvider::OnNewTradeUpdate] undefined trade type: {}"
          , static_cast<int>(update.trade_type()));
+      break;
    }
 }
 
