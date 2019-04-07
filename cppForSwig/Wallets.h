@@ -189,8 +189,8 @@ protected:
 
    std::map<BinaryData, std::shared_ptr<AddressEntry>> addresses_;
    std::shared_ptr<DecryptedDataContainer> decryptedData_;
-   std::set<std::shared_ptr<AddressAccount>> accounts_;
-   std::set<std::shared_ptr<MetaDataAccount>> metaDataAccounts_;
+   std::map<BinaryData, std::shared_ptr<AddressAccount>> accounts_;
+   std::map<MetaAccountType, std::shared_ptr<MetaDataAccount>> metaDataAccounts_;
    BinaryData mainAccount_;
 
    ////
@@ -504,8 +504,8 @@ private:
       getAssetPairForKey(const BinaryData& key)
    {
       //run through accounts
-      auto& accountSet = wltPtr_->accounts_;
-      for (auto& accPtr : accountSet)
+      auto& accounts = wltPtr_->accounts_;
+      for (auto& accPair : accounts)
       {
          /*
          Accounts store script hashes with their relevant prefix, resolver
@@ -513,6 +513,8 @@ private:
          all possible script prefixes will be prepended to the key to
          look for the relevant asset ID
          */
+
+         auto accPtr = accPair.second;
 
          auto prefixSet = accPtr->getAddressTypeSet();
          auto& hashMap = accPtr->getAddressHashMap();
@@ -721,7 +723,7 @@ public:
    {
       for (auto& addr_account : wltPtr->accounts_)
       {
-         for (auto& asset_account : addr_account->getAccountMap())
+         for (auto& asset_account : addr_account.second->getAccountMap())
          {
             for (unsigned i = 0; i < asset_account.second->getAssetCount(); i++)
             {

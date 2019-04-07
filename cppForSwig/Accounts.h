@@ -519,44 +519,6 @@ private:
    void addAccount(std::shared_ptr<AssetAccount>);
 
 public:
-   //to search sets
-   bool operator<(const AddressAccount& rhs)
-   {
-      if (rhs.ID_.getSize() < ID_.getSize())
-         return ID_ < rhs.ID_;
-
-      auto idRef = rhs.ID_.getSliceRef(0, ID_.getSize());
-      return ID_ < idRef;
-   }
-
-   struct find_by_id
-   {
-      const BinaryData ID_;
-
-      find_by_id(const BinaryData& ID) :
-         ID_(ID)
-      {}
-
-      bool operator()(const AddressAccount& account)
-      {
-         if (account.ID_.getSize() < ID_.getSize())
-            return false;
-
-         auto idRef = account.ID_.getSliceRef(0, ID_.getSize());
-         return ID_ == idRef;
-      }
-
-      bool operator()(const std::shared_ptr<AddressAccount>& account)
-      {
-         if (account->ID_.getSize() < ID_.getSize())
-            return false;
-
-         auto idRef = account->ID_.getSliceRef(0, ID_.getSize());
-         return ID_ == idRef;
-      }
-   };
-
-public:
    AddressAccount(
       std::shared_ptr<LMDBEnv> dbEnv, LMDB* db) :
       dbEnv_(dbEnv), db_(db)
@@ -637,32 +599,6 @@ private:
 
    std::map<unsigned, std::shared_ptr<MetaData>> assets_;
 
-public:
-   //to search sets
-   bool operator<(const MetaDataAccount& rhs)
-   {
-      return type_ < rhs.type_;
-   }
-
-   struct find_by_id
-   {
-      const MetaAccountType type_;
-
-      find_by_id(const MetaAccountType& type) :
-         type_(type)
-      {}
-
-      bool operator()(const MetaDataAccount& account)
-      {
-         return type_ == account.type_;
-      }
-
-      bool operator()(const std::shared_ptr<MetaDataAccount>& account)
-      {
-         return type_ == account->type_;
-      }
-   };
-
 private:
    bool writeAssetToDisk(std::shared_ptr<MetaData>);
 
@@ -670,7 +606,7 @@ public:
    MetaDataAccount(std::shared_ptr<LMDBEnv> dbEnv, LMDB* db) :
       dbEnv_(dbEnv), db_(db)
    {}
-   
+
    //Lockable virtuals
    void initAfterLock(void) {}
    void cleanUpBeforeUnlock(void) {}
@@ -689,6 +625,7 @@ public:
    //
    std::shared_ptr<MetaData> getMetaDataByIndex(unsigned) const;
    void eraseMetaDataByIndex(unsigned);
+   MetaAccountType getType(void) const { return type_; }
 };
 
 struct AuthPeerAssetMap

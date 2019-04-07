@@ -225,6 +225,9 @@ shared_ptr<AddressAccount> AssetWallet::createAccount(
    //instantiate AddressAccount object from AccountType
    auto account_ptr = make_shared<AddressAccount>(dbEnv_, db_);
    account_ptr->make_new(accountType, decryptedData_, move(cipher));
+   auto accID = account_ptr->getID();
+   if (accounts_.find(accID) != accounts_.end())
+      throw WalletException("already have an address account with this path");
 
    //commit to disk
    LMDBEnv::Transaction tx(dbEnv_.get(), LMDB::ReadWrite);
@@ -243,7 +246,7 @@ shared_ptr<AddressAccount> AssetWallet::createAccount(
       putData(bwKey.getData(), bwData.getData());
    }
 
-   accounts_.insert(account_ptr);
+   accounts_.insert(make_pair(accID, account_ptr));
    return account_ptr;
 }
 
@@ -962,6 +965,15 @@ void AssetWallet::initWalletMetaDB(
       BinaryWriter bwKey;
       bwKey.put_uint32_t(MASTERID_KEY);
 
+      LMDBEnv::Transaction tx(dbenv.get(), LMDB::ReadWrite);
+      CharacterArrayRef carKey(bwKey.getSize(), bwKey.getDataRef().getPtr());
+      auto val = db.get_NoCopy(carKey);
+      if (val.len != 0)
+      {
+         //the master key is already set, this is an existing wallet, abort
+         throw WalletException("trying to init an already existing wallet");
+      }
+
       BinaryWriter bwData;
       bwData.put_var_int(masterID.size());
 
@@ -969,7 +981,6 @@ void AssetWallet::initWalletMetaDB(
       idRef.setRef(masterID);
       bwData.put_BinaryDataRef(idRef);
 
-      LMDBEnv::Transaction tx(dbenv.get(), LMDB::ReadWrite);
       putData(&db, bwKey.getData(), bwData.getData());
    }
 
@@ -1553,7 +1564,7 @@ void AssetWallet_Single::readFromFile()
             addressAccount->readFromDisk(key_bd);
 
             //insert
-            accounts_.insert(addressAccount);
+            accounts_.insert(make_pair(addressAccount->getID(), addressAccount));
          }
          catch (exception&)
          {
@@ -1761,7 +1772,7 @@ const pair<BinaryData, AddressEntryType>&
    {
       try
       {
-         return acc->getAssetIDPairForAddr(scrHash);
+         return acc.second->getAssetIDPairForAddr(scrHash);
       }
       catch (runtime_error&)
       {
@@ -1792,14 +1803,11 @@ shared_ptr<AddressAccount> AssetWallet::getAccountForID(
       throw WalletException("invalid account id");
 
    auto idRef = ID.getSliceRef(0, 4);
-   auto iter = find_if(
-      accounts_.begin(), accounts_.end(), 
-      AddressAccount::find_by_id(idRef));
-
+   auto iter = accounts_.find(idRef);
    if (iter == accounts_.end())
       throw WalletException("unknown account ID");
 
-   return *iter;
+   return iter->second;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1898,7 +1906,7 @@ void AssetWallet::updateHashMap()
    ReentrantLock lock(this);
 
    for (auto account : accounts_)
-      account->updateAddressHashMap();
+      account.second->updateAddressHashMap();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1909,7 +1917,7 @@ set<BinaryData> AssetWallet::getAddrHashSet()
    set<BinaryData> addrHashSet;
    for (auto account : accounts_)
    {
-      auto& hashes = account->getAddressHashMap();
+      auto& hashes = account.second->getAddressHashMap();
 
       for (auto& hashPair : hashes)
          addrHashSet.insert(hashPair.first);
@@ -1961,7 +1969,7 @@ void AssetWallet::extendPublicChain(unsigned count)
 {
    for (auto& account : accounts_)
    {
-      account->extendPublicChain(count);
+      account.second->extendPublicChain(count);
    }
 }
 
@@ -1970,7 +1978,7 @@ void AssetWallet::extendPrivateChain(unsigned count)
 {
    for (auto& account : accounts_)
    {
-      account->extendPrivateChain(decryptedData_, count);
+      account.second->extendPrivateChain(decryptedData_, count);
    }
 }
 
@@ -2081,10 +2089,11 @@ void AssetWallet::addMetaAccount(MetaAccountType type)
    account_ptr->make_new(type);
 
    //do not overwrite existing account of the same type
-   if (metaDataAccounts_.insert(account_ptr).second == false)
+   if (metaDataAccounts_.find(type) != metaDataAccounts_.end())
       return;
 
    account_ptr->commit();
+   metaDataAccounts_.insert(make_pair(type, account_ptr));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2112,7 +2121,8 @@ void AssetWallet::loadMetaAccounts()
          metaAccount->readFromDisk(key_bd);
 
          //insert
-         metaDataAccounts_.insert(metaAccount);
+         metaDataAccounts_.insert(
+            make_pair(metaAccount->getType(), metaAccount));
       }
       catch (exception&)
       {
@@ -2128,13 +2138,11 @@ void AssetWallet::loadMetaAccounts()
 ////////////////////////////////////////////////////////////////////////////////
 shared_ptr<MetaDataAccount> AssetWallet::getMetaAccount(MetaAccountType type)
 {
-   auto iter = find_if(
-      metaDataAccounts_.begin(), metaDataAccounts_.end(),
-      MetaDataAccount::find_by_id(type));
+   auto iter = metaDataAccounts_.find(type);
 
    if (iter == metaDataAccounts_.end())
       throw WalletException("no meta account for this type");
-   return *iter;
+   return iter->second;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2276,7 +2284,7 @@ void AssetWallet_Single::copyPublicData(
          //address accounts
          for (auto& addrAccPtr : wlt->accounts_)
          {
-            auto woAcc = addrAccPtr->getWatchingOnlyCopy(dbEnvPtr, &db);
+            auto woAcc = addrAccPtr.second->getWatchingOnlyCopy(dbEnvPtr, &db);
             woAcc->commit();
          }
       }
@@ -2285,7 +2293,7 @@ void AssetWallet_Single::copyPublicData(
          //meta accounts
          for (auto& metaAccPtr : wlt->metaDataAccounts_)
          {
-            auto accCopy = metaAccPtr->copy(dbEnvPtr, &db);
+            auto accCopy = metaAccPtr.second->copy(dbEnvPtr, &db);
             accCopy->commit();
          }
       }
@@ -2321,7 +2329,7 @@ set<BinaryData> AssetWallet::getAccountIDs(void) const
 {
    set<BinaryData> result;
    for (auto& accPtr : accounts_)
-      result.insert(accPtr->getID());
+      result.insert(accPtr.second->getID());
 
    return result;
 }
