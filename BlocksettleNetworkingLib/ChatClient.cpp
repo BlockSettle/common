@@ -68,7 +68,7 @@ ChatClient::~ChatClient() noexcept
 
 std::string ChatClient::loginToServer(const std::string& email, const std::string& jwt)
 {
-   if (connection_) {
+   if (connection_ && connection_->isActive()) {
       logger_->error("[ChatClient::loginToServer] connecting with not purged connection");
       return std::string();
    }
@@ -109,6 +109,7 @@ void ChatClient::OnLoginReturned(const Chat::LoginResponse &response)
 void ChatClient::OnLogoutResponse(const Chat::LogoutResponse & response)
 {
    logger_->debug("[ChatClient::OnLogoutResponse]: Server sent logout response with data: {}", response.getData());
+   //connection_->closeConnection();
    logout(false);
 }
 
@@ -322,10 +323,13 @@ void ChatClient::logout(bool send)
       auto request = std::make_shared<Chat::LogoutRequest>("", currentUserId_, "");
       sendRequest(request);
    }
+   connection_->closeConnection();
 
    currentUserId_.clear();
    currentJwt_.clear();
-   connection_->closeConnection();
+   if (connection_ && !connection_->isActive()){
+      connection_.reset();
+   }
 
 
    emit LoggedOut();
@@ -477,7 +481,6 @@ void ChatClient::OnConnected()
 void ChatClient::OnDisconnected()
 {
    logger_->debug("[ChatClient::OnDisconnected]");
-   connection_.reset();
 }
 
 void ChatClient::OnError(DataConnectionError errorCode)
