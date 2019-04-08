@@ -79,7 +79,7 @@ std::string ChatClient::loginToServer(const std::string& email, const std::strin
    currentUserId_ = hasher_->deriveKey(email);
    currentJwt_ = jwt;
 
-   connection_ = connectionManager_->CreateZMQBIP15XDataConnection(true);
+   connection_ = connectionManager_->CreateZMQBIP15XDataConnection();
 
    if (!connection_->openConnection(appSettings_->get<std::string>(ApplicationSettings::chatServerHost)
                             , appSettings_->get<std::string>(ApplicationSettings::chatServerPort), this))
@@ -121,12 +121,12 @@ void ChatClient::OnSendMessageResponse(const Chat::SendMessageResponse& response
       QString serverId = QString::fromStdString(response.serverMessageId());
       QString receiverId = QString::fromStdString(response.receiverId());
       bool res = chatDb_->syncMessageId(localId, serverId);
-      
+
       logger_->debug("[ChatClient::OnSendMessageResponse]: message id sync: {}", res?"Success":"Failed");
-      
+
       emit MessageIdUpdated(localId, serverId, receiverId);
-      
-      
+
+
    }
 }
 
@@ -146,12 +146,12 @@ void ChatClient::OnMessageChangeStatusResponse(const Chat::MessageChangeStatusRe
                   senderId,
                   receiverId,
                   newStatus);
-   
+
    if (chatDb_->updateMessageStatus(QString::fromStdString(messageId), newStatus)) {
       QString chatId = QString::fromStdString(response.messageSenderId() == currentUserId_
                     ? response.messageReceiverId()
                     : response.messageSenderId());
-      
+
       emit MessageStatusUpdated(QString::fromStdString(messageId), chatId, newStatus);
    }
    return;
@@ -259,7 +259,7 @@ void ChatClient::OnContactsListResponse(const Chat::ContactsListResponse & respo
 void ChatClient::OnChatroomsList(const Chat::ChatroomsListResponse& response)
 {
    QStringList rooms;
-   
+
    std::vector<std::shared_ptr<Chat::RoomData>> roomList = response.getChatRoomList();
    for (auto room : roomList){
       rooms << QString::fromStdString(room->toJsonString());
@@ -648,7 +648,7 @@ void ChatClient::acceptFriendRequest(const QString &friendUserId)
    auto requestRemote = std::make_shared<Chat::ContactActionRequestServer>("", currentUserId_, friendUserId.toStdString(), Chat::ContactsActionServer::AddContactRecord, Chat::ContactStatus::Accepted, publicKey);
    sendRequest(requestRemote);
 }
-   
+
 void ChatClient::declineFriendRequest(const QString &friendUserId)
 {
    auto request = std::make_shared<Chat::ContactActionRequestDirect>("", currentUserId_, friendUserId.toStdString(), Chat::ContactsAction::Reject, appSettings_->GetAuthKeys().second);
