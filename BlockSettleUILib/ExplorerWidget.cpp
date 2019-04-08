@@ -196,7 +196,6 @@ void ExplorerWidget::setTransaction(QString txId)
    // Pass the Tx hash to the Tx widget and populate the fields.
    BinaryTXID terminalTXID(READHEX(txId.toStdString()), true);
    ui_->Transaction->populateTransactionWidget(terminalTXID);
-   qDebug("READY");
 }
 
 void ExplorerWidget::pushTransactionHistory(QString txId)
