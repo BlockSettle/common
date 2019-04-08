@@ -98,16 +98,8 @@ void ExplorerWidget::onSearchStarted()
    else if(userStr.length() == 64 &&
            userStr.toStdString().find_first_not_of("0123456789abcdefABCDEF", 2) == std::string::npos) {
       // String is a valid 32 byte hex string, so we may proceed.
-      /*ui_->stackedWidget->setCurrentIndex(TxPage);
-
-      // Pass the Tx hash to the Tx widget and populate the fields.
-      BinaryTXID userTXID(READHEX(userStr.toStdString()), true);
-      ui_->Transaction->populateTransactionWidget(userTXID);*/
-      transactionHistoryPosition_ = -1;
-      truncateTransactionHistory();
+      clearTransactionHistory();
       pushTransactionHistory(userStr);
-      /*ui_->btnBack->setEnabled(canGoBack());
-      ui_->btnForward->setEnabled(canGoForward());*/
       setTransaction(userStr);
       ui_->searchBox->clear();
    }
@@ -157,6 +149,7 @@ void ExplorerWidget::onReset()
 {
    ui_->stackedWidget->setCurrentIndex(BlockPage);
    ui_->searchBox->clear();
+   clearTransactionHistory();
 }
 
 void ExplorerWidget::onBackButtonClicked()
@@ -200,6 +193,11 @@ void ExplorerWidget::setTransaction(QString txId)
 
 void ExplorerWidget::pushTransactionHistory(QString txId)
 {
+   if (txId.isEmpty())
+      return;
+   auto lastId = transactionHistory_.empty() ? std::string() : transactionHistory_.back();
+   if (txId.toStdString() == lastId)
+      return;
    transactionHistory_.push_back(txId.toStdString());
    transactionHistoryPosition_ = static_cast<int>(transactionHistory_.size()) - 1;
 }
@@ -210,4 +208,12 @@ void ExplorerWidget::truncateTransactionHistory(int position)
    while (static_cast<int>(transactionHistory_.size()) - 1 > pos) {
       transactionHistory_.pop_back();
    }
+}
+
+void ExplorerWidget::clearTransactionHistory()
+{
+   transactionHistoryPosition_ = -1;
+   truncateTransactionHistory();
+   ui_->btnBack->setEnabled(canGoBack());
+   ui_->btnForward->setEnabled(canGoForward());
 }

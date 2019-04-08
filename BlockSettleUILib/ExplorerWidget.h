@@ -44,6 +44,7 @@ private:
    void pushTransactionHistory(QString txId);
    void popTransactionHistory();
    void truncateTransactionHistory(int position = -1);
+   void clearTransactionHistory();
 
 private:
    std::unique_ptr<Ui::ExplorerWidget> ui_;
