@@ -134,6 +134,9 @@
            <property name="focusPolicy">
             <enum>Qt::NoFocus</enum>
            </property>
+           <property name="toolTip">
+            <string>Previous transaction</string>
+           </property>
            <property name="text">
             <string/>
            </property>
@@ -171,6 +174,9 @@
            </property>
            <property name="focusPolicy">
             <enum>Qt::NoFocus</enum>
+           </property>
+           <property name="toolTip">
+            <string>Next transaction</string>
            </property>
            <property name="text">
             <string/>
@@ -287,7 +293,6 @@
   </customwidget>
  </customwidgets>
  <resources>
-  <include location="armory.qrc"/>
   <include location="armory.qrc"/>
  </resources>
  <connections/>
