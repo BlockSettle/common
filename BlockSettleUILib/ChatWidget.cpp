@@ -20,6 +20,12 @@
 
 Q_DECLARE_METATYPE(std::vector<std::string>)
 
+enum class OTCPages : int
+{
+   OTCCreateRequest = 0,
+   OTCCreateResponse
+};
+
 class ChatWidgetState {
 public:
     virtual void onStateEnter() {} //Do something special on state appears, by default nothing
@@ -115,12 +121,12 @@ public:
          if (!chat_->isRoom()){
             auto msg = chat_->client_->sendOwnMessage(messageText, chat_->currentChat_);
             chat_->ui_->input_textEdit->clear();
-   
+
             chat_->ui_->textEditMessages->onSingleMessageUpdate(msg);
          } else {
             auto msg = chat_->client_->sendRoomOwnMessage(messageText, chat_->currentChat_);
             chat_->ui_->input_textEdit->clear();
-   
+
             chat_->ui_->textEditMessages->onSingleMessageUpdate(msg);
          }
       }
@@ -151,7 +157,7 @@ public:
       }
       chat_->ui_->input_textEdit->setFocus();
    }
-   
+
    void onRoomClicked(const QString& roomId) override {
       if (roomId == QLatin1Literal("otc_chat")) {
          chat_->ui_->stackedWidgetMessages->setCurrentIndex(1);
@@ -210,6 +216,8 @@ ChatWidget::ChatWidget(QWidget *parent)
    ui_->treeViewOTCRequests->setModel(otcRequestViewModel_);
 
    qRegisterMetaType<std::vector<std::string>>();
+
+   connect(ui_->widgetCreateOTCRequest, &CreateOTCRequestWidget::RequestCreated, this, &ChatWidget::OnOTCRequestCreated);
 }
 
 ChatWidget::~ChatWidget() = default;
@@ -261,7 +269,7 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
                         , &ChatMessagesTextEdit::onRoomMessagesUpdate);
    connect(ui_->textEditMessages, &ChatMessagesTextEdit::rowsInserted,
            this, &ChatWidget::onMessagesUpdated);
-   
+
    connect(client_.get(), &ChatClient::MessageIdUpdated, ui_->textEditMessages
                         , &ChatMessagesTextEdit::onMessageIdUpdate);
    connect(client_.get(), &ChatClient::MessageStatusUpdated, ui_->textEditMessages
@@ -270,7 +278,7 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
            client_.get(), &ChatClient::onMessageRead);
 
    connect(ui_->chatSearchLineEdit, &ChatSearchLineEdit::returnPressed, this, &ChatWidget::onSearchUserReturnPressed);
-   
+
    connect(chatUserListLogicPtr_.get()->chatUserModelPtr().get(), &ChatUserModel::chatUserDataChanged,
            ui_->treeViewUsers, &ChatUserListTreeView::onChatUserDataChanged);
    connect(chatUserListLogicPtr_.get()->chatUserModelPtr().get(), &ChatUserModel::chatUserDataListChanged,
@@ -281,7 +289,7 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
    connect(chatUserListLogicPtr_->chatUserModelPtr().get(), &ChatUserModel::chatRoomDataListChanged,
            ui_->treeViewUsers, &ChatUserListTreeView::onChatRoomDataListChanged);
 
-   connect(ui_->textEditMessages, &ChatMessagesTextEdit::userHaveNewMessageChanged, 
+   connect(ui_->textEditMessages, &ChatMessagesTextEdit::userHaveNewMessageChanged,
            chatUserListLogicPtr_.get(), &ChatUserListLogic::onUserHaveNewMessageChanged);
    connect(ui_->textEditMessages, &ChatMessagesTextEdit::sendFriendRequest,
             this, &ChatWidget::onSendFriendRequest);
@@ -320,7 +328,7 @@ void ChatWidget::onSearchUserListReceived(const std::vector<std::shared_ptr<Chat
 
    popup_->setGeometry(0, 0, ui_->chatSearchLineEdit->width(), static_cast<int>(ui_->chatSearchLineEdit->height() * 1.2));
    popup_->setCustomPosition(ui_->chatSearchLineEdit, 0, 5);
-   popup_->show();  
+   popup_->show();
 }
 
 void ChatWidget::onUserClicked(const QString& userId)
@@ -539,4 +547,20 @@ bool ChatWidget::isRoom()
 void ChatWidget::setIsRoom(bool isRoom)
 {
    isRoom_ = isRoom;
+}
+
+void ChatWidget::OnOTCRequestCreated()
+{
+   auto side = ui_->widgetCreateOTCRequest->GetSide();
+   auto range = ui_->widgetCreateOTCRequest->GetRange();
+
+   DisplayOTCRequest(side, range);
+}
+
+void ChatWidget::DisplayOTCRequest(const bs::network::Side::Type& side, const bs::network::OTCRangeID& range)
+{
+   ui_->stackedWidgetOTC->setCurrentIndex(static_cast<int>(OTCPages::OTCCreateResponse));
+
+   ui_->widgetCreateOTCResponse->SetSide(side);
+   ui_->widgetCreateOTCResponse->SetRange(range);
 }

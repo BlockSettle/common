@@ -384,6 +384,16 @@ namespace bs {
          uint64_t    timestamp;
       };
 
+      enum OTCRangeID
+      {
+         Range1_5,
+         Range5_10,
+         Range10_50,
+         Range50_100,
+         Range100_250,
+         Range250plus
+      };
+
    }  //namespace network
 }  //namespace bs
 
