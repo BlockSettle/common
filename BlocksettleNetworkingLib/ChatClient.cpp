@@ -46,6 +46,9 @@ ChatClient::ChatClient(const std::shared_ptr<ConnectionManager>& connectionManag
    qRegisterMetaType<std::shared_ptr<Chat::UserData>>();
    qRegisterMetaType<std::vector<std::shared_ptr<Chat::UserData>>>();
 
+   //This is required (with Qt::QueuedConnection), because of ZmqBIP15XDataConnection crashes when delete it from this (callback) thread
+   connect(this, &ChatClient::ServerLogoutResponse, this, &ChatClient::onServerLogoutResponse, Qt::QueuedConnection);
+
    chatDb_ = make_unique<ChatDB>(logger, appSettings_->get<QString>(ApplicationSettings::chatDbFile));
    if (!chatDb_->loadKeys(pubKeys_)) {
       throw std::runtime_error("failed to load chat public keys");
@@ -73,14 +76,11 @@ std::string ChatClient::loginToServer(const std::string& email, const std::strin
       return std::string();
    }
 
-   //auto bytesHash = autheid::getSHA256(email.c_str(), email.size());
-   //currentUserId_ = QString::fromStdString(autheid::base64Encode(bytesHash).substr(0, 8)).toLower().toStdString();
    currentUserId_ = hasher_->deriveKey(email);
    currentJwt_ = jwt;
 
    connection_ = connectionManager_->CreateZMQBIP15XDataConnection(true);
-   //BinaryData inSrvPubKey(appSettings_->get<std::string>(ApplicationSettings::chatServerPubKey));
-   //connection_->SetServerPublicKey(inSrvPubKey);
+
    if (!connection_->openConnection(appSettings_->get<std::string>(ApplicationSettings::chatServerHost)
                             , appSettings_->get<std::string>(ApplicationSettings::chatServerPort), this))
    {
@@ -109,8 +109,7 @@ void ChatClient::OnLoginReturned(const Chat::LoginResponse &response)
 void ChatClient::OnLogoutResponse(const Chat::LogoutResponse & response)
 {
    logger_->debug("[ChatClient::OnLogoutResponse]: Server sent logout response with data: {}", response.getData());
-   //connection_->closeConnection();
-   logout(false);
+   emit ServerLogoutResponse();
 }
 
 void ChatClient::OnSendMessageResponse(const Chat::SendMessageResponse& response)
@@ -323,14 +322,11 @@ void ChatClient::logout(bool send)
       auto request = std::make_shared<Chat::LogoutRequest>("", currentUserId_, "");
       sendRequest(request);
    }
-   connection_->closeConnection();
 
    currentUserId_.clear();
    currentJwt_.clear();
-   if (connection_ && !connection_->isActive()){
-      connection_.reset();
-   }
 
+   connection_.reset();
 
    emit LoggedOut();
 }
@@ -356,6 +352,11 @@ void ChatClient::sendHeartbeat()
 void ChatClient::onMessageRead(const std::shared_ptr<Chat::MessageData>& message)
 {
    addMessageState(message, Chat::MessageData::State::Read);
+}
+
+void ChatClient::onServerLogoutResponse()
+{
+   logout(false);
 }
 
 void ChatClient::addMessageState(const std::shared_ptr<Chat::MessageData>& message, Chat::MessageData::State state)

@@ -112,10 +112,12 @@ signals:
    void RoomsAdd(const std::vector<std::shared_ptr<Chat::RoomData>>& rooms);
    void SearchUserListReceived(const std::vector<std::shared_ptr<Chat::UserData>>& users);
 
+   void ServerLogoutResponse();
 public slots:
    void onMessageRead(const std::shared_ptr<Chat::MessageData>& message);
    
 private slots:
+   void onServerLogoutResponse();
    void sendHeartbeat();
    void addMessageState(const std::shared_ptr<Chat::MessageData>& message, Chat::MessageData::State state);
    
