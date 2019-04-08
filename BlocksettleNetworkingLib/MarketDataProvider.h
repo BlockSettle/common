@@ -57,9 +57,9 @@ signals:
    void MDSecuritiesReceived();
    void MDReqRejected(const std::string &security, const std::string &reason);
 
-   void OnNewFXTrade(const bs::network::new_trade& trade);
-   void OnNewXBTTrade(const bs::network::new_trade& trade);
-   void OnNewPMTrade(const bs::network::new_pm_trade& trade);
+   void OnNewFXTrade(const bs::network::NewTrade& trade);
+   void OnNewXBTTrade(const bs::network::NewTrade& trade);
+   void OnNewPMTrade(const bs::network::NewPMTrade& trade);
 
 protected:
    std::shared_ptr<spdlog::logger>  logger_ = nullptr;

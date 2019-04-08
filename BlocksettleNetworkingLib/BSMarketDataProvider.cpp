@@ -215,9 +215,12 @@ void BSMarketDataProvider::OnNewFXTradeUpdate(const std::string& data)
       return ;
    }
 
-   bs::network::new_trade trade;
+   logger_->debug("[BSMarketDataProvider::OnNewFXTradeUpdate] loaded trade: {}"
+      , trade_record.DebugString());
 
-   trade.product_name = trade_record.product();
+   bs::network::NewTrade trade;
+
+   trade.product = trade_record.product();
    trade.price = trade_record.price();
    trade.amount = trade_record.amount();
    trade.timestamp = trade_record.timestamp();
@@ -233,9 +236,9 @@ void BSMarketDataProvider::OnNewXBTTradeUpdate(const std::string& data)
       return ;
    }
 
-   bs::network::new_trade trade;
+   bs::network::NewTrade trade;
 
-   trade.product_name = trade_record.product();
+   trade.product = trade_record.product();
    trade.price = trade_record.price();
    trade.amount = trade_record.amount();
    trade.timestamp = trade_record.timestamp();
@@ -251,9 +254,9 @@ void BSMarketDataProvider::OnNewPMTradeUpdate(const std::string& data)
       return ;
    }
 
-   bs::network::new_pm_trade trade;
+   bs::network::NewPMTrade trade;
 
-   trade.product_name = trade_record.product();
+   trade.product = trade_record.product();
    trade.price = trade_record.price();
    trade.amount = trade_record.amount();
    trade.timestamp = trade_record.timestamp();
