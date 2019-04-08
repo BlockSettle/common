@@ -88,7 +88,7 @@ public:
    ChatWidgetStateLoggedIn(ChatWidget* parent) : ChatWidgetState(parent, ChatWidget::LoggedIn) {}
 
    void onStateEnter() override {
-       chat_->ui_->input_textEdit->setEnabled(true);
+      chat_->ui_->input_textEdit->setEnabled(true);
    }
 
    void onStateExit() override {
