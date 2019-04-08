@@ -71,7 +71,7 @@ ChatClient::~ChatClient() noexcept
 
 std::string ChatClient::loginToServer(const std::string& email, const std::string& jwt)
 {
-   if (connection_ && connection_->isActive()) {
+   if (connection_) {
       logger_->error("[ChatClient::loginToServer] connecting with not purged connection");
       return std::string();
    }
