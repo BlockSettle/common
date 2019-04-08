@@ -47,7 +47,7 @@ ChatClient::ChatClient(const std::shared_ptr<ConnectionManager>& connectionManag
    qRegisterMetaType<std::vector<std::shared_ptr<Chat::UserData>>>();
 
    //This is required (with Qt::QueuedConnection), because of ZmqBIP15XDataConnection crashes when delete it from this (callback) thread
-   connect(this, &ChatClient::ServerLogoutResponse, this, &ChatClient::onServerLogoutResponse, Qt::QueuedConnection);
+   connect(this, &ChatClient::ForceLogoutSignal, this, &ChatClient::onForceLogoutSignal, Qt::QueuedConnection);
 
    chatDb_ = make_unique<ChatDB>(logger, appSettings_->get<QString>(ApplicationSettings::chatDbFile));
    if (!chatDb_->loadKeys(pubKeys_)) {
@@ -109,7 +109,7 @@ void ChatClient::OnLoginReturned(const Chat::LoginResponse &response)
 void ChatClient::OnLogoutResponse(const Chat::LogoutResponse & response)
 {
    logger_->debug("[ChatClient::OnLogoutResponse]: Server sent logout response with data: {}", response.getData());
-   emit ServerLogoutResponse();
+   emit ForceLogoutSignal();
 }
 
 void ChatClient::OnSendMessageResponse(const Chat::SendMessageResponse& response)
@@ -354,7 +354,7 @@ void ChatClient::onMessageRead(const std::shared_ptr<Chat::MessageData>& message
    addMessageState(message, Chat::MessageData::State::Read);
 }
 
-void ChatClient::onServerLogoutResponse()
+void ChatClient::onForceLogoutSignal()
 {
    logout(false);
 }
@@ -482,6 +482,7 @@ void ChatClient::OnConnected()
 void ChatClient::OnDisconnected()
 {
    logger_->debug("[ChatClient::OnDisconnected]");
+   emit ForceLogoutSignal();
 }
 
 void ChatClient::OnError(DataConnectionError errorCode)
