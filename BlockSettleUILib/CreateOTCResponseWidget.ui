@@ -44,7 +44,7 @@
       <item>
        <widget class="QLabel" name="headerLabel">
         <property name="text">
-         <string>OTC Request</string>
+         <string>OTC Response</string>
         </property>
         <property name="headerLabel" stdset="0">
          <bool>true</bool>

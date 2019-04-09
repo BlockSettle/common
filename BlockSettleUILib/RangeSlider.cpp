@@ -275,6 +275,6 @@ int RangeSlider::validWidth() const
 
 void RangeSlider::SetRange(int minimum, int maximum)
 {
-   setMinimum(minimum);
    setMaximum(maximum);
+   setMinimum(minimum);
 }
