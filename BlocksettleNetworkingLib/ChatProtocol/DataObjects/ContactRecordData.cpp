@@ -12,22 +12,22 @@ ContactRecordData::ContactRecordData(const QString &userId, const QString &conta
 
 }
 
-QString ContactRecordData::getContactForId()
+QString ContactRecordData::getContactForId() const
 {
    return userId_;
 }
 
-QString ContactRecordData::getContactId()
+QString ContactRecordData::getContactId() const
 {
    return contactId_;
 }
 
-ContactStatus ContactRecordData::getContactStatus()
+ContactStatus ContactRecordData::getContactStatus() const
 {
    return status_;
 }
 
-autheid::PublicKey ContactRecordData::getContactPublicKey()
+autheid::PublicKey ContactRecordData::getContactPublicKey() const
 {
    return publicKey_;
 }

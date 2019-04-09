@@ -97,8 +97,10 @@ void ChatClient::OnLoginReturned(const Chat::LoginResponse &response)
 {
    if (response.getStatus() == Chat::LoginResponse::Status::LoginOk) {
       loggedIn_ = true;
-      auto request = std::make_shared<Chat::MessagesRequest>("", currentUserId_, currentUserId_);
-      sendRequest(request);
+      auto requestMessages = std::make_shared<Chat::MessagesRequest>("", currentUserId_, currentUserId_);
+      sendRequest(requestMessages);
+      auto requestContacts = std::make_shared<Chat::ContactsListRequest>("", currentUserId_);
+      sendRequest(requestContacts);
    }
    else {
       loggedIn_ = false;
@@ -247,9 +249,38 @@ void ChatClient::OnContactsListResponse(const Chat::ContactsListResponse & respo
 {
    QStringList contactsListStr;
    const auto& contacts = response.getContactsList();
-   for (auto &contact : contacts){
-      contactsListStr << QString::fromStdString(contact->toJsonString());
+
+   ContactUserDataList localContacts;
+   chatDb_->getContacts(localContacts);
+
+   ContactUserDataList contactToUpdateOrAdd;
+   ContactUserDataList contactToRemove;
+
+   for (const auto & localCnt: localContacts){
+      auto contactIt = std::find_if(contacts.begin(), contacts.end(),
+                                         [localCnt](const std::shared_ptr<Chat::ContactRecordData>& cnt) -> bool {
+         return localCnt.userId() == cnt->getContactId();
+      });
+
+      if (contactIt != contacts.end()){
+         ContactUserData c(*contactIt);
+         contactToUpdateOrAdd.emplace_back(c);
+      } else {
+         contactToRemove.emplace_back(localCnt);
+      }
    }
+
+   std::vector<std::string> contactUsers;
+   for (const auto& contact : contactToUpdateOrAdd){
+      addOrUpdateContact(contact.userId(), contact.status(), contact.userName());
+      contactUsers.push_back(contact.userId().toStdString());
+   }
+
+   for (const auto& contact : contactToRemove){
+      removeContact(contact.userId());
+   }
+
+   emit UsersReplace(contactUsers);
 
    logger_->debug("[ChatClient::OnContactsListResponse]:Received {} contacts, from server: [{}]"
                , QString::number(contacts.size()).toStdString()

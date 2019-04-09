@@ -23,6 +23,25 @@ public:
       Incoming,
       Outgoing
    };
+
+   ContactUserData() = default;
+   ContactUserData(const std::shared_ptr<Chat::ContactRecordData>& contactRecord)
+      : _userName(contactRecord->getContactId())
+      , _userId(contactRecord->getContactId())
+      , status_(convertStatus(contactRecord->getContactStatus()))
+   {
+
+   }
+
+   static Status convertStatus(Chat::ContactStatus recordStatus) {
+      switch (recordStatus) {
+         case Chat::ContactStatus::Accepted:
+            return Status::Friend;
+         case Chat::ContactStatus::Rejected:
+            return Status::Rejected;
+      }
+   }
+
    QString userName() const { return _userName; }
    void setUserName(const QString &userName) { _userName = userName; }
 

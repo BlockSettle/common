@@ -11,10 +11,10 @@ namespace Chat {
        ContactRecordData(const QString& userId, const QString& contactId, ContactStatus status, autheid::PublicKey publicKey);
 
        // DataObject interface
-       QString getContactForId();
-       QString getContactId();
-       ContactStatus getContactStatus();
-       autheid::PublicKey getContactPublicKey();
+       QString getContactForId() const;
+       QString getContactId() const;
+       ContactStatus getContactStatus() const;
+       autheid::PublicKey getContactPublicKey() const;
 
     public:
        QJsonObject toJson() const override;
