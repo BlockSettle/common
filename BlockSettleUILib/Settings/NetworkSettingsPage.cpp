@@ -175,7 +175,7 @@ void NetworkSettingsPage::displayArmorySettings()
    }
 
    try {
-      RemoteSigner *remoteSigner = static_cast<RemoteSigner *>(signContainer_.get());
+      RemoteSigner *remoteSigner = qobject_cast<RemoteSigner *>(signContainer_.get());
       if (remoteSigner) {
          SecureBinaryData ownKey = remoteSigner->getOwnPubKey();
          ui_->labelArmoryTerminalKey->setText(QString::fromStdString(ownKey.toHexStr()));
