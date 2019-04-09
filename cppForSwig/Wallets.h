@@ -629,7 +629,7 @@ public:
 
       auto&& hash = BtcUtils::getHash160(pubkey);
       auto assetPair = getAssetPairForKey(pubkey);
-      if (assetPair.first = nullptr)
+      if (assetPair.first == nullptr)
          throw NoAssetException("invalid pubkey");
 
       auto assetSingle =

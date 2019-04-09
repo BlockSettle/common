@@ -250,7 +250,7 @@ BlockDataManager::BlockDataManager(
          networkNode_ = bdmConfig.nodePtr_;
       }
 
-      if (bdmConfig.getServiceType() != SERVICE_UNITTEST)
+      if (bdmConfig.getOperationMode() != OPERATION_UNITTEST)
       {
          nodeRPC_ = make_shared<NodeRPC>(config_);
       }

@@ -1467,7 +1467,7 @@ void Clients::init(BlockDataManagerThread* bdmT,
 
    unsigned innerThreadCount = 2;
    if (BlockDataManagerConfig::getDbType() == ARMORY_DB_SUPER &&
-      bdmT_->bdm()->config().getServiceType() != SERVICE_UNITTEST)
+      BlockDataManagerConfig::getOperationMode() != OPERATION_UNITTEST)
       innerThreadCount = thread::hardware_concurrency();
    for (unsigned i = 0; i < innerThreadCount; i++)
    {

@@ -36,6 +36,7 @@ struct BlockDataManagerConfig
 private:
    static ARMORY_DB_TYPE armoryDbType_;
    static SOCKET_SERVICE service_;
+   static ARMORY_OPERATION_MODE operationMode_;
 
 public:
    BDM_INIT_MODE initMode_ = INIT_RESUME;
@@ -126,6 +127,16 @@ public:
    }
 
    static std::string getDbModeStr(void);
+
+   static void setOperationMode(ARMORY_OPERATION_MODE _mode)
+   {
+      operationMode_ = _mode;
+   }
+
+   static ARMORY_OPERATION_MODE getOperationMode(void)
+   {
+      return operationMode_;
+   }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
