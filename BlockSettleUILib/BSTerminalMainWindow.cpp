@@ -667,6 +667,7 @@ void BSTerminalMainWindow::onArmoryStateChanged(ArmoryConnection::State newState
       QMetaObject::invokeMethod(this, "CompleteUIOnlineView", Qt::QueuedConnection);
       break;
    case ArmoryConnection::State::Connected:
+      armory_->goOnline();
       QMetaObject::invokeMethod(this, "CompleteDBConnection", Qt::QueuedConnection);
       break;
    case ArmoryConnection::State::Offline:
@@ -1059,7 +1060,7 @@ void BSTerminalMainWindow::onLogout()
    if (celerConnection_->IsConnected()) {
       celerConnection_->CloseConnection();
    }
-   
+
    setLoginButtonText(loginButtonText_);
 }
 
