@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>640</width>
-    <height>480</height>
+    <width>1137</width>
+    <height>711</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -64,6 +64,13 @@
        </widget>
       </item>
       <item>
+       <widget class="QLabel" name="ohlcLbl">
+        <property name="text">
+         <string/>
+        </property>
+       </widget>
+      </item>
+      <item>
        <spacer name="horizontalSpacer">
         <property name="orientation">
          <enum>Qt::Horizontal</enum>
@@ -75,6 +82,13 @@
          </size>
         </property>
        </spacer>
+      </item>
+      <item>
+       <widget class="QPushButton" name="pushButtonMDConnection">
+        <property name="text">
+         <string>Subscribe</string>
+        </property>
+       </widget>
       </item>
       <item>
        <widget class="QPushButton" name="autoScaleBtn">

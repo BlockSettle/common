@@ -4,7 +4,6 @@
 
 #include <QApplication>
 #include <QCloseEvent>
-#include <QDebug>
 #include <QGuiApplication>
 #include <QIcon>
 #include <QShortcut>
@@ -55,8 +54,6 @@
 #include "UiUtils.h"
 #include "Wallets/SyncHDWallet.h"
 #include "Wallets/SyncWalletsManager.h"
-#include "ZMQHelperFunctions.h"
-#include "ZmqSecuredDataConnection.h"
 
 #include <spdlog/spdlog.h>
 
@@ -180,17 +177,13 @@ void BSTerminalMainWindow::GetNetworkSettingsFromPuB(const std::function<void()>
       return;
    }
 
+   const auto connection = connectionManager_->CreateZMQBIP15XDataConnection();
+
    Blocksettle::Communication::RequestPacket reqPkt;
    reqPkt.set_requesttype(Blocksettle::Communication::GetNetworkSettingsType);
    reqPkt.set_requestdata("");
 
    const auto &title = tr("Network settings");
-   const auto connection = connectionManager_->CreateSecuredDataConnection();
-   BinaryData inSrvPubKey(applicationSettings_->get<std::string>(ApplicationSettings::pubBridgePubKey));
-   if (!connection->SetServerPublicKey(inSrvPubKey)) {
-      showError(title, tr("Failed to set PuB connection public key"));
-      return;
-   }
    cmdPuBSettings_ = std::make_shared<RequestReplyCommand>("network_settings", connection, logMgr_->logger());
 
    const auto &populateAppSettings = [this](NetworkSettings settings) {
@@ -280,7 +273,7 @@ void BSTerminalMainWindow::GetNetworkSettingsFromPuB(const std::function<void()>
 
    if (!cmdPuBSettings_->ExecuteRequest(applicationSettings_->get<std::string>(ApplicationSettings::pubBridgeHost)
       , applicationSettings_->get<std::string>(ApplicationSettings::pubBridgePort)
-      , reqPkt.SerializeAsString())) {
+      , reqPkt.SerializeAsString(), true)) {
       logMgr_->logger()->error("[GetNetworkSettingsFromPuB] failed to send request");
       showError(title, tr("Failed to retrieve network settings due to invalid connection to BlockSettle server"));
    }
@@ -405,7 +398,7 @@ void BSTerminalMainWindow::LoadWallets()
             }
          }
       });
-      QTimer::singleShot(5000, this, [this](){
+      QTimer::singleShot(100, this, [this](){
          if (!initialWalletCreateDialogShown_ && !armoryKeyDialogShown_) {
             if (walletsMgr_ && walletsMgr_->hdWalletsCount() == 0) {
                initialWalletCreateDialogShown_ = true;
@@ -459,26 +452,6 @@ std::shared_ptr<SignContainer> BSTerminalMainWindow::createSigner()
    auto runMode = static_cast<SignContainer::OpMode>(applicationSettings_->get<int>(ApplicationSettings::signerRunMode));
    auto signerHost = applicationSettings_->get<QString>(ApplicationSettings::signerHost);
    const auto signerPort = applicationSettings_->get<QString>(ApplicationSettings::signerPort);
-   SecureBinaryData signerPubKey;
-
-   if (runMode == SignContainer::OpMode::Remote) {
-      const auto pubKeyString = applicationSettings_->get<std::string>(ApplicationSettings::zmqRemoteSignerPubKey);
-      if (pubKeyString.empty()) {
-         BSMessageBox(BSMessageBox::messageBoxType::warning
-            , tr("Signer Remote Connection")
-            , tr("Remote signer public key is unavailable.")
-            , tr("Remote signer public key is unavailable."
-               " Transaction signing is not available."
-               " Please import the signer's public key (Settings -> Signer) "
-               "and restart the BlockSettle Terminal in order to establish a remote signer connection.")
-            , this).exec();
-         return retPtr;
-      }
-
-      if (!bs::network::readZmqKeyString(QByteArray::fromStdString(pubKeyString), signerPubKey, true, logMgr_->logger())) {
-         logMgr_->logger()->warn("[BSTerminalMainWindow::InitSigningContainer] failed to load remote signer key");
-      }
-   }
 
    if ((runMode == SignContainer::OpMode::Local)
       && SignerConnectionExists(QLatin1String("127.0.0.1"), signerPort)) {
@@ -492,22 +465,8 @@ std::shared_ptr<SignContainer> BSTerminalMainWindow::createSigner()
       signerHost = QLatin1String("127.0.0.1");
    }
 
-   if (signerPubKey.isNull()) {
-      const auto pubKeyPath = applicationSettings_->get<QString>(ApplicationSettings::zmqLocalSignerPubKeyFilePath);
-
-      if (!bs::network::readZmqKeyFile(pubKeyPath, signerPubKey, true, logMgr_->logger())) {
-         logMgr_->logger()->warn("[BSTerminalMainWindow::InitSigningContainer] failed to load local signer key");
-         BSMessageBox(BSMessageBox::messageBoxType::warning
-            , tr("Signer Local Connection")
-            , tr("Could not load local signer key.")
-            , tr("BS terminal is missing connection encryption key for local signer process. File expected to be at %1").arg(pubKeyPath)
-            , this).exec();
-         return retPtr;
-      }
-   }
-
-   retPtr = CreateSigner(logMgr_->logger(), applicationSettings_, signerPubKey,
-      runMode, signerHost, connectionManager_);
+   retPtr = CreateSigner(logMgr_->logger(), applicationSettings_, runMode
+      , signerHost, connectionManager_);
    return retPtr;
 }
 
@@ -680,6 +639,7 @@ void BSTerminalMainWindow::InitChatView()
    ui_->widgetChat->init(connectionManager_, applicationSettings_, logMgr_->logger("chat"));
 
    //connect(ui_->widgetChat, &ChatWidget::LoginFailed, this, &BSTerminalMainWindow::onAutheIDFailed);
+   connect(ui_->widgetChat, &ChatWidget::LogOut, this, &BSTerminalMainWindow::onLogout);
 }
 
 void BSTerminalMainWindow::InitChartsView()
@@ -810,18 +770,19 @@ void BSTerminalMainWindow::connectArmory()
 {
    ArmorySettings currentArmorySettings = armoryServersProvider_->getArmorySettings();
    armoryServersProvider_->setConnectedArmorySettings(currentArmorySettings);
-   armory_->setupConnection(currentArmorySettings, [this](const BinaryData& srvPubKey, const std::string& srvIPPort){
-      std::shared_ptr<std::promise<bool>> promiseObj = std::make_shared<std::promise<bool>>();
+   armory_->setupConnection(currentArmorySettings, [this](const BinaryData& srvPubKey, const std::string& srvIPPort) {
+      auto promiseObj = std::make_shared<std::promise<bool>>();
       std::future<bool> futureObj = promiseObj->get_future();
-      QMetaObject::invokeMethod(this, "showArmoryServerPrompt", Qt::QueuedConnection
-                                , Q_ARG(BinaryData, srvPubKey)
-                                , Q_ARG(std::string, srvIPPort)
-                                , Q_ARG(std::shared_ptr<std::promise<bool>>, promiseObj));
-      bool result = futureObj.get();
+      QMetaObject::invokeMethod(this, [this, srvPubKey, srvIPPort, promiseObj] {
+         showArmoryServerPrompt(srvPubKey, srvIPPort, promiseObj);
+      });
 
+      bool result = futureObj.get();
       // stop armory connection loop if server key was rejected
-      armory_->needsBreakConnectionLoop_.store(!result);
-      armory_->setState(ArmoryConnection::State::Canceled);
+      if (!result) {
+         armory_->needsBreakConnectionLoop_.store(true);
+         armory_->setState(ArmoryConnection::State::Canceled);
+      }
       return result;
    });
 }
@@ -1512,8 +1473,7 @@ void BSTerminalMainWindow::showArmoryServerPrompt(const BinaryData &srvPubKey, c
                                     .arg(QString::fromStdString(srvIPPort).split(QStringLiteral(":")).at(1))
                                     .arg(QString::fromLatin1(QByteArray::fromStdString(srvPubKey.toBinStr()).toHex()))
                           , this);
-         box->setMinimumSize(600, 150);
-         box->setMaximumSize(600, 150);
+         box->setMinimumWidth(650);
 
          bool answer = (box->exec() == QDialog::Accepted);
          box->deleteLater();
@@ -1535,11 +1495,10 @@ void BSTerminalMainWindow::showArmoryServerPrompt(const BinaryData &srvPubKey, c
                                "New Key: %4")
                                     .arg(QString::fromStdString(srvIPPort).split(QStringLiteral(":")).at(0))
                                     .arg(QString::fromStdString(srvIPPort).split(QStringLiteral(":")).at(1))
-                                    .arg(QString::fromLatin1(QByteArray::fromStdString(srvPubKey.toBinStr()).toHex()))
+                                    .arg(server.armoryDBKey)
                                     .arg(QString::fromLatin1(QByteArray::fromStdString(srvPubKey.toBinStr()).toHex()))
                           , this);
-         box->setMinimumSize(600, 150);
-         box->setMaximumSize(600, 150);
+         box->setMinimumWidth(650);
          box->setCancelVisible(true);
 
          bool answer = (box->exec() == QDialog::Accepted);

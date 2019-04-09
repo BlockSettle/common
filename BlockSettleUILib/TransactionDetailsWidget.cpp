@@ -83,13 +83,15 @@ TransactionDetailsWidget::TransactionDetailsWidget(QWidget *parent) :
 TransactionDetailsWidget::~TransactionDetailsWidget() = default;
 
 // Initialize the widget and related widgets (block, address, Tx)
-void TransactionDetailsWidget::init(const std::shared_ptr<ArmoryConnection> &armory,
-                                    const std::shared_ptr<spdlog::logger> &inLogger)
+void TransactionDetailsWidget::init(
+   const std::shared_ptr<ArmoryConnection> &armory,
+   const std::shared_ptr<spdlog::logger> &inLogger)
 {
    armory_ = armory;
    logger_ = inLogger;
 
-   connect(armory_.get(), &ArmoryConnection::newBlock, this, &TransactionDetailsWidget::onNewBlock, Qt::QueuedConnection);
+   connect(armory_.get(), &ArmoryConnection::newBlock, this
+      , &TransactionDetailsWidget::onNewBlock, Qt::QueuedConnection);
 }
 
 // This function uses getTxByHash() to retrieve info about transaction. The
@@ -97,6 +99,13 @@ void TransactionDetailsWidget::init(const std::shared_ptr<ArmoryConnection> &arm
 void TransactionDetailsWidget::populateTransactionWidget(BinaryTXID rpcTXID,
                                                          const bool& firstPass)
 {
+   if (!armory_) {
+      if (logger_) {
+         logger_->error("[{}] Armory is not initialized.", __func__);
+      }
+      return;
+   }
+
    // In case we've been here earlier, clear all the text.
    if (firstPass) {
       clear();
@@ -107,15 +116,16 @@ void TransactionDetailsWidget::populateTransactionWidget(BinaryTXID rpcTXID,
       if (tx.isInitialized()) {
          processTxData(tx);
       }
-      else {
-         logger_->error("[TransactionDetailsWidget::populateTransactionWidget] "
-            "- TXID {} is not initialized.", txidStr);
+      else if (logger_) {
+         logger_->error("[{}] TXID {} is not initialized.", __func__, txidStr);
       }
    };
 
    // The TXID passed to Armory *must* be in internal order!
    if (!armory_->getTxByHash(rpcTXID.getInternalTXID(), cbTX)) {
-      logger_->error("[{}] - Failed to get TXID {}.", __func__, txidStr);
+      if (logger_) {
+         logger_->error("[{}] - Failed to get TXID {}.", __func__, txidStr);
+      }
    }
 }
 
@@ -166,8 +176,10 @@ void TransactionDetailsWidget::processTxData(Tx tx)
 void TransactionDetailsWidget::getHeaderData(const BinaryData& inHeader)
 {
    if (inHeader.getSize() != 80) {
-      logger_->error("[TransactionDetailWidgets::getHeaderData] Header is " \
-                     "not the correct size - size = {}", inHeader.getSize());
+      if (logger_) {
+         logger_->error("[{}] Header is not the correct size - size = {}"
+            , __func__, inHeader.getSize());
+      }
          return;
    }
 

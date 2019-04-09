@@ -6,10 +6,14 @@
 
 #include <QObject>
 #include <QStringList>
+#include <QVariant>
 
+#include "ArmoryServersProvider.h"
 #include "HDPath.h"
 #include "CoreWallet.h"
 #include "QWalletInfo.h"
+
+#include "SignerUiDefs.h"
 
 namespace spdlog {
    class logger;
@@ -75,6 +79,31 @@ namespace bs {
          std::vector<AddressData>   addresses;
          std::vector<AddressData>   addrPool;
          std::vector<TxCommentData> txComments;
+      };
+
+      struct WatchingOnlyWallet
+      {
+         struct Address {
+            std::string index;
+            AddressEntryType  aet;
+         };
+         struct Leaf {
+            std::string          id;
+            bs::hd::Path::Elem   index;
+            BinaryData           publicKey;
+            BinaryData           chainCode;
+            std::vector<Address> addresses;
+         };
+         struct Group {
+            bs::hd::CoinType  type;
+            std::vector<Leaf> leaves;
+         };
+
+         NetworkType netType = NetworkType::Invalid;
+         std::string id;
+         std::string name;
+         std::string description;
+         std::vector<Group>   groups;
       };
 
    }  //namespace sync
@@ -150,6 +179,7 @@ public:
    virtual RequestId changePassword(const std::string &walletId, const std::vector<bs::wallet::PasswordData> &newPass
       , bs::wallet::KeyRank, const SecureBinaryData &oldPass, bool addNew, bool removeOld, bool dryRun) = 0;
    virtual void createSettlementWallet(const std::function<void(const std::shared_ptr<bs::sync::SettlementWallet> &)> &) {}
+   virtual RequestId customDialogRequest(bs::signer::ui::DialogType signerDialog, const QVariantMap &data = QVariantMap()) = 0;
 
    virtual void syncWalletInfo(const std::function<void(std::vector<bs::sync::WalletInfo>)> &) = 0;
    virtual void syncHDWallet(const std::string &id, const std::function<void(bs::sync::HDWalletData)> &) = 0;
@@ -195,7 +225,6 @@ protected:
 
 std::shared_ptr<SignContainer> CreateSigner(const std::shared_ptr<spdlog::logger> &
    , const std::shared_ptr<ApplicationSettings> &
-   , const SecureBinaryData& pubKey
    , SignContainer::OpMode
    , const QString &host
    , const std::shared_ptr<ConnectionManager> & connectionManager);
