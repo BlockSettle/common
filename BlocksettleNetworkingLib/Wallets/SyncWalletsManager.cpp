@@ -584,7 +584,6 @@ void WalletsManager::registerWallets()
    }
    if (empty()) {
       logger_->debug("[WalletsManager::{}] - No wallets to register.", __func__);
-      armory_->goOnline();
       return;
    }
    for (auto &it : wallets_) {
