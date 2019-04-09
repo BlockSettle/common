@@ -5,6 +5,8 @@
 #include "ApplicationSettings.h"
 #include "ChatSearchPopup.h"
 
+#include "OTCRequestViewModel.h"
+
 #include <QScrollBar>
 #include <QMouseEvent>
 #include <QApplication>
@@ -52,6 +54,7 @@ public:
 
    virtual void onStateEnter() override {
       chat_->logger_->debug("Set user name {}", "<empty>");
+      chat_->ui_->input_textEdit->setEnabled(false);
    }
 
    std::string login(const std::string& email, const std::string& jwt) override {
@@ -84,7 +87,9 @@ class ChatWidgetStateLoggedIn : public ChatWidgetState {
 public:
    ChatWidgetStateLoggedIn(ChatWidget* parent) : ChatWidgetState(parent, ChatWidget::LoggedIn) {}
 
-   void onStateEnter() override {}
+   void onStateEnter() override {
+      chat_->ui_->input_textEdit->setEnabled(true);
+   }
 
    void onStateExit() override {
       chat_->onUserClicked({});
@@ -123,6 +128,8 @@ public:
 
    void onUserClicked(const QString& userId)  override {
 
+      chat_->ui_->stackedWidgetMessages->setCurrentIndex(0);
+
       // save draft
       if (!chat_->currentChat_.isEmpty()) {
          QString messageText = chat_->ui_->input_textEdit->toPlainText();
@@ -146,6 +153,12 @@ public:
    }
    
    void onRoomClicked(const QString& roomId) override {
+      if (roomId == QLatin1Literal("otc_chat")) {
+         chat_->ui_->stackedWidgetMessages->setCurrentIndex(1);
+      } else {
+         chat_->ui_->stackedWidgetMessages->setCurrentIndex(0);
+      }
+
       // save draft
       if (!chat_->currentChat_.isEmpty()) {
          QString messageText = chat_->ui_->input_textEdit->toPlainText();
@@ -192,6 +205,9 @@ ChatWidget::ChatWidget(QWidget *parent)
    ui_->stackedWidget->setCurrentIndex(1); //Basically stackedWidget should be removed
 
    chatUserListLogicPtr_ = std::make_shared<ChatUserListLogic>(this);
+
+   otcRequestViewModel_ = new OTCRequestViewModel(this);
+   ui_->treeViewOTCRequests->setModel(otcRequestViewModel_);
 
    qRegisterMetaType<std::vector<std::string>>();
 }
@@ -295,12 +311,13 @@ void ChatWidget::onAddChatRooms(const std::vector<std::shared_ptr<Chat::RoomData
 
 void ChatWidget::onSearchUserListReceived(const std::vector<std::shared_ptr<Chat::UserData>>& users)
 {
-   if (users.size() < 1) {
-      return;
+   if (users.size() > 0) {
+      std::shared_ptr<Chat::UserData> firstUser = users.at(0);
+      popup_->setUserID(firstUser->getUserId());
+   } else {
+      popup_->setUserID(QString());
    }
 
-   std::shared_ptr<Chat::UserData> firstUser = users.at(0);
-   popup_->setText(firstUser->getUserId());
    popup_->setGeometry(0, 0, ui_->chatSearchLineEdit->width(), static_cast<int>(ui_->chatSearchLineEdit->height() * 1.2));
    popup_->setCustomPosition(ui_->chatSearchLineEdit, 0, 5);
    popup_->show();  
@@ -424,23 +441,6 @@ void ChatWidget::onSearchUserReturnPressed()
       return; //Initially max key is 12 symbols
    }
    client_->sendSearchUsersRequest(userToAdd);
-   
-   // auto chatUserDataPtr = chatUserListLogicPtr_->chatUserModelPtr()->getUserByEmail(userToAdd);
-   // if (!chatUserDataPtr) { // email exists?
-   //    chatUserDataPtr = chatUserListLogicPtr_->chatUserModelPtr()->getUserByUserIdPrefix(userToAdd); // user ID autocomplete?
-   //    if (!chatUserDataPtr)
-   //    {
-   //       return;
-   //    }
-   // }
-   
-   // userToAdd = chatUserDataPtr->userId();
-
-   // // qDebug() << userToAdd;
-   // popup_->setText(userToAdd);
-   // popup_->setGeometry(0, 0, ui_->chatSearchLineEdit->width(), static_cast<int>(ui_->chatSearchLineEdit->height() * 1.2));
-   // popup_->setCustomPosition(ui_->chatSearchLineEdit, 0, 5);
-   // popup_->show();
 }
 
 bool ChatWidget::eventFilter(QObject *obj, QEvent *event)
