@@ -636,6 +636,8 @@
             </property>
             <widget class="CreateOTCRequestWidget" name="widgetCreateOTCRequest"/>
             <widget class="CreateOTCResponseWidget" name="widgetCreateOTCResponse"/>
+            <widget class="OTCNegotiationRequestWidget" name="widgetNegotiateRequest"/>
+            <widget class="OTCNegotiationResponseWidget" name="widgetNegotiateResponse"/>
            </widget>
           </item>
          </layout>
@@ -682,6 +684,18 @@
    <class>CreateOTCResponseWidget</class>
    <extends>QWidget</extends>
    <header location="global">CreateOTCResponseWidget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>OTCNegotiationResponseWidget</class>
+   <extends>QWidget</extends>
+   <header>OTCNegotiationResponseWidget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>OTCNegotiationRequestWidget</class>
+   <extends>QWidget</extends>
+   <header>OTCNegotiationRequestWidget.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

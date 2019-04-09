@@ -23,7 +23,9 @@ Q_DECLARE_METATYPE(std::vector<std::string>)
 enum class OTCPages : int
 {
    OTCCreateRequest = 0,
-   OTCCreateResponse
+   OTCCreateResponse,
+   OTCNegotiateRequest,
+   OTCNegotiateResponse
 };
 
 class ChatWidgetState {
@@ -218,6 +220,10 @@ ChatWidget::ChatWidget(QWidget *parent)
    qRegisterMetaType<std::vector<std::string>>();
 
    connect(ui_->widgetCreateOTCRequest, &CreateOTCRequestWidget::RequestCreated, this, &ChatWidget::OnOTCRequestCreated);
+   connect(ui_->widgetCreateOTCResponse, &CreateOTCResponseWidget::ResponseCreated, this, &ChatWidget::OnOTCResponseCreated);
+
+   //widgetNegotiateRequest
+   //widgetNegotiateResponse
 }
 
 ChatWidget::~ChatWidget() = default;
@@ -559,8 +565,18 @@ void ChatWidget::OnOTCRequestCreated()
 
 void ChatWidget::DisplayOTCRequest(const bs::network::Side::Type& side, const bs::network::OTCRangeID& range)
 {
-   ui_->stackedWidgetOTC->setCurrentIndex(static_cast<int>(OTCPages::OTCCreateResponse));
-
    ui_->widgetCreateOTCResponse->SetSide(side);
    ui_->widgetCreateOTCResponse->SetRange(range);
+
+   ui_->stackedWidgetOTC->setCurrentIndex(static_cast<int>(OTCPages::OTCCreateResponse));
+}
+
+
+void ChatWidget::OnOTCResponseCreated()
+{
+   auto priceRange = ui_->widgetCreateOTCResponse->GetResponsePriceRange();
+   auto amountRange = ui_->widgetCreateOTCResponse->GetResponseQuantityRange();
+   ui_->widgetNegotiateRequest->DisplayResponse(ui_->widgetCreateOTCRequest->GetSide(), priceRange, amountRange);
+
+   ui_->stackedWidgetOTC->setCurrentIndex(static_cast<int>(OTCPages::OTCNegotiateRequest));
 }

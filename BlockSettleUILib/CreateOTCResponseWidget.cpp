@@ -9,6 +9,8 @@ CreateOTCResponseWidget::CreateOTCResponseWidget(QWidget* parent)
    ui_->setupUi(this);
 
    ui_->widgetPriceRange->SetRange(3000, 4000);
+
+   connect(ui_->pushButtonSubmit, &QPushButton::pressed, this, &CreateOTCResponseWidget::ResponseCreated);
 }
 
 CreateOTCResponseWidget::~CreateOTCResponseWidget() = default;
@@ -48,4 +50,25 @@ void CreateOTCResponseWidget::SetRange(const bs::network::OTCRangeID& range)
       ui_->widgetAmountRange->setEnabled(false);
       break;
    }
+}
+
+
+bs::network::OTCPriceRange CreateOTCResponseWidget::GetResponsePriceRange() const
+{
+   bs::network::OTCPriceRange range;
+
+   range.lower = ui_->widgetPriceRange->GetLowerValue();
+   range.upper = ui_->widgetPriceRange->GetUpperValue();
+
+   return range;
+}
+
+bs::network::OTCQuantityRange CreateOTCResponseWidget::GetResponseQuantityRange() const
+{
+   bs::network::OTCQuantityRange range;
+
+   range.lower = ui_->widgetAmountRange->GetLowerValue();
+   range.upper = ui_->widgetAmountRange->GetUpperValue();
+
+   return range;
 }

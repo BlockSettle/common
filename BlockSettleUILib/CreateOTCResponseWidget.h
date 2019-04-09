@@ -22,7 +22,12 @@ public:
    void SetSide(const bs::network::Side::Type& side);
    void SetRange(const bs::network::OTCRangeID& range);
 
-private slots:
+public:
+   bs::network::OTCPriceRange GetResponsePriceRange() const;
+   bs::network::OTCQuantityRange GetResponseQuantityRange() const;
+
+signals:
+   void ResponseCreated();
 
 private:
    std::unique_ptr<Ui::CreateOTCResponseWidget> ui_;

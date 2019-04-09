@@ -68,6 +68,8 @@ private slots:
    void OnOTCRequestCreated();
    void DisplayOTCRequest(const bs::network::Side::Type& side, const bs::network::OTCRangeID& range);
 
+   void OnOTCResponseCreated();
+
 signals:
    void LoginFailed();
    void LogOut();

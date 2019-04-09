@@ -394,6 +394,18 @@ namespace bs {
          Range250plus
       };
 
+      struct OTCPriceRange
+      {
+         uint64_t lower;
+         uint64_t upper;
+      };
+
+      struct OTCQuantityRange
+      {
+         uint64_t lower;
+         uint64_t upper;
+      };
+
    }  //namespace network
 }  //namespace bs
 
