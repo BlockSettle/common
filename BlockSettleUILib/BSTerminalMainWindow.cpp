@@ -677,7 +677,7 @@ void BSTerminalMainWindow::onArmoryStateChanged(ArmoryConnection::State newState
       QMetaObject::invokeMethod(this, "CompleteUIOnlineView", Qt::QueuedConnection);
       break;
    case ArmoryConnection::State::Connected:
-      armoryConnected_ = true;
+      armoryBDVRegistered_ = true;
       goOnlineArmory();
       QMetaObject::invokeMethod(this, "CompleteDBConnection", Qt::QueuedConnection);
       break;
@@ -1564,19 +1564,28 @@ void BSTerminalMainWindow::onArmoryNeedsReconnect()
    connectArmory();
 }
 
-// A function that puts Armory online if it isn't online already, if Armory has
-// hit the connected state, and the wallets are synchronized (assuming any
-// wallets exist.) Returns true if Armory is online and false if not.
+// A function that puts Armory online if certain conditions are met. The primary
+// intention is to ensure that a terminal with no wallets can connect to Armory
+// while not interfering with the online process for terminals with wallets.
+//
+// INPUT:  N/A
+// OUTPUT: N/A
+// RETURN: True if online, false if not.
 bool BSTerminalMainWindow::goOnlineArmory() const
 {
-   if (armory_ && !armory_->isOnline() && armoryConnected_ && walletsSynched_) {
-      armory_->goOnline();
-      return true;
-   }
-
-   if (armory_) {
+   // Go online under the following conditions:
+   // - The Armory connection isn't already online.
+   // - The Armory BDV is registered.
+   // - The terminal has properly synched the wallet state.
+   // - The wallet manager has no wallets, including a settlement wallet. (NOTE:
+   //   Settlement wallets are auto-generated. A future PR will change that.)
+   if (armory_ && !armory_->isOnline() && armoryBDVRegistered_
+      && walletsSynched_ && walletsMgr_ && walletsMgr_->walletsCount()
+      /*&& !walletsMgr_->hasSettlementWallet()*/ == 0) {
+      logMgr_->logger()->info("[{}] - Armory connection is going online without "
+         "wallets.", __func__);
       return armory_->goOnline();
    }
 
-   return false;
+   return armory_->isOnline();
 }

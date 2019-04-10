@@ -231,7 +231,7 @@ private:
    bool readyToRegisterWallets_ = false;
    bool initialWalletCreateDialogShown_ = false;
    bool armoryKeyDialogShown_ = false;
-   bool armoryConnected_ = false;
+   bool armoryBDVRegistered_ = false;
    bool walletsSynched_ = false;
 };
 
