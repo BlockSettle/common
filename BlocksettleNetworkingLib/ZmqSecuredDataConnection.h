@@ -5,6 +5,9 @@
 #include "ZmqDataConnection.h"
 #include "EncryptionUtils.h"
 
+#define CURVEZMQPUBKEYBUFFERSIZE 40
+#define CURVEZMQPRVKEYBUFFERSIZE 40
+
 class ZmqSecuredDataConnection : public ZmqDataConnection
 {
 public:
@@ -29,6 +32,9 @@ protected:
    bool ConfigureDataSocket(const ZmqContext::sock_ptr& socket) override;
 
 private:
+   SecureBinaryData publicKey_;
+   SecureBinaryData privateKey_;
+   BinaryData serverPublicKey_;
    std::atomic_flag lockSocket_ = ATOMIC_FLAG_INIT;
 };
 
