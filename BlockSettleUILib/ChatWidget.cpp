@@ -20,7 +20,7 @@
 
 Q_DECLARE_METATYPE(std::vector<std::string>)
 
-constexpr int ShowEmptyFoundUserList = 3000;
+constexpr int kShowEmptyFoundUserListTimeoutMs = 3000;
 
 
 class ChatWidgetState {
@@ -323,9 +323,9 @@ void ChatWidget::onSearchUserListReceived(const std::vector<std::shared_ptr<Chat
 
    popup_->setGeometry(0, 0, ui_->chatSearchLineEdit->width(), static_cast<int>(ui_->chatSearchLineEdit->height() * 1.2));
    popup_->setCustomPosition(ui_->chatSearchLineEdit, 0, 5);
-   popup_->show();  
+   popup_->show();
    if (users.size() == 0) {
-      QTimer::singleShot(ShowEmptyFoundUserList, [this] {
+      QTimer::singleShot(kShowEmptyFoundUserListTimeoutMs, [this] {
          popup_->hide();
          ui_->chatSearchLineEdit->setFocus();
       });
