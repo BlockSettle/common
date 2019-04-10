@@ -256,17 +256,23 @@ void ChatClient::OnContactsListResponse(const Chat::ContactsListResponse & respo
    ContactUserDataList contactToUpdateOrAdd;
    ContactUserDataList contactToRemove;
 
+   for (const auto& contact : contacts) {
+      ContactUserData c(contact);
+      contactToUpdateOrAdd.emplace_back(c);
+      contactsListStr << QString::fromStdString(contact->toJsonString());
+   }
+
    for (const auto & localCnt: localContacts){
       auto contactIt = std::find_if(contacts.begin(), contacts.end(),
                                          [localCnt](const std::shared_ptr<Chat::ContactRecordData>& cnt) -> bool {
          return localCnt.userId() == cnt->getContactId();
       });
 
-      if (contactIt != contacts.end()){
-         ContactUserData c(*contactIt);
-         contactToUpdateOrAdd.emplace_back(c);
-      } else {
-         contactToRemove.emplace_back(localCnt);
+      if (contactIt == contacts.end()){
+         if (localCnt.status() != ContactUserData::Status::Incoming
+             && localCnt.status() != ContactUserData::Status::Outgoing) {
+            contactToRemove.emplace_back(localCnt);
+         }
       }
    }
 
