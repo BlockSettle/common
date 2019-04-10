@@ -396,6 +396,8 @@ void BSTerminalMainWindow::LoadWallets()
       ui_->widgetRFQReply->setWalletsManager(walletsMgr_);
    });
    connect(walletsMgr_.get(), &bs::sync::WalletsManager::walletsSynchronized, [this] {
+      walletsSynched_ = true;
+      goOnlineArmory();
       updateControlEnabledState();
 
       connect(armory_.get(), &ArmoryConnection::stateChanged, this, [this](ArmoryConnection::State state) {
@@ -675,7 +677,8 @@ void BSTerminalMainWindow::onArmoryStateChanged(ArmoryConnection::State newState
       QMetaObject::invokeMethod(this, "CompleteUIOnlineView", Qt::QueuedConnection);
       break;
    case ArmoryConnection::State::Connected:
-      armory_->goOnline();
+      armoryConnected_ = true;
+      goOnlineArmory();
       QMetaObject::invokeMethod(this, "CompleteDBConnection", Qt::QueuedConnection);
       break;
    case ArmoryConnection::State::Offline:
@@ -1559,4 +1562,21 @@ void BSTerminalMainWindow::onArmoryNeedsReconnect()
 
    connectSigner();
    connectArmory();
+}
+
+// A function that puts Armory online if it isn't online already, if Armory has
+// hit the connected state, and the wallets are synchronized (assuming any
+// wallets exist.) Returns true if Armory is online and false if not.
+bool BSTerminalMainWindow::goOnlineArmory() const
+{
+   if (armory_ && !armory_->isOnline() && armoryConnected_ && walletsSynched_) {
+      armory_->goOnline();
+      return true;
+   }
+
+   if (armory_) {
+      return armory_->goOnline();
+   }
+
+   return false;
 }
