@@ -11,6 +11,8 @@
 #include "SecureBinaryData.h"
 #include <queue>
 
+#include "ChatClientTree/TreeObjects.h"
+
 namespace spdlog {
    class logger;
 }
@@ -127,6 +129,8 @@ private:
    std::shared_ptr<ApplicationSettings>   appSettings_;
    std::shared_ptr<spdlog::logger>        logger_;
 
+
+
    std::unique_ptr<ChatDB>                   chatDb_;
    std::map<QString, autheid::PublicKey>     pubKeys_;
    std::shared_ptr<ZmqBIP15XDataConnection> connection_;
@@ -142,6 +146,7 @@ private:
    std::atomic_bool  loggedIn_{ false };
 
    autheid::PrivateKey  ownPrivKey_;
+   RootItem root_;
 };
 
 #endif   // CHAT_CLIENT_H

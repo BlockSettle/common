@@ -60,6 +60,9 @@ ChatClient::ChatClient(const std::shared_ptr<ConnectionManager>& connectionManag
    heartbeatTimer_.setSingleShot(false);
    connect(&heartbeatTimer_, &QTimer::timeout, this, &ChatClient::sendHeartbeat);
    //heartbeatTimer_.start();
+
+   root_.insertItem(new CategoryItem(TreeItem::NodeType::ChatRoomNode));
+   root_.insertItem(new CategoryItem(TreeItem::NodeType::ChatUserNode));
 }
 
 ChatClient::~ChatClient() noexcept
@@ -249,6 +252,7 @@ void ChatClient::OnContactsListResponse(const Chat::ContactsListResponse & respo
    const auto& contacts = response.getContactsList();
    for (auto &contact : contacts){
       contactsListStr << QString::fromStdString(contact->toJsonString());
+      root_.insertDataObject(contact);
    }
 
    logger_->debug("[ChatClient::OnContactsListResponse]:Received {} contacts, from server: [{}]"
@@ -262,6 +266,7 @@ void ChatClient::OnChatroomsList(const Chat::ChatroomsListResponse& response)
 
    std::vector<std::shared_ptr<Chat::RoomData>> roomList = response.getChatRoomList();
    for (auto room : roomList){
+      root_.insertDataObject(room);
       rooms << QString::fromStdString(room->toJsonString());
       chatDb_->removeRoomMessages(room->getId());
    }

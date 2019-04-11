@@ -2,30 +2,29 @@
 #define TREEITEM_H
 #include <list>
 #include <algorithm>
-#include "../ChatProtocol/DataObjects.h"
+
 
 class TreeItem {
    friend class RootItem;
    public:
-   enum class ItemType {
-      RootItem,
-      CategoryItem,
-      DisplayItem
-   };
 
-   enum class Category {
+   enum class NodeType {
+      RootNode,
+      CategoryNode,
+
       SearchCategory,
       RoomsCategory,
       ContactsCategory,
-      AllUsersCategory
+      AllUsersCategory,
+
+      ChatRoomNode,
+      ChatUserNode,
+      ChatDataNode,
    };
 
-   enum class Display {
-      ChatRoom,
-      ChatUser
-   };
-
-   ItemType getType() const { return type_; }
+   NodeType getType() const { return type_; }
+   NodeType getAcceptType() const { return acceptType_; }
+   NodeType getTargetParentType() const { return targetParentType_; }
    TreeItem* getParent() const {return parent_; }
 
    virtual ~TreeItem(){
@@ -34,25 +33,8 @@ class TreeItem {
       }
    }
 
-   virtual bool insertItem(TreeItem* item) {
-      bool supported = isSupported(item->getType());
-      if (supported) {
-         //Trying to find this child with same type as we whant to insert
-         std::list<TreeItem*>::iterator childIt = std::find_if(children_.begin(), children_.end(), [item] (const TreeItem* child){
-            return item->getType() == child->getType();
-         });
-
-         if (childIt != children_.end()) {
-            //Copying the child items from the item that need to insert, if this item type already in out children list
-            (*childIt)->grabChildren(item);
-         } else {
-            //Or if not, just insert it to this children list
-            children_.push_back(item);
-         }
-         return true;
-      }
-      return false;
-   }
+   virtual bool insertItem(TreeItem* item);
+   bool compare(TreeItem* first, TreeItem* second) const;
 
    std::list<TreeItem*> getChildren(){ return children_;}
 
@@ -64,7 +46,7 @@ protected:
          children_.push_back(child);
       }
 
-      //Remove old parent and sen new parent as this
+      //Remove old parent and set new parent as this
       for (auto child: item->getChildren()){
          if (child->getParent()){
             child->getParent()->removeChild(item);
@@ -91,26 +73,35 @@ protected:
    }
 
    protected:
-   TreeItem(ItemType type) : type_(type) {
+   TreeItem(NodeType type, NodeType acceptType, NodeType parentType)
+      : type_(type)
+      , acceptType_(acceptType)
+      , targetParentType_(parentType)
+      , parent_(nullptr)
+   {
+      /*
       switch (type_) {
-         case ItemType::RootItem:
-            acceptTypes_.push_back(ItemType::CategoryItem);
-            //acceptTypes_.push_back(ItemType::DisplayItem);
+         case NodeType::RootNode:
+            acceptType_ = NodeType::CategoryNode;
+            targetParentType_ = NodeType::RootNode;
             break;
-         case ItemType::CategoryItem:
-            acceptTypes_.push_back(ItemType::DisplayItem);
+         case NodeType::CategoryNode:
+            acceptType_ = NodeType::CategoryElement;
+            targetParentType_ = NodeType::RootNode;
             break;
          default:
             break;
-      }
+      }*/
    }
 
 
 
-   bool isSupported(ItemType type) const {
+   bool isSupported(NodeType type) const {
       //Check if this type is supported by this item
-      auto foundIt = std::find(acceptTypes_.begin(), acceptTypes_.end(), type);
-      if (foundIt != acceptTypes_.end()){
+      return acceptType_ == type;
+      /*
+      auto foundIt = std::find(acceptType_.begin(), acceptType_.end(), type);
+      if (foundIt != acceptType_.end()){
          return true;
       } else {
          //Check if this type is supported by any of children
@@ -121,60 +112,18 @@ protected:
          }
       }
       return false;
+   */
    }
 
-   std::list<ItemType> getAcceptTypes() const { return acceptTypes_; }
+
 
    protected:
-      ItemType type_;
-      std::list<ItemType> acceptTypes_;
+      NodeType type_;
+      NodeType acceptType_;
+      NodeType targetParentType_;
+
       TreeItem * parent_;
       std::list<TreeItem*> children_;
-};
-
-class RootItem : public TreeItem {
-   public:
-   RootItem() : TreeItem(TreeItem::ItemType::RootItem) {
-   }
-
-
-
-};
-
-class CategoryItem : public TreeItem {
-   public:
-   CategoryItem(Category category, Display storingItems)
-      : TreeItem(TreeItem::ItemType::CategoryItem)
-      , category_(category)
-      , storingItems_(storingItems) {
-   }
-
-   Category getCategory() const {return category_; }
-   Display getStoringItems() { return storingItems_;}
-
-   private:
-   Category category_;
-   Display storingItems_;
-};
-
-class DisplayItem : public TreeItem {
-   public:
-   DisplayItem(Category category, Display displayType, Chat::DataObject* object)
-      : TreeItem(TreeItem::ItemType::DisplayItem)
-      , category_(category)
-      , displayType_(displayType)
-      , dataObject_(object)
-   {
-
-   }
-
-   Category getCategory() {return category_; }
-   Display getDisplayType() {return displayType_;}
-   Chat::DataObject* getDataObject() {return dataObject_;}
-   private:
-   Category category_;
-   Display displayType_;
-   Chat::DataObject* dataObject_;
 };
 
 #endif // TREEITEM_H
