@@ -149,6 +149,7 @@ BSTerminalMainWindow::BSTerminalMainWindow(const std::shared_ptr<ApplicationSett
    ui_->widgetTransactions->setAppSettings(applicationSettings_);
 
    UpdateMainWindowAppearence();
+   setWidgetsAuthorized(false);
 }
 
 void BSTerminalMainWindow::onMDConnectionDetailsRequired()
@@ -176,6 +177,11 @@ void BSTerminalMainWindow::setWidgetsAuthorized(bool authorized)
    ui_->widgetPortfolio->setAuthorized(authorized);
    ui_->widgetRFQ->setAuthorized(authorized);
    ui_->widgetChart->setAuthorized(authorized);
+   // Enable/disable authorized tabs
+   ui_->tabWidget->setTabEnabled(1, authorized);//Trade
+   ui_->tabWidget->setTabEnabled(2, authorized);//Dealing
+   ui_->tabWidget->setTabEnabled(3, authorized);//Chart
+   ui_->tabWidget->setTabEnabled(7, authorized);//Chats
 }
 
 void BSTerminalMainWindow::GetNetworkSettingsFromPuB(const std::function<void()> &cb)
