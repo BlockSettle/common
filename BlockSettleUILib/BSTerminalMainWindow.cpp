@@ -408,14 +408,6 @@ void BSTerminalMainWindow::LoadWallets()
             }
          }
       });
-      QTimer::singleShot(100, this, [this](){
-         if (!initialWalletCreateDialogShown_ && !armoryKeyDialogShown_) {
-            if (walletsMgr_ && walletsMgr_->hdWalletsCount() == 0) {
-               initialWalletCreateDialogShown_ = true;
-               QMetaObject::invokeMethod(this, "createWallet", Qt::QueuedConnection, Q_ARG(bool, true));
-            }
-         }
-      });
 
       if (readyToRegisterWallets_) {
          readyToRegisterWallets_ = false;
