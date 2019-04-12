@@ -1,4 +1,6 @@
 #include "TreeItem.h"
+#include <iostream>
+#include <QDebug>
 
 TreeItem::NodeType TreeItem::getType() const { return type_; }
 
@@ -7,6 +9,11 @@ TreeItem::NodeType TreeItem::getAcceptType() const { return acceptType_; }
 TreeItem::NodeType TreeItem::getTargetParentType() const { return targetParentType_; }
 
 TreeItem *TreeItem::getParent() const {return parent_; }
+
+TreeItem::~TreeItem(){
+   clearChildren();
+   qDebug() << "TreeItem::~TreeItem()";
+}
 
 bool TreeItem::insertItem(TreeItem *item) {
    bool supported = isSupported(item);
@@ -27,6 +34,14 @@ int TreeItem::selfIndex() const
        }
    }
    return 0;
+}
+
+void TreeItem::clearChildren()
+{
+   for (auto child : children_) {
+      delete child;
+   }
+   children_.clear();
 }
 
 void TreeItem::grabChildren(TreeItem *item){
@@ -58,6 +73,7 @@ void TreeItem::addChild(TreeItem *item) {
 }
 
 void TreeItem::removeChild(TreeItem *item) {
+   emit
    children_.erase(std::remove(std::begin(children_), std::end(children_), item), std::end(children_));
 }
 

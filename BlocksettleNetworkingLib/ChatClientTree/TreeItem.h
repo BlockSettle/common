@@ -36,11 +36,7 @@ class TreeItem : public QObject {
    NodeType getTargetParentType() const;
    TreeItem* getParent() const;
 
-   virtual ~TreeItem(){
-      for (auto child : children_) {
-         delete child;
-      }
-   }
+   virtual ~TreeItem();
 
    virtual bool insertItem(TreeItem* item);
    int selfIndex() const;
@@ -50,6 +46,7 @@ signals:
    void beforeUpdate();
    void afterUpdate();
 protected:
+   void clearChildren();
    void grabChildren(TreeItem* item);
    void setParent(TreeItem* parent);
    void addChild(TreeItem* item);

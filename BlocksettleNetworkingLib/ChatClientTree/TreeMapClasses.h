@@ -13,6 +13,7 @@ class RootItem : public TreeItem {
    bool insertContactObject(std::shared_ptr<Chat::ContactRecordData> data);
    bool insertGeneralUserObject(std::shared_ptr<Chat::UserData> data);
    bool insertSearchUserObject(std::shared_ptr<Chat::UserData> data);
+   void clear();
 private:
    bool insertNode(TreeItem* item);
 };

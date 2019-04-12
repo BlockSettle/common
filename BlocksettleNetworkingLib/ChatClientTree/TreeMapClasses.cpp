@@ -45,6 +45,14 @@ bool RootItem::insertSearchUserObject(std::shared_ptr<Chat::UserData> data)
    return  res;
 }
 
+void RootItem::clear()
+{
+   emit beforeUpdate();
+   for (auto child : children_)
+      child->clearChildren();
+   emit afterUpdate();
+}
+
 bool RootItem::insertNode(TreeItem * item)
 {
    auto it = std::find_if(children_.begin(), children_.end(), [item](TreeItem* child){

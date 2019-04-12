@@ -106,8 +106,10 @@ void ChatClient::OnLoginReturned(const Chat::LoginResponse &response)
 {
    if (response.getStatus() == Chat::LoginResponse::Status::LoginOk) {
       loggedIn_ = true;
-      auto request = std::make_shared<Chat::MessagesRequest>("", currentUserId_, currentUserId_);
-      sendRequest(request);
+      auto request1 = std::make_shared<Chat::MessagesRequest>("", currentUserId_, currentUserId_);
+      sendRequest(request1);
+      auto request2 = std::make_shared<Chat::ContactsListRequest>("", currentUserId_);
+      sendRequest(request2);
    }
    else {
       loggedIn_ = false;
@@ -258,7 +260,7 @@ void ChatClient::OnContactsListResponse(const Chat::ContactsListResponse & respo
    const auto& contacts = response.getContactsList();
    for (auto &contact : contacts){
       contactsListStr << QString::fromStdString(contact->toJsonString());
-      root_->insertDataObject(contact);
+      root_->insertContactObject(contact);
    }
 
    logger_->debug("[ChatClient::OnContactsListResponse]:Received {} contacts, from server: [{}]"
@@ -272,7 +274,7 @@ void ChatClient::OnChatroomsList(const Chat::ChatroomsListResponse& response)
 
    std::vector<std::shared_ptr<Chat::RoomData>> roomList = response.getChatRoomList();
    for (auto room : roomList){
-      root_->insertDataObject(room);
+      root_->insertRoomObject(room);
       rooms << QString::fromStdString(room->toJsonString());
       chatDb_->removeRoomMessages(room->getId());
    }
@@ -338,6 +340,7 @@ void ChatClient::logout(bool send)
    currentJwt_.clear();
 
    connection_.reset();
+   root_->clear();
 
    emit LoggedOut();
 }
