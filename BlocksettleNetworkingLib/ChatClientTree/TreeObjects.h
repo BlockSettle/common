@@ -1,38 +1,34 @@
 #ifndef TREEOBJECTS_H
 #define TREEOBJECTS_H
 
-#include "TreeItem.h"
-#include "ChatProtocol/DataObjects.h"
+#include "TreeMapClasses.h"
 
-class RootItem : public TreeItem {
-   public:
-   RootItem() : TreeItem(NodeType::RootNode, NodeType::CategoryNode, NodeType::RootNode) {
-   }
+class ChatRoomNode : public CategoryElement {
+public:
+   ChatRoomNode(std::shared_ptr<Chat::RoomData> data)
+      : CategoryElement(TreeItem::NodeType::RoomsCategory, TreeItem::NodeType::ChatRoomNode, data){}
 
-   bool insertDataObject(std::shared_ptr<Chat::RoomData> data);
-   bool insertDataObject(std::shared_ptr<Chat::ContactRecordData> data);
 };
 
-class CategoryItem : public TreeItem {
-   public:
-   CategoryItem(NodeType categoryType)
-      : TreeItem(NodeType::CategoryNode, categoryType, NodeType::RootNode) {
-   }
+class ChatContactNode : public CategoryElement {
+public:
+   ChatContactNode(std::shared_ptr<Chat::ContactRecordData> data)
+      : CategoryElement(TreeItem::NodeType::ContactsCategory, TreeItem::NodeType::ChatContactNode, data){}
+
 };
 
-class CategoryElement : public TreeItem {
-   protected:
-   CategoryElement(NodeType elementType, NodeType acceptType, std::shared_ptr<Chat::DataObject> object)
-      : TreeItem(elementType, acceptType, NodeType::CategoryNode)
-      , dataObject_(object)
-   {
+class ChatSearchNode : public CategoryElement {
+public:
+   ChatSearchNode(std::shared_ptr<Chat::UserData> data)
+      : CategoryElement(TreeItem::NodeType::SearchCategory, TreeItem::NodeType::ChatUserNode, data){}
 
-   }
-
-   std::shared_ptr<Chat::DataObject> getDataObject() const {return dataObject_;}
-   private:
-   std::shared_ptr<Chat::DataObject> dataObject_;
 };
 
+class ChatUserNode : public CategoryElement {
+public:
+   ChatUserNode(std::shared_ptr<Chat::UserData> data)
+      : CategoryElement(TreeItem::NodeType::AllUsersCategory, TreeItem::NodeType::ChatUserNode, data){}
 
-#endif // TREEOBJECTS_H
+};
+
+#endif // TREENODESIMPL_H

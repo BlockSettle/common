@@ -178,7 +178,7 @@
            </spacer>
           </item>
           <item>
-           <widget class="ChatUserListTreeView" name="treeViewUsers">
+           <widget class="QTreeView" name="treeViewUsers">
             <property name="focusPolicy">
              <enum>Qt::NoFocus</enum>
             </property>
@@ -668,11 +668,6 @@
   </layout>
  </widget>
  <customwidgets>
-  <customwidget>
-   <class>ChatUserListTreeView</class>
-   <extends>QTreeView</extends>
-   <header>ChatUserListTreeView.h</header>
-  </customwidget>
   <customwidget>
    <class>ChatSearchLineEdit</class>
    <extends>QLineEdit</extends>

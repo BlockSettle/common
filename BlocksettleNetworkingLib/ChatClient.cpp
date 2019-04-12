@@ -55,14 +55,15 @@ ChatClient::ChatClient(const std::shared_ptr<ConnectionManager>& connectionManag
    }
 
    hasher_ = std::make_shared<UserHasher>();
+   root_ = std::make_shared<RootItem>();
 
    heartbeatTimer_.setInterval(30 * 1000);
    heartbeatTimer_.setSingleShot(false);
    connect(&heartbeatTimer_, &QTimer::timeout, this, &ChatClient::sendHeartbeat);
    //heartbeatTimer_.start();
 
-   root_.insertItem(new CategoryItem(TreeItem::NodeType::ChatRoomNode));
-   root_.insertItem(new CategoryItem(TreeItem::NodeType::ChatUserNode));
+   root_->insertItem(new CategoryItem(TreeItem::NodeType::RoomsCategory));
+   root_->insertItem(new CategoryItem(TreeItem::NodeType::ContactsCategory));
 }
 
 ChatClient::~ChatClient() noexcept
@@ -70,6 +71,11 @@ ChatClient::~ChatClient() noexcept
    if (loggedIn_) {
       logout();
    }
+}
+
+std::shared_ptr<RootItem> ChatClient::getRootItem()
+{
+   return root_;
 }
 
 std::string ChatClient::loginToServer(const std::string& email, const std::string& jwt)
@@ -252,7 +258,7 @@ void ChatClient::OnContactsListResponse(const Chat::ContactsListResponse & respo
    const auto& contacts = response.getContactsList();
    for (auto &contact : contacts){
       contactsListStr << QString::fromStdString(contact->toJsonString());
-      root_.insertDataObject(contact);
+      root_->insertDataObject(contact);
    }
 
    logger_->debug("[ChatClient::OnContactsListResponse]:Received {} contacts, from server: [{}]"
@@ -266,7 +272,7 @@ void ChatClient::OnChatroomsList(const Chat::ChatroomsListResponse& response)
 
    std::vector<std::shared_ptr<Chat::RoomData>> roomList = response.getChatRoomList();
    for (auto room : roomList){
-      root_.insertDataObject(room);
+      root_->insertDataObject(room);
       rooms << QString::fromStdString(room->toJsonString());
       chatDb_->removeRoomMessages(room->getId());
    }

@@ -10,6 +10,7 @@
 #include "DataConnectionListener.h"
 #include "SecureBinaryData.h"
 #include <queue>
+#include <QAbstractItemModel>
 
 #include "ChatClientTree/TreeObjects.h"
 
@@ -42,6 +43,8 @@ public:
    ChatClient& operator = (const ChatClient&) = delete;
    ChatClient(ChatClient&&) = delete;
    ChatClient& operator = (ChatClient&&) = delete;
+
+   std::shared_ptr<RootItem> getRootItem();
 
    std::string loginToServer(const std::string& email, const std::string& jwt);
    void logout(bool send = true);
@@ -146,7 +149,7 @@ private:
    std::atomic_bool  loggedIn_{ false };
 
    autheid::PrivateKey  ownPrivKey_;
-   RootItem root_;
+   std::shared_ptr<RootItem> root_;
 };
 
 #endif   // CHAT_CLIENT_H

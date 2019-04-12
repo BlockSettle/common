@@ -16,6 +16,7 @@
 
 #include <thread>
 #include <spdlog/spdlog.h>
+#include "ChatClientUsersModel.h"
 
 
 Q_DECLARE_METATYPE(std::vector<std::string>)
@@ -223,20 +224,23 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
 {
    logger_ = logger;
    client_ = std::make_shared<ChatClient>(connectionManager, appSettings, logger);
+   ui_->treeViewUsers->setModel(new ChatClientUsersModel(client_->getRootItem(), this));
+
+
    chatUserListLogicPtr_->init(client_, logger);
 
    connect(client_.get(), &ChatClient::LoginFailed, this, &ChatWidget::onLoginFailed);
    connect(client_.get(), &ChatClient::LoggedOut, this, &ChatWidget::onLoggedOut);
 
    // connect(ui_->send, &QPushButton::clicked, this, &ChatWidget::onSendButtonClicked);
-
+/*
    connect(ui_->treeViewUsers, &ChatUserListTreeView::userClicked, this, &ChatWidget::onUserClicked);
    connect(ui_->treeViewUsers, &ChatUserListTreeView::roomClicked, this, &ChatWidget::onRoomClicked);
    connect(ui_->treeViewUsers, &ChatUserListTreeView::acceptFriendRequest,
               this, &ChatWidget::onAcceptFriendRequest);
    connect(ui_->treeViewUsers, &ChatUserListTreeView::declineFriendRequest,
               this, &ChatWidget::onDeclineFriendRequest);
-
+*/
    connect(ui_->input_textEdit, &BSChatInput::sendMessage, this, &ChatWidget::onSendButtonClicked);
 
    connect(client_.get(), &ChatClient::UsersReplace,
@@ -273,7 +277,7 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
            client_.get(), &ChatClient::onMessageRead);
 
    connect(ui_->chatSearchLineEdit, &ChatSearchLineEdit::returnPressed, this, &ChatWidget::onSearchUserReturnPressed);
-   
+/*
    connect(chatUserListLogicPtr_.get()->chatUserModelPtr().get(), &ChatUserModel::chatUserDataChanged,
            ui_->treeViewUsers, &ChatUserListTreeView::onChatUserDataChanged);
    connect(chatUserListLogicPtr_.get()->chatUserModelPtr().get(), &ChatUserModel::chatUserDataListChanged,
@@ -283,7 +287,7 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
            ui_->treeViewUsers, &ChatUserListTreeView::onChatRoomDataChanged);
    connect(chatUserListLogicPtr_->chatUserModelPtr().get(), &ChatUserModel::chatRoomDataListChanged,
            ui_->treeViewUsers, &ChatUserListTreeView::onChatRoomDataListChanged);
-
+*/
    connect(ui_->textEditMessages, &ChatMessagesTextEdit::userHaveNewMessageChanged, 
            chatUserListLogicPtr_.get(), &ChatUserListLogic::onUserHaveNewMessageChanged);
    connect(ui_->textEditMessages, &ChatMessagesTextEdit::sendFriendRequest,
@@ -305,7 +309,7 @@ void ChatWidget::onAddChatRooms(const std::vector<std::shared_ptr<Chat::RoomData
    chatUserListLogicPtr_->addChatRooms(roomList);
 
    if (roomList.size() > 0 && needsToStartFirstRoom_) {
-      ui_->treeViewUsers->selectFirstRoom();
+     // ui_->treeViewUsers->selectFirstRoom();
       const auto &firstRoom = roomList.at(0);
       onRoomClicked(firstRoom->getId());
       needsToStartFirstRoom_ = false;
