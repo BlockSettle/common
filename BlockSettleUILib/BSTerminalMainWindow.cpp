@@ -1183,7 +1183,7 @@ void BSTerminalMainWindow::createAuthWallet()
 void BSTerminalMainWindow::onAuthMgrConnComplete()
 {
    if (celerConnection_->tradingAllowed()) {
-      if (!walletsMgr_->hasPrimaryWallet() && !createWallet(true)) {
+      if (!walletsMgr_->hasPrimaryWallet()) {
          return;
       }
       if (!walletsMgr_->hasSettlementWallet()) {
