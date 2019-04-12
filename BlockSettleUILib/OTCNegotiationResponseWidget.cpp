@@ -14,8 +14,8 @@ OTCNegotiationResponseWidget::OTCNegotiationResponseWidget(QWidget* parent)
    ui_->headerLabel->setText(tr("OTC Response Negotiation"));
    ui_->spinBoxQuantity->hide();
 
-   ui_->pushButtonCancel->setText("Pull");
-   ui_->pushButtonAccept->setText("Accept");
+   ui_->pushButtonCancel->setText(tr("Pull"));
+   ui_->pushButtonAccept->setText(tr("Accept"));
 }
 
 OTCNegotiationResponseWidget::~OTCNegotiationResponseWidget() noexcept = default;

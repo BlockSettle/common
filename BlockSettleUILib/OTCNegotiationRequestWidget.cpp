@@ -17,8 +17,8 @@ OTCNegotiationRequestWidget::OTCNegotiationRequestWidget(QWidget* parent)
    ui_->spinBoxOffer->setAccelerated(true);
    ui_->spinBoxQuantity->setAccelerated(true);
 
-   ui_->pushButtonCancel->setText("Reject");
-   ui_->pushButtonAccept->setText("Respond");
+   ui_->pushButtonCancel->setText(tr("Reject"));
+   ui_->pushButtonAccept->setText(tr("Respond"));
 }
 
 OTCNegotiationRequestWidget::~OTCNegotiationRequestWidget() noexcept = default;
