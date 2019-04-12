@@ -1492,7 +1492,7 @@ void BSTerminalMainWindow::showArmoryServerPrompt(const BinaryData &srvPubKey, c
             armoryServersProvider_->addKey(srvIPPort, srvPubKey);
          }
 
-         promiseObj->set_value(true);
+         promiseObj->set_value(answer);
       }
       else if (server.armoryDBKey != QString::fromLatin1(QByteArray::fromStdString(srvPubKey.toBinStr()).toHex())) {
          BSMessageBox *box = new BSMessageBox(BSMessageBox::warning
