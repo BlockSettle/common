@@ -25,7 +25,6 @@ namespace bs {
 }
 
 class ApplicationSettings;
-//class ArmoryServersProvider;
 class ConnectionManager;
 class DataConnection;
 class HeadlessListener;
@@ -37,6 +36,13 @@ class HeadlessContainer : public SignContainer
 {
    Q_OBJECT
 public:
+   static NetworkType mapNetworkType(Blocksettle::Communication::headless::NetworkType netType);
+
+   static void makeCreateHDWalletRequest(const std::string &name
+      , const std::string &desc, bool primary, const bs::core::wallet::Seed &seed
+      , const std::vector<bs::wallet::PasswordData> &pwdData, bs::wallet::KeyRank keyRank
+      , Blocksettle::Communication::headless::CreateHDWalletRequest &request);
+
    HeadlessContainer(const std::shared_ptr<spdlog::logger> &, OpMode);
    ~HeadlessContainer() noexcept = default;
 
@@ -66,9 +72,6 @@ public:
    RequestId getDecryptedRootKey(const std::string &walletId, const SecureBinaryData &password = {}) override;
    RequestId GetInfo(const std::string &rootWalletId) override;
    void setLimits(const std::string &walletId, const SecureBinaryData &password, bool autoSign) override;
-   RequestId changePassword(const std::string &walletId, const std::vector<bs::wallet::PasswordData> &newPass
-      , bs::wallet::KeyRank, const SecureBinaryData &oldPass
-      , bool addNew, bool removeOld, bool dryRun) override;
    RequestId customDialogRequest(bs::signer::ui::DialogType signerDialog, const QVariantMap &data = QVariantMap()) override;
 
    void createSettlementWallet(const std::function<void(const std::shared_ptr<bs::sync::SettlementWallet> &)> &) override;
@@ -95,7 +98,6 @@ protected:
    RequestId SendDeleteHDRequest(const std::string &rootWalletId, const std::string &leafId);
    void ProcessGetRootKeyResponse(unsigned int id, const std::string &data);
    void ProcessGetHDWalletInfoResponse(unsigned int id, const std::string &data);
-   void ProcessChangePasswordResponse(unsigned int id, const std::string &data);
    void ProcessSetLimitsResponse(unsigned int id, const std::string &data);
    void ProcessSyncWalletInfo(unsigned int id, const std::string &data);
    void ProcessSyncHDWallet(unsigned int id, const std::string &data);
@@ -133,6 +135,7 @@ public:
    bool Disconnect() override;
    bool isOffline() const override;
    bool hasUI() const override;
+   SecureBinaryData getOwnPubKey() const { return connection_->getOwnPubKey(); }
 
 protected slots:
    void onAuthenticated();

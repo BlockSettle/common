@@ -7,6 +7,8 @@
 #include <QWidget>
 #include <memory>
 
+#define EXP_TIMEOUT 10000 // Milliseconds
+
 namespace Ui {
    class ExplorerWidget;
 }
@@ -19,8 +21,8 @@ public:
     ExplorerWidget(QWidget *parent = nullptr);
     ~ExplorerWidget() override;
 
-   void init(const std::shared_ptr<ArmoryConnection> &armory,
-             const std::shared_ptr<spdlog::logger> &inLogger);
+   void init(const std::shared_ptr<ArmoryConnection> &armory
+      , const std::shared_ptr<spdlog::logger> &inLogger);
    void shortcutActivated(ShortcutType s) override;
 
    enum Page {
@@ -29,8 +31,11 @@ public:
       AddressPage
    };
 
+   void mousePressEvent(QMouseEvent *event) override;
+
 protected slots:
-   void onSearchStarted();
+   void onSearchStarted(bool saveToHistory);
+   void onExpTimeout();
    void onTransactionClicked(QString txId);
    void onAddressClicked(QString addressId);
    void onReset();
@@ -41,17 +46,17 @@ private:
    bool canGoBack() const;
    bool canGoForward() const;
    void setTransaction(QString txId);
-   void pushTransactionHistory(QString txId);
-   void popTransactionHistory();
-   void truncateTransactionHistory(int position = -1);
-   void clearTransactionHistory();
+   void pushTransactionHistory(QString itemId);
+   void truncateSearchHistory(int position = -1);
+   void clearSearchHistory();
 
 private:
    std::unique_ptr<Ui::ExplorerWidget> ui_;
+   std::shared_ptr<QTimer>             expTimer_;
    std::shared_ptr<ArmoryConnection>   armory_;
    std::shared_ptr<spdlog::logger>     logger_;
-   std::vector<std::string>            transactionHistory_;
-   int                                 transactionHistoryPosition_;
+   std::vector<std::string>            searchHistory_;
+   int                                 searchHistoryPosition_;
 };
 
 #endif // EXPLORERWIDGET_H

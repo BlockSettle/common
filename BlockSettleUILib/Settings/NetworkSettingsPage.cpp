@@ -8,6 +8,7 @@
 #include "ApplicationSettings.h"
 #include "ArmoryServersWidget.h"
 #include "WebSocketClient.h"
+#include "HeadlessContainer.h"
 
 
 struct EnvSettings
@@ -77,7 +78,7 @@ NetworkSettingsPage::NetworkSettingsPage(QWidget* parent)
    connect(ui_->pushButtonArmoryServerKeySave, &QPushButton::clicked, this, [this](){
       QString fileName = QFileDialog::getSaveFileName(this
                                    , tr("Save Armory Public Key")
-                                   , QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation)
+                                   , QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + QDir::separator() + QStringLiteral("Armory_Server_Public_Key.pub")
                                    , tr("Key files (*.pub)"));
 
       QFile file(fileName);
@@ -92,7 +93,7 @@ NetworkSettingsPage::NetworkSettingsPage(QWidget* parent)
    connect(ui_->pushButtonArmoryTerminalKeySave, &QPushButton::clicked, this, [this](){
       QString fileName = QFileDialog::getSaveFileName(this
                                    , tr("Save Armory Public Key")
-                                   , QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation)
+                                   , QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + QDir::separator() + QStringLiteral("Terminal_Public_Key.pub")
                                    , tr("Key files (*.pub)"));
 
       QFile file(fileName);
@@ -173,10 +174,16 @@ void NetworkSettingsPage::displayArmorySettings()
       ui_->labelConfChanged->setVisible(false);
    }
 
-//   AuthorizedPeers peers(appSettings_->GetDBDir().toStdString(), CLIENT_AUTH_PEER_FILENAME);
-
-//   BinaryData ownKey(peers.getOwnPublicKey().pubkey, 33);
-//   ui_->labelArmoryTerminalKey->setText(QString::fromStdString(ownKey.toHexStr()));
+   try {
+      RemoteSigner *remoteSigner = qobject_cast<RemoteSigner *>(signContainer_.get());
+      if (remoteSigner) {
+         SecureBinaryData ownKey = remoteSigner->getOwnPubKey();
+         ui_->labelArmoryTerminalKey->setText(QString::fromStdString(ownKey.toHexStr()));
+      }
+   }
+   catch (...) {
+      ui_->labelArmoryTerminalKey->setText(tr("Unknown"));
+   }
 }
 
 void NetworkSettingsPage::displayEnvironmentSettings()

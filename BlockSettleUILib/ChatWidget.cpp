@@ -20,6 +20,7 @@
 
 Q_DECLARE_METATYPE(std::vector<std::string>)
 
+
 enum class OTCPages : int
 {
    OTCCreateRequest = 0,
@@ -27,6 +28,8 @@ enum class OTCPages : int
    OTCNegotiateRequest,
    OTCNegotiateResponse
 };
+
+constexpr int kShowEmptyFoundUserListTimeoutMs = 3000;
 
 class ChatWidgetState {
 public:
@@ -335,6 +338,13 @@ void ChatWidget::onSearchUserListReceived(const std::vector<std::shared_ptr<Chat
    popup_->setGeometry(0, 0, ui_->chatSearchLineEdit->width(), static_cast<int>(ui_->chatSearchLineEdit->height() * 1.2));
    popup_->setCustomPosition(ui_->chatSearchLineEdit, 0, 5);
    popup_->show();
+
+   if (users.size() == 0) {
+      QTimer::singleShot(kShowEmptyFoundUserListTimeoutMs, [this] {
+         popup_->hide();
+         ui_->chatSearchLineEdit->setFocus();
+      });
+   }
 }
 
 void ChatWidget::onUserClicked(const QString& userId)

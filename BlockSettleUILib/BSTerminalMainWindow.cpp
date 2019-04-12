@@ -54,8 +54,6 @@
 #include "UiUtils.h"
 #include "Wallets/SyncHDWallet.h"
 #include "Wallets/SyncWalletsManager.h"
-#include "ZMQ_BIP15X_DataConnection.h"
-#include "ZmqContext.h"
 
 #include <spdlog/spdlog.h>
 
@@ -172,6 +170,14 @@ void BSTerminalMainWindow::LoadCCDefinitionsFromPuB()
    }
 }
 
+void BSTerminalMainWindow::setWidgetsAuthorized(bool authorized)
+{
+   // Update authorized state for some widgets
+   ui_->widgetPortfolio->setAuthorized(authorized);
+   ui_->widgetRFQ->setAuthorized(authorized);
+   ui_->widgetChart->setAuthorized(authorized);
+}
+
 void BSTerminalMainWindow::GetNetworkSettingsFromPuB(const std::function<void()> &cb)
 {
    if (networkSettings_.isSet) {
@@ -179,9 +185,7 @@ void BSTerminalMainWindow::GetNetworkSettingsFromPuB(const std::function<void()>
       return;
    }
 
-   const auto zmqContext = std::make_shared<ZmqContext>(logMgr_->logger());
-   const auto connection = std::make_shared<ZmqBIP15XDataConnection>(logMgr_->logger(), true, true);
-   connection->SetContext(zmqContext);
+   const auto connection = connectionManager_->CreateZMQBIP15XDataConnection();
 
    Blocksettle::Communication::RequestPacket reqPkt;
    reqPkt.set_requesttype(Blocksettle::Communication::GetNetworkSettingsType);
@@ -392,6 +396,8 @@ void BSTerminalMainWindow::LoadWallets()
       ui_->widgetRFQReply->setWalletsManager(walletsMgr_);
    });
    connect(walletsMgr_.get(), &bs::sync::WalletsManager::walletsSynchronized, [this] {
+      walletsSynched_ = true;
+      goOnlineArmory();
       updateControlEnabledState();
 
       connect(armory_.get(), &ArmoryConnection::stateChanged, this, [this](ArmoryConnection::State state) {
@@ -671,6 +677,8 @@ void BSTerminalMainWindow::onArmoryStateChanged(ArmoryConnection::State newState
       QMetaObject::invokeMethod(this, "CompleteUIOnlineView", Qt::QueuedConnection);
       break;
    case ArmoryConnection::State::Connected:
+      armoryBDVRegistered_ = true;
+      goOnlineArmory();
       QMetaObject::invokeMethod(this, "CompleteDBConnection", Qt::QueuedConnection);
       break;
    case ArmoryConnection::State::Offline:
@@ -980,7 +988,7 @@ void BSTerminalMainWindow::openAuthDlgVerify(const QString &addrToVerify)
 
 void BSTerminalMainWindow::openConfigDialog()
 {
-   ConfigDialog configDialog(applicationSettings_, armoryServersProvider_, this);
+   ConfigDialog configDialog(applicationSettings_, armoryServersProvider_, signContainer_, this);
    connect(&configDialog, &ConfigDialog::reconnectArmory, this, &BSTerminalMainWindow::onArmoryNeedsReconnect);
    configDialog.exec();
 
@@ -1042,6 +1050,7 @@ void BSTerminalMainWindow::onReadyToLogin()
       currentUserLogin_ = loginDialog.getUsername();
       auto id = ui_->widgetChat->login(currentUserLogin_.toStdString(), loginDialog.getJwt());
       setLoginButtonText(currentUserLogin_);
+      setWidgetsAuthorized(true);
 
 #ifndef PRODUCTION_BUILD
       // TODO: uncomment this section once we have armory connection
@@ -1052,6 +1061,8 @@ void BSTerminalMainWindow::onReadyToLogin()
          // logMgr_->logger()->debug("[BSTerminalMainWindow::onReadyToLogin] armory disconnected. Could not login to celer.");
       // }
 #endif
+   } else {
+      setWidgetsAuthorized(false);
    }
 }
 
@@ -1063,8 +1074,10 @@ void BSTerminalMainWindow::onLogout()
    if (celerConnection_->IsConnected()) {
       celerConnection_->CloseConnection();
    }
-   
+
    setLoginButtonText(loginButtonText_);
+
+   setWidgetsAuthorized(false);
 }
 
 void BSTerminalMainWindow::onUserLoggedIn()
@@ -1478,6 +1491,7 @@ void BSTerminalMainWindow::showArmoryServerPrompt(const BinaryData &srvPubKey, c
                                     .arg(QString::fromLatin1(QByteArray::fromStdString(srvPubKey.toBinStr()).toHex()))
                           , this);
          box->setMinimumWidth(650);
+         box->setMaximumWidth(650);
 
          bool answer = (box->exec() == QDialog::Accepted);
          box->deleteLater();
@@ -1503,6 +1517,7 @@ void BSTerminalMainWindow::showArmoryServerPrompt(const BinaryData &srvPubKey, c
                                     .arg(QString::fromLatin1(QByteArray::fromStdString(srvPubKey.toBinStr()).toHex()))
                           , this);
          box->setMinimumWidth(650);
+         box->setMaximumWidth(650);
          box->setCancelVisible(true);
 
          bool answer = (box->exec() == QDialog::Accepted);
@@ -1547,4 +1562,30 @@ void BSTerminalMainWindow::onArmoryNeedsReconnect()
 
    connectSigner();
    connectArmory();
+}
+
+// A function that puts Armory online if certain conditions are met. The primary
+// intention is to ensure that a terminal with no wallets can connect to Armory
+// while not interfering with the online process for terminals with wallets.
+//
+// INPUT:  N/A
+// OUTPUT: N/A
+// RETURN: True if online, false if not.
+bool BSTerminalMainWindow::goOnlineArmory() const
+{
+   // Go online under the following conditions:
+   // - The Armory connection isn't already online.
+   // - The Armory BDV is registered.
+   // - The terminal has properly synched the wallet state.
+   // - The wallet manager has no wallets, including a settlement wallet. (NOTE:
+   //   Settlement wallets are auto-generated. A future PR will change that.)
+   if (armory_ && !armory_->isOnline() && armoryBDVRegistered_
+      && walletsSynched_ && walletsMgr_ && walletsMgr_->walletsCount() == 0
+      /*&& !walletsMgr_->hasSettlementWallet()*/) {
+      logMgr_->logger()->info("[{}] - Armory connection is going online without "
+         "wallets.", __func__);
+      return armory_->goOnline();
+   }
+
+   return armory_->isOnline();
 }

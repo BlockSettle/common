@@ -25,6 +25,11 @@ enum PacketType
    ReconnectTerminalType = 17;
    ReloadWalletsType = 18;
    ExecCustomDialogRequestType = 19;
+   ChangePasswordRequestType   = 20;
+
+   // Uses messages from headless
+   CreateHDWalletType = 21;
+   DeleteHDWalletType = 22;
 }
 
 message Packet
@@ -33,7 +38,6 @@ message Packet
    PacketType  type       = 2;
    bytes       data       = 3;
 }
-
 
 message ReadyEvent
 {
@@ -220,4 +224,30 @@ message CustomDialogRequest
 {
    string dialogName = 1;
    bytes  variantData = 2;
+}
+
+
+message PasswordData
+{
+   string   password = 1;
+   uint32   encType = 2;
+   bytes    encKey = 3;
+}
+
+message ChangePasswordRequest
+{
+   string   rootWalletId = 1;
+   string   oldPassword = 2;
+   repeated PasswordData newPassword = 3;
+   uint32   rankM = 4;
+   uint32   rankN = 5;
+   bool     addNew = 6;
+   bool     removeOld = 8;
+   bool     dryRun = 7;
+}
+
+message ChangePasswordResponse
+{
+   string   rootWalletId = 1;
+   bool     success = 2;
 }
