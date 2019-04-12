@@ -19,10 +19,10 @@ public:
    RangeSlider& operator = (RangeSlider&&) = delete;
    QSize minimumSizeHint() const override;
 
-   int GetMinimun() const;
+   int GetMinimum() const;
    void SetMinimum(int minimum);
 
-   int GetMaximun() const;
+   int GetMaximum() const;
    void SetMaximum(int maximum);
 
    int GetLowerValue() const;

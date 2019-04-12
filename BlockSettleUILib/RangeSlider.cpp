@@ -83,37 +83,37 @@ QRectF RangeSlider::handleRect(int aValue) const
 
 void RangeSlider::mousePressEvent(QMouseEvent* event)
 {
-   if(event->buttons() & Qt::LeftButton) {
+   if (event->buttons() & Qt::LeftButton) {
       slidingUpper_ = secondHandleRect().contains(event->pos());
       slidingLower_ = !slidingUpper_ && firstHandleRect().contains(event->pos());
 
-      if(slidingLower_) {
+      if (slidingLower_) {
          delta_ = event->pos().x() - (firstHandleRect().x() + scHandleSideLength / 2);
-      } else if(slidingUpper_) {
+      } else if (slidingUpper_) {
          delta_ = event->pos().x() - (secondHandleRect().x() + scHandleSideLength / 2);
       }
 
-      if(   (event->pos().y() >= 2)
+      if (   (event->pos().y() >= 2)
          && event->pos().y() <= height()- 2) {
          int step = interval_ / 10 < 1 ? 1 : interval_ / 10;
-         if(event->pos().x() < firstHandleRect().x()) {
+         if (event->pos().x() < firstHandleRect().x()) {
             setLowerValue(lowerValue_ - step);
-         } else if((event->pos().x() > firstHandleRect().x() + scHandleSideLength)
+         } else if ((event->pos().x() > firstHandleRect().x() + scHandleSideLength)
                   && event->pos().x() < secondHandleRect().x()) {
-            if(event->pos().x() - (firstHandleRect().x() + scHandleSideLength) < (secondHandleRect().x() - (firstHandleRect().x() + scHandleSideLength)) / 2) {
-               if(lowerValue_ + step < upperValue_) {
+            if (event->pos().x() - (firstHandleRect().x() + scHandleSideLength) < (secondHandleRect().x() - (firstHandleRect().x() + scHandleSideLength)) / 2) {
+               if (lowerValue_ + step < upperValue_) {
                   setLowerValue(lowerValue_ + step);
                } else {
                   setLowerValue(upperValue_);
                }
             } else {
-               if(upperValue_ - step > lowerValue_) {
+               if (upperValue_ - step > lowerValue_) {
                   setUpperValue(upperValue_ - step);
                } else {
                   setUpperValue(lowerValue_);
                }
             }
-         } else if(event->pos().x() > secondHandleRect().x() + scHandleSideLength) {
+         } else if (event->pos().x() > secondHandleRect().x() + scHandleSideLength) {
             setUpperValue(upperValue_ + step);
          }
       }
@@ -122,15 +122,15 @@ void RangeSlider::mousePressEvent(QMouseEvent* event)
 
 void RangeSlider::mouseMoveEvent(QMouseEvent* event)
 {
-   if(event->buttons() & Qt::LeftButton) {
-      if(slidingLower_) {
-         if(event->pos().x() - delta_ + scHandleSideLength / 2 <= secondHandleRect().x()) {
+   if (event->buttons() & Qt::LeftButton) {
+      if (slidingLower_) {
+         if (event->pos().x() - delta_ + scHandleSideLength / 2 <= secondHandleRect().x()) {
             setLowerValue((event->pos().x() - delta_ - scLeftRightMargin - scHandleSideLength / 2) * 1.0 / validWidth() * interval_ + minimum_);
          } else {
             setLowerValue(upperValue_);
          }
-      } else if(slidingUpper_) {
-         if(firstHandleRect().x() + scHandleSideLength * 1.5 <= event->pos().x() - delta_) {
+      } else if (slidingUpper_) {
+         if (firstHandleRect().x() + scHandleSideLength * 1.5 <= event->pos().x() - delta_) {
             setUpperValue((event->pos().x() - delta_ - scLeftRightMargin - scHandleSideLength / 2 - scHandleSideLength) * 1.0 / validWidth() * interval_ + minimum_);
          } else {
             setUpperValue(lowerValue_);
@@ -147,8 +147,8 @@ void RangeSlider::mouseReleaseEvent(QMouseEvent*)
 
 void RangeSlider::changeEvent(QEvent* event)
 {
-   if(event->type() == QEvent::EnabledChange) {
-      if(isEnabled()) {
+   if (event->type() == QEvent::EnabledChange) {
+      if (isEnabled()) {
          backgroudColor_ = backgroudColorEnabled_;
       } else {
          backgroudColor_ = backgroudColorDisabled_;
@@ -162,7 +162,7 @@ QSize RangeSlider::minimumSizeHint() const
    return QSize(scHandleSideLength * 2 + scLeftRightMargin * 2, scHandleSideLength);
 }
 
-int RangeSlider::GetMinimun() const
+int RangeSlider::GetMinimum() const
 {
    return minimum_;
 }
@@ -172,7 +172,7 @@ void RangeSlider::SetMinimum(int minimum)
    setMinimum(minimum);
 }
 
-int RangeSlider::GetMaximun() const
+int RangeSlider::GetMaximum() const
 {
    return maximum_;
 }
@@ -204,11 +204,11 @@ void RangeSlider::SetUpperValue(int upperValue)
 
 void RangeSlider::setLowerValue(int lowerValue)
 {
-   if(lowerValue > maximum_) {
+   if (lowerValue > maximum_) {
       lowerValue = maximum_;
    }
 
-   if(lowerValue < minimum_) {
+   if (lowerValue < minimum_) {
       lowerValue = minimum_;
    }
 
@@ -220,11 +220,11 @@ void RangeSlider::setLowerValue(int lowerValue)
 
 void RangeSlider::setUpperValue(int upperValue)
 {
-   if(upperValue > maximum_) {
+   if (upperValue > maximum_) {
       upperValue = maximum_;
    }
 
-   if(upperValue < minimum_) {
+   if (upperValue < minimum_) {
       upperValue = minimum_;
    }
 
@@ -236,7 +236,7 @@ void RangeSlider::setUpperValue(int upperValue)
 
 void RangeSlider::setMinimum(int minimum)
 {
-   if(minimum <= maximum_) {
+   if (minimum <= maximum_) {
       minimum_ = minimum;
    } else {
       int oldMax = maximum_;
@@ -252,7 +252,7 @@ void RangeSlider::setMinimum(int minimum)
 
 void RangeSlider::setMaximum(int maximum)
 {
-   if(maximum >= minimum_)
+   if (maximum >= minimum_)
    {
       maximum_ = maximum;
    } else {
