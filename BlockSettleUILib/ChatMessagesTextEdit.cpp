@@ -132,12 +132,12 @@ QImage ChatMessagesTextEdit::statusImage(const int &row)
 
 void ChatMessagesTextEdit::mousePressEvent(QMouseEvent *ev)
 {
-	// make focus to the widget to allow use default shortcuts (like ctrl+c) from keyboard
-	if (!this->hasFocus())
-		this->setFocus();
+   // make focus to the widget to allow use default shortcuts (like ctrl+c) from keyboard
+   if (!this->hasFocus())
+      this->setFocus();
 
-	// proceed default mouse press behaviour
-	QTextBrowser::mousePressEvent(ev);
+   // proceed default mouse press behaviour
+   QTextBrowser::mousePressEvent(ev);
 }
 
 void ChatMessagesTextEdit::switchToChat(const QString& chatId, bool isGroupRoom)
