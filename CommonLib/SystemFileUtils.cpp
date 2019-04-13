@@ -20,7 +20,7 @@ namespace SystemFilePaths {
 #ifndef WIN32
 #ifdef __APPLE__
    static const std::string kDataDir = "Library/Application Support";
-   static const std::string kConfigDir = "Library/Application Support/config";
+   static const std::string kConfigDir = "Library/Application Support";
 #else
    static const std::string kDataDir = ".local/share";
    static const std::string kConfigDir = ".config";
