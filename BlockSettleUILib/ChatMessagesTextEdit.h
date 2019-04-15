@@ -86,6 +86,8 @@ public slots:
    void onMessageIdUpdate(const QString& oldId, const QString& newId,const QString& chatId);
    void onMessageStatusChanged(const QString& messageId, const QString chatId, int newStatus);
    void urlActivated(const QUrl &link);
+   
+private slots:
    void copyActionTriggered();
    void copyLinkLocationActionTriggered();
    void selectAllActionTriggered();
