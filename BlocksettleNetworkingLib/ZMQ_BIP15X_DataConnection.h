@@ -49,7 +49,7 @@ protected:
    void notifyOnConnected() override;
    ZmqContext::sock_ptr CreateDataSocket() override;
    bool recvData() override;
-   void generateHeartbeat();
+   void triggerHeartbeat();
 
 private:
    void ProcessIncomingData(BinaryData& payload);

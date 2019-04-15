@@ -56,7 +56,7 @@ ZmqBIP15XDataConnection::ZmqBIP15XDataConnection(
             std::chrono::duration_cast<std::chrono::milliseconds>(
             curTime - lastHeartbeat_);
          if (diff.count() > heartbeatInterval_) {
-            generateHeartbeat();
+            triggerHeartbeat();
          }
       }
    };
@@ -152,9 +152,9 @@ void ZmqBIP15XDataConnection::rekeyIfNeeded(const size_t& dataSize)
 }
 
 // An internal send function to be used when this class constructs a packet. The
+// packet must already be encrypted (if required) and ready to be sent.
 //
-// ***Please use this function for sending all data from outside this class, or
-// .***
+// ***Please use this function for sending all data from inside this class.***
 //
 // INPUT:  The data to send. (const string&)
 //         Flag for encryption usage. True by default. (const bool&)
@@ -222,14 +222,13 @@ void ZmqBIP15XDataConnection::notifyOnConnected()
    });
 }
 
-// A function that is used to generate a heartbeat. It will be sent every ~10
-// seconds. Required because ZMQ is unable to tell, via a data socket
-// connection, when a client has disconnected.
+// A function that is used to trigger heartbeats. Required because ZMQ is unable
+// to tell, via a data socket connection, when a client has disconnected.
 //
 // INPUT:  N/A
 // OUTPUT: N/A
 // RETURN: N/A
-void ZmqBIP15XDataConnection::generateHeartbeat()
+void ZmqBIP15XDataConnection::triggerHeartbeat()
 {
    if (bip151Connection_->getBIP150State() != BIP150State::SUCCESS) {
       logger_->error("[ZmqBIP15XDataConnection::{}] {} invalid state: {}"
