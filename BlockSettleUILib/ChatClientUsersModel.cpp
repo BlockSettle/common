@@ -28,6 +28,7 @@ QModelIndex ChatClientUsersModel::index(int row, int column, const QModelIndex &
 
    if (childItem){
       return createIndex(row, column, childItem);
+
    }
 
    return QModelIndex();
@@ -76,10 +77,10 @@ QVariant ChatClientUsersModel::data(const QModelIndex &index, int role) const
        switch (item->getType()) {
          case TreeItem::NodeType::CategoryNode:
              return  categoryNodeData(item, role);
-         case TreeItem::NodeType::SearchCategory:
-         case TreeItem::NodeType::RoomsCategory:
-         case TreeItem::NodeType::ContactsCategory:
-         case TreeItem::NodeType::AllUsersCategory:
+         case TreeItem::NodeType::SearchElement:
+         case TreeItem::NodeType::RoomsElement:
+         case TreeItem::NodeType::ContactsElement:
+         case TreeItem::NodeType::AllUsersElement:
              return categoryElementData(item, role);
           default:
              return QVariant();
@@ -103,13 +104,13 @@ QVariant ChatClientUsersModel::categoryNodeData(const TreeItem* item, int role) 
        return QVariant();
 
    switch(item->getAcceptType()){
-      case TreeItem::NodeType::RoomsCategory:
+      case TreeItem::NodeType::RoomsElement:
          return QLatin1String("Chat rooms");
-      case TreeItem::NodeType::ContactsCategory:
+      case TreeItem::NodeType::ContactsElement:
          return QLatin1String("Contacts");
-      case TreeItem::NodeType::AllUsersCategory:
+      case TreeItem::NodeType::AllUsersElement:
          return QLatin1String("AllUsers");
-      case TreeItem::NodeType::SearchCategory:
+      case TreeItem::NodeType::SearchElement:
          return QLatin1String("Search");
       default:
          return QLatin1String("<unknown>");
@@ -139,4 +140,34 @@ QVariant ChatClientUsersModel::categoryElementData(TreeItem * item, int role) co
       default:
          return QLatin1String("<unknown>");
    }
+}
+
+Qt::ItemFlags ChatClientUsersModel::flags(const QModelIndex &index) const
+{
+   if (!index.isValid())
+      return 0;
+   Qt::ItemFlags current_flags = QAbstractItemModel::flags(index);
+
+   TreeItem *item = static_cast<TreeItem*>(index.internalPointer());
+
+   switch (item->getType()) {
+      case TreeItem::NodeType::CategoryNode:
+         if (current_flags.testFlag(Qt::ItemIsSelectable)){
+            current_flags.setFlag(Qt::ItemIsSelectable, false);
+         }
+         break;
+      case TreeItem::NodeType::SearchElement:
+      case TreeItem::NodeType::RoomsElement:
+      case TreeItem::NodeType::ContactsElement:
+      case TreeItem::NodeType::AllUsersElement:
+         if (!current_flags.testFlag(Qt::ItemIsEnabled)){
+            current_flags.setFlag(Qt::ItemIsEnabled);
+         }
+         break;
+      default:
+         break;
+   }
+
+
+   return current_flags;
 }

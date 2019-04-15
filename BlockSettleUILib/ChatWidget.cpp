@@ -225,6 +225,7 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
    logger_ = logger;
    client_ = std::make_shared<ChatClient>(connectionManager, appSettings, logger);
    ui_->treeViewUsers->setModel(new ChatClientUsersModel(client_->getRootItem(), this));
+   ui_->treeViewUsers->expandAll();
 
 
    chatUserListLogicPtr_->init(client_, logger);

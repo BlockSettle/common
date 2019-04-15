@@ -20,7 +20,9 @@ public:
    int rowCount(const QModelIndex &parent) const override;
    int columnCount(const QModelIndex &parent) const override;
    QVariant data(const QModelIndex &index, int role) const override;
-   private slots:
+   Qt::ItemFlags flags(const QModelIndex &index) const override;
+
+private slots:
    void onBeforeUpdate();
    void onAfterUpdate();
 private:
@@ -30,6 +32,8 @@ private:
 private:
    std::shared_ptr<TreeItem> root_;
 };
+
+
 
 
 

@@ -3,31 +3,31 @@
 
 #include "TreeMapClasses.h"
 
-class ChatRoomNode : public CategoryElement {
+class ChatRoomElement : public CategoryElement {
 public:
-   ChatRoomNode(std::shared_ptr<Chat::RoomData> data)
-      : CategoryElement(TreeItem::NodeType::RoomsCategory, TreeItem::NodeType::ChatRoomNode, data){}
+   ChatRoomElement(std::shared_ptr<Chat::RoomData> data)
+      : CategoryElement(TreeItem::NodeType::RoomsElement, TreeItem::NodeType::ChatRoomNode, data){}
 
 };
 
-class ChatContactNode : public CategoryElement {
+class ChatContactElement : public CategoryElement {
 public:
-   ChatContactNode(std::shared_ptr<Chat::ContactRecordData> data)
-      : CategoryElement(TreeItem::NodeType::ContactsCategory, TreeItem::NodeType::ChatContactNode, data){}
+   ChatContactElement(std::shared_ptr<Chat::ContactRecordData> data)
+      : CategoryElement(TreeItem::NodeType::ContactsElement, TreeItem::NodeType::ChatContactNode, data){}
 
 };
 
-class ChatSearchNode : public CategoryElement {
+class ChatSearchElement : public CategoryElement {
 public:
-   ChatSearchNode(std::shared_ptr<Chat::UserData> data)
-      : CategoryElement(TreeItem::NodeType::SearchCategory, TreeItem::NodeType::ChatUserNode, data){}
+   ChatSearchElement(std::shared_ptr<Chat::UserData> data)
+      : CategoryElement(TreeItem::NodeType::SearchElement, TreeItem::NodeType::ChatUserNode, data){}
 
 };
 
-class ChatUserNode : public CategoryElement {
+class ChatUserElement : public CategoryElement {
 public:
-   ChatUserNode(std::shared_ptr<Chat::UserData> data)
-      : CategoryElement(TreeItem::NodeType::AllUsersCategory, TreeItem::NodeType::ChatUserNode, data){}
+   ChatUserElement(std::shared_ptr<Chat::UserData> data)
+      : CategoryElement(TreeItem::NodeType::AllUsersElement, TreeItem::NodeType::ChatUserNode, data){}
 
 };
 

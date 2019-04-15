@@ -27,8 +27,8 @@ class CategoryItem : public TreeItem {
 
 class CategoryElement : public TreeItem {
    protected:
-   CategoryElement(NodeType categoryType, NodeType acceptType, std::shared_ptr<Chat::DataObject> object)
-      : TreeItem(categoryType, acceptType, NodeType::CategoryNode)
+   CategoryElement(NodeType elementType, NodeType storingType, std::shared_ptr<Chat::DataObject> object)
+      : TreeItem(elementType, storingType, NodeType::CategoryNode)
       , dataObject_(object)
    {
 

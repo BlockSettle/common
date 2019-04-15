@@ -20,10 +20,10 @@ class TreeItem : public QObject {
       CategoryNode,
 
       //CategoryNode accept types (subcategory)
-      SearchCategory,
-      RoomsCategory,
-      ContactsCategory,
-      AllUsersCategory,
+      SearchElement,
+      RoomsElement,
+      ContactsElement,
+      AllUsersElement,
 
       //Subcategory accept types
       ChatRoomNode,

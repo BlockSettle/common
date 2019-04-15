@@ -4,7 +4,7 @@
 
 bool RootItem::insertRoomObject(std::shared_ptr<Chat::RoomData> data){
    emit beforeUpdate();
-   TreeItem* candidate =  new ChatRoomNode(data);
+   TreeItem* candidate =  new ChatRoomElement(data);
    bool res = insertNode(candidate);
    emit afterUpdate();
    if (!res) {
@@ -15,7 +15,7 @@ bool RootItem::insertRoomObject(std::shared_ptr<Chat::RoomData> data){
 
 bool RootItem::insertContactObject(std::shared_ptr<Chat::ContactRecordData> data){
    emit beforeUpdate();
-   TreeItem* candidate = new ChatContactNode(data);
+   TreeItem* candidate = new ChatContactElement(data);
    bool res = insertNode(candidate);
    emit afterUpdate();
    return  res;
@@ -24,7 +24,7 @@ bool RootItem::insertContactObject(std::shared_ptr<Chat::ContactRecordData> data
 bool RootItem::insertGeneralUserObject(std::shared_ptr<Chat::UserData> data)
 {
    emit beforeUpdate();
-   TreeItem* candidate = new ChatUserNode(data);
+   TreeItem* candidate = new ChatUserElement(data);
    bool res = insertNode(candidate);
    emit afterUpdate();
    if (!res) {
@@ -36,7 +36,7 @@ bool RootItem::insertGeneralUserObject(std::shared_ptr<Chat::UserData> data)
 bool RootItem::insertSearchUserObject(std::shared_ptr<Chat::UserData> data)
 {
    emit beforeUpdate();
-   TreeItem* candidate = new ChatSearchNode(data);
+   TreeItem* candidate = new ChatSearchElement(data);
    bool res = insertNode(candidate);
    emit afterUpdate();
    if (!res) {
@@ -56,7 +56,8 @@ void RootItem::clear()
 bool RootItem::insertNode(TreeItem * item)
 {
    auto it = std::find_if(children_.begin(), children_.end(), [item](TreeItem* child){
-      return child->getType() == item->getTargetParentType();
+      return child->getType() == item->getTargetParentType()
+             && child->getAcceptType() == item->getType();
    });
 
    if (it != children_.end()){

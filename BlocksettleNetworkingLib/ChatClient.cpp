@@ -62,8 +62,8 @@ ChatClient::ChatClient(const std::shared_ptr<ConnectionManager>& connectionManag
    connect(&heartbeatTimer_, &QTimer::timeout, this, &ChatClient::sendHeartbeat);
    //heartbeatTimer_.start();
 
-   root_->insertItem(new CategoryItem(TreeItem::NodeType::RoomsCategory));
-   root_->insertItem(new CategoryItem(TreeItem::NodeType::ContactsCategory));
+   root_->insertItem(new CategoryItem(TreeItem::NodeType::RoomsElement));
+   root_->insertItem(new CategoryItem(TreeItem::NodeType::ContactsElement));
 }
 
 ChatClient::~ChatClient() noexcept
