@@ -6,6 +6,9 @@ ChatClientUsersModel::ChatClientUsersModel(std::shared_ptr<TreeItem> root, QObje
 {
    connect(root_.get(), &TreeItem::beforeUpdate, this, &ChatClientUsersModel::onBeforeUpdate);
    connect(root_.get(), &TreeItem::afterUpdate, this, &ChatClientUsersModel::onAfterUpdate);
+   connect(root_.get(), &TreeItem::beforeClean, this, &ChatClientUsersModel::onBeforeClean);
+   connect(root_.get(), &TreeItem::afterClean, this, &ChatClientUsersModel::onAfterClean);
+
 
 }
 
@@ -42,7 +45,7 @@ QModelIndex ChatClientUsersModel::parent(const QModelIndex &child) const
        TreeItem *childItem = static_cast<TreeItem*>(child.internalPointer());
        TreeItem *parentItem = childItem->getParent();
 
-       if (parentItem == root_.get())
+       if (root_ && parentItem == root_.get())
            return QModelIndex();
 
        return createIndex(parentItem->selfIndex(), 0, parentItem);
@@ -98,6 +101,16 @@ void ChatClientUsersModel::onAfterUpdate()
    emit layoutChanged();
 }
 
+void ChatClientUsersModel::onBeforeClean()
+{
+   beginResetModel();
+}
+
+void ChatClientUsersModel::onAfterClean()
+{
+   endResetModel();
+}
+
 QVariant ChatClientUsersModel::categoryNodeData(const TreeItem* item, int role) const
 {
    if (role != Qt::DisplayRole)
@@ -124,16 +137,16 @@ QVariant ChatClientUsersModel::categoryElementData(TreeItem * item, int role) co
 
    CategoryElement* element = static_cast<CategoryElement*>(item);
 
-   switch(element->getAcceptType()){
-      case TreeItem::NodeType::ChatRoomNode:{
+   switch(element->getType()){
+      case TreeItem::NodeType::RoomsElement:{
          std::shared_ptr<Chat::RoomData> data = std::dynamic_pointer_cast<Chat::RoomData>(element->getDataObject());
          return data->getTitle();
       }
-      case TreeItem::NodeType::ChatContactNode:{
+      case TreeItem::NodeType::ContactsElement:{
          std::shared_ptr<Chat::ContactRecordData> data = std::dynamic_pointer_cast<Chat::ContactRecordData>(element->getDataObject());
          return data->getContactId();
       }
-      case TreeItem::NodeType::ChatUserNode:{
+      case TreeItem::NodeType::AllUsersElement:{
          std::shared_ptr<Chat::UserData> data = std::dynamic_pointer_cast<Chat::UserData>(element->getDataObject());
          return data->getUserId();
       }

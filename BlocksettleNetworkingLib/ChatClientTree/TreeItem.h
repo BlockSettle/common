@@ -25,10 +25,10 @@ class TreeItem : public QObject {
       ContactsElement,
       AllUsersElement,
 
+
       //Subcategory accept types
-      ChatRoomNode,
-      ChatContactNode,
-      ChatUserNode
+      NoDataNode,
+      MessageDataNode
    };
 
    NodeType getType() const;
@@ -45,15 +45,20 @@ class TreeItem : public QObject {
 signals:
    void beforeUpdate();
    void afterUpdate();
+   void beforeClean();
+   void afterClean();
 protected:
+   const TreeItem *recursiveRoot() const;
    void clearChildren();
    void grabChildren(TreeItem* item);
    void setParent(TreeItem* parent);
    void addChild(TreeItem* item);
    void removeChild(TreeItem* item);
+   TreeItem* findSupportChild(TreeItem* item);
 protected:
    TreeItem(NodeType type, NodeType acceptType, NodeType parentType);
-   bool isSupported(TreeItem* item) const;
+   virtual bool isSupported(TreeItem* item) const;
+
 protected:
       NodeType type_;
       NodeType acceptType_;
@@ -62,5 +67,7 @@ protected:
       TreeItem * parent_;
       std::vector<TreeItem*> children_;
 };
+
+
 
 #endif // TREEITEM_H

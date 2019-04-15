@@ -73,8 +73,20 @@ void TreeItem::addChild(TreeItem *item) {
 }
 
 void TreeItem::removeChild(TreeItem *item) {
-   emit
    children_.erase(std::remove(std::begin(children_), std::end(children_), item), std::end(children_));
+}
+
+TreeItem *TreeItem::findSupportChild(TreeItem *item)
+{
+   auto found = std::find_if(children_.begin(), children_.end(),
+                                       [item](TreeItem* child){
+      return child->isSupported(item);
+   });
+
+   if (found != children_.end()) {
+      return *found;
+   }
+   return nullptr;
 }
 
 TreeItem::TreeItem(TreeItem::NodeType type, TreeItem::NodeType acceptType, TreeItem::NodeType parentType)
@@ -92,3 +104,12 @@ bool TreeItem::isSupported(TreeItem *item) const {
 }
 
 
+
+const TreeItem *TreeItem::recursiveRoot() const
+{
+   if (!parent_){
+      return this;
+   }
+
+   return parent_->recursiveRoot();
+}

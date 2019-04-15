@@ -3,19 +3,28 @@
 
 #include "TreeItem.h"
 #include "ChatProtocol/DataObjects.h"
-
+class TreeMessageNode;
 class RootItem : public TreeItem {
    public:
-   RootItem() : TreeItem(NodeType::RootNode, NodeType::CategoryNode, NodeType::RootNode) {
+   RootItem ()
+      : TreeItem(NodeType::RootNode, NodeType::CategoryNode, NodeType::RootNode)
+   {
    }
 
    bool insertRoomObject(std::shared_ptr<Chat::RoomData> data);
    bool insertContactObject(std::shared_ptr<Chat::ContactRecordData> data);
    bool insertGeneralUserObject(std::shared_ptr<Chat::UserData> data);
    bool insertSearchUserObject(std::shared_ptr<Chat::UserData> data);
+   bool insertRoomMessage(std::shared_ptr<Chat::MessageData> message);
+   bool insertContactsMessage(std::shared_ptr<Chat::MessageData> message);
    void clear();
+   std::string currentUser() const;
+   void setCurrentUser(const std::string &currentUser);
+
 private:
+   bool insertMessageNode(TreeMessageNode * messageNode);
    bool insertNode(TreeItem* item);
+   std::string currentUser_;
 };
 
 class CategoryItem : public TreeItem {
@@ -38,6 +47,5 @@ public:
    private:
    std::shared_ptr<Chat::DataObject> dataObject_;
 };
-
 
 #endif // TREEMAPCLASSES_H

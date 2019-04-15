@@ -6,7 +6,6 @@
 
 #include "ChatClientTree/TreeObjects.h"
 
-
 class ChatClientUsersModel : public QAbstractItemModel
 {
 public:
@@ -25,6 +24,8 @@ public:
 private slots:
    void onBeforeUpdate();
    void onAfterUpdate();
+   void onBeforeClean();
+   void onAfterClean();
 private:
    QVariant categoryNodeData(const TreeItem *item, int role) const;
    QVariant categoryElementData(TreeItem *item, int role) const;

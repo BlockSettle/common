@@ -106,6 +106,7 @@ void ChatClient::OnLoginReturned(const Chat::LoginResponse &response)
 {
    if (response.getStatus() == Chat::LoginResponse::Status::LoginOk) {
       loggedIn_ = true;
+      root_->setCurrentUser(currentUserId_);
       auto request1 = std::make_shared<Chat::MessagesRequest>("", currentUserId_, currentUserId_);
       sendRequest(request1);
       auto request2 = std::make_shared<Chat::ContactsListRequest>("", currentUserId_);
@@ -292,6 +293,7 @@ void ChatClient::OnRoomMessages(const Chat::RoomMessagesResponse& response)
       const auto msg = Chat::MessageData::fromJSON(msgStr);
       msg->setFlag(Chat::MessageData::State::Acknowledged);
       chatDb_->add(*msg);
+      root_->insertRoomMessage(msg);
 
       if (msg->getState() & (int)Chat::MessageData::State::Encrypted) {
          if (!msg->decrypt(ownPrivKey_)) {
@@ -421,6 +423,7 @@ void ChatClient::OnMessages(const Chat::MessagesResponse &response)
 
       msg->setFlag(Chat::MessageData::State::Acknowledged);
       chatDb_->add(*msg);
+      root_->insertContactsMessage(msg);
 
       if (msg->getState() & (int)Chat::MessageData::State::Encrypted) {
          if (!msg->decrypt(ownPrivKey_)) {
