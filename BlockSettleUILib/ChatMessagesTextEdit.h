@@ -10,6 +10,7 @@
 #include <QTextTable>
 #include <QImage>
 #include <QMenu>
+#include "ChatClientUserView.h"
 
 namespace Chat {
    class MessageData;
@@ -46,7 +47,7 @@ private:
    QColor colorWhite_;
 };
 
-class ChatMessagesTextEdit : public QTextBrowser
+class ChatMessagesTextEdit : public QTextBrowser, public ViewItemWatcher
 {
    Q_OBJECT
 
@@ -114,6 +115,12 @@ private:
    QImage statusImageConnecting_;
    QImage statusImageOnline_;
    QImage statusImageRead_;
+
+   // ViewItemWatcher interface
+public:
+   void onElementSelected(CategoryElement *element) override;
 };
+
+
 
 #endif

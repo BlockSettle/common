@@ -163,10 +163,15 @@ void ChatClient::OnMessageChangeStatusResponse(const Chat::MessageChangeStatusRe
                   receiverId,
                   newStatus);
 
+
    if (chatDb_->updateMessageStatus(QString::fromStdString(messageId), newStatus)) {
       QString chatId = QString::fromStdString(response.messageSenderId() == currentUserId_
                     ? response.messageReceiverId()
                     : response.messageSenderId());
+      auto message = root_->findMessage(chatId.toStdString(), messageId);
+      if (message){
+         message->updateState(newStatus);
+      }
 
       emit MessageStatusUpdated(QString::fromStdString(messageId), chatId, newStatus);
    }

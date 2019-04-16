@@ -226,6 +226,9 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
    client_ = std::make_shared<ChatClient>(connectionManager, appSettings, logger);
    ui_->treeViewUsers->setModel(new ChatClientUsersModel(client_->getRootItem(), this));
    ui_->treeViewUsers->expandAll();
+   //ui_->treeViewUsers->setWatcher(std::make_shared<LoggerWatcher>());
+   ui_->treeViewUsers->setWatcher(std::shared_ptr<ViewItemWatcher>(ui_->textEditMessages));
+   ui_->treeViewUsers->setActiveChatLabel(ui_->labelActiveChat);
 
 
    chatUserListLogicPtr_->init(client_, logger);
@@ -263,8 +266,8 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
    connect(client_.get(), &ChatClient::SearchUserListReceived,
            this, &ChatWidget::onSearchUserListReceived);
 
-   connect(client_.get(), &ChatClient::MessagesUpdate, ui_->textEditMessages
-                        , &ChatMessagesTextEdit::onMessagesUpdate);
+//   connect(client_.get(), &ChatClient::MessagesUpdate, ui_->textEditMessages
+//                        , &ChatMessagesTextEdit::onMessagesUpdate);
    connect(client_.get(), &ChatClient::RoomMessagesUpdate, ui_->textEditMessages
                         , &ChatMessagesTextEdit::onRoomMessagesUpdate);
    connect(ui_->textEditMessages, &ChatMessagesTextEdit::rowsInserted,

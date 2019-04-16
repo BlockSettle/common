@@ -468,3 +468,29 @@ QString ChatMessagesTextEdit::toHtmlText(const QString &text)
 
    return changedText;
 }
+
+void ChatMessagesTextEdit::onElementSelected(CategoryElement *element)
+{
+   std::vector<std::shared_ptr<Chat::MessageData>> messages;
+   for (auto msg_item : element->getChildren()){
+      auto item = static_cast<TreeMessageNode*>(msg_item);
+      auto msg = item->getMessage();
+      messages.push_back(msg);
+   }
+
+   auto data = element->getDataObject();
+   switch (data->getType()) {
+      case Chat::DataObject::Type::RoomData:{
+         auto room = std::dynamic_pointer_cast<Chat::RoomData>(data);
+         switchToChat(room->getId(), true);
+         onRoomMessagesUpdate(messages, true);
+      } break;
+      case Chat::DataObject::Type::ContactRecordData: {
+         auto contact = std::dynamic_pointer_cast<Chat::ContactRecordData>(data);
+         switchToChat(contact->getContactId(), false);
+         onMessagesUpdate(messages, true);
+      } break;
+      default:
+         return;
+   }
+}
