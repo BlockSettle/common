@@ -444,9 +444,9 @@ inline std::vector<std::string> INIReader::GetStringList(std::string section, st
       size_t pos = 0;
       std::string token;
       while ((pos = valstr.find(delimiter)) != std::string::npos) {
-          token = valstr.substr(0, pos);
-          values.push_back(token);
-          valstr.erase(0, pos + delimiter.length());
+         token = valstr.substr(0, pos);
+         values.push_back(token);
+         valstr.erase(0, pos + delimiter.length());
       }
       values.push_back(valstr);
 
