@@ -348,6 +348,10 @@ public:
     // and valid false values are "false", "no", "off", "0" (not case sensitive).
     bool GetBoolean(std::string section, std::string name, bool default_value) const;
 
+    // Get a std::vector<std::string> value from INI file, returning default_value if not found or if
+    // not a valid value. Valid values are comma separated strings.
+    std::vector<std::string> GetStringList(std::string section, std::string name
+       , std::vector<std::string> default_value = std::vector<std::string>()) const;
 protected:
     int _error;
     std::map<std::string, std::string> _values;
@@ -422,7 +426,35 @@ inline bool INIReader::GetBoolean(std::string section, std::string name, bool de
     else if (valstr == "false" || valstr == "no" || valstr == "off" || valstr == "0")
         return false;
     else
-        return default_value;
+       return default_value;
+}
+
+inline std::vector<std::string> INIReader::GetStringList(std::string section, std::string name, std::vector<std::string> default_value) const
+{
+   std::string valstr = Get(section, name, "");
+
+   // workaround for https://bugreports.qt.io/browse/QTBUG-51237
+   if (valstr == "@Invalid()")
+      return default_value;
+
+   if (!valstr.empty()) {
+      std::vector<std::string> values;
+      std::string delimiter = ",";
+
+      size_t pos = 0;
+      std::string token;
+      while ((pos = valstr.find(delimiter)) != std::string::npos) {
+          token = valstr.substr(0, pos);
+          values.push_back(token);
+          valstr.erase(0, pos + delimiter.length());
+      }
+      values.push_back(valstr);
+
+      return values;
+   }
+   else {
+      return default_value;
+   }
 }
 
 inline std::string INIReader::MakeKey(std::string section, std::string name)
