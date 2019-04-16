@@ -216,6 +216,14 @@ void NotificationTrayIconResponder::respond(bs::ui::NotifyType nt, bs::ui::Notif
       text = msg[1].toString();
       break;
 
+   case bs::ui::NotifyType::FriendRequest:
+      if (msg.size() != 1) {
+         return;
+      }
+      title = tr("New friend request");
+      text = msg[0].toString() + tr(" wants to be friends with you");
+      break;
+
    default: return;
    }
 
