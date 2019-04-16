@@ -65,6 +65,57 @@ bool RootItem::insertContactsMessage(std::shared_ptr<Chat::MessageData> message)
    return res;
 }
 
+TreeItem* RootItem::findChatNode(const std::string &chatId)
+{
+   for (auto child : children_){ // through all categories
+      switch (child->getAcceptType()) {
+         case TreeItem::NodeType::RoomsElement:
+         case TreeItem::NodeType::ContactsElement:
+            for (auto cchild : child->getChildren()){
+               auto data = static_cast<CategoryElement*>(cchild)->getDataObject();
+               switch (data->getType()){
+                  case Chat::DataObject::Type::RoomData:{
+                     auto room = std::dynamic_pointer_cast<Chat::RoomData>(data);
+                     if (room->getId().toStdString() == chatId){
+                        return cchild;
+                     }
+                  }
+                     break;
+                  case Chat::DataObject::Type::ContactRecordData: {
+                     auto contact = std::dynamic_pointer_cast<Chat::ContactRecordData>(data);
+                     if (contact->getContactId().toStdString() == chatId){
+                        return cchild;
+                     }
+                  }
+                     break;
+                  default:
+                     break;
+
+               }
+            }
+            break;
+         default:
+            break;
+
+      }
+   }
+   return nullptr;
+}
+
+std::shared_ptr<Chat::MessageData> RootItem::findMessage(const std::string &chatId, const std::string &messgeId)
+{
+   TreeItem* chatNode = findChatNode(chatId);
+   if (chatNode && chatNode->getAcceptType() == TreeItem::NodeType::MessageDataNode){
+         for (auto child : chatNode->getChildren()){
+            auto message = std::dynamic_pointer_cast<Chat::MessageData>(static_cast<CategoryElement*>(child)->getDataObject());
+            if (message->getId().toStdString() == messgeId){
+               return message;
+            }
+         }
+   }
+   return  nullptr;
+}
+
 void RootItem::clear()
 {
    emit beforeClean();

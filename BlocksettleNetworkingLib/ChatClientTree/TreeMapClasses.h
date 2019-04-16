@@ -17,6 +17,8 @@ class RootItem : public TreeItem {
    bool insertSearchUserObject(std::shared_ptr<Chat::UserData> data);
    bool insertRoomMessage(std::shared_ptr<Chat::MessageData> message);
    bool insertContactsMessage(std::shared_ptr<Chat::MessageData> message);
+   TreeItem* findChatNode(const std::string& chatId);
+   std::shared_ptr<Chat::MessageData> findMessage(const std::string& chatId, const std::string& messgeId);
    void clear();
    std::string currentUser() const;
    void setCurrentUser(const std::string &currentUser);

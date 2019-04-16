@@ -132,7 +132,11 @@ void ChatClient::OnSendMessageResponse(const Chat::SendMessageResponse& response
       QString localId = QString::fromStdString(response.clientMessageId());
       QString serverId = QString::fromStdString(response.serverMessageId());
       QString receiverId = QString::fromStdString(response.receiverId());
-      bool res = chatDb_->syncMessageId(localId, serverId);
+      auto message = root_->findMessage(receiverId.toStdString(), localId.toStdString());
+      if (message){
+         message->setId(serverId);
+      }
+      bool res = message && chatDb_->syncMessageId(localId, serverId);
 
       logger_->debug("[ChatClient::OnSendMessageResponse]: message id sync: {}", res?"Success":"Failed");
 
@@ -577,6 +581,7 @@ std::shared_ptr<Chat::MessageData> ChatClient::sendRoomOwnMessage(const QString&
 //      logger_->error("[ChatClient::sendRoomOwnMessage] failed to encrypt by local key");
 //   }
    chatDb_->add(msg);
+   root_->insertRoomMessage(result);
 
 //   if (!msg.encrypt(itPub->second)) {
 //      logger_->error("[ChatClient::sendMessage] failed to encrypt message {}"
