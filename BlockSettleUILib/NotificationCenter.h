@@ -33,7 +33,7 @@ namespace bs {
          BroadcastError,
          NewVersion,
          UpdateUnreadMessage,
-		 FriendRequest,
+         FriendRequest,
       };
 
       using NotifyMessage = QList<QVariant>;
