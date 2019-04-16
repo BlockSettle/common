@@ -63,6 +63,8 @@ namespace Chat
    enum class ContactStatus {
       Accepted,
       Rejected,
+      Incoming,
+      Outgoing
    };
 
    enum class UserStatus {

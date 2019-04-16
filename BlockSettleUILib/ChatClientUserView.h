@@ -20,18 +20,22 @@ public:
 };
 
 
-
+class ChatUsersContextMenu;
 class ChatClientUserView : public QTreeView
 {
+   Q_OBJECT
 public:
    ChatClientUserView(QWidget * parent = nullptr);
    void setWatcher(std::shared_ptr<ViewItemWatcher> watcher);
    void setActiveChatLabel(QLabel * label);
+public slots:
+   void onCustomContextMenu(const QPoint &);
 private:
    void updateDependUI(CategoryElement * element);
 private:
    std::shared_ptr<ViewItemWatcher> watcher_;
    QLabel * label_;
+   ChatUsersContextMenu* contextMenu_;
 
 
    // QAbstractItemView interface

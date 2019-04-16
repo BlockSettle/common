@@ -62,6 +62,7 @@ ChatClient::ChatClient(const std::shared_ptr<ConnectionManager>& connectionManag
    connect(&heartbeatTimer_, &QTimer::timeout, this, &ChatClient::sendHeartbeat);
    //heartbeatTimer_.start();
 
+   //Init base item categories in the tree
    root_->insertItem(new CategoryItem(TreeItem::NodeType::RoomsElement));
    root_->insertItem(new CategoryItem(TreeItem::NodeType::ContactsElement));
 }
@@ -107,6 +108,7 @@ void ChatClient::OnLoginReturned(const Chat::LoginResponse &response)
    if (response.getStatus() == Chat::LoginResponse::Status::LoginOk) {
       loggedIn_ = true;
       root_->setCurrentUser(currentUserId_);
+      readDatabase();
       auto request1 = std::make_shared<Chat::MessagesRequest>("", currentUserId_, currentUserId_);
       sendRequest(request1);
       auto request2 = std::make_shared<Chat::ContactsListRequest>("", currentUserId_);
@@ -302,7 +304,6 @@ void ChatClient::OnRoomMessages(const Chat::RoomMessagesResponse& response)
       const auto msg = Chat::MessageData::fromJSON(msgStr);
       msg->setFlag(Chat::MessageData::State::Acknowledged);
       chatDb_->add(*msg);
-      root_->insertRoomMessage(msg);
 
       if (msg->getState() & (int)Chat::MessageData::State::Encrypted) {
          if (!msg->decrypt(ownPrivKey_)) {
@@ -310,6 +311,7 @@ void ChatClient::OnRoomMessages(const Chat::RoomMessagesResponse& response)
             msg->setFlag(Chat::MessageData::State::Invalid);
          }
       }
+      root_->insertRoomMessage(msg);
       messages.push_back(msg);
       //int mask = old_state ^ msg->getState();
       //sendUpdateMessageState(msg);
@@ -365,6 +367,11 @@ void ChatClient::sendRequest(const std::shared_ptr<Chat::Request>& request)
       logger_->error("Connection is not alive!");
    }
    connection_->send(requestData);
+}
+
+void ChatClient::readDatabase()
+{
+
 }
 
 void ChatClient::sendHeartbeat()

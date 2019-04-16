@@ -20,7 +20,7 @@ class ChatContactElement : public CategoryElement {
 public:
    ChatContactElement(std::shared_ptr<Chat::ContactRecordData> data)
       : CategoryElement(TreeItem::NodeType::ContactsElement, TreeItem::NodeType::MessageDataNode, data){}
-
+   std::shared_ptr<Chat::ContactRecordData> getContactData();
 
    // TreeItem interface
 protected:

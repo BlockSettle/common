@@ -31,6 +31,11 @@ bool ChatRoomElement::isSupported(TreeItem *item) const
    return byTypes && byData;
 }
 
+std::shared_ptr<Chat::ContactRecordData> ChatContactElement::getContactData()
+{
+   return std::dynamic_pointer_cast<Chat::ContactRecordData>(getDataObject());
+}
+
 bool ChatContactElement::isSupported(TreeItem *item) const
 {
    bool byTypes = CategoryElement::isSupported(item);

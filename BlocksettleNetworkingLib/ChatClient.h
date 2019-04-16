@@ -96,6 +96,7 @@ public:
 
 private:
    void sendRequest(const std::shared_ptr<Chat::Request>& request);
+   void readDatabase();
 
 signals:
    void ConnectedToServer();
