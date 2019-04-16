@@ -29,7 +29,13 @@ public:
    ZmqBIP15XDataConnection(ZmqBIP15XDataConnection&&) = delete;
    ZmqBIP15XDataConnection& operator= (ZmqBIP15XDataConnection&&) = delete;
 
-   SecureBinaryData getOwnPubKey() const;
+   void setCBs(const std::function<void(const std::string&, const std::string&
+      , std::shared_ptr<std::promise<bool>>)> &cbNewKey
+      , const std::function<void(const std::string&, const std::string&
+      , std::shared_ptr<std::promise<bool>>
+      , const std::function<void(const std::string&, const std::string&
+      , std::shared_ptr<std::promise<bool>>)>)> &invokeCB);
+   BinaryData getOwnPubKey() const;
 
    // Overridden functions from ZmqDataConnection.
    bool send(const std::string& data) override; // Send data from outside class.
@@ -72,6 +78,26 @@ private:
    uint32_t msgID_ = 0;
    std::function<void()>   cbCompleted_ = nullptr;
    const int   heartbeatInterval_ = 30000;
+
+   // DESIGN NOTE: The data connection should have a callback for when unknown
+   // server keys are seen. The callback should ask the user if they'll accept
+   // the new key. It's not as simple as calling the callback, unfortunately. We
+   // may have to access Qt resources, which aren't allowed here. When accessing
+   // them, we may have to use QMetaObject::invokeMethod(), which is another Qt
+   // call. The solution? Have two separate callbacks: One that does what we
+   // really want, and one that properly invokes the other callback. (Clear as
+   // mud, right?) The key acceptance functionality is as follows:
+   //
+   // New key + No callbacks - Reject the new keys.
+   // New key + Callbacks - Depends on what the user wants.
+   // Previously verified key - Accept the key and skip the callbacks.
+   std::function<void(const std::string&, const std::string&
+      , std::shared_ptr<std::promise<bool>>)> cbNewKey_;
+   std::function<void(const std::string&, const std::string&
+      , std::shared_ptr<std::promise<bool>>
+      , const std::function<void(const std::string&, const std::string&
+      , std::shared_ptr<std::promise<bool>>)>)> invokeCB_;
+
    std::chrono::steady_clock::time_point  lastHeartbeat_;
    std::atomic_bool        hbThreadRunning_;
    std::thread             hbThread_;

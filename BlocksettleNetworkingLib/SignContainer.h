@@ -133,7 +133,13 @@ std::shared_ptr<SignContainer> CreateSigner(const std::shared_ptr<spdlog::logger
    , const std::shared_ptr<ApplicationSettings> &
    , SignContainer::OpMode
    , const QString &host
-   , const std::shared_ptr<ConnectionManager> & connectionManager);
+   , const std::shared_ptr<ConnectionManager> & connectionManager
+   , const std::function<void(const std::string&, const std::string&
+      , std::shared_ptr<std::promise<bool>>)> &cbNewKey = nullptr
+   , const std::function<void(const std::string&, const std::string&
+      , std::shared_ptr<std::promise<bool>>
+      , const std::function<void(const std::string&, const std::string&
+      , std::shared_ptr<std::promise<bool>>)>)> &invokeCB = nullptr);
 
 bool SignerConnectionExists(const QString &host, const QString &port);
 

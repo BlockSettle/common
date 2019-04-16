@@ -17,11 +17,28 @@ SignContainer::SignContainer(const std::shared_ptr<spdlog::logger> &logger, OpMo
    qRegisterMetaType<std::shared_ptr<bs::hd::Wallet>>();
 }
 
-
+// Create the signer object (local, remote, or offline). Note that the callbacks
+// are null by default and aren't required by the offline signer.
+//
+// INPUT:  The logger to use. (const std::shared_ptr<spdlog::logger>)
+//         The application settings. (const std::shared_ptr<ApplicationSettings>)
+//         The signer mode (local/remote/offline). (SignContainer::OpMode)
+//         The host address. (const QString)
+//         The signer connection manager. (const std::shared_ptr<ConnectionManager>)
+//         The callback to invoke on a new BIP 150 ID key. (const std::function)
+//         The callback to invoke the BIP 150 ID key callback. (const std::function)
+// OUTPUT: N/A
+// RETURN: A pointer to the signer object.
 std::shared_ptr<SignContainer> CreateSigner(const std::shared_ptr<spdlog::logger> &logger
    , const std::shared_ptr<ApplicationSettings> &appSettings
    , SignContainer::OpMode runMode, const QString &host
-   , const std::shared_ptr<ConnectionManager>& connectionManager)
+   , const std::shared_ptr<ConnectionManager>& connectionManager
+   , const std::function<void(const std::string&, const std::string&
+      , std::shared_ptr<std::promise<bool>>)> &cbNewKey
+   , const std::function<void(const std::string&, const std::string&
+      , std::shared_ptr<std::promise<bool>>
+      , const std::function<void(const std::string&, const std::string&
+      , std::shared_ptr<std::promise<bool>>)>)> &invokeCB)
 {
    if (connectionManager == nullptr) {
       logger->error("[{}] need connection manager to create signer", __func__);
@@ -36,11 +53,12 @@ std::shared_ptr<SignContainer> CreateSigner(const std::shared_ptr<spdlog::logger
    case SignContainer::OpMode::Local:
       return std::make_shared<LocalSigner>(logger, appSettings->GetHomeDir()
          , netType, port, connectionManager, appSettings, runMode
-         , appSettings->get<double>(ApplicationSettings::autoSignSpendLimit));
+         , appSettings->get<double>(ApplicationSettings::autoSignSpendLimit)
+         , cbNewKey, invokeCB);
 
    case SignContainer::OpMode::Remote:
       return std::make_shared<RemoteSigner>(logger, host, port, netType
-         , connectionManager, appSettings);
+         , connectionManager, appSettings, runMode, cbNewKey, invokeCB);
 
    case SignContainer::OpMode::Offline:
       return std::make_shared<OfflineSigner>(logger, appSettings->GetHomeDir()

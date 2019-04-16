@@ -966,11 +966,19 @@ RemoteSigner::RemoteSigner(const std::shared_ptr<spdlog::logger> &logger
    , const QString &host, const QString &port, NetworkType netType
    , const std::shared_ptr<ConnectionManager>& connectionManager
    , const std::shared_ptr<ApplicationSettings>& appSettings
-   , OpMode opMode)
+   , OpMode opMode
+   , const std::function<void(const std::string&, const std::string&
+      , std::shared_ptr<std::promise<bool>>)> &cbNewKey
+   , const std::function<void(const std::string&, const std::string&
+      , std::shared_ptr<std::promise<bool>>
+      , const std::function<void(const std::string&, const std::string&
+      , std::shared_ptr<std::promise<bool>>)>)> &invokeCB)
    : HeadlessContainer(logger, opMode)
    , host_(host), port_(port), netType_(netType)
    , connectionManager_{connectionManager}
    , appSettings_{appSettings}
+   , cbNewKey_{cbNewKey}
+   , invokeCB_{invokeCB}
 {}
 
 // Establish the remote connection to the signer.
@@ -981,6 +989,7 @@ bool RemoteSigner::Start()
    }
 
    connection_ = connectionManager_->CreateZMQBIP15XDataConnection();
+   connection_->setCBs(cbNewKey_, invokeCB_);
    if (opMode() == OpMode::RemoteInproc) {
       connection_->SetZMQTransport(ZMQTransport::InprocTransport);
    }
@@ -1179,12 +1188,17 @@ LocalSigner::LocalSigner(const std::shared_ptr<spdlog::logger> &logger
    , const QString &homeDir, NetworkType netType, const QString &port
    , const std::shared_ptr<ConnectionManager>& connectionManager
    , const std::shared_ptr<ApplicationSettings> &appSettings
-   , SignContainer::OpMode mode, double asSpendLimit)
+   , SignContainer::OpMode mode, double asSpendLimit
+   , const std::function<void(const std::string&, const std::string&
+      , std::shared_ptr<std::promise<bool>>)> &cbNewKey
+   , const std::function<void(const std::string&, const std::string&
+      , std::shared_ptr<std::promise<bool>>
+      , const std::function<void(const std::string&, const std::string&
+      , std::shared_ptr<std::promise<bool>>)>)> &invokeCB)
    : RemoteSigner(logger, QLatin1String("127.0.0.1"), port, netType
-   , connectionManager, appSettings, mode)
+   , connectionManager, appSettings, mode, cbNewKey, invokeCB)
    , homeDir_(homeDir), asSpendLimit_(asSpendLimit)
-{
-}
+{}
 
 QStringList LocalSigner::args() const
 {

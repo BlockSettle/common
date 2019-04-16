@@ -467,8 +467,45 @@ std::shared_ptr<SignContainer> BSTerminalMainWindow::createSigner()
       signerHost = QLatin1String("127.0.0.1");
    }
 
+   // Define the callback that will be used to determine if the signer's BIP
+   // 150 identity key, if it has changed, will be accepted. It needs strings
+   // for the old and new keys, and a promise to set once the user decides.
+   auto cbNewKey = [this](const std::string& oldKey, const std::string& newKey
+      , std::shared_ptr<std::promise<bool>> newKeyProm)->void {
+      BSMessageBox *box = new BSMessageBox(BSMessageBox::question
+         , tr("Server identity key has changed")
+         , tr("Do you wish to import the new server identity key?")
+         , tr("Old Key: %1\nNew Key: %2")
+         .arg(QString::fromStdString(oldKey))
+         .arg(QString::fromStdString(newKey))
+         , this);
+      box->setMinimumWidth(650);
+      box->setMaximumWidth(650);
+
+      bool answer = (box->exec() == QDialog::Accepted);
+      box->deleteLater();
+
+      if (answer) {
+         newKeyProm->set_value(true);
+      }
+      else {
+         newKeyProm->set_value(false);
+      }
+   };
+
+   // Define the callback that will invoke the actual callback to run when a
+   // signer's new BIP 150 identity key has appeared.
+   auto invokeCB = [this](const std::string& oldKey, const std::string& newKey
+      , std::shared_ptr<std::promise<bool>> newKeyProm
+      , const std::function<void(const std::string&, const std::string&
+      , std::shared_ptr<std::promise<bool>>)> finalCB) {
+      QMetaObject::invokeMethod(this, [oldKey, newKey, newKeyProm, finalCB] {
+         finalCB(oldKey, newKey, newKeyProm);
+      });
+   };
+
    retPtr = CreateSigner(logMgr_->logger(), applicationSettings_, runMode
-      , signerHost, connectionManager_);
+      , signerHost, connectionManager_, cbNewKey, invokeCB);
    return retPtr;
 }
 

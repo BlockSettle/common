@@ -126,7 +126,13 @@ public:
       , const QString &port, NetworkType netType
       , const std::shared_ptr<ConnectionManager>& connectionManager
       , const std::shared_ptr<ApplicationSettings>& appSettings
-      , OpMode opMode = OpMode::Remote);
+      , OpMode opMode = OpMode::Remote
+      , const std::function<void(const std::string&, const std::string&
+         , std::shared_ptr<std::promise<bool>>)> &cbNewKey = nullptr
+      , const std::function<void(const std::string&, const std::string&
+         , std::shared_ptr<std::promise<bool>>
+         , const std::function<void(const std::string&, const std::string&
+         , std::shared_ptr<std::promise<bool>>)>)> &invokeCB = nullptr);
    ~RemoteSigner() noexcept = default;
 
    bool Start() override;
@@ -154,6 +160,12 @@ protected:
    const NetworkType                          netType_;
    std::shared_ptr<ZmqBIP15XDataConnection>   connection_;
    std::shared_ptr<ApplicationSettings>       appSettings_;
+   std::function<void(const std::string&, const std::string&
+      , std::shared_ptr<std::promise<bool>>)> cbNewKey_;
+   std::function<void(const std::string&, const std::string&
+      , std::shared_ptr<std::promise<bool>>
+      , const std::function<void(const std::string&, const std::string&
+      , std::shared_ptr<std::promise<bool>>)>)> invokeCB_;
 
 private:
    std::shared_ptr<ConnectionManager> connectionManager_;
@@ -169,7 +181,13 @@ public:
       , const std::shared_ptr<ConnectionManager>& connectionManager
       , const std::shared_ptr<ApplicationSettings>& appSettings
       , SignContainer::OpMode mode = OpMode::Local
-      , double asSpendLimit = 0);
+      , double asSpendLimit = 0
+      , const std::function<void(const std::string&, const std::string&
+         , std::shared_ptr<std::promise<bool>>)> &cbNewKey = nullptr
+      , const std::function<void(const std::string&, const std::string&
+         , std::shared_ptr<std::promise<bool>>
+         , const std::function<void(const std::string&, const std::string&
+         , std::shared_ptr<std::promise<bool>>)>)> &invokeCB = nullptr);
    ~LocalSigner() noexcept = default;
 
    bool Start() override;

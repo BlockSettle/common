@@ -4,6 +4,7 @@
 #include "FastLock.h"
 #include "MessageHolder.h"
 #include "ZMQ_BIP15X_DataConnection.h"
+#include "BIP150_151.h"
 
 using namespace std;
 
@@ -662,28 +663,76 @@ bool ZmqBIP15XDataConnection::processAEADHandshake(
    return true;
 }
 
+// Set the callbacks to be used when asking if the user wishes to accept BIP 150
+// identity keys from a server.
+//
+// INPUT:  The callback that will ask the user.
+//         The callback that will invoke the user-asking callback.
+// OUTPUT: N/A
+// RETURN: N/A
+void ZmqBIP15XDataConnection::setCBs(
+   const std::function<void(const std::string&, const std::string&
+   , std::shared_ptr<std::promise<bool>>)> &cbNewKey
+   , const std::function<void(const std::string&, const std::string&
+   , std::shared_ptr<std::promise<bool>>
+   , const std::function<void(const std::string&, const std::string&
+   , std::shared_ptr<std::promise<bool>>)>)> &invokeCB) {
+      cbNewKey_ = cbNewKey;
+      invokeCB_ = invokeCB;
+   }
+
 // If the user is presented with a new server identity key, ask what they want.
 void ZmqBIP15XDataConnection::promptUser(const BinaryDataRef& newKey
    , const string& srvAddrPort)
 {
-   // TO DO: Insert a user prompt. For now, just approve the key and add it to
-   // the set of approved keys. This needs to be fixed ASAP!
    auto authPeerNameMap = authPeers_->getPeerNameMap();
    auto authPeerNameSearch = authPeerNameMap.find(srvAddrPort);
    if (authPeerNameSearch == authPeerNameMap.end()) {
       logger_->info("[{}] New key ({}) for server [{}] arrived.", __func__
          , newKey.toHexStr(), srvAddrPort);
-      vector<string> keyName;
-      keyName.push_back(srvAddrPort);
-      authPeers_->addPeer(newKey.copy(), keyName);
-      serverPubkeyProm_->set_value(true);
+
+      // Ask the user if they wish to accept the new identity key.
+      if (invokeCB_ && cbNewKey_) {
+         BinaryData oldKey(authPeerNameMap[srvAddrPort].pubkey, BIP151PUBKEYSIZE);
+         invokeCB_(oldKey.toHexStr(), newKey.toHexStr()
+            , serverPubkeyProm_, cbNewKey_);
+
+         //have we seen the server's pubkey?
+         if (serverPubkeyProm_ != nullptr) {
+            //if so, wait on the promise
+            auto serverProm = serverPubkeyProm_;
+            auto fut = serverProm->get_future();
+            fut.wait();
+            serverPubkeyProm_.reset();
+         }
+         vector<string> keyName;
+         keyName.push_back(srvAddrPort);
+         authPeers_->addPeer(newKey.copy(), keyName);
+         logger_->info("[{}] Server at {} has had its identity key (0x{}) "
+            "replaced with (0x{}). Connection accepted.", __func__, srvAddrPort
+            , oldKey.toHexStr(), newKey.toHexStr());
+      }
+      else {
+         logger_->info("[{}] Server at {} cannot have its new identity key "
+            "(0x{}) verified. Connection rejected.", __func__, srvAddrPort
+            , newKey.toHexStr());
+         serverPubkeyProm_->set_value(false);
+      }
    }
    else {
+      logger_->info("[{}] Server at {} has not replaced its verified identity "
+         "key (0x{}). Connection accepted.", __func__, srvAddrPort
+         , newKey.toHexStr());
       serverPubkeyProm_->set_value(true);
    }
 }
 
-SecureBinaryData ZmqBIP15XDataConnection::getOwnPubKey() const
+// Get our own BIP 150 identity public key.
+//
+// INPUT:  N/A
+// OUTPUT: N/A
+// RETURN: A buffer with our identity key. (BinaryData)
+BinaryData ZmqBIP15XDataConnection::getOwnPubKey() const
 {
    const auto pubKey = authPeers_->getOwnPublicKey();
    return SecureBinaryData(pubKey.pubkey, pubKey.compressed
