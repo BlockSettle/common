@@ -177,11 +177,12 @@ void BSTerminalMainWindow::setWidgetsAuthorized(bool authorized)
    ui_->widgetPortfolio->setAuthorized(authorized);
    ui_->widgetRFQ->setAuthorized(authorized);
    ui_->widgetChart->setAuthorized(authorized);
+
    // Enable/disable authorized tabs
-   ui_->tabWidget->setTabEnabled(1, authorized);//Trade
-   ui_->tabWidget->setTabEnabled(2, authorized);//Dealing
-   ui_->tabWidget->setTabEnabled(3, authorized);//Chart
-   ui_->tabWidget->setTabEnabled(7, authorized);//Chats
+   ui_->tabWidget->setTabEnabled(ui_->tabWidget->indexOf(ui_->widgetRFQ), authorized);
+   ui_->tabWidget->setTabEnabled(ui_->tabWidget->indexOf(ui_->widgetRFQReply), authorized);
+   ui_->tabWidget->setTabEnabled(ui_->tabWidget->indexOf(ui_->widgetChart), authorized);
+   ui_->tabWidget->setTabEnabled(ui_->tabWidget->indexOf(ui_->widgetChat), authorized);
 }
 
 void BSTerminalMainWindow::GetNetworkSettingsFromPuB(const std::function<void()> &cb)
