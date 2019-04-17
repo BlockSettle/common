@@ -1,5 +1,7 @@
 #include "ChatClientUsersModel.h"
 #include <algorithm>
+#include <QColor>
+
 ChatClientUsersModel::ChatClientUsersModel(std::shared_ptr<TreeItem> root, QObject * parent)
     : QAbstractItemModel(parent)
     , root_(root)
@@ -132,27 +134,44 @@ QVariant ChatClientUsersModel::categoryNodeData(const TreeItem* item, int role) 
 
 QVariant ChatClientUsersModel::categoryElementData(TreeItem * item, int role) const
 {
-   if (role != Qt::DisplayRole)
-       return QVariant();
-
    CategoryElement* element = static_cast<CategoryElement*>(item);
-
    switch(element->getType()){
       case TreeItem::NodeType::RoomsElement:{
          std::shared_ptr<Chat::RoomData> data = std::dynamic_pointer_cast<Chat::RoomData>(element->getDataObject());
-         return data->getTitle();
-      }
+         if (role == Qt::DisplayRole){
+            return data->getTitle();
+         } else if (role == Qt::TextColorRole) {
+            return QColor(0x00c8f8);
+         }
+      } break;
       case TreeItem::NodeType::ContactsElement:{
          std::shared_ptr<Chat::ContactRecordData> data = std::dynamic_pointer_cast<Chat::ContactRecordData>(element->getDataObject());
-         return data->getContactId();
-      }
+         if (role == Qt::DisplayRole){
+            return data->getContactId();
+         } else if (role == Qt::TextColorRole){
+            switch (data->getContactStatus()) {
+               case Chat::ContactStatus::Accepted:
+                  return QColor(0x00c8f8);
+               case Chat::ContactStatus::Rejected:
+                  return QColor(Qt::red);
+               case Chat::ContactStatus::Incoming:
+                  return QColor(0xffa834);
+               case Chat::ContactStatus::Outgoing:
+                  return QColor(0xA0BC5D);
+
+            }
+         }
+      } break;
       case TreeItem::NodeType::AllUsersElement:{
          std::shared_ptr<Chat::UserData> data = std::dynamic_pointer_cast<Chat::UserData>(element->getDataObject());
-         return data->getUserId();
-      }
+         if (role == Qt::DisplayRole){
+            return data->getUserId();
+         }
+      } break;
       default:
          return QLatin1String("<unknown>");
    }
+   return QVariant();
 }
 
 Qt::ItemFlags ChatClientUsersModel::flags(const QModelIndex &index) const

@@ -4,12 +4,8 @@
 #include <QTreeView>
 #include <QLabel>
 #include <QDebug>
-class CategoryElement;
-class ViewItemWatcher {
-public:
-   virtual void onElementSelected(CategoryElement* element) = 0;
-   virtual ~ViewItemWatcher() = default;
-};
+#include "ChatHandleInterfaces.h"
+
 
 class LoggerWatcher : public ViewItemWatcher {
 
@@ -28,12 +24,15 @@ public:
    ChatClientUserView(QWidget * parent = nullptr);
    void setWatcher(std::shared_ptr<ViewItemWatcher> watcher);
    void setActiveChatLabel(QLabel * label);
+   void setHandler(std::shared_ptr<ChatItemActionsHandler> handler);
+
 public slots:
    void onCustomContextMenu(const QPoint &);
 private:
    void updateDependUI(CategoryElement * element);
 private:
    std::shared_ptr<ViewItemWatcher> watcher_;
+   std::shared_ptr<ChatItemActionsHandler> handler_;
    QLabel * label_;
    ChatUsersContextMenu* contextMenu_;
 

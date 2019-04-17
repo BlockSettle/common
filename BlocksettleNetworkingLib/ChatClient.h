@@ -13,7 +13,7 @@
 #include <QAbstractItemModel>
 
 #include "ChatClientTree/TreeObjects.h"
-
+#include "../BlockSettleUILib/ChatHandleInterfaces.h"
 namespace spdlog {
    class logger;
 }
@@ -30,6 +30,7 @@ class UserHasher;
 class ChatClient : public QObject
              , public DataConnectionListener
              , public Chat::ResponseHandler
+             , public ChatItemActionsHandler
 {
    Q_OBJECT
 
@@ -151,6 +152,21 @@ private:
 
    autheid::PrivateKey  ownPrivKey_;
    std::shared_ptr<RootItem> root_;
+
+   // ChatItemActionsHandler interface
+public:
+   void onActionAddToContacts(std::shared_ptr<Chat::ContactRecordData> crecord) override;
+   void onActionRemoveFromContacts(std::shared_ptr<Chat::ContactRecordData> crecord) override;
+   void onActionAcceptContactRequest(std::shared_ptr<Chat::ContactRecordData> crecord) override;
+   void onActionRejectContactRequest(std::shared_ptr<Chat::ContactRecordData> crecord) override;
 };
+
+
+
+
+
+
+
+
 
 #endif   // CHAT_CLIENT_H

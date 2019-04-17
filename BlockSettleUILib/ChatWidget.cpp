@@ -228,6 +228,7 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
    ui_->treeViewUsers->expandAll();
    //ui_->treeViewUsers->setWatcher(std::make_shared<LoggerWatcher>());
    ui_->treeViewUsers->setWatcher(std::shared_ptr<ViewItemWatcher>(ui_->textEditMessages));
+   ui_->treeViewUsers->setHandler(client_);
    ui_->treeViewUsers->setActiveChatLabel(ui_->labelActiveChat);
 
 

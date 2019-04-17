@@ -12,6 +12,7 @@
 #include "UserHasher.h"
 
 #include <QDateTime>
+#include <QDebug>
 
 Q_DECLARE_METATYPE(std::shared_ptr<Chat::MessageData>)
 Q_DECLARE_METATYPE(std::vector<std::shared_ptr<Chat::MessageData>>)
@@ -203,6 +204,12 @@ void ChatClient::OnContactsActionResponseDirect(const Chat::ContactsActionRespon
       case Chat::ContactsAction::Request: {
          actionString = "ContactsAction::Request";
          QString senderId = QString::fromStdString(response.senderId());
+         QString userId = QString::fromStdString(response.receiverId());
+         QString contactId = QString::fromStdString(response.senderId());
+         autheid::PublicKey pk = response.getSenderPublicKey();
+
+         auto contact = std::make_shared<Chat::ContactRecordData>(userId, contactId, Chat::ContactStatus::Incoming, pk);
+         root_->insertContactObject(contact);
          addOrUpdateContact(senderId, ContactUserData::Status::Incoming);
          //addOrUpdateContact(QString::fromStdString(response.senderId()), QStringLiteral(""), true);
          pubKeys_[senderId] = response.getSenderPublicKey();
@@ -671,6 +678,8 @@ bool ChatClient::removeContact(const QString &userId)
 void ChatClient::sendFriendRequest(const QString &friendUserId)
 {
    // TODO
+   auto record = std::make_shared<Chat::ContactRecordData>(QString::fromStdString(root_->currentUser()), friendUserId, Chat::ContactStatus::Outgoing, autheid::PublicKey());
+   root_->insertContactObject(record);
    auto request = std::make_shared<Chat::ContactActionRequestDirect>("", currentUserId_, friendUserId.toStdString(), Chat::ContactsAction::Request, appSettings_->GetAuthKeys().second);
    sendRequest(request);
 }
@@ -707,4 +716,24 @@ void ChatClient::sendSearchUsersRequest(const QString &userIdPattern)
 QString ChatClient::deriveKey(const QString &email) const
 {
    return QString::fromStdString(hasher_->deriveKey(email.toStdString()));
+}
+
+void ChatClient::onActionAddToContacts(std::shared_ptr<Chat::ContactRecordData> crecord)
+{
+   qDebug() << __func__ << " " << QString::fromStdString(crecord->toJsonString());
+}
+
+void ChatClient::onActionRemoveFromContacts(std::shared_ptr<Chat::ContactRecordData> crecord)
+{
+   qDebug() << __func__ << " " << QString::fromStdString(crecord->toJsonString());
+}
+
+void ChatClient::onActionAcceptContactRequest(std::shared_ptr<Chat::ContactRecordData> crecord)
+{
+   qDebug() << __func__ << " " << QString::fromStdString(crecord->toJsonString());
+}
+
+void ChatClient::onActionRejectContactRequest(std::shared_ptr<Chat::ContactRecordData> crecord)
+{
+   qDebug() << __func__ << " " << QString::fromStdString(crecord->toJsonString());
 }

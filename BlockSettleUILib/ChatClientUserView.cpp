@@ -9,9 +9,10 @@
 class ChatUsersContextMenu : public QMenu
 {
 public:
-   ChatUsersContextMenu(ChatClientUserView* view) :
-      QMenu(view),
-      view_(view)
+   ChatUsersContextMenu(ChatItemActionsHandler * handler, ChatClientUserView * parent = nullptr) :
+      QMenu(parent),
+      handler_(handler),
+      view_(parent)
    {
       connect(this, &QMenu::aboutToHide, this, &ChatUsersContextMenu::clearMenu);
    }
@@ -26,12 +27,13 @@ public:
       currentIndex_ = view_->indexAt(point);
 
       clear();
-
+      currentContact_.reset();
       //ItemType type = static_cast<ItemType>(currentIndex_.data(Role::ItemTypeRole).toInt());
       TreeItem * item = static_cast<TreeItem*>(currentIndex_.internalPointer());
       if (item->getType() == TreeItem::NodeType::ContactsElement) {
          auto citem = static_cast<ChatContactElement*>(item);
-         prepareUserMenu(citem->getContactData());
+         currentContact_ = citem->getContactData();
+         prepareContactMenu();
          return exec(view_->viewport()->mapToGlobal(point));
       }
 
@@ -49,21 +51,37 @@ private slots:
    void onAddToContacts(bool)
    {
       qDebug() << __func__;
+      if (!handler_){
+         return;
+      }
+      handler_->onActionAddToContacts(currentContact_);
    }
 
    void onRemoveFromContacts(bool)
    {
       qDebug() << __func__;
+      if (!handler_){
+         return;
+      }
+      handler_->onActionRemoveFromContacts(currentContact_);
    }
 
    void onAcceptFriendRequest(bool)
    {
+      if (!handler_){
+         return;
+      }
+      handler_->onActionAcceptContactRequest(currentContact_);
       const auto &text = currentIndex_.data(Qt::DisplayRole).toString();
       //emit view_->acceptFriendRequest(text);
    }
 
    void onDeclineFriendRequest(bool)
    {
+      if (!handler_){
+         return;
+      }
+      handler_->onActionRejectContactRequest(currentContact_);
       const auto &text = currentIndex_.data(Qt::DisplayRole).toString();
       //emit view_->declineFriendRequest(text);
    }
@@ -76,9 +94,13 @@ private slots:
 //      return qvariant_cast<ChatUserData::State>(currentIndex_.data(Role::UserStateRole));
 //   }
 
-   void prepareUserMenu(std::shared_ptr<Chat::ContactRecordData> citem)
+   void prepareContactMenu()
    {
-      switch (citem->getContactStatus()) {
+      if (!currentContact_){
+         return;
+      }
+
+      switch (currentContact_->getContactStatus()) {
 //         case Chat::ContactStatus::
 //            addAction(tr("Add friend"), this, &ChatUsersContextMenu::onAddToContacts);
 //            break;
@@ -103,15 +125,18 @@ private slots:
    }
 
 private:
-   ChatClientUserView* view_;
+   ChatItemActionsHandler* handler_;
+   ChatClientUserView * view_;
    QModelIndex currentIndex_;
+   std::shared_ptr<Chat::ContactRecordData> currentContact_;
 };
 
 
 ChatClientUserView::ChatClientUserView(QWidget *parent)
    : QTreeView (parent),
      watcher_(nullptr),
-     contextMenu_(new ChatUsersContextMenu(this))
+     handler_(nullptr),
+     contextMenu_(nullptr)
 {
    setContextMenuPolicy(Qt::CustomContextMenu);
    connect(this, &QAbstractItemView::customContextMenuRequested, this, &ChatClientUserView::onCustomContextMenu);
@@ -129,7 +154,14 @@ void ChatClientUserView::setActiveChatLabel(QLabel *label)
 
 void ChatClientUserView::onCustomContextMenu(const QPoint & point)
 {
-   contextMenu_->execMenu(point);
+   if (!contextMenu_) {
+      if (handler_){
+         contextMenu_ = new ChatUsersContextMenu(handler_.get(), this);
+      }
+   }
+   if (contextMenu_){
+      contextMenu_->execMenu(point);
+   }
 }
 
 void ChatClientUserView::updateDependUI(CategoryElement *element)
@@ -158,6 +190,11 @@ void ChatClientUserView::updateDependUI(CategoryElement *element)
          break;
 
    }
+}
+
+void ChatClientUserView::setHandler(std::shared_ptr<ChatItemActionsHandler> handler)
+{
+   handler_ = handler;
 }
 
 void ChatClientUserView::currentChanged(const QModelIndex &current, const QModelIndex &previous)
