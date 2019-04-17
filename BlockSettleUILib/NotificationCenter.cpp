@@ -269,6 +269,9 @@ void NotificationTrayIconResponder::messageClicked()
       if (!newChatId_.isNull()) {
          mainWinUi_->widgetChat->switchToChat(newChatId_);
          mainWinUi_->tabWidget->setCurrentWidget(mainWinUi_->widgetChat);
+
+         mainWinUi_->tabWidget->show();
+         mainWinUi_->tabWidget->raise();
          mainWinUi_->tabWidget->activateWindow();
       }
    }
