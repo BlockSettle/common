@@ -112,7 +112,7 @@ public:
    void respond(bs::ui::NotifyType, bs::ui::NotifyMessage) override;
 
 private slots:
-   void newVersionMessageClicked();
+   void messageClicked();
 #ifdef BS_USE_DBUS
    void notificationAction(const QString &action);
 #endif // BS_USE_DBUS
@@ -122,6 +122,8 @@ private:
    std::shared_ptr<QSystemTrayIcon>       trayIcon_;
    std::shared_ptr<ApplicationSettings>   appSettings_;
    bool  newVersionMessage_ = false;
+   bool  newChatMessage_ = false;
+   QString  newChatId_;
 
    enum NotificationMode {
       QSystemTray,

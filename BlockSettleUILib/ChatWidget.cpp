@@ -436,6 +436,12 @@ bool ChatWidget::hasUnreadMessages()
    }
 }
 
+void ChatWidget::switchToChat(const QString& chatId)
+{
+   onUserClicked(chatId);
+   ui_->treeViewUsers->highlightUserItem(chatId);
+}
+
 void ChatWidget::onLoggedOut()
 {
    stateCurrent_->onLoggedOut();
