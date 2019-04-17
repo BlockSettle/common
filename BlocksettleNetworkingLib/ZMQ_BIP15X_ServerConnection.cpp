@@ -50,6 +50,7 @@ ZmqBIP15XServerConnection::ZmqBIP15XServerConnection(
       return trustedClients;
    };
 
+   genBIPIDCookie();
    heartbeatThread();
 }
 
@@ -64,6 +65,7 @@ ZmqBIP15XServerConnection::ZmqBIP15XServerConnection(
    BinaryData bdID = CryptoPRNG::generateRandom(8);
    id_ = READ_UINT64_LE(bdID.getPtr());
 
+   genBIPIDCookie();
    heartbeatThread();
 }
 
@@ -72,6 +74,18 @@ ZmqBIP15XServerConnection::~ZmqBIP15XServerConnection()
    hbThreadRunning_ = false;
    hbCondVar_.notify_one();
    hbThread_.join();
+
+   // If it exists, delete the identity cookie.
+   if (bipIDCookieExists_) {
+      std::string absCookiePath =
+         SystemFilePaths::appDataLocation() + "/serverID";
+      if (SystemFileUtils::fileExist(absCookiePath)) {
+         if (!SystemFileUtils::rmFile(absCookiePath)) {
+            logger_->error("[{}] Unable to delete server identity cookie ({}). "
+               , __func__, absCookiePath);
+         }
+      }
+   }
 }
 
 void ZmqBIP15XServerConnection::heartbeatThread()
@@ -773,7 +787,46 @@ AuthPeersLambdas ZmqBIP15XServerConnection::getAuthPeerLambda()
    return AuthPeersLambdas(getMap, getPrivKey, getAuthSet);
 }
 
-SecureBinaryData ZmqBIP15XServerConnection::getOwnPubKey() const
+// Generate a cookie with the signer's identity public key.
+//
+// INPUT:  N/A
+// OUTPUT: N/A
+// RETURN: True if success, false if failure.
+bool ZmqBIP15XServerConnection::genBIPIDCookie()
+{
+   std::string absCookiePath = SystemFilePaths::appDataLocation() + "/serverID";
+   if (SystemFileUtils::fileExist(absCookiePath)) {
+      if (!SystemFileUtils::rmFile(absCookiePath)) {
+         logger_->error("[{}] Unable to delete server identity cookie ({}). "
+            "Will not write a new cookie.", __func__, absCookiePath);
+         return false;
+      }
+   }
+
+   // Ensure that we only write the compressed key.
+   ofstream cookieFile(absCookiePath, ios::out | ios::binary);
+   BinaryData ourIDKey = getOwnPubKey();
+   if (ourIDKey.getSize() != BTC_ECKEY_COMPRESSED_LENGTH) {
+      logger_->error("[{}] Server identity key ({}) is uncompressed. Will not "
+         "write the identity cookie.", __func__, absCookiePath);
+      return false;
+   }
+
+   logger_->debug("[{}] Writing a new server identity cookie ({}).", __func__
+      ,  absCookiePath);
+   cookieFile.write(getOwnPubKey().getCharPtr(), BTC_ECKEY_COMPRESSED_LENGTH);
+   cookieFile.close();
+   bipIDCookieExists_ = true;
+
+   return true;
+}
+
+// Get the server's compressed BIP 150 identity public key.
+//
+// INPUT:  N/A
+// OUTPUT: N/A
+// RETURN: A buffer with the compressed ECDSA ID pub key. (BinaryData)
+BinaryData ZmqBIP15XServerConnection::getOwnPubKey() const
 {
    const auto pubKey = authPeers_->getOwnPublicKey();
    return SecureBinaryData(pubKey.pubkey, pubKey.compressed

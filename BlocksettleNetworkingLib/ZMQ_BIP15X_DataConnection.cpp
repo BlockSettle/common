@@ -3,6 +3,8 @@
 
 #include "FastLock.h"
 #include "MessageHolder.h"
+#include "SystemFileUtils.h"
+#include "EncryptionUtils.h"
 #include "ZMQ_BIP15X_DataConnection.h"
 #include "BIP150_151.h"
 
@@ -487,9 +489,14 @@ bool ZmqBIP15XDataConnection::processAEADHandshake(
 
       if (!bip151Connection_->havePublicKey(msgbdr, ss.str())) {
          //we don't have this key, call user prompt lambda
-         promptUser(msgbdr, ss.str());
+         verifyIDKey(msgbdr, ss.str());
       }
       else {
+         // Overwrite the key, just in case. (MAY NEED TO REMOVE - TEST WHAT HAPPENS WHEN KEYS CHANGE)
+//         vector<string> keyName;
+//         keyName.push_back(ss.str());
+//         authPeers_->addPeer(msgbdr, keyName);
+
          //set server key promise
          serverPubkeyProm_->set_value(true);
       }
@@ -664,7 +671,9 @@ bool ZmqBIP15XDataConnection::processAEADHandshake(
 }
 
 // Set the callbacks to be used when asking if the user wishes to accept BIP 150
-// identity keys from a server.
+// identity keys from a server. Meant to be used only in the case of a remote
+// signer. (Local signers will use a cookie due to the key changing with every
+// restart, and offline signers don't require network connections.)
 //
 // INPUT:  The callback that will ask the user.
 //         The callback that will invoke the user-asking callback.
@@ -677,22 +686,61 @@ void ZmqBIP15XDataConnection::setCBs(
    , std::shared_ptr<std::promise<bool>>
    , const std::function<void(const std::string&, const std::string&
    , std::shared_ptr<std::promise<bool>>)>)> &invokeCB) {
-      cbNewKey_ = cbNewKey;
-      invokeCB_ = invokeCB;
+      // Set callbacks only if callbacks actually exist.
+      if (cbNewKey_ && cbNewKey) {
+         cbNewKey_ = cbNewKey;
+         invokeCB_ = invokeCB;
+         useServerIDCookie_ = false;
+      }
    }
 
-// If the user is presented with a new server identity key, ask what they want.
-void ZmqBIP15XDataConnection::promptUser(const BinaryDataRef& newKey
+// If the user is presented with a new server identity key, verify the key. A
+// promise will also be used in case any functions are waiting on verification
+// results.
+//
+// INPUT:  The key to verify. (const BinaryDataRef)
+//         The server IP address (or host name) and port. (const string)
+// OUTPUT: N/A
+// RETURN: N/A
+void ZmqBIP15XDataConnection::verifyIDKey(const BinaryDataRef& newKey
    , const string& srvAddrPort)
 {
-   auto authPeerNameMap = authPeers_->getPeerNameMap();
-   auto authPeerNameSearch = authPeerNameMap.find(srvAddrPort);
-   if (authPeerNameSearch == authPeerNameMap.end()) {
-      logger_->info("[{}] New key ({}) for server [{}] arrived.", __func__
-         , newKey.toHexStr(), srvAddrPort);
+   if (useServerIDCookie_) {
+      // Read the cookie with the key to check.
+      BinaryData cookieKey(static_cast<size_t>(BTC_ECKEY_COMPRESSED_LENGTH));
+      if (!getServerIDCookie(cookieKey)) {
+         serverPubkeyProm_->set_value(false);
+      }
+      else {
+         if (memcmp(cookieKey.getPtr(), newKey.getPtr(), BIP151PUBKEYSIZE) != 0) {
+            logger_->info("[{}] Local signer has a cookie that does match the "
+               "advertised identity key (0x{}). Connection rejected.", __func__
+               , newKey.toHexStr());
+            serverPubkeyProm_->set_value(false);
+         }
+         else {
+            logger_->info("[{}] Local signer has a cookie that matches the "
+               "advertised identity key (0x{}). Connection accepted.", __func__
+               , newKey.toHexStr());
 
-      // Ask the user if they wish to accept the new identity key.
-      if (invokeCB_ && cbNewKey_) {
+            // Add the host and the key to the list of verified peers.
+            vector<string> keyName;
+            keyName.push_back(srvAddrPort);
+            authPeers_->addPeer(newKey.copy(), keyName);
+            serverPubkeyProm_->set_value(true);
+         }
+      }
+   }
+   else {
+      // Check to see if we've already verified the key. If not, fire the
+      // callback allowing the user to verify the new key.
+      auto authPeerNameMap = authPeers_->getPeerNameMap();
+      auto authPeerNameSearch = authPeerNameMap.find(srvAddrPort);
+      if (authPeerNameSearch == authPeerNameMap.end()) {
+         logger_->info("[{}] New key ({}) for server [{}] arrived.", __func__
+            , newKey.toHexStr(), srvAddrPort);
+
+         // Ask the user if they wish to accept the new identity key.
          BinaryData oldKey(authPeerNameMap[srvAddrPort].pubkey, BIP151PUBKEYSIZE);
          invokeCB_(oldKey.toHexStr(), newKey.toHexStr()
             , serverPubkeyProm_, cbNewKey_);
@@ -712,26 +760,46 @@ void ZmqBIP15XDataConnection::promptUser(const BinaryDataRef& newKey
             "replaced with (0x{}). Connection accepted.", __func__, srvAddrPort
             , oldKey.toHexStr(), newKey.toHexStr());
       }
-      else {
-         logger_->info("[{}] Server at {} cannot have its new identity key "
-            "(0x{}) verified. Connection rejected.", __func__, srvAddrPort
-            , newKey.toHexStr());
-         serverPubkeyProm_->set_value(false);
-      }
-   }
-   else {
-      logger_->info("[{}] Server at {} has not replaced its verified identity "
-         "key (0x{}). Connection accepted.", __func__, srvAddrPort
-         , newKey.toHexStr());
-      serverPubkeyProm_->set_value(true);
    }
 }
 
-// Get our own BIP 150 identity public key.
+// Get the signer's identity public key. Intended for use with local signers.
+//
+// INPUT:  The buffer that will hold the compressed ID key. (BinaryData)
+// OUTPUT: N/A
+// RETURN: True if success, false if failure.
+bool ZmqBIP15XDataConnection::getServerIDCookie(BinaryData& cookieBuf)
+{
+   if (!useServerIDCookie_) {
+      return false;
+   }
+
+   std::string absCookiePath = SystemFilePaths::appDataLocation() + "/serverID";
+   if (!SystemFileUtils::fileExist(absCookiePath)) {
+      logger_->error("[{}] Server identity cookie ({}) doesn't exist. Unable "
+         "to verify server identity.", __func__, absCookiePath);
+      return false;
+   }
+
+   // Ensure that we only read a compressed key.
+   ifstream cookieFile(absCookiePath, ios::in | ios::binary);
+   cookieFile.read(cookieBuf.getCharPtr(), BIP151PUBKEYSIZE);
+   cookieFile.close();
+   if (!(CryptoECDSA().VerifyPublicKeyValid(cookieBuf))) {
+      logger_->error("[{}] Server identity key ({}) isn't a valid compressed "
+         "key. Unable to verify server identity.", __func__
+         , cookieBuf.toBinStr());
+      return false;
+   }
+
+   return true;
+}
+
+// Get the client's compressed BIP 150 identity public key.
 //
 // INPUT:  N/A
 // OUTPUT: N/A
-// RETURN: A buffer with our identity key. (BinaryData)
+// RETURN: A buffer with the compressed ECDSA ID pub key. (BinaryData)
 BinaryData ZmqBIP15XDataConnection::getOwnPubKey() const
 {
    const auto pubKey = authPeers_->getOwnPublicKey();

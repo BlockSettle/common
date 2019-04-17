@@ -29,6 +29,7 @@ public:
    ZmqBIP15XDataConnection(ZmqBIP15XDataConnection&&) = delete;
    ZmqBIP15XDataConnection& operator= (ZmqBIP15XDataConnection&&) = delete;
 
+   bool getServerIDCookie(BinaryData& cookieBuf);
    void setCBs(const std::function<void(const std::string&, const std::string&
       , std::shared_ptr<std::promise<bool>>)> &cbNewKey
       , const std::function<void(const std::string&, const std::string&
@@ -60,7 +61,7 @@ protected:
 private:
    void ProcessIncomingData(BinaryData& payload);
    bool processAEADHandshake(const ZmqBIP15XMsgPartial& msgObj);
-   void promptUser(const BinaryDataRef& newKey, const std::string& srvAddrPort);
+   void verifyIDKey(const BinaryDataRef& newKey, const std::string& srvAddrPort);
    AuthPeersLambdas getAuthPeerLambda() const;
    void rekeyIfNeeded(const size_t& dataSize);
 
@@ -75,6 +76,7 @@ private:
    std::atomic_flag lockSocket_ = ATOMIC_FLAG_INIT;
    bool bip150HandshakeCompleted_ = false;
    bool bip151HandshakeCompleted_ = false;
+   bool useServerIDCookie_ = true;
    uint32_t msgID_ = 0;
    std::function<void()>   cbCompleted_ = nullptr;
    const int   heartbeatInterval_ = 30000;

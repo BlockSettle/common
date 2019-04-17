@@ -56,7 +56,7 @@ public:
       , const SendResultCb& cb = nullptr) override;
    bool SendDataToAllClients(const std::string&, const SendResultCb &cb = nullptr) override;
 
-   SecureBinaryData getOwnPubKey() const;
+   BinaryData getOwnPubKey() const;
 
 protected:
    // Overridden functions from ZmqServerConnection.
@@ -77,13 +77,13 @@ private:
       , const std::string& clientID);
    void promptUser(const BinaryDataRef& newKey, const std::string& srvAddrPort);
    AuthPeersLambdas getAuthPeerLambda();
-
+   bool genBIPIDCookie();
    void heartbeatThread();
 
-private:
    std::shared_ptr<AuthorizedPeers> authPeers_;
    std::map<std::string, std::unique_ptr<ZmqBIP15XPerConnData>> socketConnMap_;
    BinaryData leftOverData_;
+   bool bipIDCookieExists_ = false;
    uint64_t id_;
    std::mutex  clientsMtx_;
    std::function<std::vector<std::string>()> cbTrustedClients_;
