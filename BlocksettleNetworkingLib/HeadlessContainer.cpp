@@ -1177,6 +1177,11 @@ void RemoteSigner::onPacketReceived(headless::RequestPacket packet)
       ProcessSyncAddresses(packet.id(), packet.data());
       break;
 
+   case headless::WalletsListUpdatedType:
+      logger_->debug("received WalletsListUpdatedType message");
+      emit walletsListUpdated();
+      break;
+
    default:
       logger_->warn("[HeadlessContainer] Unknown packet type: {}", packet.type());
       break;
@@ -1303,7 +1308,8 @@ bool LocalSigner::Stop()
 
    if (headlessProcess_) {
 #ifdef Q_OS_WIN
-      if (AttachConsole(headlessProcess_->pid()->dwProcessId)) {
+      const auto pid = headlessProcess_->pid();
+      if (pid && AttachConsole(pid->dwProcessId)) {
          SetConsoleCtrlHandler(NULL, TRUE);  // Disable shutdown on Ctrl-C for self
          GenerateConsoleCtrlEvent(CTRL_C_EVENT, 0);
          FreeConsole();
