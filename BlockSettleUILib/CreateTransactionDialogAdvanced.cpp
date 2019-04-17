@@ -1150,9 +1150,11 @@ void CreateTransactionDialogAdvanced::fixFeePerByte()
       return;
    }
 
-   // Any time the TX is adjusted, the minimum fee is adjusted.
-   const uint64_t newMinFee = originalFee_ + txVirtSize;
-   SetMinimumFee(newMinFee, originalFeePerByte_);
+   // Any time the TX is adjusted under RBF, the minimum fee is adjusted.
+   if (isRBF_) {
+      const uint64_t newMinFee = originalFee_ + txVirtSize;
+      SetMinimumFee(newMinFee, originalFeePerByte_);
+   }
 
    // If the new fee is less than the minimum required fee, increase the fee.
    const auto totalFee = txVirtSize * transactionData_->feePerByte();
