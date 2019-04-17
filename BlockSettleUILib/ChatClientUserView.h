@@ -15,6 +15,9 @@ public:
    void onElementSelected(CategoryElement *element) override;
 };
 
+namespace Chat {
+    class MessageData;
+   }
 
 class ChatUsersContextMenu;
 class ChatClientUserView : public QTreeView
@@ -22,7 +25,7 @@ class ChatClientUserView : public QTreeView
    Q_OBJECT
 public:
    ChatClientUserView(QWidget * parent = nullptr);
-   void addWatcher(std::shared_ptr<ViewItemWatcher> watcher);
+   void addWatcher(ViewItemWatcher* watcher);
    void setActiveChatLabel(QLabel * label);
    void setHandler(std::shared_ptr<ChatItemActionsHandler> handler);
 
@@ -31,8 +34,9 @@ public slots:
 private:
    void updateDependUI(CategoryElement * element);
    void notifyCurrentChanged(CategoryElement *element);
+   void notifyMessageChanged(std::shared_ptr<Chat::MessageData> message);
 private:
-   std::list<std::shared_ptr<ViewItemWatcher> > watchers_;
+   std::list<ViewItemWatcher* > watchers_;
    std::shared_ptr<ChatItemActionsHandler> handler_;
    QLabel * label_;
    ChatUsersContextMenu* contextMenu_;
@@ -41,7 +45,13 @@ private:
    // QAbstractItemView interface
 protected slots:
    void currentChanged(const QModelIndex &current, const QModelIndex &previous) override;
+
+   // QAbstractItemView interface
+protected slots:
+   void dataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight, const QVector<int> &roles) override;
 };
+
+
 
 
 

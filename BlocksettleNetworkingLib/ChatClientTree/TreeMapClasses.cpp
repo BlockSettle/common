@@ -175,3 +175,21 @@ void RootItem::setCurrentUser(const std::string &currentUser)
 {
    currentUser_ = currentUser;
 }
+
+void RootItem::notifyMessageChanged(std::shared_ptr<Chat::MessageData> message)
+{
+   QString chatId = message->getSenderId() == QString::fromStdString(currentUser())
+                    ? message->getReceiverId()
+                    : message->getSenderId();
+
+   TreeItem* chatNode = findChatNode(chatId.toStdString());
+   if (chatNode && chatNode->getAcceptType() == TreeItem::NodeType::MessageDataNode){
+         for (auto child : chatNode->getChildren()){
+            CategoryElement * elem = static_cast<CategoryElement*>(child);
+            auto msg = std::dynamic_pointer_cast<Chat::MessageData>(elem->getDataObject());
+            if (message->getId() == msg->getId()){
+               emit itemChanged(elem);
+            }
+         }
+   }
+}

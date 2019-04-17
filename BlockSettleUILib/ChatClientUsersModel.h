@@ -26,6 +26,7 @@ private slots:
    void onAfterUpdate();
    void onBeforeClean();
    void onAfterClean();
+   void onItemChanged(TreeItem* item);
 private:
    QVariant categoryNodeData(const TreeItem *item, int role) const;
    QVariant categoryElementData(TreeItem *item, int role) const;

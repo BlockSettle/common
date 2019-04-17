@@ -141,7 +141,7 @@ ChatClientUserView::ChatClientUserView(QWidget *parent)
    connect(this, &QAbstractItemView::customContextMenuRequested, this, &ChatClientUserView::onCustomContextMenu);
 }
 
-void ChatClientUserView::addWatcher(std::shared_ptr<ViewItemWatcher> watcher)
+void ChatClientUserView::addWatcher(ViewItemWatcher * watcher)
 {
    watchers_.push_back(watcher);
 }
@@ -199,6 +199,13 @@ void ChatClientUserView::notifyCurrentChanged(CategoryElement *element)
 
 }
 
+void ChatClientUserView::notifyMessageChanged(std::shared_ptr<Chat::MessageData> message)
+{
+   for (auto watcher : watchers_) {
+      watcher->onMessageChanged(message);
+   }
+}
+
 void ChatClientUserView::setHandler(std::shared_ptr<ChatItemActionsHandler> handler)
 {
    handler_ = handler;
@@ -227,4 +234,20 @@ void ChatClientUserView::currentChanged(const QModelIndex &current, const QModel
 void LoggerWatcher::onElementSelected(CategoryElement *element)
 {
    qDebug() << "Item selected:\n" << QString::fromStdString(element->getDataObject()->toJsonString());
+}
+
+void ChatClientUserView::dataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight, const QVector<int> &roles)
+{
+   QTreeView::dataChanged(topLeft, bottomRight, roles);
+   if (topLeft == bottomRight) {
+      TreeItem* item = static_cast<TreeItem*>(topLeft.internalPointer());
+      switch (item->getType()) {
+         case TreeItem::NodeType::MessageDataNode: {
+            auto mnode = static_cast<TreeMessageNode*>(item);
+            notifyMessageChanged(mnode->getMessage());
+         }
+         default:
+            break;
+      }
+   }
 }

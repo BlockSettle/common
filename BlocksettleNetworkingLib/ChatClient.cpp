@@ -140,6 +140,7 @@ void ChatClient::OnSendMessageResponse(const Chat::SendMessageResponse& response
          message->setId(serverId);
          message->setFlag(Chat::MessageData::State::Sent);
       }
+      root_->notifyMessageChanged(message);
       bool res = message && chatDb_->syncMessageId(localId, serverId);
 
       logger_->debug("[ChatClient::OnSendMessageResponse]: message id sync: {}", res?"Success":"Failed");
@@ -176,6 +177,7 @@ void ChatClient::OnMessageChangeStatusResponse(const Chat::MessageChangeStatusRe
       if (message){
          message->updateState(newStatus);
       }
+      root_->notifyMessageChanged(message);
 
       emit MessageStatusUpdated(QString::fromStdString(messageId), chatId, newStatus);
    }

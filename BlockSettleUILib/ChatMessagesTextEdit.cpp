@@ -309,6 +309,9 @@ void ChatMessagesTextEdit::notifyMessageChanged(std::shared_ptr<Chat::MessageDat
 void ChatMessagesTextEdit::onMessagesUpdate(const std::vector<std::shared_ptr<Chat::MessageData>>& messages, bool isFirstFetch)
 {
 
+   for (const auto& message: messages) {
+      messages_[currentChatId_].push_back(message);
+   }
    for (const auto& message : messages) {
       insertMessage(message);
    }
@@ -376,6 +379,15 @@ void ChatMessagesTextEdit::onMessagesUpdate(const std::vector<std::shared_ptr<Ch
 
 void ChatMessagesTextEdit::onRoomMessagesUpdate(const std::vector<std::shared_ptr<Chat::MessageData>>& messages, bool isFirstFetch)
 {
+   for (const auto& message: messages) {
+      messages_[currentChatId_].push_back(message);
+   }
+
+   for (const auto& message: messages) {
+      insertMessage(message);
+   }
+   return;
+
    if (isFirstFetch) {
       for (const auto &msg : messages) {
          if (msg->getReceiverId() == currentChatId_) {
@@ -498,5 +510,13 @@ void ChatMessagesTextEdit::onElementSelected(CategoryElement *element)
       } break;
       default:
          return;
+   }
+}
+
+void ChatMessagesTextEdit::onMessageChanged(std::shared_ptr<Chat::MessageData> message)
+{
+   qDebug() << __func__ << " " << QString::fromStdString(message->toJsonString());
+   if (message->getSenderId() == currentChatId_ || message->getReceiverId() == currentChatId_) {
+      notifyMessageChanged(message);
    }
 }

@@ -47,6 +47,7 @@ signals:
    void afterUpdate();
    void beforeClean();
    void afterClean();
+   void itemChanged(TreeItem*);
 protected:
    const TreeItem *recursiveRoot() const;
    void clearChildren();

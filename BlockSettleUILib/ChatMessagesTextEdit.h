@@ -119,7 +119,13 @@ private:
    // ViewItemWatcher interface
 public:
    void onElementSelected(CategoryElement *element) override;
+
+   // ViewItemWatcher interface
+public:
+   void onMessageChanged(std::shared_ptr<Chat::MessageData> message) override;
 };
+
+
 
 
 

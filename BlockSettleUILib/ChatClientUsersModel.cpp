@@ -10,6 +10,7 @@ ChatClientUsersModel::ChatClientUsersModel(std::shared_ptr<TreeItem> root, QObje
    connect(root_.get(), &TreeItem::afterUpdate, this, &ChatClientUsersModel::onAfterUpdate);
    connect(root_.get(), &TreeItem::beforeClean, this, &ChatClientUsersModel::onBeforeClean);
    connect(root_.get(), &TreeItem::afterClean, this, &ChatClientUsersModel::onAfterClean);
+   connect(root_.get(), &TreeItem::itemChanged, this, &ChatClientUsersModel::onItemChanged);
 
 
 }
@@ -111,6 +112,12 @@ void ChatClientUsersModel::onBeforeClean()
 void ChatClientUsersModel::onAfterClean()
 {
    endResetModel();
+}
+
+void ChatClientUsersModel::onItemChanged(TreeItem *item)
+{
+   QModelIndex index = createIndex(item->selfIndex(), 0, item);
+   emit dataChanged(index, index);
 }
 
 QVariant ChatClientUsersModel::categoryNodeData(const TreeItem* item, int role) const

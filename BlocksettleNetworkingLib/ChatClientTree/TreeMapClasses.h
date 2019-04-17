@@ -22,6 +22,7 @@ class RootItem : public TreeItem {
    void clear();
    std::string currentUser() const;
    void setCurrentUser(const std::string &currentUser);
+   void notifyMessageChanged(std::shared_ptr<Chat::MessageData> message);
 
 private:
    bool insertMessageNode(TreeMessageNode * messageNode);
