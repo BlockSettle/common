@@ -40,10 +40,6 @@ void AboutDialog::setTab(int tab)
 
 void AboutDialog::onCheckForUpdates()
 {
-   // this is only to test notifications for Scott
-   NotificationCenter::notify(bs::ui::NotifyType::CelerOrder, { true, tr("000000000000000") });
-   return;
-
    ui_->pushButtonCheckUpd->setEnabled(false);
    verChecker_.loadLatestVersion();
 }

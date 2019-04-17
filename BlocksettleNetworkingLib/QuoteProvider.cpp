@@ -619,12 +619,8 @@ bool QuoteProvider::onFxOrderSnapshot(const std::string& data, bool resync) cons
       logger_->debug("[FxOrderSnapshot] {}", response.DebugString());
    }
 
-   // this is only to test notifications for Scott
-   if (!resync && (response.orderstatus() == FILLED) 
-			   /*&& (response.updatedtimestamputcinmillis() > celerLoggedInTimestampUtcInMillis_)*/) {
-
+   if (!resync && (response.orderstatus() == FILLED)) {
       emit quoteOrderFilled(response.quoteid());
-
    }
 
    Order order;
@@ -642,12 +638,8 @@ bool QuoteProvider::onFxOrderSnapshot(const std::string& data, bool resync) cons
 
    order.status = mapFxOrderStatus(response.orderstatus());
 
-   // this is only to test notifications for Scott
-   if (!resync && (order.status == Order::Failed)
-              /*&& (response.updatedtimestamputcinmillis() > celerLoggedInTimestampUtcInMillis_)*/)  {
-
+   if (!resync && (order.status == Order::Failed)) {
       emit orderFailed(response.quoteid(), response.info());
-
    }
 
    emit orderUpdated(order);
