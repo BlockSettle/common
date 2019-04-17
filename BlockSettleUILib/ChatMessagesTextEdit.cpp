@@ -308,6 +308,12 @@ void ChatMessagesTextEdit::notifyMessageChanged(std::shared_ptr<Chat::MessageDat
 
 void ChatMessagesTextEdit::onMessagesUpdate(const std::vector<std::shared_ptr<Chat::MessageData>>& messages, bool isFirstFetch)
 {
+
+   for (const auto& message : messages) {
+      insertMessage(message);
+   }
+   return;
+
    if (isFirstFetch) {
       for (const auto &msg : messages) {
          if (msg->getSenderId() == currentChatId_) {

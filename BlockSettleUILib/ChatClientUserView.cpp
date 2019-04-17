@@ -134,7 +134,6 @@ private:
 
 ChatClientUserView::ChatClientUserView(QWidget *parent)
    : QTreeView (parent),
-     watcher_(nullptr),
      handler_(nullptr),
      contextMenu_(nullptr)
 {
@@ -142,9 +141,9 @@ ChatClientUserView::ChatClientUserView(QWidget *parent)
    connect(this, &QAbstractItemView::customContextMenuRequested, this, &ChatClientUserView::onCustomContextMenu);
 }
 
-void ChatClientUserView::setWatcher(std::shared_ptr<ViewItemWatcher> watcher)
+void ChatClientUserView::addWatcher(std::shared_ptr<ViewItemWatcher> watcher)
 {
-   watcher_ = watcher;
+   watchers_.push_back(watcher);
 }
 
 void ChatClientUserView::setActiveChatLabel(QLabel *label)
@@ -192,6 +191,14 @@ void ChatClientUserView::updateDependUI(CategoryElement *element)
    }
 }
 
+void ChatClientUserView::notifyCurrentChanged(CategoryElement *element)
+{
+   for (auto watcher : watchers_) {
+      watcher->onElementSelected(element);
+   }
+
+}
+
 void ChatClientUserView::setHandler(std::shared_ptr<ChatItemActionsHandler> handler)
 {
    handler_ = handler;
@@ -201,14 +208,14 @@ void ChatClientUserView::currentChanged(const QModelIndex &current, const QModel
 {
    QTreeView::currentChanged(current, previous);
    TreeItem* item = static_cast<TreeItem*>(current.internalPointer());
-   if (watcher_ && item) {
+   if (!watchers_.empty() && item) {
       switch (item->getType()) {
          case TreeItem::NodeType::RoomsElement:
          case TreeItem::NodeType::ContactsElement:
          case TreeItem::NodeType::AllUsersElement:{
             auto element = static_cast<CategoryElement*>(item);
             updateDependUI(element);
-            watcher_->onElementSelected(element);
+            notifyCurrentChanged(element);
          } break;
          default:
             break;

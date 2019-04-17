@@ -22,7 +22,7 @@ class ChatClientUserView : public QTreeView
    Q_OBJECT
 public:
    ChatClientUserView(QWidget * parent = nullptr);
-   void setWatcher(std::shared_ptr<ViewItemWatcher> watcher);
+   void addWatcher(std::shared_ptr<ViewItemWatcher> watcher);
    void setActiveChatLabel(QLabel * label);
    void setHandler(std::shared_ptr<ChatItemActionsHandler> handler);
 
@@ -30,8 +30,9 @@ public slots:
    void onCustomContextMenu(const QPoint &);
 private:
    void updateDependUI(CategoryElement * element);
+   void notifyCurrentChanged(CategoryElement *element);
 private:
-   std::shared_ptr<ViewItemWatcher> watcher_;
+   std::list<std::shared_ptr<ViewItemWatcher> > watchers_;
    std::shared_ptr<ChatItemActionsHandler> handler_;
    QLabel * label_;
    ChatUsersContextMenu* contextMenu_;

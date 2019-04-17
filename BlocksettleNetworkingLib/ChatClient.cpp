@@ -138,6 +138,7 @@ void ChatClient::OnSendMessageResponse(const Chat::SendMessageResponse& response
       auto message = root_->findMessage(receiverId.toStdString(), localId.toStdString());
       if (message){
          message->setId(serverId);
+         message->setFlag(Chat::MessageData::State::Sent);
       }
       bool res = message && chatDb_->syncMessageId(localId, serverId);
 
@@ -560,6 +561,8 @@ std::shared_ptr<Chat::MessageData> ChatClient::sendOwnMessage(
       logger_->error("[ChatClient::sendMessage] failed to encrypt by local key");
    }
    chatDb_->add(localEncMsg);
+   auto local_msg = std::make_shared<Chat::MessageData>(msg);
+   root_->insertContactsMessage(local_msg);
 
    if (!msg.encrypt(itPub->second)) {
       logger_->error("[ChatClient::sendMessage] failed to encrypt message {}"
@@ -731,9 +734,17 @@ void ChatClient::onActionRemoveFromContacts(std::shared_ptr<Chat::ContactRecordD
 void ChatClient::onActionAcceptContactRequest(std::shared_ptr<Chat::ContactRecordData> crecord)
 {
    qDebug() << __func__ << " " << QString::fromStdString(crecord->toJsonString());
+   auto request = std::make_shared<Chat::ContactActionRequestDirect>("", crecord->getContactForId().toStdString()
+                                                                     , crecord->getContactId().toStdString()
+                                                                     , Chat::ContactsAction::Accept, appSettings_->GetAuthKeys().second);
+   sendRequest(request);
 }
 
 void ChatClient::onActionRejectContactRequest(std::shared_ptr<Chat::ContactRecordData> crecord)
 {
    qDebug() << __func__ << " " << QString::fromStdString(crecord->toJsonString());
+   auto request = std::make_shared<Chat::ContactActionRequestDirect>("", crecord->getContactForId().toStdString()
+                                                                     , crecord->getContactId().toStdString()
+                                                                     , Chat::ContactsAction::Reject, appSettings_->GetAuthKeys().second);
+   sendRequest(request);
 }

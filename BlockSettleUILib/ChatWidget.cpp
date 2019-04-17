@@ -227,7 +227,8 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
    ui_->treeViewUsers->setModel(new ChatClientUsersModel(client_->getRootItem(), this));
    ui_->treeViewUsers->expandAll();
    //ui_->treeViewUsers->setWatcher(std::make_shared<LoggerWatcher>());
-   ui_->treeViewUsers->setWatcher(std::shared_ptr<ViewItemWatcher>(ui_->textEditMessages));
+   ui_->treeViewUsers->addWatcher(std::shared_ptr<ViewItemWatcher>(ui_->textEditMessages));
+   ui_->treeViewUsers->addWatcher(std::shared_ptr<ViewItemWatcher>(this));
    ui_->treeViewUsers->setHandler(client_);
    ui_->treeViewUsers->setActiveChatLabel(ui_->labelActiveChat);
 
@@ -557,4 +558,26 @@ bool ChatWidget::isRoom()
 void ChatWidget::setIsRoom(bool isRoom)
 {
    isRoom_ = isRoom;
+}
+
+void ChatWidget::onElementSelected(CategoryElement *element)
+{
+   if (element) {
+
+      switch (element->getType()) {
+         case TreeItem::NodeType::RoomsElement: {
+            auto room = std::dynamic_pointer_cast<Chat::RoomData>(element->getDataObject());
+            setIsRoom(true);
+            currentChat_ = room->getId();
+         } break;
+         case TreeItem::NodeType::ContactsElement:{
+            auto contact = std::dynamic_pointer_cast<Chat::ContactRecordData>(element->getDataObject());
+            setIsRoom(false);
+            currentChat_ = contact->getContactId();
+         } break;
+         default:
+            break;
+
+      }
+   }
 }
