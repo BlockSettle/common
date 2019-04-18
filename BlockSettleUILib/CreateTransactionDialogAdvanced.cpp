@@ -297,7 +297,7 @@ void CreateTransactionDialogAdvanced::setRBFinputs(const Tx &tx, const std::shar
       const float feePerByte = (float)totalVal / (float)tx.getTxWeight();
       originalFeePerByte_ = feePerByte;
       const uint64_t newMinFee = originalFee_ + tx.getTxWeight();
-      SetMinimumFee(newMinFee, originalFeePerByte_);
+      SetMinimumFee(newMinFee, originalFeePerByte_ + 1.0);
       advisedFeePerByte_ = originalFeePerByte_ + 1.0;
       populateFeeList();
       SetInputs(transactionData_->GetSelectedInputs()->GetSelectedTransactions());
@@ -1149,6 +1149,14 @@ void CreateTransactionDialogAdvanced::fixFeePerByte()
    if (!txVirtSize) {
       return;
    }
+
+   // Any time the TX is adjusted under RBF, the minimum fee is adjusted.
+   if (isRBF_) {
+      const uint64_t newMinFee = originalFee_ + txVirtSize;
+      SetMinimumFee(newMinFee, originalFeePerByte_);
+   }
+
+   // If the new fee is less than the minimum required fee, increase the fee.
    const auto totalFee = txVirtSize * transactionData_->feePerByte();
    if ((minTotalFee_ > 0) && (totalFee > 0) && (totalFee <= minTotalFee_)) {
       const float newFPB = (minTotalFee_ + 1) / txVirtSize;
