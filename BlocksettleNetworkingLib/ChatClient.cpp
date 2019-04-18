@@ -736,6 +736,7 @@ void ChatClient::onActionRemoveFromContacts(std::shared_ptr<Chat::ContactRecordD
 void ChatClient::onActionAcceptContactRequest(std::shared_ptr<Chat::ContactRecordData> crecord)
 {
    qDebug() << __func__ << " " << QString::fromStdString(crecord->toJsonString());
+   crecord->setStatus(Chat::ContactStatus::Accepted);
    auto request = std::make_shared<Chat::ContactActionRequestDirect>("", crecord->getContactForId().toStdString()
                                                                      , crecord->getContactId().toStdString()
                                                                      , Chat::ContactsAction::Accept, appSettings_->GetAuthKeys().second);
@@ -745,6 +746,7 @@ void ChatClient::onActionAcceptContactRequest(std::shared_ptr<Chat::ContactRecor
 void ChatClient::onActionRejectContactRequest(std::shared_ptr<Chat::ContactRecordData> crecord)
 {
    qDebug() << __func__ << " " << QString::fromStdString(crecord->toJsonString());
+   crecord->setStatus(Chat::ContactStatus::Accepted);
    auto request = std::make_shared<Chat::ContactActionRequestDirect>("", crecord->getContactForId().toStdString()
                                                                      , crecord->getContactId().toStdString()
                                                                      , Chat::ContactsAction::Reject, appSettings_->GetAuthKeys().second);
