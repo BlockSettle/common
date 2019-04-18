@@ -251,7 +251,9 @@ void ChatUserListTreeViewModel::highlightUserItem(const QString& userId)
          const auto &index = createIndex(i, 0, contactItem);
          const auto treeView = qobject_cast<QTreeView *>(QObject::parent());
 
-         treeView->selectionModel()->select(index, QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
+         if (treeView != NULL) {
+            treeView->selectionModel()->select(index, QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
+         }
       }
    }
 }

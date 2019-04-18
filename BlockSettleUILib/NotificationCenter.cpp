@@ -28,6 +28,11 @@ void NotificationCenter::createInstance(const std::shared_ptr<ApplicationSetting
    globalInstance = std::make_shared<NotificationCenter>(appSettings, ui, trayIcon, parent);
 }
 
+NotificationCenter *NotificationCenter::instance()
+{
+   return globalInstance.get();
+}
+
 void NotificationCenter::destroyInstance()
 {
    globalInstance = nullptr;
@@ -266,14 +271,9 @@ void NotificationTrayIconResponder::messageClicked()
 #endif
    }
    else if (newChatMessage_) {
-      if (!newChatId_.isNull()) {
-         mainWinUi_->widgetChat->switchToChat(newChatId_);
-         mainWinUi_->tabWidget->setCurrentWidget(mainWinUi_->widgetChat);
-
-         mainWinUi_->tabWidget->show();
-         mainWinUi_->tabWidget->raise();
-         mainWinUi_->tabWidget->activateWindow();
-      }
+      if (!newChatId_.isNull() && globalInstance != NULL) {
+			emit globalInstance->newChatMessageClick(newChatId_);
+		}
    }
 }
 

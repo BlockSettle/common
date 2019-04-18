@@ -645,10 +645,14 @@ void BSTerminalMainWindow::InitWalletsView()
 
 void BSTerminalMainWindow::InitChatView()
 {
-   ui_->widgetChat->init(connectionManager_, applicationSettings_, logMgr_->logger("chat"));
+   ui_->widgetChat->init(connectionManager_, applicationSettings_, logMgr_->logger("chat"), ui_.get());
 
    //connect(ui_->widgetChat, &ChatWidget::LoginFailed, this, &BSTerminalMainWindow::onAutheIDFailed);
    connect(ui_->widgetChat, &ChatWidget::LogOut, this, &BSTerminalMainWindow::onLogout);
+
+   if (NotificationCenter::instance() != NULL)
+      connect(NotificationCenter::instance(), &NotificationCenter::newChatMessageClick, 
+              ui_->widgetChat, &ChatWidget::onNewChatMessageTrayNotificationClicked);
 }
 
 void BSTerminalMainWindow::InitChartsView()
