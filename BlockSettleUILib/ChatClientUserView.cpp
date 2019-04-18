@@ -206,6 +206,13 @@ void ChatClientUserView::notifyMessageChanged(std::shared_ptr<Chat::MessageData>
    }
 }
 
+void ChatClientUserView::notifyElementUpdated(CategoryElement *element)
+{
+   for (auto watcher : watchers_) {
+      watcher->onElementUpdated(element);
+   }
+}
+
 void ChatClientUserView::setHandler(std::shared_ptr<ChatItemActionsHandler> handler)
 {
    handler_ = handler;
@@ -231,11 +238,6 @@ void ChatClientUserView::currentChanged(const QModelIndex &current, const QModel
    }
 }
 
-void LoggerWatcher::onElementSelected(CategoryElement *element)
-{
-   qDebug() << "Item selected:\n" << QString::fromStdString(element->getDataObject()->toJsonString());
-}
-
 void ChatClientUserView::dataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight, const QVector<int> &roles)
 {
    QTreeView::dataChanged(topLeft, bottomRight, roles);
@@ -246,8 +248,28 @@ void ChatClientUserView::dataChanged(const QModelIndex &topLeft, const QModelInd
             auto mnode = static_cast<TreeMessageNode*>(item);
             notifyMessageChanged(mnode->getMessage());
          }
+         case TreeItem::NodeType::RoomsElement:
+         case TreeItem::NodeType::ContactsElement:{
+            auto node = static_cast<CategoryElement*>(item);
+            notifyElementUpdated(node);
+         }
          default:
             break;
       }
    }
+}
+
+void LoggerWatcher::onElementSelected(CategoryElement *element)
+{
+   qDebug() << "Item selected:\n" << QString::fromStdString(element->getDataObject()->toJsonString());
+}
+
+void LoggerWatcher::onElementUpdated(CategoryElement *element)
+{
+      qDebug() << "Item updated:\n" << QString::fromStdString(element->getDataObject()->toJsonString());
+}
+
+void LoggerWatcher::onMessageChanged(std::shared_ptr<Chat::MessageData> message)
+{
+      qDebug() << "Message changed:\n" << QString::fromStdString(message->toJsonString());
 }

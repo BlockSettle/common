@@ -13,7 +13,16 @@ class LoggerWatcher : public ViewItemWatcher {
    // ViewItemWatcher interface
 public:
    void onElementSelected(CategoryElement *element) override;
+
+   // ViewItemWatcher interface
+public:
+   void onElementUpdated(CategoryElement *element) override;
+   void onMessageChanged(std::shared_ptr<Chat::MessageData> message) override;
 };
+
+
+
+
 
 namespace Chat {
     class MessageData;
@@ -35,6 +44,7 @@ private:
    void updateDependUI(CategoryElement * element);
    void notifyCurrentChanged(CategoryElement *element);
    void notifyMessageChanged(std::shared_ptr<Chat::MessageData> message);
+   void notifyElementUpdated(CategoryElement *element);
 private:
    std::list<ViewItemWatcher* > watchers_;
    std::shared_ptr<ChatItemActionsHandler> handler_;

@@ -11,6 +11,7 @@ class CategoryElement;
 class ViewItemWatcher {
 public:
    virtual void onElementSelected(CategoryElement* element) = 0;
+   virtual void onElementUpdated(CategoryElement* element) = 0;
    virtual void onMessageChanged(std::shared_ptr<Chat::MessageData> message) = 0;
    virtual ~ViewItemWatcher() = default;
 };

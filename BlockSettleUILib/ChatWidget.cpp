@@ -120,12 +120,12 @@ public:
             auto msg = chat_->client_->sendOwnMessage(messageText, chat_->currentChat_);
             chat_->ui_->input_textEdit->clear();
    
-            chat_->ui_->textEditMessages->onSingleMessageUpdate(msg);
+            //chat_->ui_->textEditMessages->onSingleMessageUpdate(msg);
          } else {
             auto msg = chat_->client_->sendRoomOwnMessage(messageText, chat_->currentChat_);
             chat_->ui_->input_textEdit->clear();
    
-            chat_->ui_->textEditMessages->onSingleMessageUpdate(msg);
+            //chat_->ui_->textEditMessages->onSingleMessageUpdate(msg);
          }
       }
    }
@@ -226,7 +226,7 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
    client_ = std::make_shared<ChatClient>(connectionManager, appSettings, logger);
    ui_->treeViewUsers->setModel(new ChatClientUsersModel(client_->getRootItem(), this));
    ui_->treeViewUsers->expandAll();
-   //ui_->treeViewUsers->setWatcher(std::make_shared<LoggerWatcher>());
+   ui_->treeViewUsers->addWatcher(new LoggerWatcher());
    ui_->treeViewUsers->addWatcher(ui_->textEditMessages);
    ui_->treeViewUsers->addWatcher(this);
    ui_->treeViewUsers->setHandler(client_);
@@ -272,16 +272,16 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
 
 //   connect(client_.get(), &ChatClient::MessagesUpdate, ui_->textEditMessages
 //                        , &ChatMessagesTextEdit::onMessagesUpdate);
-   connect(client_.get(), &ChatClient::RoomMessagesUpdate, ui_->textEditMessages
-                        , &ChatMessagesTextEdit::onRoomMessagesUpdate);
+//   connect(client_.get(), &ChatClient::RoomMessagesUpdate, ui_->textEditMessages
+//                        , &ChatMessagesTextEdit::onRoomMessagesUpdate);
 
    
-   connect(client_.get(), &ChatClient::MessageIdUpdated, ui_->textEditMessages
-                        , &ChatMessagesTextEdit::onMessageIdUpdate);
-   connect(client_.get(), &ChatClient::MessageStatusUpdated, ui_->textEditMessages
-                        , &ChatMessagesTextEdit::onMessageStatusChanged);
-   connect(ui_->textEditMessages, &ChatMessagesTextEdit::MessageRead,
-           client_.get(), &ChatClient::onMessageRead);
+//   connect(client_.get(), &ChatClient::MessageIdUpdated, ui_->textEditMessages
+//                        , &ChatMessagesTextEdit::onMessageIdUpdate);
+//   connect(client_.get(), &ChatClient::MessageStatusUpdated, ui_->textEditMessages
+//                        , &ChatMessagesTextEdit::onMessageStatusChanged);
+//   connect(ui_->textEditMessages, &ChatMessagesTextEdit::MessageRead,
+//           client_.get(), &ChatClient::onMessageRead);
 
    connect(ui_->chatSearchLineEdit, &ChatSearchLineEdit::returnPressed, this, &ChatWidget::onSearchUserReturnPressed);
 /*
@@ -587,4 +587,9 @@ void ChatWidget::onElementSelected(CategoryElement *element)
 void ChatWidget::onMessageChanged(std::shared_ptr<Chat::MessageData> message)
 {
    qDebug() << __func__ << " " << QString::fromStdString(message->toJsonString());
+}
+
+void ChatWidget::onElementUpdated(CategoryElement *element)
+{
+   qDebug() << __func__ << " " << QString::fromStdString(element->getDataObject()->toJsonString());
 }

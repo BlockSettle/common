@@ -95,7 +95,7 @@ QString ChatMessagesTextEdit::data(const int &row, const Column &column)
       }
 
       case Column::Message:
-         return toHtmlText(messages_[currentChatId_][row]->getMessageData());
+         return toHtmlText(messages_[currentChatId_][row]->getId() + QLatin1String(" ")+ messages_[currentChatId_][row]->getMessageData());
 
       default:
          break;
@@ -519,4 +519,42 @@ void ChatMessagesTextEdit::onMessageChanged(std::shared_ptr<Chat::MessageData> m
    if (message->getSenderId() == currentChatId_ || message->getReceiverId() == currentChatId_) {
       notifyMessageChanged(message);
    }
+}
+
+void ChatMessagesTextEdit::onElementUpdated(CategoryElement *element)
+{
+   auto data = element->getDataObject();
+   switch (data->getType()) {
+      case Chat::DataObject::Type::RoomData:{
+         auto room = std::dynamic_pointer_cast<Chat::RoomData>(data);
+         if (room->getId() == currentChatId_){
+            messages_.clear();
+            clear();
+            std::vector<std::shared_ptr<Chat::MessageData>> messages;
+            for (auto msg_item : element->getChildren()){
+               auto item = static_cast<TreeMessageNode*>(msg_item);
+               auto msg = item->getMessage();
+               messages.push_back(msg);
+            }
+            onRoomMessagesUpdate(messages, true);
+         }
+      } break;
+      case Chat::DataObject::Type::ContactRecordData: {
+         auto contact = std::dynamic_pointer_cast<Chat::ContactRecordData>(data);
+         if (contact->getContactId() == currentChatId_){
+            messages_.clear();
+            clear();
+            std::vector<std::shared_ptr<Chat::MessageData>> messages;
+            for (auto msg_item : element->getChildren()){
+               auto item = static_cast<TreeMessageNode*>(msg_item);
+               auto msg = item->getMessage();
+               messages.push_back(msg);
+            }
+            onMessagesUpdate(messages, true);
+         }
+      } break;
+      default:
+         return;
+   }
+
 }

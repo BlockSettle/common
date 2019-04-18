@@ -142,7 +142,11 @@ bool RootItem::insertMessageNode(TreeMessageNode * messageNode)
 
         TreeItem* target = (*categoryIt)->findSupportChild(messageNode);
          if (target) {
-            return target->insertItem(messageNode);
+            bool res = target->insertItem(messageNode);
+            if (res) {
+               emit itemChanged(target);
+            }
+            return res;
          }
          return false;
       }
