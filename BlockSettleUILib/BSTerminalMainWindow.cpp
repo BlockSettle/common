@@ -472,8 +472,10 @@ std::shared_ptr<SignContainer> BSTerminalMainWindow::createSigner()
       , const std::function<void(const std::string&, const std::string&
       , std::shared_ptr<std::promise<bool>>)>)> invokeCB;
 
-      std::cout << "DOUG DEBUG: Signer mode = " << (int)runMode << std::endl;
+   bool ephemeralDataConnKeys = true;
    if (runMode == SignContainer::OpMode::Remote) {
+      ephemeralDataConnKeys = false;
+
       // Define the callback that will be used to determine if the signer's BIP
       // 150 identity key, if it has changed, will be accepted. It needs strings
       // for the old and new keys, and a promise to set once the user decides.
@@ -528,7 +530,7 @@ std::shared_ptr<SignContainer> BSTerminalMainWindow::createSigner()
    }
 
    retPtr = CreateSigner(logMgr_->logger(), applicationSettings_, runMode
-      , signerHost, connectionManager_, cbNewKey, invokeCB);
+      , signerHost, connectionManager_, ephemeralDataConnKeys, cbNewKey, invokeCB);
    return retPtr;
 }
 

@@ -136,6 +136,7 @@ std::shared_ptr<SignContainer> CreateSigner(const std::shared_ptr<spdlog::logger
    , SignContainer::OpMode
    , const QString &host
    , const std::shared_ptr<ConnectionManager> & connectionManager
+   , const bool& ephemeralDataConnKeys
    , const std::function<void(const std::string&, const std::string&
       , std::shared_ptr<std::promise<bool>>)> &cbNewKey = nullptr
    , const std::function<void(const std::string&, const std::string&

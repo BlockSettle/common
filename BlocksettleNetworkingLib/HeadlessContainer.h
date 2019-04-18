@@ -127,6 +127,7 @@ public:
       , const std::shared_ptr<ConnectionManager>& connectionManager
       , const std::shared_ptr<ApplicationSettings>& appSettings
       , OpMode opMode = OpMode::Remote
+      , const bool ephemeralDataConnKeys = true
       , const std::function<void(const std::string&, const std::string&
          , std::shared_ptr<std::promise<bool>>)> &cbNewKey = nullptr
       , const std::function<void(const std::string&, const std::string&
@@ -158,6 +159,7 @@ protected:
    const QString                              host_;
    const QString                              port_;
    const NetworkType                          netType_;
+   const bool                                 ephemeralDataConnKeys_;
    std::shared_ptr<ZmqBIP15XDataConnection>   connection_;
    std::shared_ptr<ApplicationSettings>       appSettings_;
    std::function<void(const std::string&, const std::string&
@@ -181,6 +183,7 @@ public:
       , const std::shared_ptr<ConnectionManager>& connectionManager
       , const std::shared_ptr<ApplicationSettings>& appSettings
       , SignContainer::OpMode mode = OpMode::Local
+      , const bool ephemeralDataConnKeys = false
       , double asSpendLimit = 0
       , const std::function<void(const std::string&, const std::string&
          , std::shared_ptr<std::promise<bool>>)> &cbNewKey = nullptr

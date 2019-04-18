@@ -967,6 +967,7 @@ RemoteSigner::RemoteSigner(const std::shared_ptr<spdlog::logger> &logger
    , const std::shared_ptr<ConnectionManager>& connectionManager
    , const std::shared_ptr<ApplicationSettings>& appSettings
    , OpMode opMode
+   , const bool ephemeralDataConnKeys
    , const std::function<void(const std::string&, const std::string&
       , std::shared_ptr<std::promise<bool>>)> &cbNewKey
    , const std::function<void(const std::string&, const std::string&
@@ -979,6 +980,7 @@ RemoteSigner::RemoteSigner(const std::shared_ptr<spdlog::logger> &logger
    , appSettings_{appSettings}
    , cbNewKey_{cbNewKey}
    , invokeCB_{invokeCB}
+   , ephemeralDataConnKeys_(ephemeralDataConnKeys)
 {}
 
 // Establish the remote connection to the signer.
@@ -988,7 +990,8 @@ bool RemoteSigner::Start()
       return true;
    }
 
-   connection_ = connectionManager_->CreateZMQBIP15XDataConnection();
+   connection_ =
+      connectionManager_->CreateZMQBIP15XDataConnection(ephemeralDataConnKeys_);
    connection_->setCBs(cbNewKey_, invokeCB_);
    if (opMode() == OpMode::RemoteInproc) {
       connection_->SetZMQTransport(ZMQTransport::InprocTransport);
@@ -1188,12 +1191,13 @@ void RemoteSigner::onPacketReceived(headless::RequestPacket packet)
    }
 }
 
-
 LocalSigner::LocalSigner(const std::shared_ptr<spdlog::logger> &logger
    , const QString &homeDir, NetworkType netType, const QString &port
    , const std::shared_ptr<ConnectionManager>& connectionManager
    , const std::shared_ptr<ApplicationSettings> &appSettings
-   , SignContainer::OpMode mode, double asSpendLimit
+   , SignContainer::OpMode mode
+   , const bool ephemeralDataConnKeys
+   , double asSpendLimit
    , const std::function<void(const std::string&, const std::string&
       , std::shared_ptr<std::promise<bool>>)> &cbNewKey
    , const std::function<void(const std::string&, const std::string&
@@ -1201,8 +1205,8 @@ LocalSigner::LocalSigner(const std::shared_ptr<spdlog::logger> &logger
       , const std::function<void(const std::string&, const std::string&
       , std::shared_ptr<std::promise<bool>>)>)> &invokeCB)
    : RemoteSigner(logger, QLatin1String("127.0.0.1"), port, netType
-   , connectionManager, appSettings, mode, cbNewKey, invokeCB)
-   , homeDir_(homeDir), asSpendLimit_(asSpendLimit)
+      , connectionManager, appSettings, mode, ephemeralDataConnKeys, cbNewKey
+      , invokeCB), homeDir_(homeDir), asSpendLimit_(asSpendLimit)
 {}
 
 QStringList LocalSigner::args() const

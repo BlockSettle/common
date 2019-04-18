@@ -25,6 +25,7 @@ SignContainer::SignContainer(const std::shared_ptr<spdlog::logger> &logger, OpMo
 //         The signer mode (local/remote/offline). (SignContainer::OpMode)
 //         The host address. (const QString)
 //         The signer connection manager. (const std::shared_ptr<ConnectionManager>)
+//         A flag indicating if data conn will use ephemeral ID keys. (const bool)
 //         The callback to invoke on a new BIP 150 ID key. (const std::function)
 //         The callback to invoke the BIP 150 ID key callback. (const std::function)
 // OUTPUT: N/A
@@ -33,6 +34,7 @@ std::shared_ptr<SignContainer> CreateSigner(const std::shared_ptr<spdlog::logger
    , const std::shared_ptr<ApplicationSettings> &appSettings
    , SignContainer::OpMode runMode, const QString &host
    , const std::shared_ptr<ConnectionManager>& connectionManager
+   , const bool& ephemeralDataConnKeys
    , const std::function<void(const std::string&, const std::string&
       , std::shared_ptr<std::promise<bool>>)> &cbNewKey
    , const std::function<void(const std::string&, const std::string&
@@ -54,11 +56,12 @@ std::shared_ptr<SignContainer> CreateSigner(const std::shared_ptr<spdlog::logger
       return std::make_shared<LocalSigner>(logger, appSettings->GetHomeDir()
          , netType, port, connectionManager, appSettings, runMode
          , appSettings->get<double>(ApplicationSettings::autoSignSpendLimit)
-         , cbNewKey, invokeCB);
+         , ephemeralDataConnKeys, cbNewKey, invokeCB);
 
    case SignContainer::OpMode::Remote:
       return std::make_shared<RemoteSigner>(logger, host, port, netType
-         , connectionManager, appSettings, runMode, cbNewKey, invokeCB);
+         , connectionManager, appSettings, runMode, ephemeralDataConnKeys
+         , cbNewKey, invokeCB);
 
    case SignContainer::OpMode::Offline:
       return std::make_shared<OfflineSigner>(logger, appSettings->GetHomeDir()
