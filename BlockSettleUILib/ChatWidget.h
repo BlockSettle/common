@@ -4,6 +4,7 @@
 #include <QWidget>
 #include <QStringListModel>
 #include <QScopedPointer>
+#include <QLayoutItem>
 
 #include "ChatUserListLogic.h"
 #include "CommonTypes.h"
@@ -87,6 +88,8 @@ private:
    QString  currentChat_;
    ChatSearchPopup *popup_;
    bool isRoom_;
+   QSpacerItem *chatUsersVerticalSpacer_;
+   QTimer *popupVisibleTimer; 
 
 private:
    std::shared_ptr<ChatWidgetState> stateCurrent_;
@@ -101,6 +104,8 @@ private:
    bool isRoom();
    void setIsRoom(bool);
    void changeState(ChatWidget::State state);
+   void initPopup();
+   void setPopupVisible(const bool &value);
 
    bool eventFilter(QObject * obj, QEvent * event) override;
 };

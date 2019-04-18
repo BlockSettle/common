@@ -304,6 +304,8 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
             this, &ChatWidget::onSendFriendRequest);
 
    changeState(State::LoggedOut); //Initial state is LoggedOut
+
+   initPopup();
 }
 
 void ChatWidget::onChatUserRemoved(const ChatUserDataPtr &chatUserDataPtr)
@@ -335,15 +337,11 @@ void ChatWidget::onSearchUserListReceived(const std::vector<std::shared_ptr<Chat
       popup_->setUserID(QString());
    }
 
-   popup_->setGeometry(0, 0, ui_->chatSearchLineEdit->width(), static_cast<int>(ui_->chatSearchLineEdit->height() * 1.2));
-   popup_->setCustomPosition(ui_->chatSearchLineEdit, 0, 5);
-   popup_->show();
+   setPopupVisible(true);
 
-   if (users.size() == 0) {
-      QTimer::singleShot(kShowEmptyFoundUserListTimeoutMs, [this] {
-         popup_->hide();
-         ui_->chatSearchLineEdit->setFocus();
-      });
+   // hide popup after a few sec
+   if (users.size() == 0) {    
+      popupVisibleTimer->start(kShowEmptyFoundUserListTimeoutMs);
    }
 }
 
@@ -383,6 +381,52 @@ void ChatWidget::changeState(ChatWidget::State state)
       }
 
       stateCurrent_->onStateEnter();
+   }
+}
+
+void ChatWidget::initPopup()
+{   
+   // create popup
+   popup_ = new ChatSearchPopup(this);
+   popup_->setWindowFlags(Qt::Widget);
+   popup_->setGeometry(0, 0, ui_->chatSearchLineEdit->width(), static_cast<int>(ui_->chatSearchLineEdit->height() * 1.2));
+   popup_->setVisible(false);
+   connect(popup_, &ChatSearchPopup::sendFriendRequest, this, &ChatWidget::onSendFriendRequest);
+   qApp->installEventFilter(this);
+
+   // insert popup under chat search line edit
+   QVBoxLayout *boxLayout = qobject_cast<QVBoxLayout*>(ui_->chatSearchLineEdit->parentWidget()->layout());
+   int index = boxLayout->indexOf(ui_->chatSearchLineEdit) + 1;
+   boxLayout->insertWidget(index, popup_);
+
+   // create spacer under popup
+   chatUsersVerticalSpacer_ = new QSpacerItem(20, 40);
+   boxLayout->insertSpacerItem(index+1, chatUsersVerticalSpacer_);
+
+   // create timer
+   popupVisibleTimer = new QTimer();
+   popupVisibleTimer->setSingleShot(true);
+   connect(popupVisibleTimer, &QTimer::timeout, [=]() {
+      setPopupVisible(false);
+   });
+}
+
+void ChatWidget::setPopupVisible(const bool &value)
+{
+   if (popup_ != NULL)
+      popup_->setVisible(value);
+
+   // resize spacer
+   if (chatUsersVerticalSpacer_ != NULL) {
+      if (value)
+         chatUsersVerticalSpacer_->changeSize(20, 13);
+      else
+         chatUsersVerticalSpacer_->changeSize(20, 40);
+      ui_->chatSearchLineEdit->parentWidget()->layout()->update();
+   }
+
+   if (popupVisibleTimer != NULL) {
+      popupVisibleTimer->stop();
    }
 }
 
@@ -455,14 +499,6 @@ void ChatWidget::onNewChatMessageTrayNotificationClicked(const QString &chatId)
 
 void ChatWidget::onSearchUserReturnPressed()
 {
-   if (!popup_)
-   {
-      popup_ = new ChatSearchPopup(this);
-      connect(popup_, &ChatSearchPopup::sendFriendRequest,
-              this, &ChatWidget::onSendFriendRequest);
-      qApp->installEventFilter(this);
-   }
-
    QString userToAdd = ui_->chatSearchLineEdit->text();
    if (userToAdd.isEmpty() || userToAdd.length() < 3) {
       return;
@@ -480,26 +516,11 @@ void ChatWidget::onSearchUserReturnPressed()
 
 bool ChatWidget::eventFilter(QObject *obj, QEvent *event)
 {
-   if (!popup_)
-      return QWidget::eventFilter(obj, event);
-
-   if (obj == this->window()
-       && event->type() == QEvent::Move)
-   {
-      popup_->move(ui_->chatSearchLineEdit->mapToGlobal(ui_->chatSearchLineEdit->rect().bottomLeft()));
-   }
-
-   if (event->type() == QEvent::MouseButtonRelease)
-   {
-      QMouseEvent *mouseEvent = static_cast<QMouseEvent*>(event);
-      QPoint pos = mouseEvent->pos();
+   if ( popup_->isVisible() && event->type() == QEvent::MouseButtonRelease) {
+      QPoint pos = popup_->mapFromGlobal(QCursor::pos());
 
       if (!popup_->rect().contains(pos))
-      {
-         qApp->removeEventFilter(this);
-         popup_->deleteLater();
-         popup_ = nullptr;
-      }
+         setPopupVisible(false);
    }
 
    return QWidget::eventFilter(obj, event);
@@ -520,10 +541,7 @@ void ChatWidget::onSendFriendRequest(const QString &userId)
       // and send friend request to ChatClient
       client_->sendFriendRequest(chatUserDataPtr->userId());
    }
-
-   popup_->deleteLater();
-   popup_ = nullptr;
-   qApp->removeEventFilter(this);
+   setPopupVisible(false);
 }
 
 void ChatWidget::onAcceptFriendRequest(const QString &userId)
