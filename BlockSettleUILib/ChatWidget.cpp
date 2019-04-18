@@ -4,7 +4,6 @@
 #include "ChatClient.h"
 #include "ApplicationSettings.h"
 #include "ChatSearchPopup.h"
-#include "ui_BSTerminalMainWindow.h"
 
 #include "OTCRequestViewModel.h"
 
@@ -234,13 +233,11 @@ ChatWidget::~ChatWidget() = default;
 
 void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManager
                  , const std::shared_ptr<ApplicationSettings> &appSettings
-                 , const std::shared_ptr<spdlog::logger>& logger
-                 , const Ui::BSTerminalMainWindow *mainWinUi)
+                 , const std::shared_ptr<spdlog::logger>& logger)
 {
    logger_ = logger;
    client_ = std::make_shared<ChatClient>(connectionManager, appSettings, logger);
    chatUserListLogicPtr_->init(client_, logger);
-   mainWinUi_ = mainWinUi;
 
    connect(client_.get(), &ChatClient::LoginFailed, this, &ChatWidget::onLoginFailed);
    connect(client_.get(), &ChatClient::LoggedOut, this, &ChatWidget::onLoggedOut);
@@ -454,8 +451,6 @@ void ChatWidget::onLoggedOut()
 void ChatWidget::onNewChatMessageTrayNotificationClicked(const QString &chatId)
 {
    switchToChat(chatId);
-   mainWinUi_->tabWidget->setCurrentWidget(mainWinUi_->widgetChat);
-   activateWindow();
 }
 
 void ChatWidget::onSearchUserReturnPressed()

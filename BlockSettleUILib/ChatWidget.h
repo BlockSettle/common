@@ -12,7 +12,6 @@
 
 namespace Ui {
    class ChatWidget;
-   class BSTerminalMainWindow;
 }
 namespace spdlog {
    class logger;
@@ -43,8 +42,7 @@ public:
 
    void init(const std::shared_ptr<ConnectionManager>& connectionManager
            , const std::shared_ptr<ApplicationSettings> &appSettings
-           , const std::shared_ptr<spdlog::logger>& logger
-           , const Ui::BSTerminalMainWindow *);
+           , const std::shared_ptr<spdlog::logger>& logger);
 
    std::string login(const std::string& email, const std::string& jwt);
    void logout();
@@ -81,7 +79,6 @@ signals:
 
 private:
    QScopedPointer<Ui::ChatWidget> ui_;
-   const Ui::BSTerminalMainWindow * mainWinUi_;
 
    std::shared_ptr<ChatClient>      client_;
    std::shared_ptr<spdlog::logger>  logger_;
