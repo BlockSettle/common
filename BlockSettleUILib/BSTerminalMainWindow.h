@@ -8,7 +8,7 @@
 #include <vector>
 
 #include "ApplicationSettings.h"
-#include "ArmoryConnection.h"
+#include "ArmoryObject.h"
 #include "CelerClient.h"
 #include "QWalletInfo.h"
 #include "SignContainer.h"
@@ -134,7 +134,7 @@ private:
    std::shared_ptr<ArmoryServersProvider> armoryServersProvider_;
    std::shared_ptr<AuthAddressManager>    authManager_;
    std::shared_ptr<AuthSignManager>       authSignManager_;
-   std::shared_ptr<ArmoryConnection>      armory_;
+   std::shared_ptr<ArmoryObject>          armory_;
 
    std::shared_ptr<RequestReplyCommand>   cmdPuBSettings_;
 
@@ -223,12 +223,16 @@ private:
    void loginWithCeler(const std::string& username, const std::string& password);
    void loginToCeler(const std::string& username, const std::string& password);
 
+   bool goOnlineArmory() const;
+
 private:
    QString           loginButtonText_;
    NetworkSettings   networkSettings_;
    bool readyToRegisterWallets_ = false;
    bool initialWalletCreateDialogShown_ = false;
    bool armoryKeyDialogShown_ = false;
+   bool armoryBDVRegistered_ = false;
+   bool walletsSynched_ = false;
 };
 
 #endif // __BS_TERMINAL_MAIN_WINDOW_H__

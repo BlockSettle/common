@@ -1,27 +1,10 @@
 #include <chrono>
-#include <QStandardPaths>
 
 #include "ZMQ_BIP15X_ServerConnection.h"
 #include "MessageHolder.h"
+#include "SystemFileUtils.h"
 
 using namespace std;
-
-// DESIGN NOTE: The BIP151Connection objects need to be attached to specific
-// connections, and they need to be set up and torn down as clients connect and
-// disconnect. Due to ZMQ peculiarities, this is more difficult than it should
-// be. The data socket doesn't supply any external information. So, a client ID
-// from a MessageHolder object is ideal. It's derived from a monitor socket,
-// which is accurate in knowing when a client has connected or disconnected.
-// Unfortunately, there doesn't seem to be a good way to get the client ID when
-// getting a data packet. The only solution that seems to work for now is to get
-// the client IP addresses associated with the connections and work off that.
-// This isn't ideal - the monitor sockets don't give the port, which means
-// multiple connections behind the same IP address require a workaround - but
-// this is a start until a better solution can be devised. Ideally,
-// OnClientConnected() could potentially be triggered in the listener, which
-// could then pass the ID back down here via a callback and into clientInfo_. As
-// is, the code takes a similar but different tack by associating the IP address
-// with the BIP151Connection object (socketConnMap_).
 
 // A call resetting the encryption-related data for individual connections.
 //
@@ -34,7 +17,7 @@ void ZmqBIP15XPerConnData::reset()
    bip150HandshakeCompleted_ = false;
    bip151HandshakeCompleted_ = false;
    currentReadMessage_.reset();
-   outKeyTimePoint_ = chrono::system_clock::now();
+   outKeyTimePoint_ = chrono::steady_clock::now();
 }
 
 // The constructor to use.
@@ -48,24 +31,22 @@ void ZmqBIP15XPerConnData::reset()
 ZmqBIP15XServerConnection::ZmqBIP15XServerConnection(
    const std::shared_ptr<spdlog::logger>& logger
    , const std::shared_ptr<ZmqContext>& context
-   , const QStringList& trustedClients, const uint64_t& id
+   , const std::vector<std::string>& trustedClients, const uint64_t& id
    , const bool& ephemeralPeers)
    : ZmqServerConnection(logger, context), id_(id)
 {
-   string datadir =
-      QStandardPaths::writableLocation(QStandardPaths::AppDataLocation).toStdString();
+   string datadir = SystemFilePaths::appDataLocation();
    string filename(SERVER_AUTH_PEER_FILENAME);
 
    // In general, load the client key from a special Armory wallet file.
-   if (!ephemeralPeers)
-   {
+   if (!ephemeralPeers) {
        authPeers_ = make_shared<AuthorizedPeers>(datadir, filename);
    }
    else {
       authPeers_ = make_shared<AuthorizedPeers>();
    }
 
-   cbTrustedClients_ = [trustedClients]() -> QStringList {
+   cbTrustedClients_ = [trustedClients]() -> std::vector<std::string> {
       return trustedClients;
    };
 
@@ -75,7 +56,7 @@ ZmqBIP15XServerConnection::ZmqBIP15XServerConnection(
 ZmqBIP15XServerConnection::ZmqBIP15XServerConnection(
    const std::shared_ptr<spdlog::logger>& logger
    , const std::shared_ptr<ZmqContext>& context
-   , const std::function<QStringList()> &cbTrustedClients)
+   , const std::function<std::vector<std::string>()> &cbTrustedClients)
    : ZmqServerConnection(logger, context)
    , cbTrustedClients_(cbTrustedClients)
 {
@@ -206,7 +187,7 @@ bool ZmqBIP15XServerConnection::SendDataToClient(const string& clientId
    if (socketConnMap_[clientId]->bip150HandshakeCompleted_)
    {
       bool needsRekey = false;
-      auto rightNow = chrono::system_clock::now();
+      auto rightNow = chrono::steady_clock::now();
 
       // Rekey off # of bytes sent or length of time since last rekey.
       if (connPtr->rekeyNeeded(data.size()))
@@ -235,7 +216,7 @@ bool ZmqBIP15XServerConnection::SendDataToClient(const string& clientId
          auto& packet = rekeyPacket.getNextPacket();
          if (!SendDataToClient(clientId, packet.toBinStr(), cb))
          {
-            logger_->error("[ZmqBIP15XDataConnection::{}] {} failed to send "
+            logger_->error("[ZmqBIP15XServerConnection::{}] {} failed to send "
                "rekey: {} (result={})", __func__, connectionName_
                , zmq_strerror(zmq_errno()));
          }
@@ -364,7 +345,7 @@ void ZmqBIP15XServerConnection::ProcessIncomingData(const string& encData
    auto result = connData->currentReadMessage_.message_.parsePacket(payloadRef);
    if (!result) {
       if (logger_) {
-         logger_->error("[ZmqBIP15XDataConnection::{}] Deserialization failed "
+         logger_->error("[ZmqBIP15XServerConnection::{}] Deserialization failed "
             "(connection {})", __func__, connectionName_);
       }
       connData->currentReadMessage_.reset();
@@ -389,7 +370,7 @@ void ZmqBIP15XServerConnection::ProcessIncomingData(const string& encData
       ZMQ_MSGTYPE_AEAD_THRESHOLD) {
       if (!processAEADHandshake(connData->currentReadMessage_.message_, clientID)) {
          if (logger_) {
-            logger_->error("[ZmqBIP15XDataConnection::{}] Handshake failed "
+            logger_->error("[ZmqBIP15XServerConnection::{}] Handshake failed "
                "(connection {})", __func__, connectionName_);
          }
          return;
@@ -407,7 +388,7 @@ void ZmqBIP15XServerConnection::ProcessIncomingData(const string& encData
    if (connData->encData_->getBIP150State() !=
       BIP150State::SUCCESS) {
       if (logger_) {
-         logger_->error("[ZmqBIP15XDataConnection::{}] Encryption handshake "
+         logger_->error("[ZmqBIP15XServerConnection::{}] Encryption handshake "
             "is incomplete (connection {})", __func__, connectionName_);
       }
       return;
@@ -725,14 +706,14 @@ void ZmqBIP15XServerConnection::setBIP151Connection(const string& clientID)
       assert(cbTrustedClients_);
       auto lbds = getAuthPeerLambda();
       for (auto b : cbTrustedClients_()) {
-         const auto colonIndex = b.indexOf(QLatin1Char(':'));
-         if (colonIndex < 0) {
+         const auto colonIndex = b.find(':');
+         if (colonIndex == std::string::npos) {
             logger_->error("[{}] Trusted client list is malformed (for {})."
-               , __func__, b.toStdString());
+               , __func__, b);
             return;
          }
-         const auto keyName = b.left(colonIndex).toStdString();
-         SecureBinaryData inKey = READHEX(b.mid(colonIndex + 1).toStdString());
+         const auto keyName = b.substr(0, colonIndex);
+         SecureBinaryData inKey = READHEX(b.substr(colonIndex + 1));
          if (inKey.isNull()) {
             logger_->error("[{}] Trusted client key for {} is malformed."
                , __func__, keyName);
@@ -753,7 +734,7 @@ void ZmqBIP15XServerConnection::setBIP151Connection(const string& clientID)
          std::unique_lock<std::mutex> lock(clientsMtx_);
          socketConnMap_[clientID] = make_unique<ZmqBIP15XPerConnData>();
          socketConnMap_[clientID]->encData_ = make_unique<BIP151Connection>(lbds);
-         socketConnMap_[clientID]->outKeyTimePoint_ = chrono::system_clock::now();
+         socketConnMap_[clientID]->outKeyTimePoint_ = chrono::steady_clock::now();
       }
       notifyListenerOnNewConnection(clientID);
    }

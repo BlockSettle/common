@@ -9,7 +9,7 @@
 #include <QPointer>
 #include <QMutex>
 #include <QDateTime>
-#include "ArmoryConnection.h"
+#include "ArmoryObject.h"
 #include "BTCNumericTypes.h"
 #include "CoreWallet.h"
 #include "SyncWallet.h"
@@ -42,7 +42,7 @@ namespace bs {
          using HDWalletPtr = std::shared_ptr<hd::Wallet>;
 
          WalletsManager(const std::shared_ptr<spdlog::logger> &, const std::shared_ptr<ApplicationSettings>& appSettings
-            , const std::shared_ptr<ArmoryConnection> &);
+            , const std::shared_ptr<ArmoryObject> &);
          ~WalletsManager() noexcept;
 
          WalletsManager(const WalletsManager&) = delete;
@@ -138,6 +138,7 @@ namespace bs {
          void onStateChanged(ArmoryConnection::State);
          void onWalletImported(const std::string &walletId);
          void onHDWalletCreated(unsigned int id, std::shared_ptr<bs::sync::hd::Wallet>);
+         void onWalletsListUpdated();
 
       private:
          bool empty() const { return (wallets_.empty() && !settlementWallet_); }
@@ -170,7 +171,7 @@ namespace bs {
          std::shared_ptr<SignContainer>         signContainer_;
          std::shared_ptr<spdlog::logger>        logger_;
          std::shared_ptr<ApplicationSettings>   appSettings_;
-         std::shared_ptr<ArmoryConnection>      armory_;
+         std::shared_ptr<ArmoryObject>          armory_;
 
          using wallet_container_type = std::unordered_map<std::string, WalletPtr>;
          using hd_wallet_container_type = std::unordered_map<std::string, HDWalletPtr>;

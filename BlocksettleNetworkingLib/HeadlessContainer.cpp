@@ -21,12 +21,44 @@ using namespace Blocksettle::Communication;
 Q_DECLARE_METATYPE(headless::RequestPacket)
 Q_DECLARE_METATYPE(std::shared_ptr<bs::sync::hd::Leaf>)
 
-static NetworkType mapNetworkType(headless::NetworkType netType)
+NetworkType HeadlessContainer::mapNetworkType(headless::NetworkType netType)
 {
    switch (netType) {
    case headless::MainNetType:   return NetworkType::MainNet;
    case headless::TestNetType:   return NetworkType::TestNet;
-   default:    return NetworkType::Invalid;
+   default:                      return NetworkType::Invalid;
+   }
+}
+
+void HeadlessContainer::makeCreateHDWalletRequest(const std::string &name, const std::string &desc, bool primary
+   , const bs::core::wallet::Seed &seed, const std::vector<bs::wallet::PasswordData> &pwdData, bs::wallet::KeyRank keyRank
+   , headless::CreateHDWalletRequest &request)
+{
+   if (!pwdData.empty()) {
+      request.set_rankm(keyRank.first);
+      request.set_rankn(keyRank.second);
+   }
+   for (const auto &pwd : pwdData) {
+      auto reqPwd = request.add_password();
+      reqPwd->set_password(pwd.password.toHexStr());
+      reqPwd->set_enctype(static_cast<uint32_t>(pwd.encType));
+      reqPwd->set_enckey(pwd.encKey.toBinStr());
+   }
+   auto wallet = request.mutable_wallet();
+   wallet->set_name(name);
+   wallet->set_description(desc);
+   wallet->set_nettype((seed.networkType() == NetworkType::TestNet) ? headless::TestNetType : headless::MainNetType);
+   if (primary) {
+      wallet->set_primary(true);
+   }
+   if (!seed.empty()) {
+      if (seed.hasPrivateKey()) {
+         wallet->set_privatekey(seed.privateKey().toBinStr());
+         wallet->set_chaincode(seed.chainCode().toBinStr());
+      }
+      else if (!seed.seed().isNull()) {
+         wallet->set_seed(seed.seed().toBinStr());
+      }
    }
 }
 
@@ -54,7 +86,7 @@ void HeadlessListener::OnDataReceived(const std::string& data)
          emit error(tr("failed to parse auth reply"));
          return;
       }
-      if (mapNetworkType(response.nettype()) != netType_) {
+      if (HeadlessContainer::mapNetworkType(response.nettype()) != netType_) {
          logger_->error("[HeadlessListener] network type mismatch");
          emit error(tr("network type mismatch"));
          return;
@@ -87,9 +119,9 @@ void HeadlessListener::OnError(DataConnectionListener::DataConnectionError error
    emit error(tr("error #%1").arg(QString::number(errorCode)));
 }
 
-HeadlessContainer::RequestId HeadlessListener::Send(headless::RequestPacket packet, bool updateId)
+bs::signer::RequestId HeadlessListener::Send(headless::RequestPacket packet, bool updateId)
 {
-   HeadlessContainer::RequestId id = 0;
+   bs::signer::RequestId id = 0;
    if (updateId) {
       id = newRequestId();
       packet.set_id(id);
@@ -101,7 +133,6 @@ HeadlessContainer::RequestId HeadlessListener::Send(headless::RequestPacket pack
    }
    return id;
 }
-
 
 HeadlessContainer::HeadlessContainer(const std::shared_ptr<spdlog::logger> &logger, OpMode opMode)
    : SignContainer(logger, opMode)
@@ -154,7 +185,7 @@ bool KillHeadlessProcess()
    return false;
 }
 
-HeadlessContainer::RequestId HeadlessContainer::Send(headless::RequestPacket packet, bool incSeqNo)
+bs::signer::RequestId HeadlessContainer::Send(headless::RequestPacket packet, bool incSeqNo)
 {
    if (!listener_) {
       return 0;
@@ -293,7 +324,7 @@ void HeadlessContainer::ProcessSetLimitsResponse(unsigned int id, const std::str
    emit AutoSignStateChanged(response.rootwalletid(), response.autosignactive(), response.error());
 }
 
-HeadlessContainer::RequestId HeadlessContainer::signTXRequest(const bs::core::wallet::TXSignRequest &txSignReq
+bs::signer::RequestId HeadlessContainer::signTXRequest(const bs::core::wallet::TXSignRequest &txSignReq
    , bool autoSign, SignContainer::TXSignMode mode, const PasswordType& password
    , bool keepDuplicatedRecipients)
 {
@@ -336,7 +367,7 @@ HeadlessContainer::RequestId HeadlessContainer::signTXRequest(const bs::core::wa
 
    if (txSignReq.change.value) {
       auto change = request.mutable_change();
-      change->set_address(txSignReq.change.address.display<std::string>());
+      change->set_address(txSignReq.change.address.display());
       change->set_index(txSignReq.change.index);
       change->set_value(txSignReq.change.value);
    }
@@ -354,7 +385,7 @@ HeadlessContainer::RequestId HeadlessContainer::signTXRequest(const bs::core::wa
    default:    break;
    }
    packet.set_data(request.SerializeAsString());
-   RequestId id = Send(packet);
+   const auto id = Send(packet);
    signRequests_.insert(id);
    return id;
 }
@@ -365,7 +396,7 @@ unsigned int HeadlessContainer::signPartialTXRequest(const bs::core::wallet::TXS
    return signTXRequest(req, autoSign, TXSignMode::Partial, password);
 }
 
-HeadlessContainer::RequestId HeadlessContainer::signPayoutTXRequest(const bs::core::wallet::TXSignRequest &txSignReq
+bs::signer::RequestId HeadlessContainer::signPayoutTXRequest(const bs::core::wallet::TXSignRequest &txSignReq
    , const bs::Address &authAddr, const std::string &settlementId
    , bool autoSign, const PasswordType& password)
 {
@@ -376,7 +407,7 @@ HeadlessContainer::RequestId HeadlessContainer::signPayoutTXRequest(const bs::co
    headless::SignPayoutTXRequest request;
    request.set_input(txSignReq.inputs[0].serialize().toBinStr());
    request.set_recipient(txSignReq.recipients[0]->getSerializedScript().toBinStr());
-   request.set_authaddress(authAddr.display<std::string>());
+   request.set_authaddress(authAddr.display());
    request.set_settlementid(settlementId);
    if (autoSign) {
       request.set_applyautosignrules(autoSign);
@@ -389,12 +420,12 @@ HeadlessContainer::RequestId HeadlessContainer::signPayoutTXRequest(const bs::co
    headless::RequestPacket packet;
    packet.set_type(headless::SignPayoutTXRequestType);
    packet.set_data(request.SerializeAsString());
-   RequestId id = Send(packet);
+   const auto id = Send(packet);
    signRequests_.insert(id);
    return id;
 }
 
-HeadlessContainer::RequestId HeadlessContainer::signMultiTXRequest(const bs::core::wallet::TXMultiSignRequest &txMultiReq)
+bs::signer::RequestId HeadlessContainer::signMultiTXRequest(const bs::core::wallet::TXMultiSignRequest &txMultiReq)
 {
    if (!txMultiReq.isValid()) {
       logger_->error("[HeadlessContainer] Invalid TXMultiSignRequest");
@@ -417,12 +448,12 @@ HeadlessContainer::RequestId HeadlessContainer::signMultiTXRequest(const bs::cor
    headless::RequestPacket packet;
    packet.set_type(headless::SignTXMultiRequestType);
    packet.set_data(request.SerializeAsString());
-   RequestId id = Send(packet);
+   const auto id = Send(packet);
    signRequests_.insert(id);
    return id;
 }
 
-HeadlessContainer::RequestId HeadlessContainer::CancelSignTx(const BinaryData &txId)
+bs::signer::RequestId HeadlessContainer::CancelSignTx(const BinaryData &txId)
 {
    headless::CancelSignTx request;
    request.set_txid(txId.toBinStr());
@@ -451,7 +482,7 @@ void HeadlessContainer::SendPassword(const std::string &walletId, const Password
    Send(packet, false);
 }
 
-HeadlessContainer::RequestId HeadlessContainer::SetUserId(const BinaryData &userId)
+bs::signer::RequestId HeadlessContainer::SetUserId(const BinaryData &userId)
 {
    if (!listener_) {
       logger_->warn("[HeadlessContainer::SetUserId] listener not set yet");
@@ -469,7 +500,7 @@ HeadlessContainer::RequestId HeadlessContainer::SetUserId(const BinaryData &user
    return Send(packet);
 }
 
-HeadlessContainer::RequestId HeadlessContainer::createHDLeaf(const std::string &rootWalletId
+bs::signer::RequestId HeadlessContainer::createHDLeaf(const std::string &rootWalletId
    , const bs::hd::Path &path, const std::vector<bs::wallet::PasswordData> &pwdData)
 {
    if (rootWalletId.empty() || (path.length() != 3)) {
@@ -493,37 +524,12 @@ HeadlessContainer::RequestId HeadlessContainer::createHDLeaf(const std::string &
    return Send(packet);
 }
 
-HeadlessContainer::RequestId HeadlessContainer::createHDWallet(const std::string &name
+bs::signer::RequestId HeadlessContainer::createHDWallet(const std::string &name
    , const std::string &desc, bool primary, const bs::core::wallet::Seed &seed
    , const std::vector<bs::wallet::PasswordData> &pwdData, bs::wallet::KeyRank keyRank)
 {
    headless::CreateHDWalletRequest request;
-   if (!pwdData.empty()) {
-      request.set_rankm(keyRank.first);
-      request.set_rankn(keyRank.second);
-   }
-   for (const auto &pwd : pwdData) {
-      auto reqPwd = request.add_password();
-      reqPwd->set_password(pwd.password.toHexStr());
-      reqPwd->set_enctype(static_cast<uint32_t>(pwd.encType));
-      reqPwd->set_enckey(pwd.encKey.toBinStr());
-   }
-   auto wallet = request.mutable_wallet();
-   wallet->set_name(name);
-   wallet->set_description(desc);
-   wallet->set_nettype((seed.networkType() == NetworkType::TestNet) ? headless::TestNetType : headless::MainNetType);
-   if (primary) {
-      wallet->set_primary(true);
-   }
-   if (!seed.empty()) {
-      if (seed.hasPrivateKey()) {
-         wallet->set_privatekey(seed.privateKey().toBinStr());
-         wallet->set_chaincode(seed.chainCode().toBinStr());
-      }
-      else if (!seed.seed().isNull()) {
-         wallet->set_seed(seed.seed().toBinStr());
-      }
-   }
+   makeCreateHDWalletRequest(name, desc, primary, seed, pwdData, keyRank, request);
 
    headless::RequestPacket packet;
    packet.set_type(headless::CreateHDWalletRequestType);
@@ -531,7 +537,7 @@ HeadlessContainer::RequestId HeadlessContainer::createHDWallet(const std::string
    return Send(packet);
 }
 
-HeadlessContainer::RequestId HeadlessContainer::DeleteHDRoot(const std::string &rootWalletId)
+bs::signer::RequestId HeadlessContainer::DeleteHDRoot(const std::string &rootWalletId)
 {
    if (rootWalletId.empty()) {
       return 0;
@@ -539,7 +545,7 @@ HeadlessContainer::RequestId HeadlessContainer::DeleteHDRoot(const std::string &
    return SendDeleteHDRequest(rootWalletId, {});
 }
 
-HeadlessContainer::RequestId HeadlessContainer::DeleteHDLeaf(const std::string &leafWalletId)
+bs::signer::RequestId HeadlessContainer::DeleteHDLeaf(const std::string &leafWalletId)
 {
    if (leafWalletId.empty()) {
       return 0;
@@ -547,7 +553,7 @@ HeadlessContainer::RequestId HeadlessContainer::DeleteHDLeaf(const std::string &
    return SendDeleteHDRequest({}, leafWalletId);
 }
 
-HeadlessContainer::RequestId HeadlessContainer::SendDeleteHDRequest(const std::string &rootWalletId, const std::string &leafId)
+bs::signer::RequestId HeadlessContainer::SendDeleteHDRequest(const std::string &rootWalletId, const std::string &leafId)
 {
    headless::DeleteHDWalletRequest request;
    if (!rootWalletId.empty()) {
@@ -587,7 +593,7 @@ void HeadlessContainer::setLimits(const std::string &walletId, const SecureBinar
    Send(packet);
 }
 
-SignContainer::RequestId HeadlessContainer::customDialogRequest(bs::signer::ui::DialogType signerDialog, const QVariantMap &data)
+bs::signer::RequestId HeadlessContainer::customDialogRequest(bs::signer::ui::DialogType signerDialog, const QVariantMap &data)
 {
    // serialize variant data
    QByteArray ba;
@@ -604,7 +610,7 @@ SignContainer::RequestId HeadlessContainer::customDialogRequest(bs::signer::ui::
    return Send(packet);
 }
 
-HeadlessContainer::RequestId HeadlessContainer::getDecryptedRootKey(const std::string &walletId
+bs::signer::RequestId HeadlessContainer::getDecryptedRootKey(const std::string &walletId
    , const SecureBinaryData &password)
 {
    headless::GetRootKeyRequest request;
@@ -619,7 +625,7 @@ HeadlessContainer::RequestId HeadlessContainer::getDecryptedRootKey(const std::s
    return Send(packet);
 }
 
-HeadlessContainer::RequestId HeadlessContainer::GetInfo(const std::string &rootWalletId)
+bs::signer::RequestId HeadlessContainer::GetInfo(const std::string &rootWalletId)
 {
    if (rootWalletId.empty()) {
       return 0;
@@ -688,7 +694,7 @@ void HeadlessContainer::syncAddressComment(const std::string &walletId, const bs
 {
    headless::SyncCommentRequest request;
    request.set_walletid(walletId);
-   request.set_address(addr.display<std::string>());
+   request.set_address(addr.display());
    request.set_comment(comment);
 
    headless::RequestPacket packet;
@@ -1085,7 +1091,7 @@ void RemoteSigner::onDisconnected()
 {
    missingWallets_.clear();
 
-   std::set<RequestId> tmpReqs = signRequests_;
+   std::set<bs::signer::RequestId> tmpReqs = signRequests_;
    signRequests_.clear();
 
    for (const auto &id : tmpReqs) {
@@ -1160,6 +1166,11 @@ void RemoteSigner::onPacketReceived(headless::RequestPacket packet)
 
    case headless::SyncAddressesType:
       ProcessSyncAddresses(packet.id(), packet.data());
+      break;
+
+   case headless::WalletsListUpdatedType:
+      logger_->debug("received WalletsListUpdatedType message");
+      emit walletsListUpdated();
       break;
 
    default:
@@ -1282,12 +1293,25 @@ bool LocalSigner::Stop()
    RemoteSigner::Stop();
 
    if (headlessProcess_) {
+#ifdef Q_OS_WIN
+      const auto pid = headlessProcess_->pid();
+      if (pid && AttachConsole(pid->dwProcessId)) {
+         SetConsoleCtrlHandler(NULL, TRUE);  // Disable shutdown on Ctrl-C for self
+         GenerateConsoleCtrlEvent(CTRL_C_EVENT, 0);
+         FreeConsole();
+      }
+      else {
+         headlessProcess_->kill();
+      }
+#else
       headlessProcess_->terminate();
+#endif
       if (!headlessProcess_->waitForFinished(500)) {
          headlessProcess_->close();
       }
+      headlessProcess_.reset();
    }
    return true;
 }
 
-#include "HeadlessContainer.moc"
+//#include "HeadlessContainer.moc"

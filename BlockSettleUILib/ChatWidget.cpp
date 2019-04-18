@@ -21,8 +21,16 @@
 
 Q_DECLARE_METATYPE(std::vector<std::string>)
 
-constexpr int kShowEmptyFoundUserListTimeoutMs = 3000;
 
+enum class OTCPages : int
+{
+   OTCCreateRequest = 0,
+   OTCCreateResponse,
+   OTCNegotiateRequest,
+   OTCNegotiateResponse
+};
+
+constexpr int kShowEmptyFoundUserListTimeoutMs = 3000;
 
 class ChatWidgetState {
 public:
@@ -119,12 +127,10 @@ public:
          if (!chat_->isRoom()){
             auto msg = chat_->client_->sendOwnMessage(messageText, chat_->currentChat_);
             chat_->ui_->input_textEdit->clear();
-   
             //chat_->ui_->textEditMessages->onSingleMessageUpdate(msg);
          } else {
             auto msg = chat_->client_->sendRoomOwnMessage(messageText, chat_->currentChat_);
             chat_->ui_->input_textEdit->clear();
-   
             //chat_->ui_->textEditMessages->onSingleMessageUpdate(msg);
          }
       }
@@ -155,7 +161,7 @@ public:
       }
       chat_->ui_->input_textEdit->setFocus();
    }
-   
+
    void onRoomClicked(const QString& roomId) override {
       if (roomId == QLatin1Literal("otc_chat")) {
          chat_->ui_->stackedWidgetMessages->setCurrentIndex(1);
@@ -214,6 +220,12 @@ ChatWidget::ChatWidget(QWidget *parent)
    ui_->treeViewOTCRequests->setModel(otcRequestViewModel_);
 
    qRegisterMetaType<std::vector<std::string>>();
+
+   connect(ui_->widgetCreateOTCRequest, &CreateOTCRequestWidget::RequestCreated, this, &ChatWidget::OnOTCRequestCreated);
+   connect(ui_->widgetCreateOTCResponse, &CreateOTCResponseWidget::ResponseCreated, this, &ChatWidget::OnOTCResponseCreated);
+
+   //widgetNegotiateRequest
+   //widgetNegotiateResponse
 }
 
 ChatWidget::~ChatWidget() = default;
@@ -337,6 +349,7 @@ void ChatWidget::onSearchUserListReceived(const std::vector<std::shared_ptr<Chat
    popup_->setGeometry(0, 0, ui_->chatSearchLineEdit->width(), static_cast<int>(ui_->chatSearchLineEdit->height() * 1.2));
    popup_->setCustomPosition(ui_->chatSearchLineEdit, 0, 5);
    popup_->show();
+
    if (users.size() == 0) {
       QTimer::singleShot(kShowEmptyFoundUserListTimeoutMs, [this] {
          popup_->hide();
@@ -583,6 +596,11 @@ void ChatWidget::onElementSelected(CategoryElement *element)
             break;
 
       }
+      if (currentChat_ == QLatin1Literal("otc_chat")) {
+         ui_->stackedWidgetMessages->setCurrentIndex(1);
+      } else {
+         ui_->stackedWidgetMessages->setCurrentIndex(0);
+      }
    }
 }
 
@@ -594,4 +612,30 @@ void ChatWidget::onMessageChanged(std::shared_ptr<Chat::MessageData> message)
 void ChatWidget::onElementUpdated(CategoryElement *element)
 {
    qDebug() << __func__ << " " << QString::fromStdString(element->getDataObject()->toJsonString());
+}
+
+void ChatWidget::OnOTCRequestCreated()
+{
+   auto side = ui_->widgetCreateOTCRequest->GetSide();
+   auto range = ui_->widgetCreateOTCRequest->GetRange();
+
+   DisplayOTCRequest(side, range);
+}
+
+void ChatWidget::DisplayOTCRequest(const bs::network::Side::Type& side, const bs::network::OTCRangeID& range)
+{
+   ui_->widgetCreateOTCResponse->SetSide(side);
+   ui_->widgetCreateOTCResponse->SetRange(range);
+
+   ui_->stackedWidgetOTC->setCurrentIndex(static_cast<int>(OTCPages::OTCCreateResponse));
+}
+
+
+void ChatWidget::OnOTCResponseCreated()
+{
+   auto priceRange = ui_->widgetCreateOTCResponse->GetResponsePriceRange();
+   auto amountRange = ui_->widgetCreateOTCResponse->GetResponseQuantityRange();
+   ui_->widgetNegotiateRequest->DisplayResponse(ui_->widgetCreateOTCRequest->GetSide(), priceRange, amountRange);
+
+   ui_->stackedWidgetOTC->setCurrentIndex(static_cast<int>(OTCPages::OTCNegotiateRequest));
 }

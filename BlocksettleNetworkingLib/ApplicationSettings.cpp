@@ -21,7 +21,7 @@ static const QString appDirName = QLatin1String("Blocksettle");
 static const QString bitcoinDirName = QLatin1String("Bitcoin");
 static const QString armoryDBAppPathName = QLatin1String("/usr/bin/ArmoryDB");
 #elif defined (Q_OS_LINUX)
-static const QString appDirName = QLatin1String(".blocksettle");
+static const QString appDirName = QLatin1String("blocksettle");
 static const QString bitcoinDirName = QLatin1String(".bitcoin");
 static const QString armoryDBAppPathName = QLatin1String("/usr/bin/ArmoryDB");
 #endif
@@ -154,7 +154,8 @@ ApplicationSettings::ApplicationSettings(const QString &appName
       { zmqRemoteSignerPubKey,            SettingDef(QLatin1String("ZmqRemoteSignerPubKey")) },
       { rememberLoginUserName,            SettingDef(QLatin1String("RememberLoginUserName"), true) },
       { armoryServers,                    SettingDef(QLatin1String("ArmoryServers")) },
-      { defaultArmoryServersKeys,         SettingDef(QLatin1String("DefaultArmoryServersKeys")) }
+      { defaultArmoryServersKeys,         SettingDef(QLatin1String("DefaultArmoryServersKeys")) },
+      { twoWayAuth,                       SettingDef(QLatin1String("TwoWayAuth"), false) }
    };
 }
 

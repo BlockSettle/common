@@ -2,7 +2,9 @@
 #include "ChatProtocol/ChatProtocol.h"
 
 #include <spdlog/spdlog.h>
-#include "botan/base64.h"
+#include <botan/bigint.h>
+#include <botan/base64.h>
+#include <botan/auto_rng.h>
 
 #include "ZMQ_BIP15X_DataConnection.h"
 #include "ChatDB.h"
@@ -70,9 +72,7 @@ ChatClient::ChatClient(const std::shared_ptr<ConnectionManager>& connectionManag
 
 ChatClient::~ChatClient() noexcept
 {
-   if (loggedIn_) {
-      logout();
-   }
+   // Let's not call anything here as this could cause crash
 }
 
 std::shared_ptr<RootItem> ChatClient::getRootItem()
@@ -200,6 +200,8 @@ void ChatClient::OnContactsActionResponseDirect(const Chat::ContactsActionRespon
          root_->notifyContactChanged(contact);
          addOrUpdateContact(senderId, ContactUserData::Status::Friend);
          emit FriendRequestAccepted({response.senderId()});
+         // reprocess message again
+         retrySendQueuedMessages(response.senderId());
       }
       break;
       case Chat::ContactsAction::Reject: {
@@ -212,6 +214,7 @@ void ChatClient::OnContactsActionResponseDirect(const Chat::ContactsActionRespon
          root_->notifyContactChanged(contact);
          //removeContact(QString::fromStdString(response.senderId()));
          emit FriendRequestRejected({response.senderId()});
+         eraseQueuedMessages(response.senderId());
       }
       break;
       case Chat::ContactsAction::Request: {
@@ -245,11 +248,13 @@ void ChatClient::OnContactsActionResponseServer(const Chat::ContactsActionRespon
          actionString = "ContactsActionServer::AddContactRecord";
          //addOrUpdateContact(QString::fromStdString(response.userId()));
          //emit AcceptFriendRequest({response.userId()});
+         retrySendQueuedMessages(response.contactId());
       break;
       case Chat::ContactsActionServer::RemoveContactRecord:
          actionString = "ContactsActionServer::RemoveContactRecord";
          //removeContact(QString::fromStdString(response.userId()));
          //emit RejectFriendRequest({response.userId()});
+         retrySendQueuedMessages(response.contactId());
       break;
       case Chat::ContactsActionServer::UpdateContactRecord:
          actionString = "ContactsActionServer::UpdateContactRecord";
@@ -325,10 +330,13 @@ void ChatClient::OnRoomMessages(const Chat::RoomMessagesResponse& response)
       msg->setFlag(Chat::MessageData::State::Acknowledged);
       chatDb_->add(*msg);
 
-      if (msg->getState() & (int)Chat::MessageData::State::Encrypted) {
+      if (msg->encryptionType() == Chat::MessageData::EncryptionType::IES) {
          if (!msg->decrypt(ownPrivKey_)) {
             logger_->error("Failed to decrypt msg {}", msg->getId().toStdString());
             msg->setFlag(Chat::MessageData::State::Invalid);
+         }
+         else {
+            msg->setEncryptionType(Chat::MessageData::EncryptionType::Unencrypted);
          }
       }
       root_->insertRoomMessage(msg);
@@ -449,26 +457,55 @@ void ChatClient::OnUsersList(const Chat::UsersListResponse &response)
 
 void ChatClient::OnMessages(const Chat::MessagesResponse &response)
 {
-   logger_->debug("Received messages from server: {}", response.getData());
+   logger_->debug("[ChatClient::{}] Received messages from server: {}", __func__, response.getData());
    std::vector<std::shared_ptr<Chat::MessageData>> messages;
    for (const auto &msgStr : response.getDataList()) {
       const auto msg = Chat::MessageData::fromJSON(msgStr);
       if (!chatDb_->isContactExist(msg->getSenderId())) {
          continue;
       }
-
+/*
+<<<<<<< HEAD
       msg->setFlag(Chat::MessageData::State::Acknowledged);
       chatDb_->add(*msg);
-      root_->insertContactsMessage(msg);
+
 
       if (msg->getState() & (int)Chat::MessageData::State::Encrypted) {
          if (!msg->decrypt(ownPrivKey_)) {
             logger_->error("Failed to decrypt msg {}", msg->getId().toStdString());
             msg->setFlag(Chat::MessageData::State::Invalid);
+=======*/
+      const auto& itPublicKey = pubKeys_.find(msg->getSenderId());
+      if (itPublicKey == pubKeys_.end()) {
+         logger_->error("[ChatClient::{}] Can't find public key for sender {}", __func__, msg->getSenderId().toStdString());
+         msg->setFlag(Chat::MessageData::State::Invalid);
+      }
+      else {
+         if (msg->encryptionType() == Chat::MessageData::EncryptionType::AEAD) {
+            BinaryData remotePublicKey(itPublicKey->second.data(), itPublicKey->second.size());
+            SecureBinaryData localPrivateKey(ownPrivKey_.data(), ownPrivKey_.size());
+            if (!msg->decrypt_aead(remotePublicKey, localPrivateKey, logger_)) {
+               logger_->error("[ChatClient::{}] Failed to decrypt msg.", __func__);
+               msg->setFlag(Chat::MessageData::State::Invalid);
+            }
+            else {
+               // Encrypt by eis and save in db
+               auto localEncMsg = *msg;
+               localEncMsg.setFlag(Chat::MessageData::State::Acknowledged);
+               localEncMsg.encrypt(appSettings_->GetAuthKeys().second);
+               localEncMsg.setEncryptionType(Chat::MessageData::EncryptionType::IES);
+               chatDb_->add(localEncMsg);
+               msg->setEncryptionType(Chat::MessageData::EncryptionType::Unencrypted);
+            }
+         }
+         else {
+            logger_->error("[ChatClient::{}] This could not happend! Failed to decrypt msg.", __func__);
+//>>>>>>> dev_server_aead_and_bs_dev
          }
       }
+
+      root_->insertContactsMessage(msg);
       messages.push_back(msg);
-      //int mask = old_state ^ msg->getState();
       sendUpdateMessageState(msg);
    }
 
@@ -546,10 +583,31 @@ void ChatClient::OnError(DataConnectionError errorCode)
 std::shared_ptr<Chat::MessageData> ChatClient::sendOwnMessage(
       const QString &message, const QString &receiver)
 {
-   Chat::MessageData msg(QString::fromStdString(currentUserId_), receiver
-      , QString::fromStdString(CryptoPRNG::generateRandom(8).toHexStr())
-      , QDateTime::currentDateTimeUtc(), message);
-   auto result = std::make_shared<Chat::MessageData>(msg);
+   Chat::MessageData messageData(QString::fromStdString(currentUserId_), receiver,
+      QString::fromStdString(CryptoPRNG::generateRandom(8).toHexStr()),
+      QDateTime::currentDateTimeUtc(), message);
+   auto result = std::make_shared<Chat::MessageData>(messageData);
+
+   if (!chatDb_->isContactExist(messageData.getReceiverId()))
+   {
+      // make friend request before sending direct message. Enqueue the message to be sent, once our friend request accepted.
+      enqueued_messages_[receiver].push(message);
+      sendFriendRequest(messageData.getReceiverId());
+      return result;
+   }
+   else
+   {
+      // is contact rejected?
+      ContactUserData contact;
+      chatDb_->getContact(messageData.getReceiverId(), contact);
+
+      if (contact.status() == ContactUserData::Status::Rejected)
+      {
+         logger_->error("[ChatClient::sendOwnMessage] {}", "Receiver in rejected state. Discarding message.");
+         result->setFlag(Chat::MessageData::State::Invalid);
+         return result;
+      }
+   }
 
    const auto &itPub = pubKeys_.find(receiver);
    if (itPub == pubKeys_.end()) {
@@ -568,21 +626,45 @@ std::shared_ptr<Chat::MessageData> ChatClient::sendOwnMessage(
 
    logger_->debug("[ChatClient::sendMessage] {}", message.toStdString());
 
-   auto localEncMsg = msg;
+   auto localEncMsg = messageData;
    if (!localEncMsg.encrypt(appSettings_->GetAuthKeys().second)) {
       logger_->error("[ChatClient::sendMessage] failed to encrypt by local key");
+      return result;
    }
+   localEncMsg.setEncryptionType(Chat::MessageData::EncryptionType::IES);
+
    chatDb_->add(localEncMsg);
-   auto local_msg = std::make_shared<Chat::MessageData>(msg);
+   auto local_msg = std::make_shared<Chat::MessageData>(localEncMsg);
    root_->insertContactsMessage(local_msg);
 
-   if (!msg.encrypt(itPub->second)) {
-      logger_->error("[ChatClient::sendMessage] failed to encrypt message {}"
-         , msg.getId().toStdString());
+   // search active message session for given user
+   const auto userNoncesIterator = userNonces_.find(receiver);
+   autheid::SecureBytes nonce;
+   if (userNoncesIterator == userNonces_.end()) {
+      // generate random nonce
+      Botan::AutoSeeded_RNG rng;
+      userNonces_[receiver] = nonce = rng.random_vec(messageData.getDefaultNonceSize());
+   }
+   else {
+      // read nonce and increment
+      Botan::BigInt bigIntNonce;
+      bigIntNonce.binary_decode(userNoncesIterator->second);
+      bigIntNonce++;
+      userNonces_[receiver] = nonce = Botan::BigInt::encode_locked(bigIntNonce);
    }
 
-   auto request = std::make_shared<Chat::SendMessageRequest>("", msg.toJsonString());
+   BinaryData remotePublicKey(itPub->second.data(), itPub->second.size());
+   SecureBinaryData localPrivateKey(ownPrivKey_.data(), ownPrivKey_.size());
+   if (!messageData.encrypt_aead(remotePublicKey, localPrivateKey, nonce, logger_)) {
+      logger_->error("[ChatClient::sendMessage] failed to encrypt by aead {}" , messageData.getId().toStdString());
+      return result;
+   }
+
+   messageData.setEncryptionType(Chat::MessageData::EncryptionType::AEAD);
+
+   auto request = std::make_shared<Chat::SendMessageRequest>("", messageData.toJsonString());
    sendRequest(request);
+
    return result;
 }
 
@@ -632,10 +714,13 @@ void ChatClient::retrieveUserMessages(const QString &userId)
    auto messages = chatDb_->getUserMessages(QString::fromStdString(currentUserId_), userId);
    if (!messages.empty()) {
       for (auto &msg : messages) {
-         if (msg->getState() & (int)Chat::MessageData::State::Encrypted) {
+         if (msg->encryptionType() == Chat::MessageData::EncryptionType::IES) {
             if (!msg->decrypt(ownPrivKey_)) {
                logger_->error("Failed to decrypt msg from DB {}", msg->getId().toStdString());
                msg->setFlag(Chat::MessageData::State::Invalid);
+            }
+            else {
+               msg->setEncryptionType(Chat::MessageData::EncryptionType::Unencrypted);
             }
          }
       }
@@ -648,10 +733,13 @@ void ChatClient::retrieveRoomMessages(const QString& roomId)
    auto messages = chatDb_->getRoomMessages(roomId);
    if (!messages.empty()) {
       for (auto &msg : messages) {
-         if (msg->getState() & (int)Chat::MessageData::State::Encrypted) {
+         if (msg->encryptionType() == Chat::MessageData::EncryptionType::IES) {
             if (!msg->decrypt(ownPrivKey_)) {
                logger_->error("Failed to decrypt msg from DB {}", msg->getId().toStdString());
                msg->setFlag(Chat::MessageData::State::Invalid);
+            }
+            else {
+               msg->setEncryptionType(Chat::MessageData::EncryptionType::Unencrypted);
             }
          }
       }
@@ -765,4 +853,20 @@ void ChatClient::onActionRejectContactRequest(std::shared_ptr<Chat::ContactRecor
                                                                      , crecord->getContactId().toStdString()
                                                                      , Chat::ContactsAction::Reject, appSettings_->GetAuthKeys().second);
    sendRequest(request);
+}
+
+void ChatClient::retrySendQueuedMessages(const std::string userId)
+{
+   // Run over enqueued messages if any, and try to send them all now.
+   std::queue<QString>& messages = enqueued_messages_[QString::fromStdString(userId)];
+
+   while (!messages.empty()) {
+      sendOwnMessage(messages.front(), QString::fromStdString(userId));
+      messages.pop();
+   }
+}
+
+void ChatClient::eraseQueuedMessages(const std::string userId)
+{
+   enqueued_messages_.erase(QString::fromStdString(userId));
 }

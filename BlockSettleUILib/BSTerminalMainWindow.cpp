@@ -149,6 +149,7 @@ BSTerminalMainWindow::BSTerminalMainWindow(const std::shared_ptr<ApplicationSett
    ui_->widgetTransactions->setAppSettings(applicationSettings_);
 
    UpdateMainWindowAppearence();
+   setWidgetsAuthorized(false);
 }
 
 void BSTerminalMainWindow::onMDConnectionDetailsRequired()
@@ -176,6 +177,12 @@ void BSTerminalMainWindow::setWidgetsAuthorized(bool authorized)
    ui_->widgetPortfolio->setAuthorized(authorized);
    ui_->widgetRFQ->setAuthorized(authorized);
    ui_->widgetChart->setAuthorized(authorized);
+
+   // Enable/disable authorized tabs
+   ui_->tabWidget->setTabEnabled(ui_->tabWidget->indexOf(ui_->widgetRFQ), authorized);
+   ui_->tabWidget->setTabEnabled(ui_->tabWidget->indexOf(ui_->widgetRFQReply), authorized);
+   ui_->tabWidget->setTabEnabled(ui_->tabWidget->indexOf(ui_->widgetChart), authorized);
+   ui_->tabWidget->setTabEnabled(ui_->tabWidget->indexOf(ui_->widgetChat), authorized);
 }
 
 void BSTerminalMainWindow::GetNetworkSettingsFromPuB(const std::function<void()> &cb)
@@ -396,19 +403,13 @@ void BSTerminalMainWindow::LoadWallets()
       ui_->widgetRFQReply->setWalletsManager(walletsMgr_);
    });
    connect(walletsMgr_.get(), &bs::sync::WalletsManager::walletsSynchronized, [this] {
+      walletsSynched_ = true;
+      goOnlineArmory();
       updateControlEnabledState();
 
-      connect(armory_.get(), &ArmoryConnection::stateChanged, this, [this](ArmoryConnection::State state) {
+      connect(armory_.get(), &ArmoryObject::stateChanged, this, [this](ArmoryConnection::State state) {
          if (!initialWalletCreateDialogShown_) {
             if (state == ArmoryConnection::State::Connected && walletsMgr_ && walletsMgr_->hdWalletsCount() == 0) {
-               initialWalletCreateDialogShown_ = true;
-               QMetaObject::invokeMethod(this, "createWallet", Qt::QueuedConnection, Q_ARG(bool, true));
-            }
-         }
-      });
-      QTimer::singleShot(100, this, [this](){
-         if (!initialWalletCreateDialogShown_ && !armoryKeyDialogShown_) {
-            if (walletsMgr_ && walletsMgr_->hdWalletsCount() == 0) {
                initialWalletCreateDialogShown_ = true;
                QMetaObject::invokeMethod(this, "createWallet", Qt::QueuedConnection, Q_ARG(bool, true));
             }
@@ -675,6 +676,8 @@ void BSTerminalMainWindow::onArmoryStateChanged(ArmoryConnection::State newState
       QMetaObject::invokeMethod(this, "CompleteUIOnlineView", Qt::QueuedConnection);
       break;
    case ArmoryConnection::State::Connected:
+      armoryBDVRegistered_ = true;
+      goOnlineArmory();
       QMetaObject::invokeMethod(this, "CompleteDBConnection", Qt::QueuedConnection);
       break;
    case ArmoryConnection::State::Offline:
@@ -765,12 +768,12 @@ void BSTerminalMainWindow::ArmoryIsOffline()
 
 void BSTerminalMainWindow::initArmory()
 {
-   armory_ = std::make_shared<ArmoryConnection>(logMgr_->logger()
+   armory_ = std::make_shared<ArmoryObject>(logMgr_->logger()
       , applicationSettings_->get<std::string>(ApplicationSettings::txCacheFileName), true);
-   connect(armory_.get(), &ArmoryConnection::txBroadcastError, [](const QString &txHash, const QString &error) {
+   connect(armory_.get(), &ArmoryObject::txBroadcastError, [](const QString &txHash, const QString &error) {
       NotificationCenter::notify(bs::ui::NotifyType::BroadcastError, { txHash, error });
    });
-   connect(armory_.get(), &ArmoryConnection::zeroConfReceived, this, &BSTerminalMainWindow::onZCreceived, Qt::QueuedConnection);
+   connect(armory_.get(), &ArmoryObject::zeroConfReceived, this, &BSTerminalMainWindow::onZCreceived, Qt::QueuedConnection);
    connect(armory_.get(), SIGNAL(stateChanged(ArmoryConnection::State)), this, SLOT(onArmoryStateChanged(ArmoryConnection::State)), Qt::QueuedConnection);
 }
 
@@ -1179,7 +1182,7 @@ void BSTerminalMainWindow::createAuthWallet()
 void BSTerminalMainWindow::onAuthMgrConnComplete()
 {
    if (celerConnection_->tradingAllowed()) {
-      if (!walletsMgr_->hasPrimaryWallet() && !createWallet(true)) {
+      if (!walletsMgr_->hasPrimaryWallet()) {
          return;
       }
       if (!walletsMgr_->hasSettlementWallet()) {
@@ -1558,4 +1561,30 @@ void BSTerminalMainWindow::onArmoryNeedsReconnect()
 
    connectSigner();
    connectArmory();
+}
+
+// A function that puts Armory online if certain conditions are met. The primary
+// intention is to ensure that a terminal with no wallets can connect to Armory
+// while not interfering with the online process for terminals with wallets.
+//
+// INPUT:  N/A
+// OUTPUT: N/A
+// RETURN: True if online, false if not.
+bool BSTerminalMainWindow::goOnlineArmory() const
+{
+   // Go online under the following conditions:
+   // - The Armory connection isn't already online.
+   // - The Armory BDV is registered.
+   // - The terminal has properly synched the wallet state.
+   // - The wallet manager has no wallets, including a settlement wallet. (NOTE:
+   //   Settlement wallets are auto-generated. A future PR will change that.)
+   if (armory_ && !armory_->isOnline() && armoryBDVRegistered_
+      && walletsSynched_ && walletsMgr_ && walletsMgr_->walletsCount() == 0
+      /*&& !walletsMgr_->hasSettlementWallet()*/) {
+      logMgr_->logger()->info("[{}] - Armory connection is going online without "
+         "wallets.", __func__);
+      return armory_->goOnline();
+   }
+
+   return armory_->isOnline();
 }
