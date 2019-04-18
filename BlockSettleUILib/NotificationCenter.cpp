@@ -272,10 +272,10 @@ void NotificationTrayIconResponder::messageClicked()
    }
    else if (newChatMessage_) {
       if (!newChatId_.isNull() && globalInstance != NULL) {
-			emit globalInstance->newChatMessageClick(newChatId_);
+         emit globalInstance->newChatMessageClick(newChatId_);
          mainWinUi_->tabWidget->setCurrentWidget(mainWinUi_->widgetChat);
          mainWinUi_->tabWidget->activateWindow();
-		}
+      }
    }
 }
 
