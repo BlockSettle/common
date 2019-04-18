@@ -239,8 +239,8 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
    connect(client_.get(), &ChatClient::LoggedOut, this, &ChatWidget::onLoggedOut);
    connect(ui_->input_textEdit, &BSChatInput::sendMessage, this, &ChatWidget::onSendButtonClicked);
 
-   connect(ui_->textEditMessages, &ChatMessagesTextEdit::rowsInserted,
-           this, &ChatWidget::onMessagesUpdated);
+//   connect(ui_->textEditMessages, &ChatMessagesTextEdit::rowsInserted,
+//           this, &ChatWidget::onMessagesUpdated);
    // connect(ui_->send, &QPushButton::clicked, this, &ChatWidget::onSendButtonClicked);
 /*
    connect(ui_->treeViewUsers, &ChatUserListTreeView::userClicked, this, &ChatWidget::onUserClicked);
