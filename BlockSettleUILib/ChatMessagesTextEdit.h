@@ -58,6 +58,8 @@ public:
 public:
    void setOwnUserId(const std::string &userId) { ownUserId_ = QString::fromStdString(userId); }
    void switchToChat(const QString& chatId, bool isGroupRoom = false);
+   void setHandler(std::shared_ptr<ChatItemActionsHandler> handler);
+
    
 signals:
    void MessageRead(const std::shared_ptr<Chat::MessageData> &) const;
@@ -93,6 +95,7 @@ private:
    MessagesHistory messagesToLoadMore_;
    QString   currentChatId_;
    QString   ownUserId_;
+   std::shared_ptr<ChatItemActionsHandler> handler_;
    
 private:
    std::shared_ptr<Chat::MessageData> findMessage(const QString& chatId, const QString& messageId);
@@ -119,13 +122,7 @@ private:
    // ViewItemWatcher interface
 public:
    void onElementSelected(CategoryElement *element) override;
-
-   // ViewItemWatcher interface
-public:
    void onMessageChanged(std::shared_ptr<Chat::MessageData> message) override;
-
-   // ViewItemWatcher interface
-public:
    void onElementUpdated(CategoryElement *element) override;
 };
 

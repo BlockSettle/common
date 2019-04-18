@@ -1,6 +1,7 @@
 #ifndef CHATHANDLEINTERFACES_H
 #define CHATHANDLEINTERFACES_H
 #include <memory>
+#include <QString>
 
 namespace Chat {
    class ContactRecordData;
@@ -19,7 +20,7 @@ public:
 class ChatItemActionsHandler {
 public:
    virtual ~ChatItemActionsHandler() = default;
-   virtual void onActionAddToContacts(std::shared_ptr<Chat::ContactRecordData> crecord) = 0;
+   virtual void onActionAddToContacts(const QString& userId) = 0;
    virtual void onActionRemoveFromContacts(std::shared_ptr<Chat::ContactRecordData> crecord) = 0;
    virtual void onActionAcceptContactRequest(std::shared_ptr<Chat::ContactRecordData> crecord) = 0;
    virtual void onActionRejectContactRequest(std::shared_ptr<Chat::ContactRecordData> crecord) = 0;

@@ -155,7 +155,7 @@ private:
 
    // ChatItemActionsHandler interface
 public:
-   void onActionAddToContacts(std::shared_ptr<Chat::ContactRecordData> crecord) override;
+   void onActionAddToContacts(const QString& userId) override;
    void onActionRemoveFromContacts(std::shared_ptr<Chat::ContactRecordData> crecord) override;
    void onActionAcceptContactRequest(std::shared_ptr<Chat::ContactRecordData> crecord) override;
    void onActionRejectContactRequest(std::shared_ptr<Chat::ContactRecordData> crecord) override;

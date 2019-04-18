@@ -54,7 +54,7 @@ private slots:
       if (!handler_){
          return;
       }
-      handler_->onActionAddToContacts(currentContact_);
+      //handler_->onActionAddToContacts(currentContact_);
    }
 
    void onRemoveFromContacts(bool)

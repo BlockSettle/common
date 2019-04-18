@@ -8,7 +8,7 @@
 const int FIRST_FETCH_MESSAGES_SIZE = 20;
 
 ChatMessagesTextEdit::ChatMessagesTextEdit(QWidget* parent)
-   : QTextBrowser(parent), internalStyle_(this)
+   : QTextBrowser(parent), handler_(nullptr), internalStyle_(this)
 {
    tableFormat.setBorder(0);
    tableFormat.setCellPadding(0);
@@ -39,7 +39,9 @@ ChatMessagesTextEdit::ChatMessagesTextEdit(QWidget* parent)
    addUserToContactsAction->setStatusTip(QObject::tr("Click to add user to contact list"));
    connect(addUserToContactsAction, &QAction::triggered,
       [this](bool) {
-         emit sendFriendRequest(username_); 
+         if (handler_){
+            handler_->onActionAddToContacts(username_);
+         }
       }
    );
 }
@@ -141,6 +143,11 @@ void ChatMessagesTextEdit::switchToChat(const QString& chatId, bool isGroupRoom)
    table = NULL;
 
    emit userHaveNewMessageChanged(chatId, false, false);
+}
+
+void ChatMessagesTextEdit::setHandler(std::shared_ptr<ChatItemActionsHandler> handler)
+{
+   handler_ = handler;
 }
 
 void  ChatMessagesTextEdit::urlActivated(const QUrl &link) {
@@ -523,6 +530,7 @@ void ChatMessagesTextEdit::onMessageChanged(std::shared_ptr<Chat::MessageData> m
 
 void ChatMessagesTextEdit::onElementUpdated(CategoryElement *element)
 {
+   //TODO: Important! optimize messages reload
    auto data = element->getDataObject();
    switch (data->getType()) {
       case Chat::DataObject::Type::RoomData:{

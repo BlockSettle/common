@@ -723,9 +723,13 @@ QString ChatClient::deriveKey(const QString &email) const
    return QString::fromStdString(hasher_->deriveKey(email.toStdString()));
 }
 
-void ChatClient::onActionAddToContacts(std::shared_ptr<Chat::ContactRecordData> crecord)
+void ChatClient::onActionAddToContacts(const QString& userId)
 {
-   qDebug() << __func__ << " " << QString::fromStdString(crecord->toJsonString());
+   qDebug() << __func__ << " " << userId;
+   auto record = std::make_shared<Chat::ContactRecordData>(QString::fromStdString(root_->currentUser()), userId, Chat::ContactStatus::Outgoing, autheid::PublicKey());
+   root_->insertContactObject(record);
+   auto request = std::make_shared<Chat::ContactActionRequestDirect>("", currentUserId_, userId.toStdString(), Chat::ContactsAction::Request, appSettings_->GetAuthKeys().second);
+   sendRequest(request);
 }
 
 void ChatClient::onActionRemoveFromContacts(std::shared_ptr<Chat::ContactRecordData> crecord)
