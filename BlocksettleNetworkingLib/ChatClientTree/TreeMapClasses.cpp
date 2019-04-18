@@ -102,6 +102,16 @@ TreeItem* RootItem::findChatNode(const std::string &chatId)
    return nullptr;
 }
 
+std::shared_ptr<Chat::ContactRecordData> RootItem::findContactNode(const std::string &contactId)
+{
+   TreeItem* chatNode = findChatNode(contactId);
+   if (chatNode && chatNode->getType() == TreeItem::NodeType::ContactsElement){
+      auto contact = std::dynamic_pointer_cast<Chat::ContactRecordData>(static_cast<CategoryElement*>(chatNode)->getDataObject());
+      return contact;
+   }
+   return  nullptr;
+}
+
 std::shared_ptr<Chat::MessageData> RootItem::findMessage(const std::string &chatId, const std::string &messgeId)
 {
    TreeItem* chatNode = findChatNode(chatId);
@@ -195,5 +205,13 @@ void RootItem::notifyMessageChanged(std::shared_ptr<Chat::MessageData> message)
                emit itemChanged(elem);
             }
          }
+   }
+}
+
+void RootItem::notifyContactChanged(std::shared_ptr<Chat::ContactRecordData> contact)
+{
+   TreeItem* chatNode = findChatNode(contact->getContactId().toStdString());
+   if (chatNode && chatNode->getType() == TreeItem::NodeType::ContactsElement){
+      emit itemChanged(chatNode);
    }
 }

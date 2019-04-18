@@ -18,11 +18,13 @@ class RootItem : public TreeItem {
    bool insertRoomMessage(std::shared_ptr<Chat::MessageData> message);
    bool insertContactsMessage(std::shared_ptr<Chat::MessageData> message);
    TreeItem* findChatNode(const std::string& chatId);
+   std::shared_ptr<Chat::ContactRecordData> findContactNode(const std::string& contactId);
    std::shared_ptr<Chat::MessageData> findMessage(const std::string& chatId, const std::string& messgeId);
    void clear();
    std::string currentUser() const;
    void setCurrentUser(const std::string &currentUser);
    void notifyMessageChanged(std::shared_ptr<Chat::MessageData> message);
+   void notifyContactChanged(std::shared_ptr<Chat::ContactRecordData> contact);
 
 private:
    bool insertMessageNode(TreeMessageNode * messageNode);

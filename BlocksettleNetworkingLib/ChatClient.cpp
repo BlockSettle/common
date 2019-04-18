@@ -193,6 +193,11 @@ void ChatClient::OnContactsActionResponseDirect(const Chat::ContactsActionRespon
          QString senderId = QString::fromStdString(response.senderId());
          pubKeys_[senderId] = response.getSenderPublicKey();
          chatDb_->addKey(senderId, response.getSenderPublicKey());
+         auto contact = root_->findContactNode(senderId.toStdString());
+         if (contact){
+            contact->setStatus(Chat::ContactStatus::Accepted);
+         }
+         root_->notifyContactChanged(contact);
          addOrUpdateContact(senderId, ContactUserData::Status::Friend);
          emit FriendRequestAccepted({response.senderId()});
       }
@@ -200,6 +205,11 @@ void ChatClient::OnContactsActionResponseDirect(const Chat::ContactsActionRespon
       case Chat::ContactsAction::Reject: {
          actionString = "ContactsAction::Reject";
          addOrUpdateContact(QString::fromStdString(response.senderId()), ContactUserData::Status::Rejected);
+         auto contact = root_->findContactNode(response.senderId());
+         if (contact){
+            contact->setStatus(Chat::ContactStatus::Rejected);
+         }
+         root_->notifyContactChanged(contact);
          //removeContact(QString::fromStdString(response.senderId()));
          emit FriendRequestRejected({response.senderId()});
       }
