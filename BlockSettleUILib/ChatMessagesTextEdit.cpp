@@ -103,6 +103,10 @@ QString ChatMessagesTextEdit::data(const int &row, const Column &column)
          std::shared_ptr<Chat::MessageData> message = messages_[currentChatId_][row];
          if (message->getState() & static_cast<int>(Chat::MessageData::State::Invalid)) {
             return toHtmlInvalid(messages_[currentChatId_][row]->getId() + QLatin1String(" ")+ QLatin1String("INVALID MESSAGE!"));
+         } else if (message->encryptionType() == Chat::MessageData::EncryptionType::IES) {
+            return toHtmlInvalid(messages_[currentChatId_][row]->getId() + QLatin1String(" ")+ QLatin1String("IES ENCRYPTED!"));
+         } else if ( message->encryptionType() == Chat::MessageData::EncryptionType::AEAD) {
+            return toHtmlInvalid(messages_[currentChatId_][row]->getId() + QLatin1String(" ")+ QLatin1String("AEAD ENCRYPTED!"));
          }
          return toHtmlText(messages_[currentChatId_][row]->getId() + QLatin1String(" ")+ messages_[currentChatId_][row]->getMessageData());
       }
