@@ -483,20 +483,34 @@ bool ZmqBIP15XDataConnection::processAEADHandshake(
       //init server promise
       serverPubkeyProm_ = make_shared<promise<bool>>();
 
+      // If it's a local connection, get a cookie with the server's key.
+      if (useServerIDCookie_) {
+         // Read the cookie with the key to check.
+         BinaryData cookieKey(static_cast<size_t>(BTC_ECKEY_COMPRESSED_LENGTH));
+         if (!getServerIDCookie(cookieKey)) {
+            serverPubkeyProm_->set_value(false);
+            return false;
+         }
+         else {
+            // Add the host and the key to the list of verified peers.
+            vector<string> keyName;
+            keyName.push_back("127.0.0.1");
+            authPeers_->addPeer(cookieKey, keyName);
+         }
+      }
+
       //compute server name
       stringstream ss;
-      ss << hostAddr_ << ":" << hostPort_;
+      ss << hostAddr_;
+//      ss << hostAddr_ << ":" << hostPort_;
 
+      // If we don't have the key already, we may ask the the user if they wish
+      // to continue. (Remote signer only.)
       if (!bip151Connection_->havePublicKey(msgbdr, ss.str())) {
          //we don't have this key, call user prompt lambda
-         verifyIDKey(msgbdr, ss.str());
+         verifyNewIDKey(msgbdr, ss.str());
       }
       else {
-         // Overwrite the key, just in case. (MAY NEED TO REMOVE - TEST WHAT HAPPENS WHEN KEYS CHANGE)
-//         vector<string> keyName;
-//         keyName.push_back(ss.str());
-//         authPeers_->addPeer(msgbdr, keyName);
-
          //set server key promise
          serverPubkeyProm_->set_value(true);
       }
@@ -686,80 +700,56 @@ void ZmqBIP15XDataConnection::setCBs(
    , std::shared_ptr<std::promise<bool>>
    , const std::function<void(const std::string&, const std::string&
    , std::shared_ptr<std::promise<bool>>)>)> &invokeCB) {
-      // Set callbacks only if callbacks actually exist.
-      if (cbNewKey_ && cbNewKey) {
-         cbNewKey_ = cbNewKey;
-         invokeCB_ = invokeCB;
-         useServerIDCookie_ = false;
-      }
+   // Set callbacks only if callbacks actually exist.
+   if (cbNewKey_ && cbNewKey) {
+      cbNewKey_ = cbNewKey;
+      invokeCB_ = invokeCB;
+      useServerIDCookie_ = false;
    }
+}
 
-// If the user is presented with a new server identity key, verify the key. A
-// promise will also be used in case any functions are waiting on verification
+// If the user is presented with a new remote server identity key, verify the key.
+// A promise will also be used in case any functions are waiting on verification
 // results.
 //
 // INPUT:  The key to verify. (const BinaryDataRef)
 //         The server IP address (or host name) and port. (const string)
 // OUTPUT: N/A
 // RETURN: N/A
-void ZmqBIP15XDataConnection::verifyIDKey(const BinaryDataRef& newKey
+void ZmqBIP15XDataConnection::verifyNewIDKey(const BinaryDataRef& newKey
    , const string& srvAddrPort)
 {
    if (useServerIDCookie_) {
-      // Read the cookie with the key to check.
-      BinaryData cookieKey(static_cast<size_t>(BTC_ECKEY_COMPRESSED_LENGTH));
-      if (!getServerIDCookie(cookieKey)) {
-         serverPubkeyProm_->set_value(false);
-      }
-      else {
-         if (memcmp(cookieKey.getPtr(), newKey.getPtr(), BIP151PUBKEYSIZE) != 0) {
-            logger_->info("[{}] Local signer has a cookie that does match the "
-               "advertised identity key (0x{}). Connection rejected.", __func__
-               , newKey.toHexStr());
-            serverPubkeyProm_->set_value(false);
-         }
-         else {
-            logger_->info("[{}] Local signer has a cookie that matches the "
-               "advertised identity key (0x{}). Connection accepted.", __func__
-               , newKey.toHexStr());
-
-            // Add the host and the key to the list of verified peers.
-            vector<string> keyName;
-            keyName.push_back(srvAddrPort);
-            authPeers_->addPeer(newKey.copy(), keyName);
-            serverPubkeyProm_->set_value(true);
-         }
-      }
+      return;
    }
-   else {
-      // Check to see if we've already verified the key. If not, fire the
-      // callback allowing the user to verify the new key.
-      auto authPeerNameMap = authPeers_->getPeerNameMap();
-      auto authPeerNameSearch = authPeerNameMap.find(srvAddrPort);
-      if (authPeerNameSearch == authPeerNameMap.end()) {
-         logger_->info("[{}] New key ({}) for server [{}] arrived.", __func__
-            , newKey.toHexStr(), srvAddrPort);
 
-         // Ask the user if they wish to accept the new identity key.
-         BinaryData oldKey(authPeerNameMap[srvAddrPort].pubkey, BIP151PUBKEYSIZE);
-         invokeCB_(oldKey.toHexStr(), newKey.toHexStr()
-            , serverPubkeyProm_, cbNewKey_);
+   // Check to see if we've already verified the key. If not, fire the
+   // callback allowing the user to verify the new key.
+   auto authPeerNameMap = authPeers_->getPeerNameMap();
+   auto authPeerNameSearch = authPeerNameMap.find(srvAddrPort);
+   if (authPeerNameSearch == authPeerNameMap.end()) {
+      logger_->info("[{}] New key ({}) for server [{}] arrived.", __func__
+         , newKey.toHexStr(), srvAddrPort);
 
-         //have we seen the server's pubkey?
-         if (serverPubkeyProm_ != nullptr) {
-            //if so, wait on the promise
-            auto serverProm = serverPubkeyProm_;
-            auto fut = serverProm->get_future();
-            fut.wait();
-            serverPubkeyProm_.reset();
-         }
-         vector<string> keyName;
-         keyName.push_back(srvAddrPort);
-         authPeers_->addPeer(newKey.copy(), keyName);
-         logger_->info("[{}] Server at {} has had its identity key (0x{}) "
-            "replaced with (0x{}). Connection accepted.", __func__, srvAddrPort
-            , oldKey.toHexStr(), newKey.toHexStr());
+      // Ask the user if they wish to accept the new identity key.
+      BinaryData oldKey(authPeerNameMap[srvAddrPort].pubkey, BIP151PUBKEYSIZE);
+      invokeCB_(oldKey.toHexStr(), newKey.toHexStr()
+         , serverPubkeyProm_, cbNewKey_);
+
+      //have we seen the server's pubkey?
+      if (serverPubkeyProm_ != nullptr) {
+         //if so, wait on the promise
+         auto serverProm = serverPubkeyProm_;
+         auto fut = serverProm->get_future();
+         fut.wait();
+         serverPubkeyProm_.reset();
       }
+      vector<string> keyName;
+      keyName.push_back(srvAddrPort);
+      authPeers_->addPeer(newKey.copy(), keyName);
+      logger_->info("[{}] Server at {} has had its identity key (0x{}) "
+         "replaced with (0x{}). Connection accepted.", __func__, srvAddrPort
+         , oldKey.toHexStr(), newKey.toHexStr());
    }
 }
 
@@ -803,6 +793,6 @@ bool ZmqBIP15XDataConnection::getServerIDCookie(BinaryData& cookieBuf)
 BinaryData ZmqBIP15XDataConnection::getOwnPubKey() const
 {
    const auto pubKey = authPeers_->getOwnPublicKey();
-   return SecureBinaryData(pubKey.pubkey, pubKey.compressed
+   return BinaryData(pubKey.pubkey, pubKey.compressed
       ? BTC_ECKEY_COMPRESSED_LENGTH : BTC_ECKEY_UNCOMPRESSED_LENGTH);
 }

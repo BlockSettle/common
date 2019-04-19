@@ -981,18 +981,21 @@ RemoteSigner::RemoteSigner(const std::shared_ptr<spdlog::logger> &logger
    , cbNewKey_{cbNewKey}
    , invokeCB_{invokeCB}
    , ephemeralDataConnKeys_(ephemeralDataConnKeys)
-{}
+{
+   // Create connection upfront in order to grab some required data early.
+   connection_ =
+      connectionManager_->CreateZMQBIP15XDataConnection(ephemeralDataConnKeys_);
+   connection_->setCBs(cbNewKey_, invokeCB_);
+}
 
 // Establish the remote connection to the signer.
 bool RemoteSigner::Start()
 {
-   if (connection_) {
+   // If we've already connected, don't do more setup.
+   if (headlessConnFinished_) {
       return true;
    }
 
-   connection_ =
-      connectionManager_->CreateZMQBIP15XDataConnection(ephemeralDataConnKeys_);
-   connection_->setCBs(cbNewKey_, invokeCB_);
    if (opMode() == OpMode::RemoteInproc) {
       connection_->SetZMQTransport(ZMQTransport::InprocTransport);
    }
@@ -1023,6 +1026,7 @@ bool RemoteSigner::Stop()
 bool RemoteSigner::Connect()
 {
    QtConcurrent::run(this, &RemoteSigner::ConnectHelper);
+   headlessConnFinished_ = true;
    return true;
 }
 
@@ -1226,15 +1230,21 @@ QStringList LocalSigner::args() const
    case NetworkType::MainNet:
       result << QString::fromStdString("--mainnet");
       break;
-   default: break;
+   default:
+      break;
    }
 
+   // Among many other things, send the signer the terminal's BIP 150 ID key.
+   // Processes reading keys from the disk are subject to attack.
    result << QLatin1String("--listen") << QLatin1String("127.0.0.1");
    result << QLatin1String("--port") << port_;
    result << QLatin1String("--dirwallets") << walletsCopyDir;
    if (asSpendLimit_ > 0) {
-      result << QLatin1String("--auto_sign_spend_limit") << QString::number(asSpendLimit_, 'f', 8);
+      result << QLatin1String("--auto_sign_spend_limit")
+         << QString::number(asSpendLimit_, 'f', 8);
    }
+   result << QLatin1String("--terminal_id_key")
+      << QString::fromStdString(connection_->getOwnPubKey().toHexStr());
 
    return result;
 }

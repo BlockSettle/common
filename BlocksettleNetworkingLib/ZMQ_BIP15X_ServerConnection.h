@@ -57,6 +57,7 @@ public:
    bool SendDataToAllClients(const std::string&, const SendResultCb &cb = nullptr) override;
 
    BinaryData getOwnPubKey() const;
+   void addAuthPeer(const BinaryData& inKey, const std::string& keyName);
 
 protected:
    // Overridden functions from ZmqServerConnection.
@@ -75,7 +76,6 @@ private:
       , const std::string& clientID);
    bool processAEADHandshake(const ZmqBIP15XMsgPartial& msgObj
       , const std::string& clientID);
-   void promptUser(const BinaryDataRef& newKey, const std::string& srvAddrPort);
    AuthPeersLambdas getAuthPeerLambda();
    bool genBIPIDCookie();
    void heartbeatThread();

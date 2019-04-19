@@ -504,6 +504,17 @@ bool ZmqBIP15XServerConnection::processAEADHandshake(
             return false;
          }
 
+         // Do we have the client's pub key? If not, bail. We don't have access
+         // to the IP:Port due to ZMQ, so we'll just check the key.
+         std::set<SecureBinaryData> authKeySet = authPeers_->getPublicKeySet();
+         auto keySearch = authKeySet.find(dataBdr);
+         if (keySearch == authKeySet.end()) {
+            logger_->error("[processHandshake] Client {} (key {}) is unknown. "
+               "BIP 151 handshake has failed.", BinaryData(clientID).toHexStr()
+               , dataBdr.toHexStr());
+            return false;
+         }
+
          break;
       }
 
@@ -541,7 +552,7 @@ bool ZmqBIP15XServerConnection::processAEADHandshake(
          {
             //failed to init handshake, kill connection
             logger_->error("[processHandshake] BIP 150/151 handshake process "
-               "failed - AUTH_ENCINIT processing failed");
+               "failed - AEAD_ENCINIT processing failed");
             return false;
          }
 
@@ -820,6 +831,18 @@ bool ZmqBIP15XServerConnection::genBIPIDCookie()
 
    return true;
 }
+
+void ZmqBIP15XServerConnection::addAuthPeer(const BinaryData& inKey
+   , const std::string& keyName)
+{
+   if (!(CryptoECDSA().VerifyPublicKeyValid(inKey))) {
+      logger_->error("[{}] BIP 150 authorized key ({}) for user {} is invalid."
+         , __func__,  inKey.toHexStr(), keyName);
+      return;
+   }
+   authPeers_->addPeer(inKey, vector<string>{ keyName });
+}
+
 
 // Get the server's compressed BIP 150 identity public key.
 //

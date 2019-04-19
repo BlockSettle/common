@@ -61,7 +61,8 @@ protected:
 private:
    void ProcessIncomingData(BinaryData& payload);
    bool processAEADHandshake(const ZmqBIP15XMsgPartial& msgObj);
-   void verifyIDKey(const BinaryDataRef& newKey, const std::string& srvAddrPort);
+   void verifyNewIDKey(const BinaryDataRef& newKey
+      , const std::string& srvAddrPort);
    AuthPeersLambdas getAuthPeerLambda() const;
    void rekeyIfNeeded(const size_t& dataSize);
 
