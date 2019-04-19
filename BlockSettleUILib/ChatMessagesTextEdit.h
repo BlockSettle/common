@@ -111,6 +111,7 @@ private:
    void loadMore();
    QString toHtmlText(const QString &text);
    QString toHtmlUsername(const QString &username);
+   QString toHtmlInvalid(const QString &text);
 
    QTextTableFormat tableFormat;
    QTextTable *table;

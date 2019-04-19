@@ -99,9 +99,13 @@ QString ChatMessagesTextEdit::data(const int &row, const Column &column)
          return status;
       }
 
-      case Column::Message:
+      case Column::Message: {
+         std::shared_ptr<Chat::MessageData> message = messages_[currentChatId_][row];
+         if (message->getState() & static_cast<int>(Chat::MessageData::State::Invalid)) {
+            return toHtmlInvalid(messages_[currentChatId_][row]->getId() + QLatin1String(" ")+ QLatin1String("INVALID MESSAGE!"));
+         }
          return toHtmlText(messages_[currentChatId_][row]->getId() + QLatin1String(" ")+ messages_[currentChatId_][row]->getMessageData());
-
+      }
       default:
          break;
    }
@@ -531,6 +535,12 @@ QString ChatMessagesTextEdit::toHtmlUsername(const QString &username)
 {
    QString changedUsername = QString(QLatin1Literal("<a href=\"user:%1\" style=\"color:%2\">%1</a>")).arg(username).arg(internalStyle_.colorHyperlink().name());
    return changedUsername;
+}
+
+QString ChatMessagesTextEdit::toHtmlInvalid(const QString &text)
+{
+   QString changedText = QString(QLatin1Literal("<a href=\"user:%1\" style=\"color:%2\">%1</a>")).arg(text).arg(QLatin1String("red"));
+   return changedText;
 }
 
 QString ChatMessagesTextEdit::toHtmlText(const QString &text)

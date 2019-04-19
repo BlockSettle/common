@@ -18,13 +18,22 @@ protected:
 
 class ChatContactElement : public CategoryElement {
 public:
+   enum class OnlineStatus
+   {
+      Online,
+      Offline
+   };
    ChatContactElement(std::shared_ptr<Chat::ContactRecordData> data)
       : CategoryElement(TreeItem::NodeType::ContactsElement, TreeItem::NodeType::MessageDataNode, data){}
    std::shared_ptr<Chat::ContactRecordData> getContactData();
 
    // TreeItem interface
+   OnlineStatus getOnlineStatus() const;
+   void setOnlineStatus(const OnlineStatus &onlineStatus);
+
 protected:
    bool isSupported(TreeItem *item) const override;
+   OnlineStatus onlineStatus_;
 };
 
 

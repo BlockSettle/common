@@ -156,17 +156,21 @@ QVariant ChatClientUsersModel::categoryElementData(TreeItem * item, int role) co
          if (role == Qt::DisplayRole){
             return data->getContactId();
          } else if (role == Qt::TextColorRole){
-            switch (data->getContactStatus()) {
-               case Chat::ContactStatus::Accepted:
-                  return QColor(0x00c8f8);
-               case Chat::ContactStatus::Rejected:
-                  return QColor(Qt::red);
-               case Chat::ContactStatus::Incoming:
-                  return QColor(0xffa834);
-               case Chat::ContactStatus::Outgoing:
-                  return QColor(0xA0BC5D);
+            ChatContactElement* contact = static_cast<ChatContactElement*>(element);
+               switch (data->getContactStatus()) {
+                  case Chat::ContactStatus::Accepted:
+                     if (contact->getOnlineStatus() == ChatContactElement::OnlineStatus::Online){
+                        return QColor(0x00c8f8);
+                     }
+                     return QColor(Qt::white);
+                  case Chat::ContactStatus::Rejected:
+                     return QColor(Qt::red);
+                  case Chat::ContactStatus::Incoming:
+                     return QColor(0xffa834);
+                  case Chat::ContactStatus::Outgoing:
+                     return QColor(0xA0BC5D);
 
-            }
+               }
          }
       } break;
       case TreeItem::NodeType::AllUsersElement:{

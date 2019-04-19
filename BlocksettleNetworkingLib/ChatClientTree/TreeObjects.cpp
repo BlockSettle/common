@@ -65,3 +65,13 @@ bool ChatContactElement::isSupported(TreeItem *item) const
 
    return byTypes && byData;
 }
+
+ChatContactElement::OnlineStatus ChatContactElement::getOnlineStatus() const
+{
+    return onlineStatus_;
+}
+
+void ChatContactElement::setOnlineStatus(const OnlineStatus &onlineStatus)
+{
+    onlineStatus_ = onlineStatus;
+}
