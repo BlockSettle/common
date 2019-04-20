@@ -504,17 +504,6 @@ bool ZmqBIP15XServerConnection::processAEADHandshake(
             return false;
          }
 
-         // Do we have the client's pub key? If not, bail. We don't have access
-         // to the IP:Port due to ZMQ, so we'll just check the key.
-         std::set<SecureBinaryData> authKeySet = authPeers_->getPublicKeySet();
-         auto keySearch = authKeySet.find(dataBdr);
-         if (keySearch == authKeySet.end()) {
-            logger_->error("[processHandshake] Client {} (key {}) is unknown. "
-               "BIP 151 handshake has failed.", BinaryData(clientID).toHexStr()
-               , dataBdr.toHexStr());
-            return false;
-         }
-
          break;
       }
 
