@@ -63,10 +63,6 @@ std::shared_ptr<SignContainer> CreateSigner(const std::shared_ptr<spdlog::logger
          , connectionManager, appSettings, runMode, ephemeralDataConnKeys
          , cbNewKey, invokeCB);
 
-   case SignContainer::OpMode::Offline:
-      return std::make_shared<OfflineSigner>(logger, appSettings->GetHomeDir()
-         , netType, port, connectionManager, appSettings);
-
    default:
       logger->error("[{}] Unknown signer run mode {}", __func__, (int)runMode);
       break;
