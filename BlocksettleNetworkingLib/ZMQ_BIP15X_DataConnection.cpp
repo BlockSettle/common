@@ -336,6 +336,11 @@ void ZmqBIP15XDataConnection::onRawDataReceived(const string& rawData)
 // RETURN: True if success, false if failure.
 bool ZmqBIP15XDataConnection::closeConnection()
 {
+   // If a future obj is still waiting, satisfy it to prevent lockup. This
+   // shouldn't happen here but it's an emergency fallback.
+   if (serverPubkeyProm_) {
+      serverPubkeyProm_->set_value(false);
+   }
    currentReadMessage_.reset();
    return ZmqDataConnection::closeConnection();
 }
@@ -564,13 +569,21 @@ bool ZmqBIP15XDataConnection::processAEADHandshake(
          return false;
       }
 
-      //have we seen the server's pubkey?
+      // Do we need to check the server's ID key?
       if (serverPubkeyProm_ != nullptr) {
          //if so, wait on the promise
          auto serverProm = serverPubkeyProm_;
          auto fut = serverProm->get_future();
          fut.wait();
-         serverPubkeyProm_.reset();
+
+         if (fut.get()) {
+            serverPubkeyProm_.reset();
+         }
+         else {
+            logger_->error("[processHandshake] BIP 150/151 handshake process "
+               "failed - AEAD_ENCACK - Server public key not verified");
+            return false;
+         }
       }
 
       //bip151 handshake completed, time for bip150
@@ -711,9 +724,9 @@ void ZmqBIP15XDataConnection::setCBs(
    }
 }
 
-// If the user is presented with a new remote server identity key, verify the key.
-// A promise will also be used in case any functions are waiting on verification
-// results.
+// If the user is presented with a new remote server ID key it doesn't already
+// know about, verify the key. A promise will also be used in case any functions
+// are waiting on verification results.
 //
 // INPUT:  The key to verify. (const BinaryDataRef)
 //         The server IP address (or host name) and port. (const string)
@@ -723,6 +736,13 @@ void ZmqBIP15XDataConnection::verifyNewIDKey(const BinaryDataRef& newKey
    , const string& srvAddrPort)
 {
    if (useServerIDCookie_) {
+      // If we get here, it's because the cookie add failed or the cookie was
+      // incorrect. Satisfy the promise to prevent lockup.
+      if (serverPubkeyProm_) {
+         logger_->error("[processHandshake] Server ID key cookie could not be "
+            "verified");
+         serverPubkeyProm_->set_value(false);
+      }
       return;
    }
 
