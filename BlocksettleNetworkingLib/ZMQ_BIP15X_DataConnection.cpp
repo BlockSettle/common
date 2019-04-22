@@ -492,9 +492,12 @@ bool ZmqBIP15XDataConnection::processAEADHandshake(
             return false;
          }
          else {
-            // Add the host and the key to the list of verified peers.
+            // Add the host and the key to the list of verified peers. Be sure
+            // to erase any old keys first.
             vector<string> keyName;
-            keyName.push_back("127.0.0.1");
+            string localAddrV4 = "127.0.0.1";
+            keyName.push_back(localAddrV4);
+            authPeers_->eraseName(localAddrV4);
             authPeers_->addPeer(cookieKey, keyName);
          }
       }
@@ -744,8 +747,11 @@ void ZmqBIP15XDataConnection::verifyNewIDKey(const BinaryDataRef& newKey
          fut.wait();
          serverPubkeyProm_.reset();
       }
+
+      // Add the key. Old keys aren't deleted automatically. Do it to be safe.
       vector<string> keyName;
       keyName.push_back(srvAddrPort);
+      authPeers_->eraseName(srvAddrPort);
       authPeers_->addPeer(newKey.copy(), keyName);
       logger_->info("[{}] Server at {} has had its identity key (0x{}) "
          "replaced with (0x{}). Connection accepted.", __func__, srvAddrPort
