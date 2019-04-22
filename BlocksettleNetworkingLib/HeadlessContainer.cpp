@@ -36,34 +36,7 @@ constexpr int kStartTimeout = 5000;
 #define MAXULONGLONG ((ULONGLONG)~((ULONGLONG)0))
 #endif
 
-DWORD WINAPI TerminateWinApp(DWORD dwPID, DWORD dwTimeout)
-{
-   HANDLE   hProc ;
-   DWORD   dwRet ;
-
-   hProc = OpenProcess(SYNCHRONIZE|PROCESS_TERMINATE, FALSE, dwPID);
-   if (hProc == NULL) {
-      return TERM_FAILED ;
-   }
-
-   PostThreadMessage(GetWinMainThreadId(dwPID), WM_QUIT, 0, 0);
-
-
-   // Wait on the handle. If it signals, great. If it times out,
-   // then you kill it.
-   if(WaitForSingleObject(hProc, dwTimeout) != WAIT_OBJECT_0) {
-      dwRet = (TerminateProcess(hProc, 0) ? TERM_SUCCESS_KILL : TERM_FAILED);
-   }
-   else {
-      dwRet = TERM_SUCCESS_CLEAN ;
-   }
-
-   CloseHandle(hProc) ;
-
-   return dwRet;
-}
-
-DWORD WINAPI GetWinMainThreadId(DWORD dwProcID)
+static DWORD WINAPI GetWinMainThreadId(DWORD dwProcID)
 {
    DWORD dwMainThreadID = 0;
    ULONGLONG ullMinCreateTime = MAXULONGLONG;
@@ -96,6 +69,33 @@ DWORD WINAPI GetWinMainThreadId(DWORD dwProcID)
    }
 
    return dwMainThreadID;
+}
+
+static DWORD WINAPI TerminateWinApp(DWORD dwPID, DWORD dwTimeout)
+{
+   HANDLE   hProc ;
+   DWORD   dwRet ;
+
+   hProc = OpenProcess(SYNCHRONIZE|PROCESS_TERMINATE, FALSE, dwPID);
+   if (hProc == NULL) {
+      return TERM_FAILED ;
+   }
+
+   PostThreadMessage(GetWinMainThreadId(dwPID), WM_QUIT, 0, 0);
+
+
+   // Wait on the handle. If it signals, great. If it times out,
+   // then you kill it.
+   if(WaitForSingleObject(hProc, dwTimeout) != WAIT_OBJECT_0) {
+      dwRet = (TerminateProcess(hProc, 0) ? TERM_SUCCESS_KILL : TERM_FAILED);
+   }
+   else {
+      dwRet = TERM_SUCCESS_CLEAN ;
+   }
+
+   CloseHandle(hProc) ;
+
+   return dwRet;
 }
 
 #endif // Q_OS_WIN

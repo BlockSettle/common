@@ -14,11 +14,6 @@
 
 #include "headless.pb.h"
 
-#ifdef Q_OS_WIN
-DWORD WINAPI TerminateWinApp( DWORD dwPID, DWORD dwTimeout ) ;
-DWORD WINAPI GetWinMainThreadId(DWORD dwProcID);
-#endif
-
 namespace spdlog {
    class logger;
 }
