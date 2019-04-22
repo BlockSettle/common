@@ -490,6 +490,15 @@ const BinaryData& AddressEntry_P2SH::getAddress() const
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+AddressEntryType AddressEntry_P2SH::getType() const
+{
+   auto nestedType = AddressEntry::getType();
+   auto baseType = getPredecessor()->getType();
+
+   return AddressEntryType(baseType | nestedType);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 //// P2WSH
 ////////////////////////////////////////////////////////////////////////////////
 const BinaryData& AddressEntry_P2WSH::getPreimage() const
@@ -578,6 +587,16 @@ const BinaryData& AddressEntry_P2WSH::getScript() const
 
    return script_;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+AddressEntryType AddressEntry_P2WSH::getType() const
+{
+   auto nestedType = AddressEntry::getType();
+   auto baseType = getPredecessor()->getType();
+
+   return AddressEntryType(baseType | nestedType);
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 //// static methods

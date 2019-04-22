@@ -204,7 +204,6 @@ shared_ptr<WalletMeta> WalletMeta::deserialize(
 AssetWallet::~AssetWallet()
 {
    accounts_.clear();
-   addresses_.clear();
 
    if (db_ != nullptr)
    {
@@ -1670,13 +1669,53 @@ void AssetWallet::putData(BinaryWriter& key, BinaryWriter& data)
 shared_ptr<AddressEntry> AssetWallet::getNewAddress(
    AddressEntryType aeType)
 {
+   /***
+   The wallet will always try to deliver an address with the requested type if 
+   any of its accounts supports it. It will prioritize the main account, then
+   try through all accounts in binary order.
+   ***/
+
    //lock
    ReentrantLock lock(this);
 
    if (mainAccount_.getSize() == 0)
       throw WalletException("no main account for wallet");
 
-   return getNewAddress(mainAccount_, aeType);
+   auto mainAccount = getAccountForID(mainAccount_);
+   if (mainAccount->hasAddressType(aeType))
+      return mainAccount->getNewAddress(aeType);
+
+   for (auto& account : accounts_)
+   {
+      if (account.second->hasAddressType(aeType))
+         return account.second->getNewAddress(aeType);
+   }
+
+   throw WalletException("unexpected address entry type");
+   return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+shared_ptr<AddressEntry> AssetWallet::getNewChangeAddress(
+   AddressEntryType aeType)
+{
+   ReentrantLock lock(this);
+
+   if (mainAccount_.getSize() == 0)
+      throw WalletException("no main account for wallet");
+
+   auto mainAccount = getAccountForID(mainAccount_);
+   if (mainAccount->hasAddressType(aeType))
+      return mainAccount->getNewChangeAddress(aeType);
+
+   for (auto& account : accounts_)
+   {
+      if (account.second->hasAddressType(aeType))
+         return account.second->getNewChangeAddress(aeType);
+   }
+
+   throw WalletException("unexpected address entry type");
+   return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1687,51 +1726,8 @@ shared_ptr<AddressEntry> AssetWallet::getNewAddress(
 
    auto account = getAccountForID(accountID);
    auto newAddress = account->getNewAddress(aeType);
-   updateAddressSet(newAddress);
 
    return newAddress;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-void AssetWallet::updateAddressSet(shared_ptr<AddressEntry> addrPtr)
-{
-   /***
-   While AddressEntry objects are requested from Accounts, Accounts themselves
-   do not keep track of address instantiation. Instead, wallets keep track of 
-   that with a simple kay:val scheme:
-
-   (ADDRESS_PREFIX|Asset's ID):(AddressEntry type)
-   ***/
-
-   //only commit to disk if the addr is missing or the type differs
-   auto iter = addresses_.find(addrPtr->getID());
-   if (iter != addresses_.end())
-   {
-      if (iter->second->getType() == addrPtr->getType())
-         return;
-   }
-
-   addresses_[addrPtr->getID()] = addrPtr;
-   writeAddressType(addrPtr);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-void AssetWallet::writeAddressType(shared_ptr<AddressEntry> addrPtr)
-{
-   ReentrantLock lock(this);
-
-   BinaryWriter bwKey;
-   bwKey.put_uint8_t(ADDRESS_TYPE_PREFIX);
-   bwKey.put_BinaryData(addrPtr->getID());
-
-   BinaryWriter bwData;
-   bwData.put_uint8_t(addrPtr->getType());
-
-   CharacterArrayRef carKey(bwKey.getSize(), bwKey.getData().getCharPtr());
-   CharacterArrayRef carData(bwData.getSize(), bwData.getData().getCharPtr());
-
-   LMDBEnv::Transaction tx(dbEnv_.get(), LMDB::ReadWrite);
-   db_->insert(carKey, carData);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1788,11 +1784,8 @@ AddressEntryType AssetWallet::getAddrTypeForID(const BinaryData& ID)
 {
    ReentrantLock lock(this);
    
-   auto addrIter = addresses_.find(ID);
-   if (addrIter != addresses_.end())
-      return addrIter->second->getType();
-
-   return getAddrTypeForAccount(ID);
+   auto addrPtr = getAddressEntryForID(ID);
+   return addrPtr->getType();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1843,61 +1836,16 @@ AddressEntryType AssetWallet::getAddrTypeForAccount(const BinaryData& ID)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-shared_ptr<AddressEntry> AssetWallet::getAddressEntryForAsset(
-   shared_ptr<AssetEntry> assetPtr, AddressEntryType ae_type)
-{
-   ReentrantLock lock(this);
-   
-   auto addrIter = addresses_.find(assetPtr->getID());
-   if (addrIter != addresses_.end())
-   {
-      if(addrIter->second->getType() == ae_type)
-         return addrIter->second;
-   }
-
-   auto acc = getAccountForID(assetPtr->getID());
-   if (!acc->hasAddressType(ae_type))
-      throw WalletException("invalid address type for account");
-
-   auto addrPtr = AddressEntry::instantiate(assetPtr, ae_type);
-   updateAddressSet(addrPtr);
-   return addrPtr;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 shared_ptr<AddressEntry> AssetWallet::getAddressEntryForID(
-   const BinaryData& ID, AddressEntryType aeType)
+   const BinaryData& ID) const
 {
    ReentrantLock lock(this);
 
-   auto addrIter = addresses_.find(ID);
-   if (addrIter != addresses_.end())
-   {
-      auto addrType = addrIter->second->getType();
+   if (ID.getSize() != 12)
+      throw WalletException("invalid asset id");
 
-      if (aeType != AddressEntryType_Default)
-      {
-         if(aeType == addrType)
-         {
-            return addrIter->second;
-         }
-         else if (
-            (aeType & ADDRESS_NESTED_MASK) == (addrType & ADDRESS_NESTED_MASK) &&
-            (aeType & ADDRESS_TYPE_MASK) == (addrType & ADDRESS_TYPE_MASK))
-         {
-            return addrIter->second;
-         }
-      }
-   }
-
-   if (aeType == AddressEntryType_Default)
-   {
-      auto acc = getAccountForID(ID);
-      aeType = acc->getAddressType();
-   }
-
-   auto asset = getAssetForID(ID);
-   return getAddressEntryForAsset(asset, aeType);
+   auto accPtr = getAccountForID(ID);
+   return accPtr->getAddressEntryForID(ID.getRef());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2183,7 +2131,7 @@ string AssetWallet::forkWathcingOnly(const string& filename)
    string masterIdStr(masterID.getCharPtr(), masterID.getSize());
    initWalletMetaDB(dbEnvPtr, masterIdStr);
 
-
+   //open meta db
    {
       LMDBEnv::Transaction tx(dbEnvPtr.get(), LMDB::ReadWrite);
       metaDb.open(dbEnvPtr.get(), WALLETMETA_DBNAME);
@@ -2330,6 +2278,23 @@ set<BinaryData> AssetWallet::getAccountIDs(void) const
    set<BinaryData> result;
    for (auto& accPtr : accounts_)
       result.insert(accPtr.second->getID());
+
+   return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+map<BinaryData, shared_ptr<AddressEntry>> AssetWallet::getUsedAddressMap() const
+{
+   /***
+   This is an expensive call, do not spam it.
+   ***/
+
+   map<BinaryData, shared_ptr<AddressEntry>> result;
+   for (auto& account : accounts_)
+   {
+      auto&& addrMap = account.second->getUsedAddressMap();
+      result.insert(addrMap.begin(), addrMap.end());
+   }
 
    return result;
 }

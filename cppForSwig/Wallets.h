@@ -187,7 +187,6 @@ protected:
    LMDB* db_ = nullptr;
    const std::string dbName_;
 
-   std::map<BinaryData, std::shared_ptr<AddressEntry>> addresses_;
    std::shared_ptr<DecryptedDataContainer> decryptedData_;
    std::map<BinaryData, std::shared_ptr<AddressAccount>> accounts_;
    std::map<MetaAccountType, std::shared_ptr<MetaDataAccount>> metaDataAccounts_;
@@ -225,8 +224,6 @@ protected:
    void putData(BinaryWriter& key, BinaryWriter& data);
 
    //address type methods
-   void updateAddressSet(std::shared_ptr<AddressEntry>);
-   void writeAddressType(std::shared_ptr<AddressEntry>);
    AddressEntryType getAddrTypeForAccount(const BinaryData& ID);
 
    void loadMetaAccounts(void);
@@ -235,10 +232,6 @@ protected:
    virtual void putHeaderData(
       const BinaryData& parentID,
       const BinaryData& walletID);
-
-   std::shared_ptr<AddressEntry> getAddressEntryForAsset(
-      std::shared_ptr<AssetEntry>,
-      AddressEntryType);
 
    virtual void updateHashMap(void);
    virtual void readFromFile(void) = 0;
@@ -266,6 +259,8 @@ public:
       AddressEntryType aeType = AddressEntryType_Default);
    std::shared_ptr<AddressEntry> getNewAddress(const BinaryData& accountID,
       AddressEntryType);
+   std::shared_ptr<AddressEntry> getNewChangeAddress(
+      AddressEntryType aeType = AddressEntryType_Default);
 
    std::string getID(void) const;
    virtual ReentrantLock lockDecryptedContainer(void);
@@ -282,8 +277,7 @@ public:
    bool hasScrAddr(const BinaryData& scrAddr);
    const std::pair<BinaryData, AddressEntryType>& getAssetIDForAddr(const BinaryData& scrAddr);
    AddressEntryType getAddrTypeForID(const BinaryData& ID);
-   std::shared_ptr<AddressEntry> getAddressEntryForID(
-      const BinaryData&, AddressEntryType aeType = AddressEntryType_Default);
+   std::shared_ptr<AddressEntry> getAddressEntryForID(const BinaryData&) const;
    void shutdown(void);
 
    void setPassphrasePromptLambda(
@@ -305,6 +299,7 @@ public:
    std::shared_ptr<LMDBEnv> getDbEnv(void) const { return dbEnv_; }
 
    std::set<BinaryData> getAccountIDs(void) const;
+   std::map<BinaryData, std::shared_ptr<AddressEntry>> getUsedAddressMap(void) const;
 
    //virtual
    virtual std::set<BinaryData> getAddrHashSet();
@@ -462,8 +457,8 @@ private:
    std::shared_ptr<AssetWallet_Single> wltPtr_;
 
 protected:
-   std::map<BinaryDataRef, BinaryDataRef> hash_to_preimage_;
-   std::map<BinaryDataRef, std::shared_ptr<AssetEntry_Single>> pubkey_to_asset_;
+   std::map<BinaryData, BinaryData> hash_to_preimage_;
+   std::map<BinaryData, std::shared_ptr<AssetEntry_Single>> pubkey_to_asset_;
 
 private:
 
@@ -543,15 +538,21 @@ private:
             if (iter == hashMap.end())
                continue;
 
-            //sanity check: address types should match
-            if (addrType != iter->second.second)
-               continue;
+            /*
+            We have a hit for this prefix, return the asset and its
+            address type. 
+            
+            Note that we can't use addrType, as it may use a prefix 
+            shared across several address types (i.e. P2SH-P2PK and 
+            P2SH-P2WPKH).
 
-            //we have a hit for this address type, create it and return the
-            //predecessor
+            Therefor, we return the address type attached to hash 
+            rather the one used to roll the prefix.
+            */
+
             auto asset =
                accPtr->getAssetForID(iter->second.first.getSliceRef(4, 8));
-            return std::make_pair(asset, addrType);
+            return std::make_pair(asset, iter->second.second);
          }
       }
 
@@ -562,12 +563,7 @@ public:
    //tors
    ResolverFeed_AssetWalletSingle(std::shared_ptr<AssetWallet_Single> wltPtr) :
       wltPtr_(wltPtr)
-   {
-      //precache most likely candidates
-      auto& addrMap = wltPtr->addresses_;
-      for (auto& addr : addrMap)
-         addToMap(addr.second);
-   }
+   {}
 
    //virtual
    BinaryData getByVal(const BinaryData& key)

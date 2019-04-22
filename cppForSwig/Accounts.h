@@ -444,7 +444,7 @@ private:
       std::shared_ptr<AssetEntry>,
       unsigned, unsigned);
 
-   void unserialize(const BinaryDataRef);
+   std::shared_ptr<AssetEntry> getNewAsset(void);
 
 public:
    AssetAccount(
@@ -462,9 +462,6 @@ public:
    int getLastComputedIndex(void) const;
    unsigned getHighestUsedIndex(void) const { return lastUsedIndex_; }
    std::shared_ptr<AssetEntry> getLastAssetWithPrivateKey(void) const;
-
-   std::shared_ptr<AssetEntry> getNewAsset(void);
-   std::shared_ptr<AddressEntry> getNewAddress(AddressEntryType aeType);
 
    std::shared_ptr<AssetEntry> getAssetForID(const BinaryData&) const;
    std::shared_ptr<AssetEntry> getAssetForIndex(unsigned id) const;
@@ -498,7 +495,8 @@ class AddressAccount : public Lockable
 
 private:
    std::map<BinaryData, std::shared_ptr<AssetAccount>> assetAccounts_;
-   
+   std::map<BinaryData, AddressEntryType> addresses_;
+
    BinaryData outerAccount_;
    BinaryData innerAccount_;
 
@@ -517,6 +515,12 @@ private:
    void reset(void);
 
    void addAccount(std::shared_ptr<AssetAccount>);
+
+   void updateInstantiatedAddressType(std::shared_ptr<AddressEntry>);
+   void updateInstantiatedAddressType(
+      const BinaryData&, AddressEntryType);
+   void writeAddressType(const BinaryData&, AddressEntryType);
+   void eraseInstantiatedAddressType(const BinaryData&);
 
 public:
    AddressAccount(
@@ -577,12 +581,16 @@ public:
 
    std::shared_ptr<LMDBEnv> getDbEnv(void) const { return dbEnv_; }
 
+   std::shared_ptr<AddressAccount> getWatchingOnlyCopy(
+      std::shared_ptr<LMDBEnv>, LMDB*) const;
+
+   std::shared_ptr<AddressEntry> getAddressEntryForID(const BinaryDataRef&) const;
+   std::map<BinaryData, std::shared_ptr<AddressEntry>> getUsedAddressMap(void) const;
+
    //Lockable virtuals
    void initAfterLock(void) {}
    void cleanUpBeforeUnlock(void) {}
 
-   std::shared_ptr<AddressAccount> getWatchingOnlyCopy(
-      std::shared_ptr<LMDBEnv>, LMDB*) const;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
