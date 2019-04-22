@@ -101,14 +101,17 @@ QString ChatMessagesTextEdit::data(const int &row, const Column &column)
 
       case Column::Message: {
          std::shared_ptr<Chat::MessageData> message = messages_[currentChatId_][row];
+         QString text = QLatin1String("[%1] %2");
+         text = text.arg(messages_[currentChatId_][row]->getId());
+
          if (message->getState() & static_cast<int>(Chat::MessageData::State::Invalid)) {
-            return toHtmlInvalid(messages_[currentChatId_][row]->getId() + QLatin1String(" ")+ QLatin1String("INVALID MESSAGE!"));
+            return toHtmlInvalid(text.arg(QLatin1String("INVALID MESSAGE!")));
          } else if (message->encryptionType() == Chat::MessageData::EncryptionType::IES) {
-            return toHtmlInvalid(messages_[currentChatId_][row]->getId() + QLatin1String(" ")+ QLatin1String("IES ENCRYPTED!"));
+            return toHtmlInvalid(text.arg(QLatin1String("IES ENCRYPTED!")));
          } else if ( message->encryptionType() == Chat::MessageData::EncryptionType::AEAD) {
-            return toHtmlInvalid(messages_[currentChatId_][row]->getId() + QLatin1String(" ")+ QLatin1String("AEAD ENCRYPTED!"));
+            return toHtmlInvalid(text.arg(QLatin1String("AEAD ENCRYPTED!")));
          }
-         return toHtmlText(messages_[currentChatId_][row]->getId() + QLatin1String(" ")+ messages_[currentChatId_][row]->getMessageData());
+         return toHtmlText(text.arg(messages_[currentChatId_][row]->getMessageData()));
       }
       default:
          break;
@@ -543,7 +546,7 @@ QString ChatMessagesTextEdit::toHtmlUsername(const QString &username)
 
 QString ChatMessagesTextEdit::toHtmlInvalid(const QString &text)
 {
-   QString changedText = QString(QLatin1Literal("<a href=\"user:%1\" style=\"color:%2\">%1</a>")).arg(text).arg(QLatin1String("red"));
+   QString changedText = QString(QLatin1Literal("<font color=\"%1\">%2</font>")).arg(QLatin1String("red")).arg(text);
    return changedText;
 }
 
