@@ -50,7 +50,10 @@ SubscriberConnection::~SubscriberConnection() noexcept
 
 bool SubscriberConnection::isActive() const
 {
-   return listener_ != nullptr;
+   if (this != NULL)
+      return listener_ != nullptr;
+   else
+      return false;
 }
 
 bool SubscriberConnection::ConnectToPublisher(const std::string& endpointName, SubscriberConnectionListener* listener)
@@ -182,7 +185,12 @@ void SubscriberConnection::stopListen()
    if (std::this_thread::get_id() == listenThread_.get_id()) {
       listenThread_.detach();
    } else {
-      listenThread_.join();
+      try {
+         listenThread_.join();
+      }
+      catch (const std::exception &e) {
+         logger_->error("SubscriberConnection::stopListen error in listenThread_.join", e.what());
+      }
    }
 
    return;

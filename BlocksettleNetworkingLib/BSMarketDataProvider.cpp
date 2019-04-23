@@ -44,6 +44,14 @@ bool BSMarketDataProvider::StartMDConnection()
    return true;
 }
 
+void BSMarketDataProvider::StopMDConnection()
+{
+   emit MDUpdate(bs::network::Asset::Undefined, QString(), {});
+   mdConnection_->stopListen();
+   mdConnection_ = nullptr;
+   emit Disconnected();
+}
+
 bool BSMarketDataProvider::IsConnectionActive() const
 {
    return mdConnection_ != nullptr;

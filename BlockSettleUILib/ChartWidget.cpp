@@ -1072,6 +1072,14 @@ void ChartWidget::OnMDDisconnecting()
 {
    ui_->pushButtonMDConnection->setText(tr("Disconnecting"));
    ui_->pushButtonMDConnection->setEnabled(false);
+
+
+   volumeChart_->data()->clear();
+   //vertLine->setVisible(false);
+   //horLine->setVisible(false);
+   //ui_->customPlot->replot();
+
+   mdProvider_->UnsubscribeFromMD();
 }
 
 void ChartWidget::OnMDDisconnected()
