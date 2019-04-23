@@ -105,9 +105,6 @@ void AddressListModel::updateWallet(const std::shared_ptr<bs::sync::Wallet> &wal
    if (wallet->type() == bs::core::wallet::Type::Authentication) {
       const auto addr = bs::Address();
       auto row = createRow(addr, wallet);
-
-      if (row.walletName == QLatin1Literal("0"))
-         addressRows_.emplace_back(std::move(row));
    } else {
       std::vector<bs::Address> addressList;
       switch (addrType_) {
@@ -255,7 +252,7 @@ int AddressListModel::columnCount(const QModelIndex &) const
    if (wallets_.size() == 1) {
       return ColumnsNbSingle;
    }
-   return ColumnsNbMultiple;
+   return ColumnsNbSingle;
 }
 
 int AddressListModel::rowCount(const QModelIndex& parent) const
