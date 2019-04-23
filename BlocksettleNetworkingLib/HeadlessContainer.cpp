@@ -1063,18 +1063,14 @@ RemoteSigner::RemoteSigner(const std::shared_ptr<spdlog::logger> &logger
    , const std::shared_ptr<ApplicationSettings>& appSettings
    , OpMode opMode
    , const bool ephemeralDataConnKeys
-   , const std::function<void(const std::string&, const std::string&
-      , std::shared_ptr<std::promise<bool>>)> &cbNewKey
-   , const std::function<void(const std::string&, const std::string&
-      , std::shared_ptr<std::promise<bool>>
-      , const std::function<void(const std::string&, const std::string&
-      , std::shared_ptr<std::promise<bool>>)>)> &invokeCB)
+   , const ZmqBIP15XDataConnection::cbNewKey& inNewKeyCB
+   , const ZmqBIP15XDataConnection::invokeCB& inInvokeCB)
    : HeadlessContainer(logger, opMode)
    , host_(host), port_(port), netType_(netType)
    , connectionManager_{connectionManager}
    , appSettings_{appSettings}
-   , cbNewKey_{cbNewKey}
-   , invokeCB_{invokeCB}
+   , cbNewKey_{inNewKeyCB}
+   , invokeCB_{inInvokeCB}
    , ephemeralDataConnKeys_(ephemeralDataConnKeys)
 {
    // Create connection upfront in order to grab some required data early.
@@ -1396,15 +1392,11 @@ LocalSigner::LocalSigner(const std::shared_ptr<spdlog::logger> &logger
    , SignContainer::OpMode mode
    , const bool ephemeralDataConnKeys
    , double asSpendLimit
-   , const std::function<void(const std::string&, const std::string&
-      , std::shared_ptr<std::promise<bool>>)> &cbNewKey
-   , const std::function<void(const std::string&, const std::string&
-      , std::shared_ptr<std::promise<bool>>
-      , const std::function<void(const std::string&, const std::string&
-      , std::shared_ptr<std::promise<bool>>)>)> &invokeCB)
+   , const ZmqBIP15XDataConnection::cbNewKey& inNewKeyCB
+   , const ZmqBIP15XDataConnection::invokeCB& inInvokeCB)
    : RemoteSigner(logger, QLatin1String("127.0.0.1"), port, netType
-      , connectionManager, appSettings, mode, ephemeralDataConnKeys, cbNewKey
-      , invokeCB), homeDir_(homeDir), asSpendLimit_(asSpendLimit)
+      , connectionManager, appSettings, mode, ephemeralDataConnKeys, inNewKeyCB
+      , inInvokeCB), homeDir_(homeDir), asSpendLimit_(asSpendLimit)
 {}
 
 QStringList LocalSigner::args() const

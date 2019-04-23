@@ -24,18 +24,20 @@ public:
       , bool monitored);*/
    ~ZmqBIP15XDataConnection() noexcept override;
 
+   using cbNewKey = std::function<void(const std::string&, const std::string&
+      , std::shared_ptr<std::promise<bool>>)>;
+   using invokeCB = std::function<void(const std::string&
+      , const std::string&
+      , std::shared_ptr<std::promise<bool>>
+      , const cbNewKey&)>;
+
    ZmqBIP15XDataConnection(const ZmqBIP15XDataConnection&) = delete;
    ZmqBIP15XDataConnection& operator= (const ZmqBIP15XDataConnection&) = delete;
    ZmqBIP15XDataConnection(ZmqBIP15XDataConnection&&) = delete;
    ZmqBIP15XDataConnection& operator= (ZmqBIP15XDataConnection&&) = delete;
 
-   bool getServerIDCookie(BinaryData& cookieBuf);
-   void setCBs(const std::function<void(const std::string&, const std::string&
-      , std::shared_ptr<std::promise<bool>>)> &cbNewKey
-      , const std::function<void(const std::string&, const std::string&
-      , std::shared_ptr<std::promise<bool>>
-      , const std::function<void(const std::string&, const std::string&
-      , std::shared_ptr<std::promise<bool>>)>)> &invokeCB);
+   bool getServerIDCookie(BinaryData& cookieBuf, const std::string& cookieName);
+   void setCBs(const cbNewKey& inNewKeyCB, const invokeCB& inInvokeCB);
    BinaryData getOwnPubKey() const;
 
    // Overridden functions from ZmqDataConnection.
@@ -94,12 +96,8 @@ private:
    // New key + No callbacks - Reject the new keys.
    // New key + Callbacks - Depends on what the user wants.
    // Previously verified key - Accept the key and skip the callbacks.
-   std::function<void(const std::string&, const std::string&
-      , std::shared_ptr<std::promise<bool>>)> cbNewKey_;
-   std::function<void(const std::string&, const std::string&
-      , std::shared_ptr<std::promise<bool>>
-      , const std::function<void(const std::string&, const std::string&
-      , std::shared_ptr<std::promise<bool>>)>)> invokeCB_;
+   cbNewKey cbNewKey_;
+   invokeCB invokeCB_;
 
    std::chrono::steady_clock::time_point  lastHeartbeat_;
    std::atomic_bool        hbThreadRunning_;

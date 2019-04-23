@@ -130,12 +130,8 @@ public:
       , const std::shared_ptr<ApplicationSettings>& appSettings
       , OpMode opMode = OpMode::Remote
       , const bool ephemeralDataConnKeys = true
-      , const std::function<void(const std::string&, const std::string&
-         , std::shared_ptr<std::promise<bool>>)> &cbNewKey = nullptr
-      , const std::function<void(const std::string&, const std::string&
-         , std::shared_ptr<std::promise<bool>>
-         , const std::function<void(const std::string&, const std::string&
-         , std::shared_ptr<std::promise<bool>>)>)> &invokeCB = nullptr);
+      , const ZmqBIP15XDataConnection::cbNewKey& inNewKeyCB = nullptr
+      , const ZmqBIP15XDataConnection::invokeCB& inInvokeCB = nullptr);
    ~RemoteSigner() noexcept = default;
 
    bool Start() override;
@@ -197,12 +193,8 @@ public:
       , SignContainer::OpMode mode = OpMode::Local
       , const bool ephemeralDataConnKeys = false
       , double asSpendLimit = 0
-      , const std::function<void(const std::string&, const std::string&
-         , std::shared_ptr<std::promise<bool>>)> &cbNewKey = nullptr
-      , const std::function<void(const std::string&, const std::string&
-         , std::shared_ptr<std::promise<bool>>
-         , const std::function<void(const std::string&, const std::string&
-         , std::shared_ptr<std::promise<bool>>)>)> &invokeCB = nullptr);
+      , const ZmqBIP15XDataConnection::cbNewKey& inNewKeyCB = nullptr
+      , const ZmqBIP15XDataConnection::invokeCB& inInvokeCB = nullptr);
    ~LocalSigner() noexcept = default;
 
    bool Start() override;

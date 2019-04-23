@@ -10,6 +10,8 @@
 
 using namespace std;
 
+#define localAddrV4k "127.0.0.1"
+#define serverCookieNamek "serverID"
 #define HEARTBEAT_PACKET_SIZE 23
 
 // The constructor to use.
@@ -492,7 +494,7 @@ bool ZmqBIP15XDataConnection::processAEADHandshake(
       if (useServerIDCookie_) {
          // Read the cookie with the key to check.
          BinaryData cookieKey(static_cast<size_t>(BTC_ECKEY_COMPRESSED_LENGTH));
-         if (!getServerIDCookie(cookieKey)) {
+         if (!getServerIDCookie(cookieKey, serverCookieNamek)) {
             serverPubkeyProm_->set_value(false);
             return false;
          }
@@ -500,7 +502,7 @@ bool ZmqBIP15XDataConnection::processAEADHandshake(
             // Add the host and the key to the list of verified peers. Be sure
             // to erase any old keys first.
             vector<string> keyName;
-            string localAddrV4 = "127.0.0.1";
+            string localAddrV4 = localAddrV4k;
             keyName.push_back(localAddrV4);
             authPeers_->eraseName(localAddrV4);
             authPeers_->addPeer(cookieKey, keyName);
@@ -709,17 +711,12 @@ bool ZmqBIP15XDataConnection::processAEADHandshake(
 //         The callback that will invoke the user-asking callback.
 // OUTPUT: N/A
 // RETURN: N/A
-void ZmqBIP15XDataConnection::setCBs(
-   const std::function<void(const std::string&, const std::string&
-   , std::shared_ptr<std::promise<bool>>)> &cbNewKey
-   , const std::function<void(const std::string&, const std::string&
-   , std::shared_ptr<std::promise<bool>>
-   , const std::function<void(const std::string&, const std::string&
-   , std::shared_ptr<std::promise<bool>>)>)> &invokeCB) {
+void ZmqBIP15XDataConnection::setCBs(const cbNewKey& inNewKeyCB
+   , const invokeCB& inInvokeCB) {
    // Set callbacks only if callbacks actually exist.
-   if (cbNewKey_ && cbNewKey) {
-      cbNewKey_ = cbNewKey;
-      invokeCB_ = invokeCB;
+   if (cbNewKey_ && inNewKeyCB) {
+      cbNewKey_ = inNewKeyCB;
+      invokeCB_ = inInvokeCB;
       useServerIDCookie_ = false;
    }
 }
@@ -755,7 +752,7 @@ void ZmqBIP15XDataConnection::verifyNewIDKey(const BinaryDataRef& newKey
          , newKey.toHexStr(), srvAddrPort);
 
       // Ask the user if they wish to accept the new identity key.
-      BinaryData oldKey(authPeerNameMap[srvAddrPort].pubkey, BIP151PUBKEYSIZE);
+      BinaryData oldKey(authPeerNameSearch->second.pubkey, BIP151PUBKEYSIZE);
       invokeCB_(oldKey.toHexStr(), newKey.toHexStr()
          , serverPubkeyProm_, cbNewKey_);
 
@@ -784,13 +781,15 @@ void ZmqBIP15XDataConnection::verifyNewIDKey(const BinaryDataRef& newKey
 // INPUT:  The buffer that will hold the compressed ID key. (BinaryData)
 // OUTPUT: N/A
 // RETURN: True if success, false if failure.
-bool ZmqBIP15XDataConnection::getServerIDCookie(BinaryData& cookieBuf)
+bool ZmqBIP15XDataConnection::getServerIDCookie(BinaryData& cookieBuf
+   , const string& cookieName)
 {
    if (!useServerIDCookie_) {
       return false;
    }
 
-   std::string absCookiePath = SystemFilePaths::appDataLocation() + "/serverID";
+   std::string absCookiePath = SystemFilePaths::appDataLocation() + "/"
+      + cookieName;
    if (!SystemFileUtils::fileExist(absCookiePath)) {
       logger_->error("[{}] Server identity cookie ({}) doesn't exist. Unable "
          "to verify server identity.", __func__, absCookiePath);

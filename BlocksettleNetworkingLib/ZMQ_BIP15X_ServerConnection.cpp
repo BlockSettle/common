@@ -6,6 +6,8 @@
 
 using namespace std;
 
+#define idCookieNamek "serverID"
+
 // A call resetting the encryption-related data for individual connections.
 //
 // INPUT:  None
@@ -78,10 +80,10 @@ ZmqBIP15XServerConnection::~ZmqBIP15XServerConnection()
    // If it exists, delete the identity cookie.
    if (bipIDCookieExists_) {
       std::string absCookiePath =
-         SystemFilePaths::appDataLocation() + "/serverID";
+         SystemFilePaths::appDataLocation() + "/" + idCookieNamek;
       if (SystemFileUtils::fileExist(absCookiePath)) {
          if (!SystemFileUtils::rmFile(absCookiePath)) {
-            logger_->error("[{}] Unable to delete server identity cookie ({}). "
+            logger_->error("[{}] Unable to delete server identity cookie ({})."
                , __func__, absCookiePath);
          }
       }
@@ -805,7 +807,7 @@ bool ZmqBIP15XServerConnection::genBIPIDCookie()
 
    // Ensure that we only write the compressed key.
    ofstream cookieFile(absCookiePath, ios::out | ios::binary);
-   BinaryData ourIDKey = getOwnPubKey();
+   const BinaryData ourIDKey = getOwnPubKey();
    if (ourIDKey.getSize() != BTC_ECKEY_COMPRESSED_LENGTH) {
       logger_->error("[{}] Server identity key ({}) is uncompressed. Will not "
          "write the identity cookie.", __func__, absCookiePath);
