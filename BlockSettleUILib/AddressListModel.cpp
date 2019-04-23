@@ -105,6 +105,7 @@ void AddressListModel::updateWallet(const std::shared_ptr<bs::sync::Wallet> &wal
    if (wallet->type() == bs::core::wallet::Type::Authentication) {
       const auto addr = bs::Address();
       auto row = createRow(addr, wallet);
+      addressRows_.emplace_back(std::move(row));
    } else {
       std::vector<bs::Address> addressList;
       switch (addrType_) {
