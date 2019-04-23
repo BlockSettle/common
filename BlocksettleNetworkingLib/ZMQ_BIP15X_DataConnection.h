@@ -14,6 +14,31 @@
 
 #define CLIENT_AUTH_PEER_FILENAME "client.peers"
 
+// DESIGN NOTE: The data connection should have a callback for when unknown
+// server keys are seen. The callback should ask the user if they'll accept
+// the new key. It's not as simple as calling the callback, unfortunately. We
+// may have to access Qt resources, which aren't allowed here. When accessing
+// them, we may have to use QMetaObject::invokeMethod(), which is another Qt
+// call. The solution? Have two separate callbacks: One that does what we
+// really want, and one that properly invokes the other callback. (Clear as
+// mud, right?)
+//
+// In adition, we have cookies that are used for local connections. When the
+// server is invoked, it'll be invoked with the client connection's public BIP
+// 150 ID key. In turn, the server will generate a cookie with its public BIP
+// 150 ID key. The client will read the cookie and get the server key. This
+// allows both sides to verify each other.
+//
+// The key acceptance functionality is as follows:
+//
+// LOCAL SIGNER
+// Accept only a single key from the server cookie.
+//
+// REMOTE SIGNER
+// New key + No callbacks - Reject the new keys.
+// New key + Callbacks - Depends on what the user wants.
+// Previously verified key - Accept the key and skip the callbacks.
+
 class ZmqBIP15XDataConnection : public ZmqDataConnection
 {
 public:
@@ -84,18 +109,6 @@ private:
    std::function<void()>   cbCompleted_ = nullptr;
    const int   heartbeatInterval_ = 30000;
 
-   // DESIGN NOTE: The data connection should have a callback for when unknown
-   // server keys are seen. The callback should ask the user if they'll accept
-   // the new key. It's not as simple as calling the callback, unfortunately. We
-   // may have to access Qt resources, which aren't allowed here. When accessing
-   // them, we may have to use QMetaObject::invokeMethod(), which is another Qt
-   // call. The solution? Have two separate callbacks: One that does what we
-   // really want, and one that properly invokes the other callback. (Clear as
-   // mud, right?) The key acceptance functionality is as follows:
-   //
-   // New key + No callbacks - Reject the new keys.
-   // New key + Callbacks - Depends on what the user wants.
-   // Previously verified key - Accept the key and skip the callbacks.
    cbNewKey cbNewKey_;
    invokeCB invokeCB_;
 
