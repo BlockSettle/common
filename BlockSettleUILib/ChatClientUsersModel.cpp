@@ -2,20 +2,20 @@
 #include <algorithm>
 #include <QColor>
 
-ChatClientUsersModel::ChatClientUsersModel(std::shared_ptr<TreeItem> root, QObject * parent)
+ChatClientDataModel::ChatClientDataModel(std::shared_ptr<TreeItem> root, QObject * parent)
     : QAbstractItemModel(parent)
     , root_(root)
 {
-   connect(root_.get(), &TreeItem::beforeUpdate, this, &ChatClientUsersModel::onBeforeUpdate);
-   connect(root_.get(), &TreeItem::afterUpdate, this, &ChatClientUsersModel::onAfterUpdate);
-   connect(root_.get(), &TreeItem::beforeClean, this, &ChatClientUsersModel::onBeforeClean);
-   connect(root_.get(), &TreeItem::afterClean, this, &ChatClientUsersModel::onAfterClean);
-   connect(root_.get(), &TreeItem::itemChanged, this, &ChatClientUsersModel::onItemChanged);
+   connect(root_.get(), &TreeItem::beforeUpdate, this, &ChatClientDataModel::onBeforeUpdate);
+   connect(root_.get(), &TreeItem::afterUpdate, this, &ChatClientDataModel::onAfterUpdate);
+   connect(root_.get(), &TreeItem::beforeClean, this, &ChatClientDataModel::onBeforeClean);
+   connect(root_.get(), &TreeItem::afterClean, this, &ChatClientDataModel::onAfterClean);
+   connect(root_.get(), &TreeItem::itemChanged, this, &ChatClientDataModel::onItemChanged);
 
 
 }
 
-QModelIndex ChatClientUsersModel::index(int row, int column, const QModelIndex &parent) const
+QModelIndex ChatClientDataModel::index(int row, int column, const QModelIndex &parent) const
 {
    if (!hasIndex(row, column, parent)){
       return QModelIndex();
@@ -40,7 +40,7 @@ QModelIndex ChatClientUsersModel::index(int row, int column, const QModelIndex &
    return QModelIndex();
 }
 
-QModelIndex ChatClientUsersModel::parent(const QModelIndex &child) const
+QModelIndex ChatClientDataModel::parent(const QModelIndex &child) const
 {
    if (!child.isValid())
       return QModelIndex();
@@ -54,7 +54,7 @@ QModelIndex ChatClientUsersModel::parent(const QModelIndex &child) const
    return createIndex(parentItem->selfIndex(), 0, parentItem);
 }
 
-int ChatClientUsersModel::rowCount(const QModelIndex &parent) const
+int ChatClientDataModel::rowCount(const QModelIndex &parent) const
 {
    TreeItem *parentItem;
    if (parent.column() > 0) {
@@ -70,12 +70,12 @@ int ChatClientUsersModel::rowCount(const QModelIndex &parent) const
    return static_cast<int>(parentItem->getChildren().size());
 }
 
-int ChatClientUsersModel::columnCount(const QModelIndex &parent) const
+int ChatClientDataModel::columnCount(const QModelIndex &parent) const
 {
    return 1;
 }
 
-QVariant ChatClientUsersModel::data(const QModelIndex &index, int role) const
+QVariant ChatClientDataModel::data(const QModelIndex &index, int role) const
 {
    if (!index.isValid()) //Applicable for RootNode
       return QVariant();
@@ -96,33 +96,33 @@ QVariant ChatClientUsersModel::data(const QModelIndex &index, int role) const
 
 }
 
-void ChatClientUsersModel::onBeforeUpdate()
+void ChatClientDataModel::onBeforeUpdate()
 {
    emit layoutAboutToBeChanged();
 }
 
-void ChatClientUsersModel::onAfterUpdate()
+void ChatClientDataModel::onAfterUpdate()
 {
    emit layoutChanged();
 }
 
-void ChatClientUsersModel::onBeforeClean()
+void ChatClientDataModel::onBeforeClean()
 {
    beginResetModel();
 }
 
-void ChatClientUsersModel::onAfterClean()
+void ChatClientDataModel::onAfterClean()
 {
    endResetModel();
 }
 
-void ChatClientUsersModel::onItemChanged(TreeItem *item)
+void ChatClientDataModel::onItemChanged(TreeItem *item)
 {
    QModelIndex index = createIndex(item->selfIndex(), 0, item);
    emit dataChanged(index, index);
 }
 
-QVariant ChatClientUsersModel::categoryNodeData(const TreeItem* item, int role) const
+QVariant ChatClientDataModel::categoryNodeData(const TreeItem* item, int role) const
 {
    if (role != Qt::DisplayRole) {
       return QVariant();
@@ -142,7 +142,7 @@ QVariant ChatClientUsersModel::categoryNodeData(const TreeItem* item, int role) 
    }
 }
 
-QVariant ChatClientUsersModel::categoryElementData(TreeItem * item, int role) const
+QVariant ChatClientDataModel::categoryElementData(TreeItem * item, int role) const
 {
    CategoryElement* element = static_cast<CategoryElement*>(item);
    switch(element->getType()){
@@ -188,7 +188,7 @@ QVariant ChatClientUsersModel::categoryElementData(TreeItem * item, int role) co
    return QVariant();
 }
 
-Qt::ItemFlags ChatClientUsersModel::flags(const QModelIndex &index) const
+Qt::ItemFlags ChatClientDataModel::flags(const QModelIndex &index) const
 {
    if (!index.isValid()) {
       return 0;

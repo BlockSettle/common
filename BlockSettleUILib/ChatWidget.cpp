@@ -236,7 +236,7 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
 {
    logger_ = logger;
    client_ = std::make_shared<ChatClient>(connectionManager, appSettings, logger);
-   ui_->treeViewUsers->setModel(new ChatClientUsersModel(client_->getRootItem(), this));
+   ui_->treeViewUsers->setModel(new ChatClientDataModel(client_->getRootItem(), this));
    ui_->treeViewUsers->expandAll();
    ui_->treeViewUsers->addWatcher(new LoggerWatcher());
    ui_->treeViewUsers->addWatcher(ui_->textEditMessages);

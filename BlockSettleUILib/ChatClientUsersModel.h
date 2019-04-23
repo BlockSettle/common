@@ -6,10 +6,10 @@
 
 #include "ChatClientTree/TreeObjects.h"
 
-class ChatClientUsersModel : public QAbstractItemModel
+class ChatClientDataModel : public QAbstractItemModel
 {
 public:
-   ChatClientUsersModel(std::shared_ptr<TreeItem> root, QObject * parent = nullptr);
+   ChatClientDataModel(std::shared_ptr<TreeItem> root, QObject * parent = nullptr);
 
 
    // QAbstractItemModel interface
