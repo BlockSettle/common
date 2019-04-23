@@ -48,7 +48,7 @@ public:
       ColumnComment,
       ColumnsNbSingle,
       ColumnWallet = ColumnsNbSingle,
-      ColumnsNbMultiple
+      ColumnsNbMultiple = 4
    };
 
    enum Role
