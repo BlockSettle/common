@@ -43,29 +43,31 @@ QModelIndex ChatClientUsersModel::index(int row, int column, const QModelIndex &
 QModelIndex ChatClientUsersModel::parent(const QModelIndex &child) const
 {
    if (!child.isValid())
-           return QModelIndex();
+      return QModelIndex();
 
-       TreeItem *childItem = static_cast<TreeItem*>(child.internalPointer());
-       TreeItem *parentItem = childItem->getParent();
+   TreeItem *childItem = static_cast<TreeItem*>(child.internalPointer());
+   TreeItem *parentItem = childItem->getParent();
 
-       if (root_ && parentItem == root_.get())
-           return QModelIndex();
+   if (root_ && parentItem == root_.get())
+      return QModelIndex();
 
-       return createIndex(parentItem->selfIndex(), 0, parentItem);
+   return createIndex(parentItem->selfIndex(), 0, parentItem);
 }
 
 int ChatClientUsersModel::rowCount(const QModelIndex &parent) const
 {
    TreeItem *parentItem;
-       if (parent.column() > 0)
-           return 0;
+   if (parent.column() > 0) {
+      return 0;
+   }
 
-       if (!parent.isValid())
-           parentItem = root_.get();
-       else
-           parentItem = static_cast<TreeItem*>(parent.internalPointer());
+   if (!parent.isValid()) {
+      parentItem = root_.get();
+   } else {
+      parentItem = static_cast<TreeItem*>(parent.internalPointer());
+   }
 
-       return static_cast<int>(parentItem->getChildren().size());
+   return static_cast<int>(parentItem->getChildren().size());
 }
 
 int ChatClientUsersModel::columnCount(const QModelIndex &parent) const
@@ -76,21 +78,21 @@ int ChatClientUsersModel::columnCount(const QModelIndex &parent) const
 QVariant ChatClientUsersModel::data(const QModelIndex &index, int role) const
 {
    if (!index.isValid()) //Applicable for RootNode
-           return QVariant();
+      return QVariant();
 
-       TreeItem *item = static_cast<TreeItem*>(index.internalPointer());
+   TreeItem *item = static_cast<TreeItem*>(index.internalPointer());
 
-       switch (item->getType()) {
-         case TreeItem::NodeType::CategoryNode:
-             return  categoryNodeData(item, role);
-         case TreeItem::NodeType::SearchElement:
-         case TreeItem::NodeType::RoomsElement:
-         case TreeItem::NodeType::ContactsElement:
-         case TreeItem::NodeType::AllUsersElement:
-             return categoryElementData(item, role);
-          default:
-             return QVariant();
-       }
+   switch (item->getType()) {
+      case TreeItem::NodeType::CategoryNode:
+         return  categoryNodeData(item, role);
+      case TreeItem::NodeType::SearchElement:
+      case TreeItem::NodeType::RoomsElement:
+      case TreeItem::NodeType::ContactsElement:
+      case TreeItem::NodeType::AllUsersElement:
+         return categoryElementData(item, role);
+      default:
+         return QVariant();
+   }
 
 }
 
@@ -122,8 +124,9 @@ void ChatClientUsersModel::onItemChanged(TreeItem *item)
 
 QVariant ChatClientUsersModel::categoryNodeData(const TreeItem* item, int role) const
 {
-   if (role != Qt::DisplayRole)
-       return QVariant();
+   if (role != Qt::DisplayRole) {
+      return QVariant();
+   }
 
    switch(item->getAcceptType()){
       case TreeItem::NodeType::RoomsElement:
@@ -157,20 +160,20 @@ QVariant ChatClientUsersModel::categoryElementData(TreeItem * item, int role) co
             return data->getContactId();
          } else if (role == Qt::TextColorRole){
             ChatContactElement* contact = static_cast<ChatContactElement*>(element);
-               switch (data->getContactStatus()) {
-                  case Chat::ContactStatus::Accepted:
-                     if (contact->getOnlineStatus() == ChatContactElement::OnlineStatus::Online){
-                        return QColor(0x00c8f8);
-                     }
-                     return QColor(Qt::white);
-                  case Chat::ContactStatus::Rejected:
-                     return QColor(Qt::red);
-                  case Chat::ContactStatus::Incoming:
-                     return QColor(0xffa834);
-                  case Chat::ContactStatus::Outgoing:
-                     return QColor(0xA0BC5D);
+            switch (data->getContactStatus()) {
+               case Chat::ContactStatus::Accepted:
+                  if (contact->getOnlineStatus() == ChatContactElement::OnlineStatus::Online){
+                     return QColor(0x00c8f8);
+                  }
+                  return QColor(Qt::white);
+               case Chat::ContactStatus::Rejected:
+                  return QColor(Qt::red);
+               case Chat::ContactStatus::Incoming:
+                  return QColor(0xffa834);
+               case Chat::ContactStatus::Outgoing:
+                  return QColor(0xA0BC5D);
 
-               }
+            }
          }
       } break;
       case TreeItem::NodeType::AllUsersElement:{
@@ -187,8 +190,10 @@ QVariant ChatClientUsersModel::categoryElementData(TreeItem * item, int role) co
 
 Qt::ItemFlags ChatClientUsersModel::flags(const QModelIndex &index) const
 {
-   if (!index.isValid())
+   if (!index.isValid()) {
       return 0;
+   }
+
    Qt::ItemFlags current_flags = QAbstractItemModel::flags(index);
 
    TreeItem *item = static_cast<TreeItem*>(index.internalPointer());

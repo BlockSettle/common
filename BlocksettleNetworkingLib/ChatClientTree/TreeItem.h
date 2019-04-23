@@ -50,7 +50,7 @@ signals:
    void itemChanged(TreeItem*);
 protected:
    const TreeItem *recursiveRoot() const;
-   void clearChildren();
+   void deleteChildren();
    void grabChildren(TreeItem* item);
    void setParent(TreeItem* parent);
    void addChild(TreeItem* item);

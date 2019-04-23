@@ -72,8 +72,6 @@ private slots:
          return;
       }
       handler_->onActionAcceptContactRequest(currentContact_);
-      const auto &text = currentIndex_.data(Qt::DisplayRole).toString();
-      //emit view_->acceptFriendRequest(text);
    }
 
    void onDeclineFriendRequest(bool)
@@ -82,17 +80,7 @@ private slots:
          return;
       }
       handler_->onActionRejectContactRequest(currentContact_);
-      const auto &text = currentIndex_.data(Qt::DisplayRole).toString();
-      //emit view_->declineFriendRequest(text);
    }
-
-//   ChatUserData::State userState()
-//   {
-//      TreeItem * item = static_cast<TreeItem*>(currentIndex_.internalPointer());
-
-
-//      return qvariant_cast<ChatUserData::State>(currentIndex_.data(Role::UserStateRole));
-//   }
 
    void prepareContactMenu()
    {
@@ -112,7 +100,7 @@ private slots:
             addAction(tr("Decline friend request"), this, &ChatUsersContextMenu::onDeclineFriendRequest);
             break;
          case Chat::ContactStatus::Outgoing:
-            addAction(tr("This request not accepted"));
+            addAction(tr("This request is not accepted"));
          default:
             break;
 
@@ -230,7 +218,8 @@ void ChatClientUserView::currentChanged(const QModelIndex &current, const QModel
             auto element = static_cast<CategoryElement*>(item);
             updateDependUI(element);
             notifyCurrentChanged(element);
-         } break;
+         }
+         break;
          default:
             break;
 
@@ -266,10 +255,10 @@ void LoggerWatcher::onElementSelected(CategoryElement *element)
 
 void LoggerWatcher::onElementUpdated(CategoryElement *element)
 {
-      qDebug() << "Item updated:\n" << QString::fromStdString(element->getDataObject()->toJsonString());
+   qDebug() << "Item updated:\n" << QString::fromStdString(element->getDataObject()->toJsonString());
 }
 
 void LoggerWatcher::onMessageChanged(std::shared_ptr<Chat::MessageData> message)
 {
-      qDebug() << "Message changed:\n" << QString::fromStdString(message->toJsonString());
+   qDebug() << "Message changed:\n" << QString::fromStdString(message->toJsonString());
 }

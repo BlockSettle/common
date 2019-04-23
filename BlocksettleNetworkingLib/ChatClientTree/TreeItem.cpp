@@ -10,12 +10,14 @@ TreeItem::NodeType TreeItem::getTargetParentType() const { return targetParentTy
 
 TreeItem *TreeItem::getParent() const {return parent_; }
 
-TreeItem::~TreeItem(){
-   clearChildren();
+TreeItem::~TreeItem()
+{
+   deleteChildren();
    qDebug() << "TreeItem::~TreeItem()";
 }
 
-bool TreeItem::insertItem(TreeItem *item) {
+bool TreeItem::insertItem(TreeItem *item)
+{
    bool supported = isSupported(item);
    //assert(supported);
    if (supported) {
@@ -36,7 +38,7 @@ int TreeItem::selfIndex() const
    return 0;
 }
 
-void TreeItem::clearChildren()
+void TreeItem::deleteChildren()
 {
    for (auto child : children_) {
       delete child;
@@ -44,27 +46,25 @@ void TreeItem::clearChildren()
    children_.clear();
 }
 
-void TreeItem::grabChildren(TreeItem *item){
-   //Copy all children pointers to this children
-   for (auto child: item->getChildren()){
+void TreeItem::grabChildren(TreeItem *item)
+{
+   //Copy all children pointers to this children list
+   //And set they parent as this
+   for (auto child : item->getChildren()) {
+      child->setParent(this);
       children_.push_back(child);
    }
-
-   //Remove old parent and set new parent as this
-   for (auto child: item->getChildren()){
-      if (child->getParent()){
-         child->getParent()->removeChild(item);
-      }
-      child->setParent(this);
-   }
-
+   //Clean old parent children pointers list
+   item->children_.clear();
 }
 
-void TreeItem::setParent(TreeItem *parent) {
+void TreeItem::setParent(TreeItem *parent)
+{
    parent_ = parent;
 }
 
-void TreeItem::addChild(TreeItem *item) {
+void TreeItem::addChild(TreeItem *item)
+{
    if (item->getParent()){
       item->getParent()->removeChild(item);
    }
@@ -72,7 +72,8 @@ void TreeItem::addChild(TreeItem *item) {
    children_.push_back(item);
 }
 
-void TreeItem::removeChild(TreeItem *item) {
+void TreeItem::removeChild(TreeItem *item)
+{
    children_.erase(std::remove(std::begin(children_), std::end(children_), item), std::end(children_));
 }
 
@@ -98,7 +99,8 @@ TreeItem::TreeItem(TreeItem::NodeType type, TreeItem::NodeType acceptType, TreeI
 {
 }
 
-bool TreeItem::isSupported(TreeItem *item) const {
+bool TreeItem::isSupported(TreeItem *item) const
+{
    //Check if this type is supported by this item
    return acceptType_ == item->getType() && type_ == item->getTargetParentType();
 }

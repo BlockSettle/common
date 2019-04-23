@@ -588,25 +588,39 @@ QString ChatMessagesTextEdit::toHtmlText(const QString &text)
 
 void ChatMessagesTextEdit::onElementSelected(CategoryElement *element)
 {
+   if (!element){
+      return;
+   }
+
    std::vector<std::shared_ptr<Chat::MessageData>> messages;
    for (auto msg_item : element->getChildren()){
       auto item = static_cast<TreeMessageNode*>(msg_item);
-      auto msg = item->getMessage();
-      messages.push_back(msg);
+      if (item){
+         auto msg = item->getMessage();
+         if (msg) {
+            messages.push_back(msg);
+         }
+      }
    }
 
    auto data = element->getDataObject();
    switch (data->getType()) {
       case Chat::DataObject::Type::RoomData:{
          auto room = std::dynamic_pointer_cast<Chat::RoomData>(data);
-         switchToChat(room->getId(), true);
-         onRoomMessagesUpdate(messages, true);
-      } break;
+         if (room) {
+            switchToChat(room->getId(), true);
+            onRoomMessagesUpdate(messages, true);
+         }
+      }
+      break;
       case Chat::DataObject::Type::ContactRecordData: {
          auto contact = std::dynamic_pointer_cast<Chat::ContactRecordData>(data);
-         switchToChat(contact->getContactId(), false);
-         onMessagesUpdate(messages, true);
-      } break;
+         if (contact) {
+            switchToChat(contact->getContactId(), false);
+            onMessagesUpdate(messages, true);
+         }
+      }
+      break;
       default:
          return;
    }
@@ -627,7 +641,7 @@ void ChatMessagesTextEdit::onElementUpdated(CategoryElement *element)
    switch (data->getType()) {
       case Chat::DataObject::Type::RoomData:{
          auto room = std::dynamic_pointer_cast<Chat::RoomData>(data);
-         if (room->getId() == currentChatId_){
+         if (room && room->getId() == currentChatId_){
             messages_.clear();
             clear();
             std::vector<std::shared_ptr<Chat::MessageData>> messages;
@@ -638,10 +652,11 @@ void ChatMessagesTextEdit::onElementUpdated(CategoryElement *element)
             }
             onRoomMessagesUpdate(messages, true);
          }
-      } break;
+      }
+      break;
       case Chat::DataObject::Type::ContactRecordData: {
          auto contact = std::dynamic_pointer_cast<Chat::ContactRecordData>(data);
-         if (contact->getContactId() == currentChatId_){
+         if (contact && contact->getContactId() == currentChatId_){
             messages_.clear();
             clear();
             std::vector<std::shared_ptr<Chat::MessageData>> messages;
@@ -652,7 +667,8 @@ void ChatMessagesTextEdit::onElementUpdated(CategoryElement *element)
             }
             onMessagesUpdate(messages, true);
          }
-      } break;
+      }
+      break;
       default:
          return;
    }

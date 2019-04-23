@@ -176,7 +176,7 @@ std::shared_ptr<Chat::MessageData> RootItem::findMessageItem(const std::string &
    if (chatNode && chatNode->getAcceptType() == TreeItem::NodeType::MessageDataNode){
          for (auto child : chatNode->getChildren()){
             auto message = std::dynamic_pointer_cast<Chat::MessageData>(static_cast<CategoryElement*>(child)->getDataObject());
-            if (message->getId().toStdString() == messgeId){
+            if (message && message->getId().toStdString() == messgeId){
                return message;
             }
          }

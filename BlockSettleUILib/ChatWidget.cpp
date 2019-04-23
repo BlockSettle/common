@@ -591,18 +591,23 @@ void ChatWidget::setIsRoom(bool isRoom)
 void ChatWidget::onElementSelected(CategoryElement *element)
 {
    if (element) {
-
       switch (element->getType()) {
          case TreeItem::NodeType::RoomsElement: {
             auto room = std::dynamic_pointer_cast<Chat::RoomData>(element->getDataObject());
-            setIsRoom(true);
-            currentChat_ = room->getId();
-         } break;
+            if (room) {
+               setIsRoom(true);
+               currentChat_ = room->getId();
+            }
+         }
+         break;
          case TreeItem::NodeType::ContactsElement:{
             auto contact = std::dynamic_pointer_cast<Chat::ContactRecordData>(element->getDataObject());
-            setIsRoom(false);
-            currentChat_ = contact->getContactId();
-         } break;
+            if (contact) {
+               setIsRoom(false);
+               currentChat_ = contact->getContactId();
+            }
+         }
+         break;
          default:
             break;
 

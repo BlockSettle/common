@@ -522,31 +522,43 @@ void ChatClient::OnHeartbeatPong(const Chat::HeartbeatPongResponse &response)
 void ChatClient::OnUsersList(const Chat::UsersListResponse &response)
 {
    logger_->debug("Received users list from server: {}", response.getData());
+   auto dataList = response.getDataList();
+
+   //This switch for compatibility with old code, if presented somewhere
    switch (response.command()) {
-   case Chat::UsersListResponse::Command::Replace:
-      emit UsersReplace(response.getDataList());
-      break;
-   case Chat::UsersListResponse::Command::Add:
-      emit UsersAdd(response.getDataList());
-         for (const auto& id :response.getDataList()) {
-            auto contact = root_->findContactNode(id);
-            if (contact) {
-               contact->setOnlineStatus(ChatContactElement::OnlineStatus::Online);
-               root_->notifyContactChanged(contact->getContactData());
-            }
-         }
-      break;
-   case Chat::UsersListResponse::Command::Delete:
-      emit UsersDel(response.getDataList());
-         for (const auto& id :response.getDataList()) {
-            auto contact = root_->findContactNode(id);
-            if (contact) {
-               contact->setOnlineStatus(ChatContactElement::OnlineStatus::Offline);
-               root_->notifyContactChanged(contact->getContactData());
-            }
-         }
-      break;
+      case Chat::UsersListResponse::Command::Replace:
+         emit UsersReplace(dataList);
+         break;
+      case Chat::UsersListResponse::Command::Add:
+         emit UsersAdd(dataList);
+         break;
+      case Chat::UsersListResponse::Command::Delete:
+         emit UsersDel(dataList);
+         break;
    }
+
+   std::for_each(dataList.begin(), dataList.end(), [response, this](const std::string& user)
+   {
+      auto contact = root_->findContactNode(user);
+      if (contact) {
+         ChatContactElement::OnlineStatus status = ChatContactElement::OnlineStatus::Offline;
+         switch (response.command()) {
+            case Chat::UsersListResponse::Command::Replace:
+               status = ChatContactElement::OnlineStatus::Online;
+               break;
+            case Chat::UsersListResponse::Command::Add:
+               status = ChatContactElement::OnlineStatus::Online;
+               break;
+            case Chat::UsersListResponse::Command::Delete:
+               status = ChatContactElement::OnlineStatus::Offline;
+               break;
+         }
+         contact->setOnlineStatus(status);
+         root_->notifyContactChanged(contact->getContactData());
+      }
+
+   });
+
 }
 
 void ChatClient::OnMessages(const Chat::MessagesResponse &response)
