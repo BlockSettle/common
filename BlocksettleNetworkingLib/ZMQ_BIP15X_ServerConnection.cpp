@@ -79,7 +79,7 @@ ZmqBIP15XServerConnection::~ZmqBIP15XServerConnection()
 
    // If it exists, delete the identity cookie.
    if (bipIDCookieExists_) {
-      std::string absCookiePath =
+      const string absCookiePath =
          SystemFilePaths::appDataLocation() + "/" + idCookieNamek;
       if (SystemFileUtils::fileExist(absCookiePath)) {
          if (!SystemFileUtils::rmFile(absCookiePath)) {
@@ -796,7 +796,7 @@ AuthPeersLambdas ZmqBIP15XServerConnection::getAuthPeerLambda()
 // RETURN: True if success, false if failure.
 bool ZmqBIP15XServerConnection::genBIPIDCookie()
 {
-   std::string absCookiePath = SystemFilePaths::appDataLocation() + "/serverID";
+   const string absCookiePath = SystemFilePaths::appDataLocation() + "/serverID";
    if (SystemFileUtils::fileExist(absCookiePath)) {
       if (!SystemFileUtils::rmFile(absCookiePath)) {
          logger_->error("[{}] Unable to delete server identity cookie ({}). "

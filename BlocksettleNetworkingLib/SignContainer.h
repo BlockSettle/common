@@ -13,6 +13,7 @@
 
 #include "SignerDefs.h"
 #include "SignerUiDefs.h"
+#include "ZMQ_BIP15X_DataConnection.h"
 
 namespace spdlog {
    class logger;
@@ -139,12 +140,8 @@ std::shared_ptr<SignContainer> CreateSigner(const std::shared_ptr<spdlog::logger
    , const QString &host
    , const std::shared_ptr<ConnectionManager> & connectionManager
    , const bool& ephemeralDataConnKeys
-   , const std::function<void(const std::string&, const std::string&
-      , std::shared_ptr<std::promise<bool>>)> &cbNewKey = nullptr
-   , const std::function<void(const std::string&, const std::string&
-      , std::shared_ptr<std::promise<bool>>
-      , const std::function<void(const std::string&, const std::string&
-      , std::shared_ptr<std::promise<bool>>)>)> &invokeCB = nullptr);
+   , const ZmqBIP15XDataConnection::cbNewKey& inNewKeyCB = nullptr
+   , const ZmqBIP15XDataConnection::invokeCB& inInvokeCB = nullptr);
 
 bool SignerConnectionExists(const QString &host, const QString &port);
 

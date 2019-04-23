@@ -35,12 +35,8 @@ std::shared_ptr<SignContainer> CreateSigner(const std::shared_ptr<spdlog::logger
    , SignContainer::OpMode runMode, const QString &host
    , const std::shared_ptr<ConnectionManager>& connectionManager
    , const bool& ephemeralDataConnKeys
-   , const std::function<void(const std::string&, const std::string&
-      , std::shared_ptr<std::promise<bool>>)> &cbNewKey
-   , const std::function<void(const std::string&, const std::string&
-      , std::shared_ptr<std::promise<bool>>
-      , const std::function<void(const std::string&, const std::string&
-      , std::shared_ptr<std::promise<bool>>)>)> &invokeCB)
+   , const ZmqBIP15XDataConnection::cbNewKey& inNewKeyCB
+   , const ZmqBIP15XDataConnection::invokeCB& inInvokeCB)
 {
    if (connectionManager == nullptr) {
       logger->error("[{}] need connection manager to create signer", __func__);
@@ -56,12 +52,12 @@ std::shared_ptr<SignContainer> CreateSigner(const std::shared_ptr<spdlog::logger
       return std::make_shared<LocalSigner>(logger, appSettings->GetHomeDir()
          , netType, port, connectionManager, appSettings, runMode
          , appSettings->get<double>(ApplicationSettings::autoSignSpendLimit)
-         , ephemeralDataConnKeys, cbNewKey, invokeCB);
+         , ephemeralDataConnKeys, inNewKeyCB, inInvokeCB);
 
    case SignContainer::OpMode::Remote:
       return std::make_shared<RemoteSigner>(logger, host, port, netType
          , connectionManager, appSettings, runMode, ephemeralDataConnKeys
-         , cbNewKey, invokeCB);
+         , inNewKeyCB, inInvokeCB);
 
    default:
       logger->error("[{}] Unknown signer run mode {}", __func__, (int)runMode);

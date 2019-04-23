@@ -485,7 +485,7 @@ std::shared_ptr<SignContainer> BSTerminalMainWindow::createSigner()
             .arg(QString::fromStdString(newKey))
             , this);
 
-         bool answer = (box->exec() == QDialog::Accepted);
+         const bool answer = (box->exec() == QDialog::Accepted);
          box->deleteLater();
 
          if (answer) {

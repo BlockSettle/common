@@ -169,12 +169,8 @@ protected:
    const bool                                 ephemeralDataConnKeys_;
    std::shared_ptr<ZmqBIP15XDataConnection>   connection_;
    std::shared_ptr<ApplicationSettings>       appSettings_;
-   std::function<void(const std::string&, const std::string&
-      , std::shared_ptr<std::promise<bool>>)> cbNewKey_;
-   std::function<void(const std::string&, const std::string&
-      , std::shared_ptr<std::promise<bool>>
-      , const std::function<void(const std::string&, const std::string&
-      , std::shared_ptr<std::promise<bool>>)>)> invokeCB_;
+   const ZmqBIP15XDataConnection::cbNewKey cbNewKey_;
+   const ZmqBIP15XDataConnection::invokeCB invokeCB_;
 
 private:
    std::shared_ptr<ConnectionManager> connectionManager_;

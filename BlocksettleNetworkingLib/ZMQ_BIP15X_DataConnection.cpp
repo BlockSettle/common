@@ -512,7 +512,6 @@ bool ZmqBIP15XDataConnection::processAEADHandshake(
       //compute server name
       stringstream ss;
       ss << hostAddr_;
-//      ss << hostAddr_ << ":" << hostPort_;
 
       // If we don't have the key already, we may ask the the user if they wish
       // to continue. (Remote signer only.)
@@ -788,7 +787,7 @@ bool ZmqBIP15XDataConnection::getServerIDCookie(BinaryData& cookieBuf
       return false;
    }
 
-   std::string absCookiePath = SystemFilePaths::appDataLocation() + "/"
+   const string absCookiePath = SystemFilePaths::appDataLocation() + "/"
       + cookieName;
    if (!SystemFileUtils::fileExist(absCookiePath)) {
       logger_->error("[{}] Server identity cookie ({}) doesn't exist. Unable "
