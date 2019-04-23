@@ -50,10 +50,7 @@ SubscriberConnection::~SubscriberConnection() noexcept
 
 bool SubscriberConnection::isActive() const
 {
-   if (this != NULL)
-      return listener_ != nullptr;
-   else
-      return false;
+   return listener_ != nullptr;
 }
 
 bool SubscriberConnection::ConnectToPublisher(const std::string& endpointName, SubscriberConnectionListener* listener)
