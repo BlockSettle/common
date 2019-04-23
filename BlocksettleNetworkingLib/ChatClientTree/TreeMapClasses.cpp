@@ -3,10 +3,10 @@
 #include <algorithm>
 
 bool RootItem::insertRoomObject(std::shared_ptr<Chat::RoomData> data){
-   emit beforeUpdate();
+   beginUpdate();
    TreeItem* candidate =  new ChatRoomElement(data);
    bool res = insertNode(candidate);
-   emit afterUpdate();
+   endUpdate();
    if (!res) {
       delete  candidate;
    }
@@ -14,20 +14,22 @@ bool RootItem::insertRoomObject(std::shared_ptr<Chat::RoomData> data){
 }
 
 bool RootItem::insertContactObject(std::shared_ptr<Chat::ContactRecordData> data, bool isOnline){
-   emit beforeUpdate();
+   beginUpdate();
    ChatContactElement* candidate = new ChatContactElement(data);
-   candidate->setOnlineStatus(isOnline?ChatContactElement::OnlineStatus::Online:ChatContactElement::OnlineStatus::Offline);
+   candidate->setOnlineStatus(isOnline
+                              ?ChatContactElement::OnlineStatus::Online
+                              :ChatContactElement::OnlineStatus::Offline);
    bool res = insertNode(candidate);
-   emit afterUpdate();
+   endUpdate();
    return  res;
 }
 
 bool RootItem::insertGeneralUserObject(std::shared_ptr<Chat::UserData> data)
 {
-   emit beforeUpdate();
+   beginUpdate();
    TreeItem* candidate = new ChatUserElement(data);
    bool res = insertNode(candidate);
-   emit afterUpdate();
+   endUpdate();
    if (!res) {
       delete  candidate;
    }
@@ -36,10 +38,10 @@ bool RootItem::insertGeneralUserObject(std::shared_ptr<Chat::UserData> data)
 
 bool RootItem::insertSearchUserObject(std::shared_ptr<Chat::UserData> data)
 {
-   emit beforeUpdate();
+   beginUpdate();
    TreeItem* candidate = new ChatSearchElement(data);
    bool res = insertNode(candidate);
-   emit afterUpdate();
+   endUpdate();
    if (!res) {
       delete  candidate;
    }
@@ -136,9 +138,9 @@ bool RootItem::removeContactNode(const std::string &contactId)
                if (data->getType() == Chat::DataObject::Type::ContactRecordData) {
                   auto contact = std::dynamic_pointer_cast<Chat::ContactRecordData>(data);
                   if (contact->getContactId().toStdString() == contactId) {
-                     emit beforeUpdate();
+                     beginUpdate();
                      child->removeChild(cchild);
-                     emit afterUpdate();
+                     endUpdate();
                      return true;
                   }
                }
@@ -186,12 +188,12 @@ std::shared_ptr<Chat::MessageData> RootItem::findMessageItem(const std::string &
 
 void RootItem::clear()
 {
-   emit beforeClean();
+   beginReset();
    for (auto child : children_) {
       child->deleteChildren();
    }
    currentUser_.clear();
-   emit afterClean();
+   endReset();
 }
 
 std::string RootItem::currentUser() const

@@ -43,11 +43,18 @@ class TreeItem : public QObject {
    std::vector<TreeItem*> getChildren(){ return children_;}
 
 signals:
+   //BEGIN - Do not emit this signals directly
    void beforeUpdate();
    void afterUpdate();
    void beforeClean();
    void afterClean();
+   //END - Do not emit this signals directly
    void itemChanged(TreeItem*);
+protected:
+   void beginUpdate();
+   void endUpdate();
+   void beginReset();
+   void endReset();
 protected:
    const TreeItem *recursiveRoot() const;
    void deleteChildren();
