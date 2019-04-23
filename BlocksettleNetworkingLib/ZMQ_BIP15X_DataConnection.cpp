@@ -590,7 +590,7 @@ bool ZmqBIP15XDataConnection::processAEADHandshake(
 
       //bip151 handshake completed, time for bip150
       stringstream ss;
-      ss << hostAddr_ << ":" << hostPort_;
+      ss << hostAddr_;
 
       BinaryData authchallengeBuf(BIP151PRVKEYSIZE);
       if (bip151Connection_->getAuthchallengeData(
