@@ -18,6 +18,7 @@ enum TradeHistoryRequestType
    LoadPMProductsListRequestType                = 4;
    LoadInitialPMPriceRequestType                = 5;
    LoadEODPricesRequestType                     = 6;
+   LoadEODSnapshotRequestType                   = 7;
 }
 
 enum TradeHistoryResponseType
@@ -35,6 +36,8 @@ enum TradeHistoryResponseType
    LoadInitialPMPriceResponseType               = 7;
    LoadEODPricesResponseType                    = 8;
    DisabledCCProductUpdateType                  = 9;
+   EODSavedUpdateType                           = 10;
+   EODSnapshotResponseType                      = 11;
 }
 
 message TradeHistoryRequest
@@ -183,4 +186,28 @@ message LoadEODPricesResponse
 {
    bytes             snapshot       = 1;
    string            debug_message  = 2;
+}
+
+message EODDate
+{
+   uint32 year    = 1;
+   uint32 month   = 2;
+   uint32 day     = 3;
+}
+
+message LoadEODSnapshotRequest
+{
+   EODDate since_date = 1;
+}
+
+message EODSavedUpdate
+{
+   EODDate  date       = 1;
+   bytes    snapshot   = 2;
+}
+
+message EODSnapshotResponse
+{
+   EODDate                 since_date  = 1;
+   repeated EODSavedUpdate eod         = 2;
 }
