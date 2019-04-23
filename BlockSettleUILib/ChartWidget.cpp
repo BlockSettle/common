@@ -1072,14 +1072,18 @@ void ChartWidget::OnMDDisconnecting()
 {
    ui_->pushButtonMDConnection->setText(tr("Disconnecting"));
    ui_->pushButtonMDConnection->setEnabled(false);
+   
+   if (candlesticksChart_ != NULL)
+      candlesticksChart_->data()->clear();
 
+   if (volumeChart_ != NULL)
+      volumeChart_->data()->clear();
 
-   volumeChart_->data()->clear();
-   //vertLine->setVisible(false);
-   //horLine->setVisible(false);
-   //ui_->customPlot->replot();
+   ui_->ohlcLbl->setText({});
+   ui_->customPlot->replot();
 
    mdProvider_->UnsubscribeFromMD();
+   mdProvider_->DisconnectFromMDSource();
 }
 
 void ChartWidget::OnMDDisconnected()

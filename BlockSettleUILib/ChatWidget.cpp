@@ -65,7 +65,7 @@ public:
 
    virtual void onStateEnter() override {
       chat_->logger_->debug("Set user name {}", "<empty>");
-      chat_->ui_->input_textEdit->clear();
+      chat_->ui_->input_textEdit->setText(QLatin1Literal(""));
       chat_->ui_->input_textEdit->setVisible(false);
       chat_->ui_->input_textEdit->setEnabled(false);
       chat_->ui_->chatSearchLineEdit->clear();
@@ -103,7 +103,7 @@ public:
    ChatWidgetStateLoggedIn(ChatWidget* parent) : ChatWidgetState(parent, ChatWidget::LoggedIn) {}
 
    void onStateEnter() override {
-      chat_->ui_->input_textEdit->clear();
+      chat_->ui_->input_textEdit->setText(QLatin1Literal(""));
       chat_->ui_->input_textEdit->setVisible(true);
       chat_->ui_->input_textEdit->setEnabled(true);
       chat_->ui_->chatSearchLineEdit->setEnabled(true);
@@ -431,6 +431,8 @@ void ChatWidget::logout()
    ChatUserModelPtr chatUserModelPtr = chatUserListLogicPtr_->chatUserModelPtr();
    if (chatUserModelPtr)   
       chatUserModelPtr->resetModel();
+
+   ui_->input_textEdit->setText(QLatin1Literal(""));
 
    return stateCurrent_->logout(); //test
 }
