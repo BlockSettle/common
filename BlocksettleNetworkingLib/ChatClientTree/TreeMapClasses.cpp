@@ -188,7 +188,7 @@ void RootItem::clear()
 {
    emit beforeClean();
    for (auto child : children_) {
-      child->clearChildren();
+      child->deleteChildren();
    }
    currentUser_.clear();
    emit afterClean();
