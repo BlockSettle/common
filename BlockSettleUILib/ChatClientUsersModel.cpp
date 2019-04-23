@@ -2,17 +2,22 @@
 #include <algorithm>
 #include <QColor>
 
-ChatClientDataModel::ChatClientDataModel(std::shared_ptr<TreeItem> root, QObject * parent)
+ChatClientDataModel::ChatClientDataModel(QObject * parent)
     : QAbstractItemModel(parent)
-    , root_(root)
+    , root_(std::make_shared<RootItem>())
 {
-   connect(root_.get(), &TreeItem::beforeUpdate, this, &ChatClientDataModel::onBeforeUpdate);
-   connect(root_.get(), &TreeItem::afterUpdate, this, &ChatClientDataModel::onAfterUpdate);
-   connect(root_.get(), &TreeItem::beforeClean, this, &ChatClientDataModel::onBeforeClean);
-   connect(root_.get(), &TreeItem::afterClean, this, &ChatClientDataModel::onAfterClean);
    connect(root_.get(), &TreeItem::itemChanged, this, &ChatClientDataModel::onItemChanged);
 
+   root_->insertItem(new CategoryItem(TreeItem::NodeType::RoomsElement));
+   root_->insertItem(new CategoryItem(TreeItem::NodeType::ContactsElement));
 
+}
+
+void ChatClientDataModel::clearModel()
+{
+   beginResetModel();
+   root_->clear();
+   endResetModel();
 }
 
 QModelIndex ChatClientDataModel::index(int row, int column, const QModelIndex &parent) const
@@ -94,26 +99,6 @@ QVariant ChatClientDataModel::data(const QModelIndex &index, int role) const
          return QVariant();
    }
 
-}
-
-void ChatClientDataModel::onBeforeUpdate()
-{
-   emit layoutAboutToBeChanged();
-}
-
-void ChatClientDataModel::onAfterUpdate()
-{
-   emit layoutChanged();
-}
-
-void ChatClientDataModel::onBeforeClean()
-{
-   beginResetModel();
-}
-
-void ChatClientDataModel::onAfterClean()
-{
-   endResetModel();
 }
 
 void ChatClientDataModel::onItemChanged(TreeItem *item)

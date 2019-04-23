@@ -3,10 +3,8 @@
 #include <algorithm>
 
 bool RootItem::insertRoomObject(std::shared_ptr<Chat::RoomData> data){
-   beginUpdate();
    TreeItem* candidate =  new ChatRoomElement(data);
    bool res = insertNode(candidate);
-   endUpdate();
    if (!res) {
       delete  candidate;
    }
@@ -14,22 +12,18 @@ bool RootItem::insertRoomObject(std::shared_ptr<Chat::RoomData> data){
 }
 
 bool RootItem::insertContactObject(std::shared_ptr<Chat::ContactRecordData> data, bool isOnline){
-   beginUpdate();
    ChatContactElement* candidate = new ChatContactElement(data);
    candidate->setOnlineStatus(isOnline
                               ?ChatContactElement::OnlineStatus::Online
                               :ChatContactElement::OnlineStatus::Offline);
    bool res = insertNode(candidate);
-   endUpdate();
    return  res;
 }
 
 bool RootItem::insertGeneralUserObject(std::shared_ptr<Chat::UserData> data)
 {
-   beginUpdate();
    TreeItem* candidate = new ChatUserElement(data);
    bool res = insertNode(candidate);
-   endUpdate();
    if (!res) {
       delete  candidate;
    }
@@ -38,10 +32,8 @@ bool RootItem::insertGeneralUserObject(std::shared_ptr<Chat::UserData> data)
 
 bool RootItem::insertSearchUserObject(std::shared_ptr<Chat::UserData> data)
 {
-   beginUpdate();
    TreeItem* candidate = new ChatSearchElement(data);
    bool res = insertNode(candidate);
-   endUpdate();
    if (!res) {
       delete  candidate;
    }
@@ -138,9 +130,7 @@ bool RootItem::removeContactNode(const std::string &contactId)
                if (data->getType() == Chat::DataObject::Type::ContactRecordData) {
                   auto contact = std::dynamic_pointer_cast<Chat::ContactRecordData>(data);
                   if (contact->getContactId().toStdString() == contactId) {
-                     beginUpdate();
                      child->removeChild(cchild);
-                     endUpdate();
                      return true;
                   }
                }
@@ -188,12 +178,10 @@ std::shared_ptr<Chat::MessageData> RootItem::findMessageItem(const std::string &
 
 void RootItem::clear()
 {
-   beginReset();
    for (auto child : children_) {
       child->deleteChildren();
    }
    currentUser_.clear();
-   endReset();
 }
 
 std::string RootItem::currentUser() const

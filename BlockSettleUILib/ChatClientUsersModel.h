@@ -9,8 +9,10 @@
 class ChatClientDataModel : public QAbstractItemModel
 {
 public:
-   ChatClientDataModel(std::shared_ptr<TreeItem> root, QObject * parent = nullptr);
+   ChatClientDataModel(QObject * parent = nullptr);
 
+public:
+   void clearModel();
 
    // QAbstractItemModel interface
 public:
@@ -22,17 +24,13 @@ public:
    Qt::ItemFlags flags(const QModelIndex &index) const override;
 
 private slots:
-   void onBeforeUpdate();
-   void onAfterUpdate();
-   void onBeforeClean();
-   void onAfterClean();
    void onItemChanged(TreeItem* item);
 private:
    QVariant categoryNodeData(const TreeItem *item, int role) const;
    QVariant categoryElementData(TreeItem *item, int role) const;
 
 private:
-   std::shared_ptr<TreeItem> root_;
+   std::shared_ptr<RootItem> root_;
 };
 
 

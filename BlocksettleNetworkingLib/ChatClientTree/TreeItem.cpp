@@ -38,26 +38,6 @@ int TreeItem::selfIndex() const
    return 0;
 }
 
-void TreeItem::beginUpdate()
-{
-   emit beforeUpdate();
-}
-
-void TreeItem::endUpdate()
-{
-   emit afterUpdate();
-}
-
-void TreeItem::beginReset()
-{
-   emit beforeClean();
-}
-
-void TreeItem::endReset()
-{
-   emit afterClean();
-}
-
 void TreeItem::deleteChildren()
 {
    for (auto child : children_) {

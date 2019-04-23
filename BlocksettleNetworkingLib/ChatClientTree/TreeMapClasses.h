@@ -6,6 +6,7 @@
 class TreeMessageNode;
 class ChatContactElement;
 class RootItem : public TreeItem {
+   friend class ChatClientDataModel;
    public:
    RootItem ()
       : TreeItem(NodeType::RootNode, NodeType::CategoryNode, NodeType::RootNode)

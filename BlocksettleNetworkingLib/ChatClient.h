@@ -26,6 +26,7 @@ class ConnectionManager;
 class ZmqBIP15XDataConnection;
 class ApplicationSettings;
 class UserHasher;
+class ChatClientDataModel;
 
 
 class ChatClient : public QObject
@@ -46,7 +47,7 @@ public:
    ChatClient(ChatClient&&) = delete;
    ChatClient& operator = (ChatClient&&) = delete;
 
-   std::shared_ptr<RootItem> getRootItem();
+   std::shared_ptr<ChatClientDataModel> getDataModel();
 
    std::string loginToServer(const std::string& email, const std::string& jwt);
    void logout(bool send = true);
@@ -155,6 +156,7 @@ private:
 
    autheid::PrivateKey  ownPrivKey_;
    std::shared_ptr<RootItem> root_;
+   std::shared_ptr<ChatClientDataModel> model_;
 
    // ChatItemActionsHandler interface
 public:

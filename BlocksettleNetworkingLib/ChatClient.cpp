@@ -58,16 +58,12 @@ ChatClient::ChatClient(const std::shared_ptr<ConnectionManager>& connectionManag
    }
 
    hasher_ = std::make_shared<UserHasher>();
-   root_ = std::make_shared<RootItem>();
+   model_ = std::make_shared<ChatClientDataModel>();
 
    heartbeatTimer_.setInterval(30 * 1000);
    heartbeatTimer_.setSingleShot(false);
    connect(&heartbeatTimer_, &QTimer::timeout, this, &ChatClient::sendHeartbeat);
    //heartbeatTimer_.start();
-
-   //Init base item categories in the tree
-   root_->insertItem(new CategoryItem(TreeItem::NodeType::RoomsElement));
-   root_->insertItem(new CategoryItem(TreeItem::NodeType::ContactsElement));
 }
 
 ChatClient::~ChatClient() noexcept
@@ -75,9 +71,9 @@ ChatClient::~ChatClient() noexcept
    // Let's not call anything here as this could cause crash
 }
 
-std::shared_ptr<RootItem> ChatClient::getRootItem()
+std::shared_ptr<ChatClientDataModel> ChatClient::getDataModel()
 {
-   return root_;
+   return model_;
 }
 
 std::string ChatClient::loginToServer(const std::string& email, const std::string& jwt)
@@ -436,7 +432,7 @@ void ChatClient::logout(bool send)
    currentJwt_.clear();
 
    connection_.reset();
-   root_->clear();
+   model_-
 
    emit LoggedOut();
 }
