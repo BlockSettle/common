@@ -13,7 +13,7 @@
 #include <QAbstractItemModel>
 
 #include "ChatClientTree/TreeObjects.h"
-#include "../BlockSettleUILib/ChatHandleInterfaces.h"
+#include "ChatHandleInterfaces.h"
 namespace spdlog {
    class logger;
 }
