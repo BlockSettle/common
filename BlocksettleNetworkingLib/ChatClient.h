@@ -155,7 +155,6 @@ private:
    std::atomic_bool  loggedIn_{ false };
 
    autheid::PrivateKey  ownPrivKey_;
-   std::shared_ptr<RootItem> root_;
    std::shared_ptr<ChatClientDataModel> model_;
 
    // ChatItemActionsHandler interface

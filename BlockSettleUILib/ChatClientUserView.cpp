@@ -1,5 +1,6 @@
 #include "ChatClientUserView.h"
 #include "ChatClientTree/TreeObjects.h"
+#include "ChatClientUsersViewItemDelegate.h"
 
 #include <QMenu>
 
@@ -127,6 +128,7 @@ ChatClientUserView::ChatClientUserView(QWidget *parent)
 {
    setContextMenuPolicy(Qt::CustomContextMenu);
    connect(this, &QAbstractItemView::customContextMenuRequested, this, &ChatClientUserView::onCustomContextMenu);
+   setItemDelegate(new ChatClientUsersViewItemDelegate(this));
 }
 
 void ChatClientUserView::addWatcher(ViewItemWatcher * watcher)

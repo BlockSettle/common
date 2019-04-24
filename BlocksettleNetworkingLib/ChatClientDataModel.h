@@ -11,6 +11,7 @@ class ChatClientDataModel : public QAbstractItemModel
 public:
    enum Role {
       ItemTypeRole = Qt::UserRole + 1,
+      ItemAcceptTypeRole,
       RoomTitleRole,
       RoomIdRole,
       ContactIdRole,
@@ -23,6 +24,22 @@ public:
 
 public:
    void clearModel();
+   bool insertRoomObject(std::shared_ptr<Chat::RoomData> data);
+   bool insertContactObject(std::shared_ptr<Chat::ContactRecordData> data, bool isOnline = false);
+   bool insertGeneralUserObject(std::shared_ptr<Chat::UserData> data);
+   bool insertSearchUserObject(std::shared_ptr<Chat::UserData> data);
+   bool insertRoomMessage(std::shared_ptr<Chat::MessageData> message);
+   bool insertContactsMessage(std::shared_ptr<Chat::MessageData> message);
+   TreeItem* findChatNode(const std::string& chatId);
+   std::vector<std::shared_ptr<Chat::ContactRecordData>> getAllContacts();
+   bool removeContactNode(const std::string& contactId);
+   std::shared_ptr<Chat::ContactRecordData> findContactItem(const std::string& contactId);
+   ChatContactElement *findContactNode(const std::string& contactId);
+   std::shared_ptr<Chat::MessageData> findMessageItem(const std::string& chatId, const std::string& messgeId);
+   std::string currentUser() const;
+   void setCurrentUser(const std::string &currentUser);
+   void notifyMessageChanged(std::shared_ptr<Chat::MessageData> message);
+   void notifyContactChanged(std::shared_ptr<Chat::ContactRecordData> contact);
 
    // QAbstractItemModel interface
 public:

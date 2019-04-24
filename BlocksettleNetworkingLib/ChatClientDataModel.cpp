@@ -20,6 +20,110 @@ void ChatClientDataModel::clearModel()
    endResetModel();
 }
 
+bool ChatClientDataModel::insertRoomObject(std::shared_ptr<Chat::RoomData> data)
+{
+   beginResetModel();
+   bool res = root_->insertRoomObject(data);
+   endResetModel();
+   return res;
+}
+
+bool ChatClientDataModel::insertContactObject(std::shared_ptr<Chat::ContactRecordData> data, bool isOnline)
+{
+   beginResetModel();
+   bool res = root_->insertContactObject(data, isOnline);
+   endResetModel();
+   return res;
+}
+
+bool ChatClientDataModel::insertGeneralUserObject(std::shared_ptr<Chat::UserData> data)
+{
+   beginResetModel();
+   bool res = root_->insertGeneralUserObject(data);
+   endResetModel();
+   return res;
+}
+
+bool ChatClientDataModel::insertSearchUserObject(std::shared_ptr<Chat::UserData> data)
+{
+   beginResetModel();
+   bool res = root_->insertSearchUserObject(data);
+   endResetModel();
+   return res;
+}
+
+bool ChatClientDataModel::insertRoomMessage(std::shared_ptr<Chat::MessageData> message)
+{
+   beginResetModel();
+   bool res = root_->insertRoomMessage(message);
+   endResetModel();
+   return res;
+}
+
+bool ChatClientDataModel::insertContactsMessage(std::shared_ptr<Chat::MessageData> message)
+{
+   beginResetModel();
+   bool res = root_->insertContactsMessage(message);
+   endResetModel();
+   return res;
+}
+
+TreeItem *ChatClientDataModel::findChatNode(const std::string &chatId)
+{
+   beginResetModel();
+   TreeItem * res =root_->findChatNode(chatId);
+   endResetModel();
+   return res;
+}
+
+std::vector<std::shared_ptr<Chat::ContactRecordData> > ChatClientDataModel::getAllContacts()
+{
+ return root_->getAllContacts();
+}
+
+bool ChatClientDataModel::removeContactNode(const std::string &contactId)
+{
+   beginResetModel();
+   bool res = root_->removeContactNode(contactId);
+   endResetModel();
+   return res;
+}
+
+std::shared_ptr<Chat::ContactRecordData> ChatClientDataModel::findContactItem(const std::string &contactId)
+{
+   return root_->findContactItem(contactId);
+}
+
+ChatContactElement *ChatClientDataModel::findContactNode(const std::string &contactId)
+{
+   return root_->findContactNode(contactId);
+}
+
+std::shared_ptr<Chat::MessageData> ChatClientDataModel::findMessageItem(const std::string &chatId, const std::string &messgeId)
+{
+   return root_->findMessageItem(chatId, messgeId);
+}
+
+std::string ChatClientDataModel::currentUser() const
+{
+   return root_->currentUser();
+}
+
+void ChatClientDataModel::setCurrentUser(const std::string &currentUser)
+{
+   return root_->setCurrentUser(currentUser);
+}
+
+void ChatClientDataModel::notifyMessageChanged(std::shared_ptr<Chat::MessageData> message)
+{
+   return root_->notifyMessageChanged(message);
+}
+
+void ChatClientDataModel::notifyContactChanged(std::shared_ptr<Chat::ContactRecordData> contact)
+{
+   return root_->notifyContactChanged(contact);
+}
+
 QModelIndex ChatClientDataModel::index(int row, int column, const QModelIndex &parent) const
 {
    if (!hasIndex(row, column, parent)){
@@ -89,6 +193,8 @@ QVariant ChatClientDataModel::data(const QModelIndex &index, int role) const
    switch (role) {
       case ItemTypeRole:
          return QVariant::fromValue(item->getType());
+      case ItemAcceptTypeRole:
+         return QVariant::fromValue(item->getAcceptType());
       case RoomTitleRole:
       case RoomIdRole:
          return roomData(item, role);
@@ -100,7 +206,6 @@ QVariant ChatClientDataModel::data(const QModelIndex &index, int role) const
          return userData(item, role);
       default:
          return QVariant();
-
    }
 
    switch (item->getType()) {
