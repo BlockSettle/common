@@ -319,7 +319,6 @@ void ZmqBIP15XServerConnection::ProcessIncomingData(const string& encData
          payload.getPtr(), payload.getSize(),
          payload.getPtr(), payload.getSize());
 
-
       // Failure isn't necessarily a problem if we're dealing with fragments.
       if (result != 0) {
          // If decryption "fails" but the result indicates fragmentation, save
