@@ -9,6 +9,16 @@
 class ChatClientDataModel : public QAbstractItemModel
 {
 public:
+   enum Role {
+      ItemTypeRole = Qt::UserRole + 1,
+      RoomTitleRole,
+      RoomIdRole,
+      ContactIdRole,
+      ContactOnlineStatusRole,
+      UserIdRole,
+      UserOnlineStatusRole
+   };
+
    ChatClientDataModel(QObject * parent = nullptr);
 
 public:
@@ -26,6 +36,9 @@ public:
 private slots:
    void onItemChanged(TreeItem* item);
 private:
+   QVariant roomData(const TreeItem * item, int role) const;
+   QVariant contactData(const TreeItem * item, int role) const;
+   QVariant userData(const TreeItem * item, int role) const;
    QVariant categoryNodeData(const TreeItem *item, int role) const;
    QVariant categoryElementData(TreeItem *item, int role) const;
 

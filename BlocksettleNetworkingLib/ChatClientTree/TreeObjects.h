@@ -8,7 +8,7 @@ public:
    ChatRoomElement(std::shared_ptr<Chat::RoomData> data)
       : CategoryElement(TreeItem::NodeType::RoomsElement, TreeItem::NodeType::MessageDataNode, data){}
 
-
+   std::shared_ptr<Chat::RoomData> getRoomData() const;
    // TreeItem interface
 protected:
    bool isSupported(TreeItem *item) const override;
@@ -23,9 +23,12 @@ public:
       Online,
       Offline
    };
+
+   Q_ENUM(OnlineStatus)
+
    ChatContactElement(std::shared_ptr<Chat::ContactRecordData> data)
       : CategoryElement(TreeItem::NodeType::ContactsElement, TreeItem::NodeType::MessageDataNode, data){}
-   std::shared_ptr<Chat::ContactRecordData> getContactData();
+   std::shared_ptr<Chat::ContactRecordData> getContactData() const;
 
    // TreeItem interface
    OnlineStatus getOnlineStatus() const;
@@ -49,7 +52,7 @@ class ChatUserElement : public CategoryElement {
 public:
    ChatUserElement(std::shared_ptr<Chat::UserData> data)
       : CategoryElement(TreeItem::NodeType::AllUsersElement, TreeItem::NodeType::MessageDataNode, data){}
-
+   std::shared_ptr<Chat::UserData> getUserData() const;
 };
 
 class TreeMessageNode : public TreeItem {

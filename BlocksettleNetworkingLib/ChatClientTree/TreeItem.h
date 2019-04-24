@@ -31,6 +31,8 @@ class TreeItem : public QObject {
       MessageDataNode
    };
 
+   Q_ENUM(NodeType)
+
    NodeType getType() const;
    NodeType getAcceptType() const;
    NodeType getTargetParentType() const;

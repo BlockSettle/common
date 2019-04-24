@@ -1,5 +1,14 @@
 #include "TreeObjects.h"
 
+std::shared_ptr<Chat::RoomData> ChatRoomElement::getRoomData() const
+{
+   auto room = std::dynamic_pointer_cast<Chat::RoomData>(getDataObject());
+   if (room) {
+      return room;
+   }
+   return nullptr;
+}
+
 bool ChatRoomElement::isSupported(TreeItem *item) const
 {
    bool byTypes = CategoryElement::isSupported(item);
@@ -31,7 +40,7 @@ bool ChatRoomElement::isSupported(TreeItem *item) const
    return byTypes && byData;
 }
 
-std::shared_ptr<Chat::ContactRecordData> ChatContactElement::getContactData()
+std::shared_ptr<Chat::ContactRecordData> ChatContactElement::getContactData() const
 {
    auto crecord = std::dynamic_pointer_cast<Chat::ContactRecordData>(getDataObject());
    if (crecord) {
@@ -80,4 +89,13 @@ ChatContactElement::OnlineStatus ChatContactElement::getOnlineStatus() const
 void ChatContactElement::setOnlineStatus(const OnlineStatus &onlineStatus)
 {
     onlineStatus_ = onlineStatus;
+}
+
+std::shared_ptr<Chat::UserData> ChatUserElement::getUserData() const
+{
+   auto user = std::dynamic_pointer_cast<Chat::UserData>(getDataObject());
+   if (user) {
+      return user;
+   }
+   return nullptr;
 }

@@ -2,6 +2,8 @@
 #include <iostream>
 #include <QDebug>
 
+
+
 TreeItem::NodeType TreeItem::getType() const { return type_; }
 
 TreeItem::NodeType TreeItem::getAcceptType() const { return acceptType_; }

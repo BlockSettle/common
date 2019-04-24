@@ -12,6 +12,7 @@
 #include "ApplicationSettings.h"
 #include "autheid_utils.h"
 #include "UserHasher.h"
+#include "ChatClientDataModel.h"
 
 #include <QDateTime>
 #include <QDebug>
@@ -432,7 +433,7 @@ void ChatClient::logout(bool send)
    currentJwt_.clear();
 
    connection_.reset();
-   model_-
+   model_->clearModel();
 
    emit LoggedOut();
 }
