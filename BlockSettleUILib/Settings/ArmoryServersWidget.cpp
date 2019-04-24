@@ -20,6 +20,8 @@ ArmoryServersWidget::ArmoryServersWidget(const std::shared_ptr<ArmoryServersProv
    ui_->tableViewArmory->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
    ui_->tableViewArmory->horizontalHeader()->setStretchLastSection(true);
 
+   isStartupDialog = false;
+
    connect(ui_->pushButtonAddServer, &QPushButton::clicked, this, &ArmoryServersWidget::onAddServer);
    connect(ui_->pushButtonDeleteServer, &QPushButton::clicked, this, &ArmoryServersWidget::onDeleteServer);
    connect(ui_->pushButtonEditServer, &QPushButton::clicked, this, &ArmoryServersWidget::onEdit);
@@ -46,6 +48,15 @@ ArmoryServersWidget::ArmoryServersWidget(const std::shared_ptr<ArmoryServersProv
       ui_->pushButtonSelectServer->setDisabled(ui_->tableViewArmory->selectionModel()->selectedIndexes().isEmpty());
 
       resetForm();
+      
+      // save to settings right after row highlight
+      if (isStartupDialog && !ui_->tableViewArmory->selectionModel()->selectedIndexes().isEmpty()) {
+         int index = ui_->tableViewArmory->selectionModel()->selectedIndexes().first().row();
+        
+         if (index < armoryServersProvider_->servers().size()) {
+            armoryServersProvider_->setupServer(index, false);
+         }
+      }
    });
 
    connect(ui_->comboBoxNetworkType, QOverload<int>::of(&QComboBox::currentIndexChanged),
@@ -65,6 +76,8 @@ void ArmoryServersWidget::adaptForStartupDialog()
 {
    ui_->widgetControlButtons->hide();
    ui_->tableViewArmory->hideColumn(4);
+
+   isStartupDialog = true;
 }
 
 ArmoryServersWidget::~ArmoryServersWidget() = default;

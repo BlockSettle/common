@@ -44,6 +44,7 @@ private:
    std::shared_ptr<ApplicationSettings> appSettings_;
 
    ArmoryServersViewModel *armoryServersModel;
+   bool isStartupDialog;
 };
 
 #endif // ARMORYSERVERSWIDGET_H
