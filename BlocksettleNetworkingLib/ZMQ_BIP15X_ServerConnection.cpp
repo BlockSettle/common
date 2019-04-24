@@ -307,7 +307,7 @@ void ZmqBIP15XServerConnection::ProcessIncomingData(const string& encData
 
    const auto &connData = socketConnMap_[clientID];
    if (!connData) {
-      logger_->error("[{}] failed to find connection data for client {}"
+      logger_->error("[ZmqBIP15XServerConnection::{}] failed to find connection data for client {}"
          , __func__, BinaryData(clientID).toHexStr());
       return;
    }
@@ -319,22 +319,20 @@ void ZmqBIP15XServerConnection::ProcessIncomingData(const string& encData
          payload.getPtr(), payload.getSize(),
          payload.getPtr(), payload.getSize());
 
+
       // Failure isn't necessarily a problem if we're dealing with fragments.
       if (result != 0) {
          // If decryption "fails" but the result indicates fragmentation, save
          // the fragment and wait before doing anything, otherwise treat it as a
          // legit error.
-         if (result <= ZMQ_MESSAGE_PACKET_SIZE && result > -1)
-         {
+         if (result <= ZMQ_MESSAGE_PACKET_SIZE && result > -1) {
             leftOverData_ = move(payload);
-            return;
          }
-         else
-         {
-            logger_->error("[{}] Packet decryption failed - Error {}", __func__
-               , result);
-            return;
+         else {
+            logger_->error("[ZmqBIP15XServerConnection::{}] Packet decryption failed - Error {}"
+               , __func__, result);
          }
+         return;
       }
 
       payload.resize(payload.getSize() - POLY1305MACLEN);

@@ -412,9 +412,11 @@ vector<BinaryData> ZmqBIP15XMessageCodec::serialize(const BinaryDataRef& payload
    };
 
    auto dataLen = payload.getSize();
+#if 0
    static size_t payloadRoom =
       ZMQ_MESSAGE_PACKET_SIZE - POLY1305MACLEN - 9;
    if (dataLen <= payloadRoom) {
+#endif //0
       //single packet serialization
       uint32_t size = dataLen + 5;
       BinaryData plainText(POLY1305MACLEN + 9 + dataLen);
@@ -425,6 +427,7 @@ vector<BinaryData> ZmqBIP15XMessageCodec::serialize(const BinaryDataRef& payload
       memcpy(plainText.getPtr() + 9, payload.getPtr(), dataLen);
 
       encryptAndAdd(plainText);
+#if 0
    }
    else {
       //2 extra bytes for fragment count
@@ -504,6 +507,7 @@ vector<BinaryData> ZmqBIP15XMessageCodec::serialize(const BinaryDataRef& payload
          encryptAndAdd(fragmentPacket);
       }
    }
+#endif   //0
 
    return result;
 }
