@@ -3,6 +3,7 @@
 
 using NodeType = TreeItem::NodeType;
 using Role = ChatClientDataModel::Role;
+using OnlineStatus = ChatContactElement::OnlineStatus;
 
 ChatClientUsersViewItemDelegate::ChatClientUsersViewItemDelegate(QObject *parent)
 : QStyledItemDelegate(parent)
@@ -62,13 +63,14 @@ void ChatClientUsersViewItemDelegate::paintCategoryNode(QPainter *painter, const
 void ChatClientUsersViewItemDelegate::paintRoomsElement(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const
 {
    QStyleOptionViewItem itemOption(option);
-   //itemOption.palette.setColor(QPalette::Text, Qt::cyan);
-   //itemOption.palette.setColor(QPalette::Highlight, Qt::cyan);
-   if (index.data(Role::ItemTypeRole).value<NodeType>() == NodeType::RoomsElement){
-      itemOption.text = index.data(Role::RoomIdRole).toString();
-   } else {
+   if (index.data(Role::ItemTypeRole).value<NodeType>() != NodeType::RoomsElement){
       itemOption.text = QLatin1String("<unknown>");
+      return QStyledItemDelegate::paint(painter, itemOption, index);
    }
+
+   itemOption.palette.setColor(QPalette::Text, QColor(0x00c8f8));
+   //itemOption.palette.setColor(QPalette::Highlight, Qt::cyan);
+   itemOption.text = index.data(Role::RoomIdRole).toString();
    QStyledItemDelegate::paint(painter, itemOption, index);
 
 }
@@ -76,27 +78,35 @@ void ChatClientUsersViewItemDelegate::paintRoomsElement(QPainter *painter, const
 void ChatClientUsersViewItemDelegate::paintContactsElement(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const
 {
    QStyleOptionViewItem itemOption(option);
-   itemOption.palette.setColor(QPalette::Text, Qt::cyan);
-   itemOption.palette.setColor(QPalette::Highlight, Qt::blue);
-   if (index.data(Role::ItemTypeRole).value<NodeType>() == NodeType::ContactsElement){
-      itemOption.text = index.data(Role::ContactIdRole).toString();
-   } else {
+   if (index.data(Role::ItemTypeRole).value<NodeType>() != NodeType::ContactsElement){
       itemOption.text = QLatin1String("<unknown>");
+      return QStyledItemDelegate::paint(painter, itemOption, index);
    }
+
+   itemOption.palette.setColor(QPalette::Highlight, Qt::blue);
+   switch (index.data(Role::ContactOnlineStatusRole).value<OnlineStatus>()) {
+      case OnlineStatus::Online:
+         itemOption.palette.setColor(QPalette::Text, QColor(0x00c8f8));
+         break;
+      case OnlineStatus::Offline:
+         itemOption.palette.setColor(QPalette::Text, QColor(0xc0c0c0));
+         break;
+   }
+   itemOption.text = index.data(Role::ContactIdRole).toString();
    QStyledItemDelegate::paint(painter, itemOption, index);
 }
 
 void ChatClientUsersViewItemDelegate::paintUserElement(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const
 {
    QStyleOptionViewItem itemOption(option);
+   if (index.data(Role::ItemTypeRole).value<NodeType>() != NodeType::AllUsersElement
+       && index.data(Role::ItemTypeRole).value<NodeType>() != NodeType::SearchElement) {
+      itemOption.text = QLatin1String("<unknown>");
+      return QStyledItemDelegate::paint(painter, itemOption, index);
+   }
+
    itemOption.palette.setColor(QPalette::Text, Qt::cyan);
    itemOption.palette.setColor(QPalette::Highlight, Qt::blue);
-   if (index.data(Role::ItemTypeRole).value<NodeType>() == NodeType::AllUsersElement){
-      itemOption.text = index.data(Role::UserIdRole).toString();
-   } else if (index.data(Role::ItemTypeRole).value<NodeType>() == NodeType::SearchElement) {
-      itemOption.text = index.data(Role::UserIdRole).toString();
-   } else {
-      itemOption.text = QLatin1String("<unknown>");
-   }
+   itemOption.text = index.data(Role::UserIdRole).toString();
    QStyledItemDelegate::paint(painter, itemOption, index);
 }
