@@ -43,8 +43,8 @@ private:
    std::shared_ptr<ArmoryServersProvider> armoryServersProvider_;
    std::shared_ptr<ApplicationSettings> appSettings_;
 
-   ArmoryServersViewModel *armoryServersModel;
-   bool isStartupDialog;
+   ArmoryServersViewModel *armoryServersModel_;
+   bool isStartupDialog_;
 };
 
 #endif // ARMORYSERVERSWIDGET_H

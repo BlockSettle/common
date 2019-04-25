@@ -9,18 +9,18 @@ ArmoryServersWidget::ArmoryServersWidget(const std::shared_ptr<ArmoryServersProv
    , appSettings_(appSettings)
    , armoryServersProvider_(armoryServersProvider)
    , ui_(new Ui::ArmoryServersWidget)
-   , armoryServersModel(new ArmoryServersViewModel(armoryServersProvider))
+   , armoryServersModel_(new ArmoryServersViewModel(armoryServersProvider))
 {
    ui_->setupUi(this);
 
    ui_->pushButtonConnect->setVisible(false);
    ui_->spinBoxPort->setValue(kArmoryDefaultMainNetPort);
 
-   ui_->tableViewArmory->setModel(armoryServersModel);
+   ui_->tableViewArmory->setModel(armoryServersModel_);
    ui_->tableViewArmory->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
    ui_->tableViewArmory->horizontalHeader()->setStretchLastSection(true);
 
-   isStartupDialog = false;
+   isStartupDialog_ = false;
 
    connect(ui_->pushButtonAddServer, &QPushButton::clicked, this, &ArmoryServersWidget::onAddServer);
    connect(ui_->pushButtonDeleteServer, &QPushButton::clicked, this, &ArmoryServersWidget::onDeleteServer);
@@ -50,7 +50,7 @@ ArmoryServersWidget::ArmoryServersWidget(const std::shared_ptr<ArmoryServersProv
       resetForm();
       
       // save to settings right after row highlight
-      if (isStartupDialog && !ui_->tableViewArmory->selectionModel()->selectedIndexes().isEmpty()) {
+      if (isStartupDialog_ && !ui_->tableViewArmory->selectionModel()->selectedIndexes().isEmpty()) {
          int index = ui_->tableViewArmory->selectionModel()->selectedIndexes().first().row();
         
          if (index < armoryServersProvider_->servers().size()) {
@@ -77,7 +77,7 @@ void ArmoryServersWidget::adaptForStartupDialog()
    ui_->widgetControlButtons->hide();
    ui_->tableViewArmory->hideColumn(4);
 
-   isStartupDialog = true;
+   isStartupDialog_ = true;
 }
 
 ArmoryServersWidget::~ArmoryServersWidget() = default;
