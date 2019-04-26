@@ -10,7 +10,7 @@
 
 using namespace std;
 
-static const std::string klocalAddrV4 = "127.0.0.1";
+static const std::string kLocalAddrV4 = "127.0.0.1";
 static const std::string kServerCookieName = "serverID";
 static const std::string kIDCookieName = "clientID";
 #define HEARTBEAT_PACKET_SIZE 23
