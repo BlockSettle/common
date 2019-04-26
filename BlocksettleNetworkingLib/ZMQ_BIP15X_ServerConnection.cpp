@@ -6,7 +6,9 @@
 
 using namespace std;
 
-#define idCookieNamek "serverID"
+static const std::string localAddrV4k = "127.0.0.1";
+static const std::string clientCookieNamek = "clientID";
+static const std::string idCookieNamek = "serverID";
 
 // A call resetting the encryption-related data for individual connections.
 //
@@ -465,6 +467,24 @@ bool ZmqBIP15XServerConnection::processAEADHandshake(
       {
       case ZMQ_MSGTYPE_AEAD_SETUP:
       {
+         // If it's a local connection, get a cookie with the server's key.
+         if (useClientIDCookie_) {
+            // Read the cookie with the key to check.
+            BinaryData cookieKey(static_cast<size_t>(BTC_ECKEY_COMPRESSED_LENGTH));
+            if (!getClientIDCookie(cookieKey, clientCookieNamek)) {
+               return false;
+            }
+            else {
+               // Add the host and the key to the list of verified peers. Be sure
+               // to erase any old keys first.
+               vector<string> keyName;
+               string localAddrV4 = "127.0.0.1:23457";
+               keyName.push_back(localAddrV4);
+               authPeers_->eraseName(localAddrV4);
+               authPeers_->addPeer(cookieKey, keyName);
+            }
+         }
+
          //send pubkey message
          if (!writeToClient(ZMQ_MSGTYPE_AEAD_PRESENT_PUBKEY,
             socketConnMap_[clientID]->encData_->getOwnPubKey(), false))
@@ -796,7 +816,8 @@ AuthPeersLambdas ZmqBIP15XServerConnection::getAuthPeerLambda()
 // RETURN: True if success, false if failure.
 bool ZmqBIP15XServerConnection::genBIPIDCookie()
 {
-   const string absCookiePath = SystemFilePaths::appDataLocation() + "/serverID";
+   const string absCookiePath = SystemFilePaths::appDataLocation() + "/"
+      + idCookieNamek;
    if (SystemFileUtils::fileExist(absCookiePath)) {
       if (!SystemFileUtils::rmFile(absCookiePath)) {
          logger_->error("[{}] Unable to delete server identity cookie ({}). "
@@ -834,6 +855,41 @@ void ZmqBIP15XServerConnection::addAuthPeer(const BinaryData& inKey
    authPeers_->addPeer(inKey, vector<string>{ keyName });
 }
 
+// Get the client's identity public key. Intended for use with local clients.
+//
+// INPUT:  The accompanying key IP:Port or name. (const string)
+// OUTPUT: The buffer that will hold the compressed ID key. (BinaryData)
+// RETURN: True if success, false if failure.
+bool ZmqBIP15XServerConnection::getClientIDCookie(BinaryData& cookieBuf
+   , const string& cookieName)
+{
+   if (!useClientIDCookie_) {
+      logger_->error("[{}] Server identity cookie requested despite not being "
+         "available.", __func__);
+      return false;
+   }
+
+   const string absCookiePath = SystemFilePaths::appDataLocation() + "/"
+      + cookieName;
+   if (!SystemFileUtils::fileExist(absCookiePath)) {
+      logger_->error("[{}] Server identity cookie ({}) doesn't exist. Unable "
+         "to verify server identity.", __func__, absCookiePath);
+      return false;
+   }
+
+   // Ensure that we only read a compressed key.
+   ifstream cookieFile(absCookiePath, ios::in | ios::binary);
+   cookieFile.read(cookieBuf.getCharPtr(), BIP151PUBKEYSIZE);
+   cookieFile.close();
+   if (!(CryptoECDSA().VerifyPublicKeyValid(cookieBuf))) {
+      logger_->error("[{}] Server identity key ({}) isn't a valid compressed "
+         "key. Unable to verify server identity.", __func__
+         , cookieBuf.toBinStr());
+      return false;
+   }
+
+   return true;
+}
 
 // Get the server's compressed BIP 150 identity public key.
 //

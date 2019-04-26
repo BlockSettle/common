@@ -43,7 +43,8 @@ class ZmqBIP15XDataConnection : public ZmqDataConnection
 {
 public:
    ZmqBIP15XDataConnection(const std::shared_ptr<spdlog::logger>& logger
-      , const bool& ephemeralPeers = false, bool monitored = false);
+      , const bool& ephemeralPeers = false, const bool& monitored = false
+      , const bool& genIDCookie = false);
 /*   ZmqBIP15XDataConnection(const std::shared_ptr<spdlog::logger>& logger
       , const ArmoryServersProvider& trustedServer, const bool& ephemeralPeers
       , bool monitored);*/
@@ -64,6 +65,8 @@ public:
    bool getServerIDCookie(BinaryData& cookieBuf, const std::string& cookieName);
    void setCBs(const cbNewKey& inNewKeyCB, const invokeCB& inInvokeCB);
    BinaryData getOwnPubKey() const;
+   bool genBIPIDCookie();
+   void addAuthPeer(const BinaryData& inKey, const std::string& inKeyName);
 
    // Overridden functions from ZmqDataConnection.
    bool send(const std::string& data) override; // Send data from outside class.
@@ -105,6 +108,7 @@ private:
    bool bip150HandshakeCompleted_ = false;
    bool bip151HandshakeCompleted_ = false;
    bool useServerIDCookie_ = true;
+   bool bipIDCookieExists_ = false;
    uint32_t msgID_ = 0;
    std::function<void()>   cbCompleted_ = nullptr;
    const int   heartbeatInterval_ = 30000;

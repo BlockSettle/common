@@ -10,18 +10,20 @@
 
 using namespace std;
 
-#define localAddrV4k "127.0.0.1"
-#define serverCookieNamek "serverID"
+static const std::string localAddrV4k = "127.0.0.1";
+static const std::string serverCookieNamek = "serverID";
+static const std::string idCookieNamek = "clientID";
 #define HEARTBEAT_PACKET_SIZE 23
 
 // The constructor to use.
 //
 // INPUT:  Logger object. (const shared_ptr<spdlog::logger>&)
 //         Ephemeral peer usage. Not recommended. (const bool&)
+//         A flag for a monitored socket. (const bool&)
 // OUTPUT: None
 ZmqBIP15XDataConnection::ZmqBIP15XDataConnection(
-   const shared_ptr<spdlog::logger>& logger
-   , const bool& ephemeralPeers, bool monitored)
+   const shared_ptr<spdlog::logger>& logger, const bool& ephemeralPeers
+   , const bool& monitored, const bool& genIDCookie)
    : ZmqDataConnection(logger, monitored)
 {
    outKeyTimePoint_ = chrono::steady_clock::now();
@@ -46,6 +48,10 @@ ZmqBIP15XDataConnection::ZmqBIP15XDataConnection(
    // similar but data connections will only connect to one machine at a time.
    auto lbds = getAuthPeerLambda();
    bip151Connection_ = make_shared<BIP151Connection>(lbds);
+   if (genIDCookie) {
+      genBIPIDCookie();
+      bipIDCookieExists_ = true;
+   }
 
    const auto &heartbeatProc = [this] {
       while (hbThreadRunning_) {
@@ -75,6 +81,18 @@ ZmqBIP15XDataConnection::~ZmqBIP15XDataConnection()
    hbThreadRunning_ = false;
    hbCondVar_.notify_one();
    hbThread_.join();
+
+   // If it exists, delete the identity cookie.
+   if (bipIDCookieExists_) {
+      const string absCookiePath =
+         SystemFilePaths::appDataLocation() + "/" + idCookieNamek;
+      if (SystemFileUtils::fileExist(absCookiePath)) {
+         if (!SystemFileUtils::rmFile(absCookiePath)) {
+            logger_->error("[{}] Unable to delete client identity cookie ({})."
+               , __func__, absCookiePath);
+         }
+      }
+   }
 }
 
 // Get lambda functions related to authorized peers. Copied from Armory.
@@ -495,14 +513,13 @@ bool ZmqBIP15XDataConnection::processAEADHandshake(
          // Read the cookie with the key to check.
          BinaryData cookieKey(static_cast<size_t>(BTC_ECKEY_COMPRESSED_LENGTH));
          if (!getServerIDCookie(cookieKey, serverCookieNamek)) {
-            serverPubkeyProm_->set_value(false);
             return false;
          }
          else {
             // Add the host and the key to the list of verified peers. Be sure
             // to erase any old keys first.
             vector<string> keyName;
-            string localAddrV4 = localAddrV4k;
+            string localAddrV4 = "127.0.0.1:23456";
             keyName.push_back(localAddrV4);
             authPeers_->eraseName(localAddrV4);
             authPeers_->addPeer(cookieKey, keyName);
@@ -511,7 +528,7 @@ bool ZmqBIP15XDataConnection::processAEADHandshake(
 
       //compute server name
       stringstream ss;
-      ss << hostAddr_;
+      ss << hostAddr_ << ":" << hostPort_;
 
       // If we don't have the key already, we may ask the the user if they wish
       // to continue. (Remote signer only.)
@@ -589,7 +606,7 @@ bool ZmqBIP15XDataConnection::processAEADHandshake(
 
       //bip151 handshake completed, time for bip150
       stringstream ss;
-      ss << hostAddr_;
+      ss << hostAddr_ << ":" << hostPort_;
 
       BinaryData authchallengeBuf(BIP151PRVKEYSIZE);
       if (bip151Connection_->getAuthchallengeData(
@@ -720,6 +737,23 @@ void ZmqBIP15XDataConnection::setCBs(const cbNewKey& inNewKeyCB
    }
 }
 
+// Add an authorized peer's BIP 150 identity key manually.
+//
+// INPUT:  The authorized key. (const BinaryData)
+//         The server IP address (or host name) and port. (const string)
+// OUTPUT: N/A
+// RETURN: N/A
+void ZmqBIP15XDataConnection::addAuthPeer(const BinaryData& inKey
+   , const std::string& keyName)
+{
+   if (!(CryptoECDSA().VerifyPublicKeyValid(inKey))) {
+      logger_->error("[{}] BIP 150 authorized key ({}) for user {} is invalid."
+         , __func__,  inKey.toHexStr(), keyName);
+      return;
+   }
+   authPeers_->addPeer(inKey, vector<string>{ keyName });
+}
+
 // If the user is presented with a new remote server ID key it doesn't already
 // know about, verify the key. A promise will also be used in case any functions
 // are waiting on verification results.
@@ -777,8 +811,8 @@ void ZmqBIP15XDataConnection::verifyNewIDKey(const BinaryDataRef& newKey
 
 // Get the signer's identity public key. Intended for use with local signers.
 //
-// INPUT:  The buffer that will hold the compressed ID key. (BinaryData)
-// OUTPUT: N/A
+// INPUT:  The accompanying key IP:Port or name. (const string)
+// OUTPUT: The buffer that will hold the compressed ID key. (BinaryData)
 // RETURN: True if success, false if failure.
 bool ZmqBIP15XDataConnection::getServerIDCookie(BinaryData& cookieBuf
    , const string& cookieName)
@@ -805,6 +839,41 @@ bool ZmqBIP15XDataConnection::getServerIDCookie(BinaryData& cookieBuf
          , cookieBuf.toBinStr());
       return false;
    }
+
+   return true;
+}
+
+// Generate a cookie with the client's identity public key.
+//
+// INPUT:  N/A
+// OUTPUT: N/A
+// RETURN: True if success, false if failure.
+bool ZmqBIP15XDataConnection::genBIPIDCookie()
+{
+   const string absCookiePath = SystemFilePaths::appDataLocation() + "/"
+      + idCookieNamek;
+   if (SystemFileUtils::fileExist(absCookiePath)) {
+      if (!SystemFileUtils::rmFile(absCookiePath)) {
+         logger_->error("[{}] Unable to delete client identity cookie ({}). "
+            "Will not write a new cookie.", __func__, absCookiePath);
+         return false;
+      }
+   }
+
+   // Ensure that we only write the compressed key.
+   ofstream cookieFile(absCookiePath, ios::out | ios::binary);
+   const BinaryData ourIDKey = getOwnPubKey();
+   if (ourIDKey.getSize() != BTC_ECKEY_COMPRESSED_LENGTH) {
+      logger_->error("[{}] Client identity key ({}) is uncompressed. Will not "
+         "write the identity cookie.", __func__, absCookiePath);
+      return false;
+   }
+
+   logger_->debug("[{}] Writing a new client identity cookie ({}).", __func__
+      ,  absCookiePath);
+   cookieFile.write(getOwnPubKey().getCharPtr(), BTC_ECKEY_COMPRESSED_LENGTH);
+   cookieFile.close();
+   bipIDCookieExists_ = true;
 
    return true;
 }
