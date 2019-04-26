@@ -130,8 +130,7 @@ public:
       , const std::shared_ptr<ApplicationSettings>& appSettings
       , OpMode opMode = OpMode::Remote
       , const bool ephemeralDataConnKeys = true
-      , const ZmqBIP15XDataConnection::cbNewKey& inNewKeyCB = nullptr
-      , const ZmqBIP15XDataConnection::invokeCB& inInvokeCB = nullptr);
+      , const ZmqBIP15XDataConnection::cbNewKey& inNewKeyCB = nullptr);
    ~RemoteSigner() noexcept = default;
 
    bool Start() override;
@@ -188,8 +187,7 @@ public:
       , SignContainer::OpMode mode = OpMode::Local
       , const bool ephemeralDataConnKeys = false
       , double asSpendLimit = 0
-      , const ZmqBIP15XDataConnection::cbNewKey& inNewKeyCB = nullptr
-      , const ZmqBIP15XDataConnection::invokeCB& inInvokeCB = nullptr);
+      , const ZmqBIP15XDataConnection::cbNewKey& inNewKeyCB = nullptr);
    ~LocalSigner() noexcept = default;
 
    bool Start() override;
