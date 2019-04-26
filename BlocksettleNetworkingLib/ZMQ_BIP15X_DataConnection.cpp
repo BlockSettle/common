@@ -519,7 +519,7 @@ bool ZmqBIP15XDataConnection::processAEADHandshake(
             // Add the host and the key to the list of verified peers. Be sure
             // to erase any old keys first.
             vector<string> keyName;
-            string localAddrV4 = "127.0.0.1:23456";
+            string localAddrV4 = kLocalAddrV4 + ":23456";
             keyName.push_back(localAddrV4);
             authPeers_->eraseName(localAddrV4);
             authPeers_->addPeer(cookieKey, keyName);
