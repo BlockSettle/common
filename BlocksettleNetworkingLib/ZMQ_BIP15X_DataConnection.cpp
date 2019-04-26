@@ -10,9 +10,9 @@
 
 using namespace std;
 
-static const std::string localAddrV4k = "127.0.0.1";
-static const std::string serverCookieNamek = "serverID";
-static const std::string idCookieNamek = "clientID";
+static const std::string klocalAddrV4 = "127.0.0.1";
+static const std::string kServerCookieName = "serverID";
+static const std::string kIDCookieName = "clientID";
 #define HEARTBEAT_PACKET_SIZE 23
 
 // The constructor to use.
@@ -85,7 +85,7 @@ ZmqBIP15XDataConnection::~ZmqBIP15XDataConnection()
    // If it exists, delete the identity cookie.
    if (bipIDCookieExists_) {
       const string absCookiePath =
-         SystemFilePaths::appDataLocation() + "/" + idCookieNamek;
+         SystemFilePaths::appDataLocation() + "/" + kIDCookieName;
       if (SystemFileUtils::fileExist(absCookiePath)) {
          if (!SystemFileUtils::rmFile(absCookiePath)) {
             logger_->error("[{}] Unable to delete client identity cookie ({})."
@@ -512,7 +512,7 @@ bool ZmqBIP15XDataConnection::processAEADHandshake(
       if (useServerIDCookie_) {
          // Read the cookie with the key to check.
          BinaryData cookieKey(static_cast<size_t>(BTC_ECKEY_COMPRESSED_LENGTH));
-         if (!getServerIDCookie(cookieKey, serverCookieNamek)) {
+         if (!getServerIDCookie(cookieKey, kServerCookieName)) {
             return false;
          }
          else {
@@ -845,7 +845,7 @@ bool ZmqBIP15XDataConnection::getServerIDCookie(BinaryData& cookieBuf
 bool ZmqBIP15XDataConnection::genBIPIDCookie()
 {
    const string absCookiePath = SystemFilePaths::appDataLocation() + "/"
-      + idCookieNamek;
+      + kIDCookieName;
    if (SystemFileUtils::fileExist(absCookiePath)) {
       if (!SystemFileUtils::rmFile(absCookiePath)) {
          logger_->error("[{}] Unable to delete client identity cookie ({}). "
