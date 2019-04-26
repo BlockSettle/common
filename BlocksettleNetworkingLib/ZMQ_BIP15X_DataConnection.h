@@ -16,12 +16,7 @@
 
 // DESIGN NOTE: The data connection should have a callback for when unknown
 // server keys are seen. The callback should ask the user if they'll accept
-// the new key. It's not as simple as calling the callback, unfortunately. We
-// may have to access Qt resources, which aren't allowed here. When accessing
-// them, we may have to use QMetaObject::invokeMethod(), which is another Qt
-// call. The solution? Have two separate callbacks: One that does what we
-// really want, and one that properly invokes the other callback. (Clear as
-// mud, right?)
+// the new key. This is meant for remote connections.
 //
 // In adition, we have cookies that are used for local connections. When the
 // server is invoked, it'll be invoked with the client connection's public BIP
@@ -63,7 +58,7 @@ public:
    ZmqBIP15XDataConnection& operator= (ZmqBIP15XDataConnection&&) = delete;
 
    bool getServerIDCookie(BinaryData& cookieBuf, const std::string& cookieName);
-   void setCBs(const cbNewKey& inNewKeyCB, const invokeCB& inInvokeCB);
+   void setCBs(const cbNewKey& inNewKeyCB);
    BinaryData getOwnPubKey() const;
    bool genBIPIDCookie();
    void addAuthPeer(const BinaryData& inKey, const std::string& inKeyName);
@@ -114,7 +109,6 @@ private:
    const int   heartbeatInterval_ = 30000;
 
    cbNewKey cbNewKey_;
-   invokeCB invokeCB_;
 
    std::chrono::steady_clock::time_point  lastHeartbeat_;
    std::atomic_bool        hbThreadRunning_;

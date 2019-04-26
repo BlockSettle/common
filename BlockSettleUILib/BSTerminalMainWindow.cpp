@@ -471,32 +471,24 @@ std::shared_ptr<SignContainer> BSTerminalMainWindow::createSigner()
       // for the old and new keys, and a promise to set once the user decides.
       ourNewKeyCB = [this](const std::string& oldKey, const std::string& newKey
          , std::shared_ptr<std::promise<bool>> newKeyProm)->void {
-         BSMessageBox *box = new BSMessageBox(BSMessageBox::question
-            , tr("Server identity key has changed")
-            , tr("Do you wish to import the new server identity key?")
-            , tr("Old Key: %1\nNew Key: %2")
-            .arg(QString::fromStdString(oldKey))
-            .arg(QString::fromStdString(newKey))
-            , this);
+         QMetaObject::invokeMethod(this, [this, oldKey, newKey, newKeyProm] {
+            BSMessageBox *box = new BSMessageBox(BSMessageBox::question
+               , tr("Server identity key has changed")
+               , tr("Do you wish to import the new server identity key?")
+               , tr("Old Key: %1\nNew Key: %2")
+               .arg(QString::fromStdString(oldKey))
+               .arg(QString::fromStdString(newKey))
+               , this);
 
-         const bool answer = (box->exec() == QDialog::Accepted);
-         box->deleteLater();
+            const bool answer = (box->exec() == QDialog::Accepted);
+            box->deleteLater();
 
-         if (answer) {
-            newKeyProm->set_value(true);
-         }
-         else {
-            newKeyProm->set_value(false);
-         }
-      };
-
-      // Define the callback that will invoke the actual callback to run when a
-      // signer's new BIP 150 identity key has appeared.
-      ourInvokeCB = [this](const std::string& oldKey, const std::string& newKey
-         , std::shared_ptr<std::promise<bool>> newKeyProm
-         , const ZmqBIP15XDataConnection::cbNewKey& finalCB) {
-         QMetaObject::invokeMethod(this, [oldKey, newKey, newKeyProm, finalCB] {
-            finalCB(oldKey, newKey, newKeyProm);
+            if (answer) {
+               newKeyProm->set_value(true);
+            }
+            else {
+               newKeyProm->set_value(false);
+            }
          });
       };
    }
@@ -517,8 +509,7 @@ std::shared_ptr<SignContainer> BSTerminalMainWindow::createSigner()
    }
 
    retPtr = CreateSigner(logMgr_->logger(), applicationSettings_, runMode
-      , signerHost, connectionManager_, ephemeralDataConnKeys, ourNewKeyCB
-      , ourInvokeCB);
+      , signerHost, connectionManager_, ephemeralDataConnKeys, ourNewKeyCB);
    return retPtr;
 }
 

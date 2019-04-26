@@ -27,7 +27,6 @@ SignContainer::SignContainer(const std::shared_ptr<spdlog::logger> &logger, OpMo
 //         The signer connection manager. (const std::shared_ptr<ConnectionManager>)
 //         A flag indicating if data conn will use ephemeral ID keys. (const bool)
 //         The callback to invoke on a new BIP 150 ID key. (const std::function)
-//         The callback to invoke the BIP 150 ID key callback. (const std::function)
 // OUTPUT: N/A
 // RETURN: A pointer to the signer object.
 std::shared_ptr<SignContainer> CreateSigner(const std::shared_ptr<spdlog::logger> &logger
@@ -35,8 +34,7 @@ std::shared_ptr<SignContainer> CreateSigner(const std::shared_ptr<spdlog::logger
    , SignContainer::OpMode runMode, const QString &host
    , const std::shared_ptr<ConnectionManager>& connectionManager
    , const bool& ephemeralDataConnKeys
-   , const ZmqBIP15XDataConnection::cbNewKey& inNewKeyCB
-   , const ZmqBIP15XDataConnection::invokeCB& inInvokeCB)
+   , const ZmqBIP15XDataConnection::cbNewKey& inNewKeyCB)
 {
    if (connectionManager == nullptr) {
       logger->error("[{}] need connection manager to create signer", __func__);
@@ -52,12 +50,12 @@ std::shared_ptr<SignContainer> CreateSigner(const std::shared_ptr<spdlog::logger
       return std::make_shared<LocalSigner>(logger, appSettings->GetHomeDir()
          , netType, port, connectionManager, appSettings, runMode
          , appSettings->get<double>(ApplicationSettings::autoSignSpendLimit)
-         , ephemeralDataConnKeys, inNewKeyCB, inInvokeCB);
+         , ephemeralDataConnKeys, inNewKeyCB);
 
    case SignContainer::OpMode::Remote:
       return std::make_shared<RemoteSigner>(logger, host, port, netType
          , connectionManager, appSettings, runMode, ephemeralDataConnKeys
-         , inNewKeyCB, inInvokeCB);
+         , inNewKeyCB);
 
    default:
       logger->error("[{}] Unknown signer run mode {}", __func__, (int)runMode);

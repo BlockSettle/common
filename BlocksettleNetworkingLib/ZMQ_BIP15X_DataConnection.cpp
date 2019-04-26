@@ -718,21 +718,16 @@ bool ZmqBIP15XDataConnection::processAEADHandshake(
    return true;
 }
 
-// Set the callbacks to be used when asking if the user wishes to accept BIP 150
-// identity keys from a server. Meant to be used only in the case of a remote
-// signer. (Local signers will use a cookie due to the key changing with every
-// restart, and offline signers don't require network connections.)
+// Set the callback to be used when asking if the user wishes to accept BIP 150
+// identity keys from a server. See the design notes in the header for details.
 //
-// INPUT:  The callback that will ask the user.
-//         The callback that will invoke the user-asking callback.
+// INPUT:  The callback that will ask the user to confirm the new key. (std::function)
 // OUTPUT: N/A
 // RETURN: N/A
-void ZmqBIP15XDataConnection::setCBs(const cbNewKey& inNewKeyCB
-   , const invokeCB& inInvokeCB) {
+void ZmqBIP15XDataConnection::setCBs(const cbNewKey& inNewKeyCB) {
    // Set callbacks only if callbacks actually exist.
-   if (cbNewKey_ && inNewKeyCB) {
+   if (inNewKeyCB) {
       cbNewKey_ = inNewKeyCB;
-      invokeCB_ = inInvokeCB;
       useServerIDCookie_ = false;
    }
 }
@@ -786,8 +781,7 @@ void ZmqBIP15XDataConnection::verifyNewIDKey(const BinaryDataRef& newKey
 
       // Ask the user if they wish to accept the new identity key.
       BinaryData oldKey(authPeerNameSearch->second.pubkey, BIP151PUBKEYSIZE);
-      invokeCB_(oldKey.toHexStr(), newKey.toHexStr()
-         , serverPubkeyProm_, cbNewKey_);
+      cbNewKey_(oldKey.toHexStr(), newKey.toHexStr(), serverPubkeyProm_);
 
       //have we seen the server's pubkey?
       if (serverPubkeyProm_ != nullptr) {

@@ -1063,20 +1063,18 @@ RemoteSigner::RemoteSigner(const std::shared_ptr<spdlog::logger> &logger
    , const std::shared_ptr<ApplicationSettings>& appSettings
    , OpMode opMode
    , const bool ephemeralDataConnKeys
-   , const ZmqBIP15XDataConnection::cbNewKey& inNewKeyCB
-   , const ZmqBIP15XDataConnection::invokeCB& inInvokeCB)
+   , const ZmqBIP15XDataConnection::cbNewKey& inNewKeyCB)
    : HeadlessContainer(logger, opMode)
    , host_(host), port_(port), netType_(netType)
    , connectionManager_{connectionManager}
    , appSettings_{appSettings}
    , cbNewKey_{inNewKeyCB}
-   , invokeCB_{inInvokeCB}
    , ephemeralDataConnKeys_(ephemeralDataConnKeys)
 {
    // Create connection upfront in order to grab some required data early.
    connection_ =
       connectionManager_->CreateZMQBIP15XDataConnection(ephemeralDataConnKeys_);
-   connection_->setCBs(cbNewKey_, invokeCB_);
+   connection_->setCBs(cbNewKey_);
 }
 
 // Establish the remote connection to the signer.
@@ -1393,11 +1391,10 @@ LocalSigner::LocalSigner(const std::shared_ptr<spdlog::logger> &logger
    , SignContainer::OpMode mode
    , const bool ephemeralDataConnKeys
    , double asSpendLimit
-   , const ZmqBIP15XDataConnection::cbNewKey& inNewKeyCB
-   , const ZmqBIP15XDataConnection::invokeCB& inInvokeCB)
+   , const ZmqBIP15XDataConnection::cbNewKey& inNewKeyCB)
    : RemoteSigner(logger, QLatin1String("127.0.0.1"), port, netType
-      , connectionManager, appSettings, mode, ephemeralDataConnKeys, inNewKeyCB
-      , inInvokeCB), homeDir_(homeDir), asSpendLimit_(asSpendLimit)
+      , connectionManager, appSettings, mode, ephemeralDataConnKeys, inNewKeyCB)
+      , homeDir_(homeDir), asSpendLimit_(asSpendLimit)
 {}
 
 QStringList LocalSigner::args() const

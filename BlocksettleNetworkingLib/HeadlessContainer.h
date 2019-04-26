@@ -170,7 +170,6 @@ protected:
    std::shared_ptr<ZmqBIP15XDataConnection>   connection_;
    std::shared_ptr<ApplicationSettings>       appSettings_;
    const ZmqBIP15XDataConnection::cbNewKey cbNewKey_;
-   const ZmqBIP15XDataConnection::invokeCB invokeCB_;
 
 private:
    std::shared_ptr<ConnectionManager> connectionManager_;
