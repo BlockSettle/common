@@ -1958,6 +1958,22 @@ const SecureBinaryData& AssetWallet_Single::getDecryptedValue(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+const SecureBinaryData& AssetWallet_Single::getDecryptedPrivateKeyForAsset(
+   std::shared_ptr<AssetEntry_Single> assetPtr)
+{
+   auto assetPrivKey = assetPtr->getPrivKey();
+
+   if (assetPrivKey == nullptr)
+   {
+      auto account = getAccountForID(assetPtr->getAccountID());
+      assetPrivKey = account->fillPrivateKey(
+         decryptedData_, assetPtr->getID());
+   }
+   
+   return getDecryptedValue(assetPrivKey);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 const SecureBinaryData& AssetWallet_Multisig::getDecryptedValue(
    shared_ptr<Asset_PrivateKey> assetPtr)
 {

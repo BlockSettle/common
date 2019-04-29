@@ -381,6 +381,9 @@ public:
    unsigned getMainAccountAssetCount(void) const;
    const BinaryData& getMainAccountID(void) const { return mainAccount_; }
 
+   const SecureBinaryData& getDecryptedPrivateKeyForAsset(
+      std::shared_ptr<AssetEntry_Single>);
+
    //virtual
    const SecureBinaryData& getDecryptedValue(
       std::shared_ptr<Asset_PrivateKey>);
@@ -603,16 +606,12 @@ public:
       auto pubkeyref = BinaryDataRef(pubkey);
       auto iter = pubkey_to_asset_.find(pubkeyref);
       if (iter != pubkey_to_asset_.end())
-      {
-         const auto& privkeyAsset = iter->second->getPrivKey();
-         return wltPtr_->getDecryptedValue(privkeyAsset);
-      }
+         return wltPtr_->getDecryptedPrivateKeyForAsset(iter->second);
 
       /*
       Lacking a cache hit, we need to get the asset for this pubkey. All
-      pubkeys are carried as assets, and all assets are expressed all
-      possible script hash variations within each accounts address hash
-      map.
+      pubkeys are carried as assets, and all assets are expressed as all
+      possible script hash variations within an account's hash map.
 
       Therefor, converting this pubkey to one of the eligible script hash
       variation should yield a hit from the key to asset resolution logic.
@@ -633,11 +632,7 @@ public:
       if (assetSingle == nullptr)
          throw std::logic_error("invalid pubkey");
 
-      auto privKeyPtr = assetSingle->getPrivKey();
-      if (privKeyPtr == nullptr)
-         throw std::logic_error("invalid pubkey");
-
-      return wltPtr_->getDecryptedValue(privKeyPtr);
+      return wltPtr_->getDecryptedPrivateKeyForAsset(assetSingle);
 
       /*
       In case of NoAssetException failure, it is still possible this public key 

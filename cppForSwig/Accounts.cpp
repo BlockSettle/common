@@ -421,9 +421,9 @@ void AssetAccount::extendPrivateChain(
          auto iter = assets_.find(id);
          if (iter != assets_.end())
          {
-            //do not overwrite an existing asset that already has a privkey
             if (iter->second->hasPrivateKey())
             {
+               //do not overwrite an existing asset that already has a privkey
                continue;
             }
             else
@@ -514,9 +514,9 @@ unsigned AssetAccount::getAndBumpHighestUsedIndex()
 {
    ReentrantLock lock(this);
 
-   auto index = lastUsedIndex_++;
+   ++lastUsedIndex_;
    updateHighestUsedIndex();
-   return index;
+   return lastUsedIndex_;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -608,6 +608,71 @@ const SecureBinaryData& AssetAccount::getChaincode() const
       throw AccountException("null derivation scheme");
 
    return derScheme_->getChaincode();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+shared_ptr<Asset_PrivateKey> AssetAccount::fillPrivateKey(
+   shared_ptr<DecryptedDataContainer> ddc,
+   const BinaryData& id)
+{
+   if (id.getSize() != 12)
+      throw AccountException("unexpected asset id length");
+
+   //get the asset
+   auto assetID_bdr = id.getSliceRef(8, 4);
+   auto assetID = READ_UINT32_BE(assetID_bdr);
+
+   auto iter = assets_.find(assetID);
+   if (iter == assets_.end())
+      throw AccountException("invalid asset id");
+
+   auto thisAsset = std::dynamic_pointer_cast<AssetEntry_Single>(iter->second);
+   if (thisAsset == nullptr)
+      throw AccountException("unexpected asset type in map");
+
+   //sanity check
+   if (thisAsset->hasPrivateKey())
+      return thisAsset->getPrivKey();
+
+   //reverse iter through the map, find closest previous asset with priv key
+   //this is only necessary for armory 1.35 derivation
+   shared_ptr<AssetEntry> prevAssetWithKey = nullptr;
+   map<unsigned, shared_ptr<AssetEntry>>::reverse_iterator rIter(iter);
+   while (rIter != assets_.rend())
+   {
+      if (rIter->second->hasPrivateKey())
+      {
+         prevAssetWithKey = rIter->second;
+         break;
+      }
+
+      ++rIter;
+   }
+   
+   //if no asset in map had a private key, use the account root instead
+   if (prevAssetWithKey == nullptr)
+      prevAssetWithKey = root_;
+
+   //figure out the asset count
+   unsigned count = assetID - (unsigned)prevAssetWithKey->getIndex();
+
+   //extend the private chain
+   extendPrivateChain(ddc, prevAssetWithKey, count);
+
+   //grab the fresh asset, return its private key
+   auto privKeyIter = assets_.find(assetID);
+   if (privKeyIter == assets_.end())
+      throw AccountException("invalid asset id");
+
+   if (!privKeyIter->second->hasPrivateKey())
+      throw AccountException("fillPrivateKey failed");
+
+   auto assetSingle = 
+      std::dynamic_pointer_cast<AssetEntry_Single>(privKeyIter->second);
+   if(assetSingle == nullptr)
+      throw AccountException("fillPrivateKey failed");
+
+   return assetSingle->getPrivKey();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1132,7 +1197,7 @@ bool AddressAccount::hasAddressType(AddressEntryType aeType)
 ////////////////////////////////////////////////////////////////////////////////
 shared_ptr<AssetEntry> AddressAccount::getAssetForID(const BinaryData& ID) const
 {
-   if (ID.getSize() < 4)
+   if (ID.getSize() != 8)
       throw AccountException("invalid asset ID");
 
    auto accID = ID.getSliceRef(0, 4);
@@ -1414,7 +1479,10 @@ map<BinaryData, shared_ptr<AddressEntry>> AddressAccount::getUsedAddressMap()
    for (auto& account : assetAccounts_)
    {
       auto usedIndex = account.second->getHighestUsedIndex();
-      for (unsigned i = 0; i < usedIndex; i++)
+      if (usedIndex == UINT32_MAX)
+         continue;
+
+      for (unsigned i = 0; i <= usedIndex; i++)
       {
          auto assetPtr = account.second->getAssetForIndex(i);
          auto& assetID = assetPtr->getID();
@@ -1433,6 +1501,21 @@ map<BinaryData, shared_ptr<AddressEntry>> AddressAccount::getUsedAddressMap()
    return result;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+shared_ptr<Asset_PrivateKey> AddressAccount::fillPrivateKey(
+   shared_ptr<DecryptedDataContainer> ddc,
+   const BinaryData& id)
+{
+   if (id.getSize() != 12)
+      throw AccountException("invalid asset id");
+
+   auto accID = id.getSliceRef(4, 4);
+   auto iter = assetAccounts_.find(accID);
+   if (iter == assetAccounts_.end())
+      throw AccountException("unknown asset id");
+
+   return iter->second->fillPrivateKey(ddc, id);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////

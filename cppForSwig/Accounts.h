@@ -408,7 +408,7 @@ private:
    std::shared_ptr<LMDBEnv> dbEnv_ = nullptr;
    LMDB* db_ = nullptr;
 
-   unsigned lastUsedIndex_ = 0;
+   unsigned lastUsedIndex_ = UINT32_MAX;
 
    //<assetID, <address type, prefixed address hash>>
    std::map<BinaryData, std::map<AddressEntryType, BinaryData>> addrHashMap_;
@@ -445,6 +445,9 @@ private:
       unsigned, unsigned);
 
    std::shared_ptr<AssetEntry> getNewAsset(void);
+   std::shared_ptr<Asset_PrivateKey> fillPrivateKey(
+      std::shared_ptr<DecryptedDataContainer> ddc,
+      const BinaryData& id);
 
 public:
    AssetAccount(
@@ -521,6 +524,9 @@ private:
       const BinaryData&, AddressEntryType);
    void writeAddressType(const BinaryData&, AddressEntryType);
    void eraseInstantiatedAddressType(const BinaryData&);
+   std::shared_ptr<Asset_PrivateKey> fillPrivateKey(
+      std::shared_ptr<DecryptedDataContainer> ddc,
+      const BinaryData& id);
 
 public:
    AddressAccount(
