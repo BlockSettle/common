@@ -5,7 +5,6 @@
 #include "Wallets/SyncSettlementWallet.h"
 #include "Wallets/SyncHDWallet.h"
 #include "Wallets/SyncWalletsManager.h"
-#include "ZmqSecuredDataConnection.h"
 
 #include <QCoreApplication>
 #include <QDataStream>
