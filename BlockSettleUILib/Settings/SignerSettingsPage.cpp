@@ -103,7 +103,7 @@ void SignerSettingsPage::reset()
 {
    for (const auto &setting : {ApplicationSettings::signerRunMode, ApplicationSettings::signerHost
       , ApplicationSettings::signerPort, ApplicationSettings::signerOfflineDir
-      , ApplicationSettings::zmqRemoteSignerPubKey, ApplicationSettings::autoSignSpendLimit
+      , ApplicationSettings::remoteSignerKeys, ApplicationSettings::autoSignSpendLimit
       , ApplicationSettings::twoWayAuth}) {
       appSettings_->reset(setting, false);
    }
@@ -190,6 +190,6 @@ void SignerSettingsPage::apply()
    }
 
    if (!signerKey.isEmpty()) {
-      appSettings_->set(ApplicationSettings::zmqRemoteSignerPubKey, signerKey);
+      appSettings_->set(ApplicationSettings::remoteSignerKeys, signerKey);
    }
 }
