@@ -53,6 +53,9 @@ public:
    QVariant data(const QModelIndex &index, int role) const override;
    Qt::ItemFlags flags(const QModelIndex &index) const override;
 
+protected:
+   void beginInsertRows(const QModelIndex &parent, int first, int last);
+
 private slots:
    void onItemChanged(TreeItem* item);
 private:
@@ -62,6 +65,7 @@ private:
 
 private:
    std::shared_ptr<RootItem> root_;
+   void beginInsertRows(const TreeItem::NodeType &type);
 };
 
 

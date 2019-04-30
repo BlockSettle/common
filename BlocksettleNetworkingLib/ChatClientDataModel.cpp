@@ -30,8 +30,8 @@ void ChatClientDataModel::clearSearch()
       return;
    }
 
-   int first = search->getChildren().front()->selfIndex();
-   int last = search->getChildren().back()->selfIndex();
+   const int first = search->getChildren().front()->selfIndex();
+   const int last = search->getChildren().back()->selfIndex();
 
    beginRemoveRows(createIndex(search->selfIndex(), 0, search), first, last);
    root_->clearSearch();
@@ -40,16 +40,7 @@ void ChatClientDataModel::clearSearch()
 
 bool ChatClientDataModel::insertRoomObject(std::shared_ptr<Chat::RoomData> data)
 {
-   TreeItem * item = root_->findCategoryNodeWith(TreeItem::NodeType::RoomsElement);
-
-   if (!item)
-      return false;
-
-   QModelIndex index = createIndex(item->selfIndex(), 0, item);
-   int first = item->getChildren().empty() ? 0 : item->getChildren().back()->selfIndex();
-   int last = first + 1;
-
-   beginInsertRows(index, first, last);
+   beginInsertRows(TreeItem::NodeType::RoomsElement);
    bool res = root_->insertRoomObject(data);
    endInsertRows();
    return res;
@@ -57,16 +48,7 @@ bool ChatClientDataModel::insertRoomObject(std::shared_ptr<Chat::RoomData> data)
 
 bool ChatClientDataModel::insertContactObject(std::shared_ptr<Chat::ContactRecordData> data, bool isOnline)
 {
-   TreeItem * item = root_->findCategoryNodeWith(TreeItem::NodeType::ContactsElement);
-
-   if (!item)
-      return false;
-
-   QModelIndex index = createIndex(item->selfIndex(), 0, item);
-   int first = item->getChildren().empty() ? 0 : item->getChildren().back()->selfIndex();
-   int last = first + 1;
-
-   beginInsertRows(index, first, last);
+   beginInsertRows(TreeItem::NodeType::ContactsElement);
    bool res = root_->insertContactObject(data, isOnline);   
    endInsertRows();
    return res;
@@ -74,16 +56,7 @@ bool ChatClientDataModel::insertContactObject(std::shared_ptr<Chat::ContactRecor
 
 bool ChatClientDataModel::insertGeneralUserObject(std::shared_ptr<Chat::UserData> data)
 {
-   TreeItem * item = root_->findCategoryNodeWith(TreeItem::NodeType::AllUsersElement);
-
-   if (!item)
-      return false;
-
-   QModelIndex index = createIndex(item->selfIndex(), 0, item);
-   int first = item->getChildren().empty() ? 0 : item->getChildren().back()->selfIndex();
-   int last = first + 1;
-
-   beginInsertRows(index, first, last);
+   beginInsertRows(TreeItem::NodeType::AllUsersElement);
    bool res = root_->insertGeneralUserObject(data);
    endInsertRows();
    return res;
@@ -91,16 +64,7 @@ bool ChatClientDataModel::insertGeneralUserObject(std::shared_ptr<Chat::UserData
 
 bool ChatClientDataModel::insertSearchUserObject(std::shared_ptr<Chat::UserData> data)
 {
-   TreeItem * item = root_->findCategoryNodeWith(TreeItem::NodeType::SearchElement);
-
-   if (!item)
-      return false;
-
-   QModelIndex index = createIndex(item->selfIndex(), 0, item);
-   int first = item->getChildren().empty() ? 0 : item->getChildren().back()->selfIndex();
-   int last = first + 1;
-
-   beginInsertRows(index, first, last);
+   beginInsertRows(TreeItem::NodeType::SearchElement);
    bool res = root_->insertSearchUserObject(data);
    endInsertRows();
    return res;
@@ -117,13 +81,13 @@ bool ChatClientDataModel::insertSearchUserList(std::vector<std::shared_ptr<Chat:
       return false;
    }
 
-   QModelIndex index = createIndex(search->selfIndex(), 0, search);
+   const QModelIndex index = createIndex(search->selfIndex(), 0, search);
 
-   int first = search->getChildren().empty()
+   const int first = search->getChildren().empty()
                ? 0
                : search->getChildren().back()->selfIndex();
 
-   int last = first + static_cast<int>(userList.size()) - 1;
+   const int last = first + static_cast<int>(userList.size()) - 1;
 
    beginInsertRows(index, first, last);
    for (auto user : userList){
@@ -403,4 +367,23 @@ Qt::ItemFlags ChatClientDataModel::flags(const QModelIndex &index) const
 
 
    return current_flags;
+}
+
+void ChatClientDataModel::beginInsertRows(const QModelIndex &parent, int first, int last)
+{
+   QAbstractItemModel::beginInsertRows(parent, first, last);
+}
+
+void ChatClientDataModel::beginInsertRows(const TreeItem::NodeType &type)
+{
+   TreeItem * item = root_->findCategoryNodeWith(type);
+
+   if (!item)
+      return;
+
+   const QModelIndex index = createIndex(item->selfIndex(), 0, item);
+   const int first = item->getChildren().empty() ? 0 : item->getChildren().back()->selfIndex();
+   const int last = first + 1;
+
+   beginInsertRows(index, first, last);
 }
