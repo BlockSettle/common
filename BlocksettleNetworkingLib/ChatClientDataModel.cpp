@@ -40,7 +40,7 @@ void ChatClientDataModel::clearSearch()
 
 bool ChatClientDataModel::insertRoomObject(std::shared_ptr<Chat::RoomData> data)
 {
-   beginInsertRows(TreeItem::NodeType::RoomsElement);
+   beginChatInsertRows(TreeItem::NodeType::RoomsElement);
    bool res = root_->insertRoomObject(data);
    endInsertRows();
    return res;
@@ -48,7 +48,7 @@ bool ChatClientDataModel::insertRoomObject(std::shared_ptr<Chat::RoomData> data)
 
 bool ChatClientDataModel::insertContactObject(std::shared_ptr<Chat::ContactRecordData> data, bool isOnline)
 {
-   beginInsertRows(TreeItem::NodeType::ContactsElement);
+   beginChatInsertRows(TreeItem::NodeType::ContactsElement);
    bool res = root_->insertContactObject(data, isOnline);   
    endInsertRows();
    return res;
@@ -56,7 +56,7 @@ bool ChatClientDataModel::insertContactObject(std::shared_ptr<Chat::ContactRecor
 
 bool ChatClientDataModel::insertGeneralUserObject(std::shared_ptr<Chat::UserData> data)
 {
-   beginInsertRows(TreeItem::NodeType::AllUsersElement);
+   beginChatInsertRows(TreeItem::NodeType::AllUsersElement);
    bool res = root_->insertGeneralUserObject(data);
    endInsertRows();
    return res;
@@ -64,7 +64,7 @@ bool ChatClientDataModel::insertGeneralUserObject(std::shared_ptr<Chat::UserData
 
 bool ChatClientDataModel::insertSearchUserObject(std::shared_ptr<Chat::UserData> data)
 {
-   beginInsertRows(TreeItem::NodeType::SearchElement);
+   beginChatInsertRows(TreeItem::NodeType::SearchElement);
    bool res = root_->insertSearchUserObject(data);
    endInsertRows();
    return res;
@@ -369,12 +369,7 @@ Qt::ItemFlags ChatClientDataModel::flags(const QModelIndex &index) const
    return current_flags;
 }
 
-void ChatClientDataModel::beginInsertRows(const QModelIndex &parent, int first, int last)
-{
-   QAbstractItemModel::beginInsertRows(parent, first, last);
-}
-
-void ChatClientDataModel::beginInsertRows(const TreeItem::NodeType &type)
+void ChatClientDataModel::beginChatInsertRows(const TreeItem::NodeType &type)
 {
    TreeItem * item = root_->findCategoryNodeWith(type);
 
