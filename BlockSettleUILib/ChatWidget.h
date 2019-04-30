@@ -94,7 +94,7 @@ private:
    std::shared_ptr<ChatWidgetState> stateCurrent_;
    QMap<QString, QString> draftMessages_;
    bool needsToStartFirstRoom_;
-   QMap<QModelIndex, bool> prevTreeViewExpandedMap_;
+   std::set<QModelIndex> expandedIndexes_;
 
 private:
    OTCRequestViewModel *otcRequestViewModel_ = nullptr;

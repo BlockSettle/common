@@ -327,10 +327,11 @@ void ChatWidget::treeViewUsersModelRowsAboutToBeInserted()
                                                                 -1,
                                                                 Qt::MatchWildcard|Qt::MatchRecursive);
    
-   // save expand and collaps states for all indexes
-   prevTreeViewExpandedMap_.clear();
-   foreach (auto index, indexes)
-      prevTreeViewExpandedMap_.insert(index, ui_->treeViewUsers->isExpanded(index));
+   // save expanded indexes
+   expandedIndexes_.clear();
+   for (const auto &index : indexes)
+      if (ui_->treeViewUsers->isExpanded(index))
+         expandedIndexes_.insert(index);
 }
 
 void ChatWidget::treeViewUsersModelRowsInserted()
@@ -343,8 +344,8 @@ void ChatWidget::treeViewUsersModelRowsInserted()
                                                                 Qt::MatchWildcard|Qt::MatchRecursive);
 
     // restore expand and collaps states for all indexes
-   foreach (auto index, indexes) {
-      if (prevTreeViewExpandedMap_[index])
+   for (const auto &index : indexes) {
+      if (expandedIndexes_.find(index) != expandedIndexes_.end())
 	      ui_->treeViewUsers->expand(index);
       else
          ui_->treeViewUsers->collapse(index);
