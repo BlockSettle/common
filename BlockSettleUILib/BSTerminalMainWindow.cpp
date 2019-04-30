@@ -194,7 +194,7 @@ void BSTerminalMainWindow::GetNetworkSettingsFromPuB(const std::function<void()>
    //
    // NB: This may need to be altered later. The PuB key should be hard-coded
    // and respected.
-   ZmqBIP15XDataConnection::cbNewKey ourNewKeyCB =
+   ZmqBIP15XDataConnection<ActiveStreamClient>::cbNewKey ourNewKeyCB =
       [this](const std::string& oldKey, const std::string& newKey
       , std::shared_ptr<std::promise<bool>> newKeyProm)->void
       {
@@ -491,8 +491,8 @@ std::shared_ptr<SignContainer> BSTerminalMainWindow::createSigner()
    // These callbacks will only be used for remote signers. Note the code below,
    // where a local signer is eventually marked as remote. We'll work around
    // this by defining the callbacks when the signer is initially marked remote.
-   ZmqBIP15XDataConnection::cbNewKey ourNewKeyCB = nullptr;
-   ZmqBIP15XDataConnection::invokeCB ourInvokeCB = nullptr;
+   ZmqBIP15XDataConnection<ActiveStreamClient>::cbNewKey ourNewKeyCB = nullptr;
+   ZmqBIP15XDataConnection<ActiveStreamClient>::invokeCB ourInvokeCB = nullptr;
 
    bool ephemeralDataConnKeys = true;
    if (runMode == SignContainer::OpMode::Remote) {

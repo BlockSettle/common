@@ -10,7 +10,7 @@
 #include "AuthorizedPeers.h"
 #include "BIP150_151.h"
 #include "EncryptionUtils.h"
-#include "ZmqServerConnection.h"
+#include "ZmqStreamServerConnection.h"
 #include "ZMQ_BIP15X_Msg.h"
 
 #define SERVER_AUTH_PEER_FILENAME "server.peers"
@@ -47,7 +47,7 @@ public:
 // The class establishing ZMQ sockets and establishing BIP 150/151 handshakes
 // before encrypting/decrypting the on-the-wire data using BIP 150/151. Used by
 // the server in a connection.
-class ZmqBIP15XServerConnection : public ZmqServerConnection
+class ZmqBIP15XServerConnection : public ZmqStreamServerConnection
 {
 public:
    ZmqBIP15XServerConnection(const std::shared_ptr<spdlog::logger>& logger
@@ -76,7 +76,8 @@ public:
 
 protected:
    // Overridden functions from ZmqServerConnection.
-   ZmqContext::sock_ptr CreateDataSocket() override;
+//   ZmqContext::sock_ptr CreateDataSocket() override;
+   server_connection_ptr CreateActiveConnection() override;
    bool ReadFromDataSocket() override;
 
    void resetBIP151Connection(const std::string& clientID);
@@ -104,6 +105,8 @@ private:
    std::function<std::vector<std::string>()> cbTrustedClients_;
    bool useClientIDCookie_ = false;
 
+   const std::string kClientCookieName = "clientID";
+   const std::string kIDCookieName = "serverID";
    const int   heartbeatInterval_ = 30000 * 2;   // allow some toleration on heartbeat miss
    std::unordered_map<std::string, std::chrono::steady_clock::time_point>  lastHeartbeats_;
    std::atomic_bool        hbThreadRunning_;

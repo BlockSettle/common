@@ -34,7 +34,7 @@ std::shared_ptr<SignContainer> CreateSigner(const std::shared_ptr<spdlog::logger
    , SignContainer::OpMode runMode, const QString &host
    , const std::shared_ptr<ConnectionManager>& connectionManager
    , const bool& ephemeralDataConnKeys
-   , const ZmqBIP15XDataConnection::cbNewKey& inNewKeyCB)
+   , const ZmqBIP15XDataConnection<ActiveStreamClient>::cbNewKey& inNewKeyCB)
 {
    if (connectionManager == nullptr) {
       logger->error("[{}] need connection manager to create signer", __func__);

@@ -1,14 +1,12 @@
 #include <chrono>
 
 #include "ZMQ_BIP15X_ServerConnection.h"
+#include "ZMQ_BIP15X_DataConnection.h"
+#include "ActiveStreamClient.h"
 #include "MessageHolder.h"
 #include "SystemFileUtils.h"
 
 using namespace std;
-
-//static const std::string kLocalAddrV4 = "127.0.0.1";
-static const std::string kClientCookieName = "clientID";
-static const std::string kIDCookieName = "serverID";
 
 // A call resetting the encryption-related data for individual connections.
 //
@@ -37,7 +35,7 @@ ZmqBIP15XServerConnection::ZmqBIP15XServerConnection(
    , const std::shared_ptr<ZmqContext>& context
    , const std::vector<std::string>& trustedClients, const uint64_t& id
    , const bool& ephemeralPeers)
-   : ZmqServerConnection(logger, context), id_(id)
+   : ZmqStreamServerConnection(logger, context), id_(id)
 {
    string datadir = SystemFilePaths::appDataLocation();
    string filename(SERVER_AUTH_PEER_FILENAME);
@@ -62,7 +60,7 @@ ZmqBIP15XServerConnection::ZmqBIP15XServerConnection(
    const std::shared_ptr<spdlog::logger>& logger
    , const std::shared_ptr<ZmqContext>& context
    , const std::function<std::vector<std::string>()> &cbTrustedClients)
-   : ZmqServerConnection(logger, context)
+   : ZmqStreamServerConnection(logger, context)
    , cbTrustedClients_(cbTrustedClients)
 {
    authPeers_ = make_shared<AuthorizedPeers>();
@@ -134,15 +132,20 @@ void ZmqBIP15XServerConnection::heartbeatThread()
    hbThread_ = std::thread(heartbeatProc);
 }
 
+ZmqStreamServerConnection::server_connection_ptr ZmqBIP15XServerConnection::CreateActiveConnection()
+{
+   return std::make_shared<ZmqBIP15XDataConnection<ActiveStreamClient>>(logger_);
+}
+
 // Create the data socket.
 //
 // INPUT:  None
 // OUTPUT: None
 // RETURN: The data socket. (ZmqContext::sock_ptr)
-ZmqContext::sock_ptr ZmqBIP15XServerConnection::CreateDataSocket()
+/*ZmqContext::sock_ptr ZmqBIP15XServerConnection::CreateDataSocket()
 {
    return context_->CreateServerSocket();
-}
+}*/
 
 // Get the incoming data.
 //

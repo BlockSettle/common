@@ -4,14 +4,13 @@
 
 #include <QObject>
 #include <QTimer>
+#include <queue>
+#include <QAbstractItemModel>
 
 #include "ChatProtocol/ChatProtocol.h"
 #include "ChatDB.h"
 #include "DataConnectionListener.h"
 #include "SecureBinaryData.h"
-#include <queue>
-#include <QAbstractItemModel>
-
 #include "ChatClientTree/TreeObjects.h"
 #include "ChatHandleInterfaces.h"
 namespace spdlog {
@@ -21,8 +20,9 @@ namespace Chat {
    class Request;
 }
 
-
+class ActiveStreamClient;
 class ConnectionManager;
+template<class _S>
 class ZmqBIP15XDataConnection;
 class ApplicationSettings;
 class UserHasher;
@@ -126,7 +126,7 @@ signals:
    void ForceLogoutSignal();
 public slots:
    void onMessageRead(const std::shared_ptr<Chat::MessageData>& message);
-   
+
 private slots:
    void onForceLogoutSignal();
    void sendHeartbeat();
@@ -143,7 +143,7 @@ private:
 
    std::unique_ptr<ChatDB>                   chatDb_;
    std::map<QString, autheid::PublicKey>     pubKeys_;
-   std::shared_ptr<ZmqBIP15XDataConnection>  connection_;
+   std::shared_ptr<ZmqBIP15XDataConnection<ActiveStreamClient>>  connection_;
    std::shared_ptr<UserHasher>               hasher_;
    std::map<QString, Botan::SecureVector<uint8_t>>   userNonces_;
 

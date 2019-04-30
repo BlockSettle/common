@@ -89,7 +89,7 @@ std::string ChatClient::loginToServer(const std::string& email, const std::strin
    // for the old and new keys, and a promise to set once the user decides.
    // NB: This may need to be altered later. The PuB key should be hard-coded
    // and respected.
-   ZmqBIP15XDataConnection::cbNewKey ourNewKeyCB =
+   ZmqBIP15XDataConnection<ActiveStreamClient>::cbNewKey ourNewKeyCB =
       [this](const std::string& oldKey, const std::string& newKey
       , std::shared_ptr<std::promise<bool>> newKeyProm)->void
    {

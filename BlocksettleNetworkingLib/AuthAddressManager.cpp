@@ -758,7 +758,7 @@ bool AuthAddressManager::SubmitRequestToPB(const std::string& name, const std::s
    //
    // NB: This may need to be altered later. The PuB key should be hard-coded
    // and respected.
-   ZmqBIP15XDataConnection::cbNewKey ourNewKeyCB =
+   ZmqBIP15XDataConnection<ActiveStreamClient>::cbNewKey ourNewKeyCB =
       [this](const std::string& oldKey, const std::string& newKey
       , std::shared_ptr<std::promise<bool>> newKeyProm)->void
    {

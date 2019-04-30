@@ -1063,7 +1063,7 @@ RemoteSigner::RemoteSigner(const std::shared_ptr<spdlog::logger> &logger
    , const std::shared_ptr<ApplicationSettings>& appSettings
    , OpMode opMode
    , const bool ephemeralDataConnKeys
-   , const ZmqBIP15XDataConnection::cbNewKey& inNewKeyCB)
+   , const ZmqBIP15XDataConnection<ActiveStreamClient>::cbNewKey& inNewKeyCB)
    : HeadlessContainer(logger, opMode)
    , host_(host), port_(port), netType_(netType)
    , connectionManager_{connectionManager}
@@ -1391,7 +1391,7 @@ LocalSigner::LocalSigner(const std::shared_ptr<spdlog::logger> &logger
    , SignContainer::OpMode mode
    , const bool ephemeralDataConnKeys
    , double asSpendLimit
-   , const ZmqBIP15XDataConnection::cbNewKey& inNewKeyCB)
+   , const ZmqBIP15XDataConnection<ActiveStreamClient>::cbNewKey& inNewKeyCB)
    : RemoteSigner(logger, QLatin1String("127.0.0.1"), port, netType
       , connectionManager, appSettings, mode, ephemeralDataConnKeys, inNewKeyCB)
       , homeDir_(homeDir), asSpendLimit_(asSpendLimit)

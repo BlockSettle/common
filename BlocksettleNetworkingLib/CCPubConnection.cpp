@@ -42,13 +42,13 @@ bool CCPubConnection::SubmitRequestToPB(const std::string& name, const std::stri
    // Define the callback that will be used to determine if the signer's BIP
    // 150 identity key, if it has changed, will be accepted. It needs strings
    // for the old and new keys, and a promise to set once the user decides.
-   ZmqBIP15XDataConnection::cbNewKey ourNewKeyCB =
+   ZmqBIP15XDataConnection<ActiveStreamClient>::cbNewKey ourNewKeyCB =
       [this](const std::string& oldKey, const std::string& newKey
       , std::shared_ptr<std::promise<bool>> newKeyProm)->void
    {
       // NB: This may need to be altered later. The PuB key should be hard-coded
       // and respected.
-      ZmqBIP15XDataConnection::cbNewKey ourNewKeyCB =
+      ZmqBIP15XDataConnection<ActiveStreamClient>::cbNewKey ourNewKeyCB =
          [this](const std::string& oldKey, const std::string& newKey
          , std::shared_ptr<std::promise<bool>> newKeyProm)->void
          {
