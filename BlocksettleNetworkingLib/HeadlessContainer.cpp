@@ -1073,7 +1073,8 @@ RemoteSigner::RemoteSigner(const std::shared_ptr<spdlog::logger> &logger
 {
    // Create connection upfront in order to grab some required data early.
    connection_ =
-      connectionManager_->CreateZMQBIP15XDataConnection(ephemeralDataConnKeys_);
+      connectionManager_->CreateZMQBIP15XDataConnection(ephemeralDataConnKeys_
+      , false, true, "signerServerID");
    connection_->setCBs(cbNewKey_);
 }
 

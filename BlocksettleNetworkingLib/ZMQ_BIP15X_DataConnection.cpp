@@ -10,8 +10,6 @@
 
 using namespace std;
 
-static const std::string kServerCookieName = "serverID";
-static const std::string kIDCookieName = "clientID";
 #define HEARTBEAT_PACKET_SIZE 23
 
 // The constructor to use.
@@ -22,9 +20,29 @@ static const std::string kIDCookieName = "clientID";
 // OUTPUT: None
 ZmqBIP15XDataConnection::ZmqBIP15XDataConnection(
    const shared_ptr<spdlog::logger>& logger, const bool& ephemeralPeers
-   , const bool& monitored, const bool& genIDCookie)
-   : ZmqDataConnection(logger, monitored)
+   , const bool& monitored, const bool& makeClientCookie
+   , const bool& readServerCookie, const std::string& cookieName)
+   : ZmqDataConnection(logger, monitored), makeClientIDCookie_(makeClientCookie)
+   , useServerIDCookie_(readServerCookie), bipIDCookieName_(cookieName)
 {
+   if (makeClientIDCookie_ && useServerIDCookie_) {
+      logger_->error("[{}] Cannot read client ID cookie and create ID cookie "
+         "at the same time. Connection is incomplete.", __func__);
+      return;
+   }
+
+   if (makeClientIDCookie_ && bipIDCookieName_ == "") {
+      logger_->error("[{}] ID cookie creation requested but no name supplied. "
+         "Connection is incomplete.", __func__);
+      return;
+   }
+
+   if (useServerIDCookie_ && bipIDCookieName_ == "") {
+      logger_->error("[{}] ID cookie reading requested but no name supplied. "
+         "Connection is incomplete.", __func__);
+      return;
+   }
+
    outKeyTimePoint_ = chrono::steady_clock::now();
    currentReadMessage_.reset();
    string datadir =
@@ -47,9 +65,8 @@ ZmqBIP15XDataConnection::ZmqBIP15XDataConnection(
    // similar but data connections will only connect to one machine at a time.
    auto lbds = getAuthPeerLambda();
    bip151Connection_ = make_shared<BIP151Connection>(lbds);
-   if (genIDCookie) {
+   if (makeClientIDCookie_) {
       genBIPIDCookie();
-      bipIDCookieExists_ = true;
    }
 
    const auto &heartbeatProc = [this] {
@@ -85,9 +102,9 @@ ZmqBIP15XDataConnection::~ZmqBIP15XDataConnection()
    hbThread_.join();
 
    // If it exists, delete the identity cookie.
-   if (bipIDCookieExists_) {
+   if (makeClientIDCookie_) {
       const string absCookiePath =
-         SystemFilePaths::appDataLocation() + "/" + kIDCookieName;
+         SystemFilePaths::appDataLocation() + "/" + bipIDCookieName_;
       if (SystemFileUtils::fileExist(absCookiePath)) {
          if (!SystemFileUtils::rmFile(absCookiePath)) {
             logger_->error("[{}] Unable to delete client identity cookie ({})."
@@ -537,7 +554,7 @@ bool ZmqBIP15XDataConnection::processAEADHandshake(
       if (useServerIDCookie_) {
          // Read the cookie with the key to check.
          BinaryData cookieKey(static_cast<size_t>(BTC_ECKEY_COMPRESSED_LENGTH));
-         if (!getServerIDCookie(cookieKey, kServerCookieName)) {
+         if (!getServerIDCookie(cookieKey, bipIDCookieName_)) {
             return false;
          }
          else {
@@ -756,10 +773,14 @@ bool ZmqBIP15XDataConnection::processAEADHandshake(
 // OUTPUT: N/A
 // RETURN: N/A
 void ZmqBIP15XDataConnection::setCBs(const cbNewKey& inNewKeyCB) {
+   if (makeClientIDCookie_) {
+      logger_->error("[{}] Cannot use callbacks when using cookies.", __func__);
+      return;
+   }
+
    // Set callbacks only if callbacks actually exist.
    if (inNewKeyCB) {
       cbNewKey_ = inNewKeyCB;
-      useServerIDCookie_ = false;
    }
 }
 
@@ -884,8 +905,14 @@ bool ZmqBIP15XDataConnection::getServerIDCookie(BinaryData& cookieBuf
 // RETURN: True if success, false if failure.
 bool ZmqBIP15XDataConnection::genBIPIDCookie()
 {
+   if (!makeClientIDCookie_) {
+      logger_->error("[{}] ID cookie creation requested but not allowed."
+      , __func__);
+      return false;
+   }
+
    const string absCookiePath = SystemFilePaths::appDataLocation() + "/"
-      + kIDCookieName;
+      + bipIDCookieName_;
    if (SystemFileUtils::fileExist(absCookiePath)) {
       if (!SystemFileUtils::rmFile(absCookiePath)) {
          logger_->error("[{}] Unable to delete client identity cookie ({}). "
@@ -907,7 +934,6 @@ bool ZmqBIP15XDataConnection::genBIPIDCookie()
       ,  absCookiePath);
    cookieFile.write(getOwnPubKey().getCharPtr(), BTC_ECKEY_COMPRESSED_LENGTH);
    cookieFile.close();
-   bipIDCookieExists_ = true;
 
    return true;
 }
