@@ -106,7 +106,7 @@ namespace Chat {
       const QByteArray message_bytes = messageData_.toUtf8();
       auto data = autheid::encryptData(message_bytes.data(), size_t(message_bytes.size()), pubKey);
       messageData_ = QString::fromLatin1(QByteArray(reinterpret_cast<const char*>(data.data()), int(data.size())).toBase64());
-      encryptionType_ == EncryptionType::IES;
+      encryptionType_ = EncryptionType::IES;
       return true;
    }
 
@@ -170,7 +170,7 @@ namespace Chat {
       }
 
       messageData_ = QString::fromLatin1(QByteArray(reinterpret_cast<const char*>(encrypted_data.data()), int(encrypted_data.size())).toBase64());
-      encryptionType_ == EncryptionType::AEAD;
+      encryptionType_ = EncryptionType::AEAD;
 
       return true;
    }
@@ -234,7 +234,7 @@ namespace Chat {
       }
 
       messageData_ = QString::fromUtf8((char*)decrypted_data.data(), (int)decrypted_data.size());
-      encryptionType_ == EncryptionType::Unencrypted;
+      encryptionType_ = EncryptionType::Unencrypted;
 
       return true;
    }

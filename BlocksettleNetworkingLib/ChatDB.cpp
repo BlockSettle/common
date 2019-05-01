@@ -151,9 +151,10 @@ bool ChatDB::isRoomMessagesExist(const QString &roomId)
 
 bool ChatDB::add(const Chat::MessageData &msg)
 {
-   QSqlQuery qryAdd(QLatin1String("INSERT INTO messages(id, timestamp, sender, receiver, state, encryption, nonce, enctext, reference)"\
-      " VALUES(:id, :tstamp, :sid, :rid, :state, :enctype, :nonce, :enctxt, :ref);"), db_);
+   QSqlQuery qryAdd(db_);
 
+   qryAdd.prepare(QLatin1String("INSERT INTO messages(id, timestamp, sender, receiver, state, encryption, nonce, enctext, reference)"\
+                                " VALUES(:id, :tstamp, :sid, :rid, :state, :enctype, :nonce, :enctxt, :ref);"));
    qryAdd.bindValue(QLatin1String(":id"), msg.getId());
    qryAdd.bindValue(QLatin1String(":tstamp"), msg.getDateTime());
    qryAdd.bindValue(QLatin1String(":sid"), msg.getSenderId());
@@ -176,7 +177,7 @@ bool ChatDB::add(const Chat::MessageData &msg)
 //   qryAdd.bindValue(6, QString());
 
    if (!qryAdd.exec()) {
-      logger_->error("[ChatDB::add] failed to insert to changed");
+      logger_->error("[ChatDB::add] failed to insert to changed: Error: {} Query:{}", qryAdd.lastError().text().toStdString(), qryAdd.lastQuery().toStdString());
       return false;
    }
    return true;
