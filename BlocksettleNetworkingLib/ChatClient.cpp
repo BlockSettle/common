@@ -820,7 +820,7 @@ void ChatClient::retrieveUserMessages(const QString &userId)
    if (!messages.empty()) {
       for (auto &msg : messages) {
          if (msg->encryptionType() == Chat::MessageData::EncryptionType::IES) {
-            if (!msg->decrypt(ownPrivKey_)) {
+            if (!msg->decrypt(appSettings_->GetAuthKeys().first)) {
                logger_->error("Failed to decrypt msg from DB {}", msg->getId().toStdString());
                msg->setFlag(Chat::MessageData::State::Invalid);
             }
@@ -840,7 +840,7 @@ void ChatClient::retrieveRoomMessages(const QString& roomId)
    if (!messages.empty()) {
       for (auto &msg : messages) {
          if (msg->encryptionType() == Chat::MessageData::EncryptionType::IES) {
-            if (!msg->decrypt(ownPrivKey_)) {
+            if (!msg->decrypt(appSettings_->GetAuthKeys().first)) {
                logger_->error("Failed to decrypt msg from DB {}", msg->getId().toStdString());
                msg->setFlag(Chat::MessageData::State::Invalid);
             }
@@ -998,7 +998,7 @@ void ChatClient::onActionSearchUsers(const std::string &text)
    if (match.hasMatch()) {
       pattern = deriveKey(pattern);
    } else if (static_cast<int>(UserHasher::KeyLength) < pattern.length()
-              && pattern.length() < 3) {
+              || pattern.length() < 3) {
       //Initially max key is 12 symbols
       //and search must be triggerred if pattern have length >= 3
       return;
