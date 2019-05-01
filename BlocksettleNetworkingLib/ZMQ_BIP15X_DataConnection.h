@@ -48,7 +48,7 @@ public:
       , const bool& ephemeralPeers = false, const bool& monitored = false
       , const bool& makeClientCookie = false
       , const bool& readServerCookie = false
-      , const std::string& cookieName = "");
+      , const std::string& cookiePath = "");
 /*   ZmqBIP15XDataConnection(const std::shared_ptr<spdlog::logger>& logger
       , const ArmoryServersProvider& trustedServer, const bool& ephemeralPeers
       , bool monitored);*/
@@ -66,8 +66,8 @@ public:
    ZmqBIP15XDataConnection(ZmqBIP15XDataConnection&&) = delete;
    ZmqBIP15XDataConnection& operator= (ZmqBIP15XDataConnection&&) = delete;
 
-   bool getServerIDCookie(BinaryData& cookieBuf, const std::string& cookieName);
-   std::string getCookieName() const { return bipIDCookieName_; }
+   bool getServerIDCookie(BinaryData& cookieBuf);
+   std::string getCookiePath() const { return bipIDCookiePath_; }
    void setCBs(const cbNewKey& inNewKeyCB);
    BinaryData getOwnPubKey() const;
    bool genBIPIDCookie();
@@ -113,7 +113,7 @@ private:
    std::atomic_flag lockSocket_ = ATOMIC_FLAG_INIT;
    bool bip150HandshakeCompleted_ = false;
    bool bip151HandshakeCompleted_ = false;
-   const std::string bipIDCookieName_;
+   const std::string bipIDCookiePath_;
    const bool useServerIDCookie_;
    const bool makeClientIDCookie_;
    uint32_t msgID_ = 0;

@@ -52,7 +52,7 @@ public:
       bool monitored = false) const;
    std::shared_ptr<ZmqBIP15XDataConnection>   CreateZMQBIP15XDataConnection(
       bool ephemeral = true, bool makeClientCookie = false
-      , bool readServerCookie = false, std::string cookieName = "") const;
+      , bool readServerCookie = false, const std::string& cookieName = "") const;
    std::shared_ptr<ZmqBIP15XServerConnection> CreateZMQBIP15XChatServerConnection(
       bool ephemeral = false) const;
 

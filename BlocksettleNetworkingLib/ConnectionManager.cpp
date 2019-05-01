@@ -129,7 +129,8 @@ std::shared_ptr<ZmqBIP15XServerConnection>
 
 std::shared_ptr<ZmqBIP15XDataConnection>
    ConnectionManager::CreateZMQBIP15XDataConnection(bool ephemeral
-   , bool makeClientCookie, bool readServerCookie, std::string cookieName) const
+   , bool makeClientCookie, bool readServerCookie
+   , const std::string& cookieName) const
 {
    auto connection = std::make_shared<ZmqBIP15XDataConnection>(logger_
       , ephemeral

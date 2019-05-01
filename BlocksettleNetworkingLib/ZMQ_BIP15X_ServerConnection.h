@@ -57,13 +57,13 @@ public:
       , const bool& ephemeralPeers
       , const bool& makeServerCookie = false
       , const bool& readClientCookie = false
-      , const std::string& cookieName = "");
+      , const std::string& cookiePath = "");
    ZmqBIP15XServerConnection(const std::shared_ptr<spdlog::logger>& logger
       , const std::shared_ptr<ZmqContext>& context
       , const std::function<std::vector<std::string>()>& cbTrustedClients
       , const bool& makeServerCookie = false
       , const bool& readClientCookie = false
-      , const std::string& cookieName = "");
+      , const std::string& cookiePath = "");
    ~ZmqBIP15XServerConnection() noexcept override;
 
    ZmqBIP15XServerConnection(const ZmqBIP15XServerConnection&) = delete;
@@ -76,8 +76,8 @@ public:
       , const SendResultCb& cb = nullptr) override;
    bool SendDataToAllClients(const std::string&, const SendResultCb &cb = nullptr) override;
 
-   bool getClientIDCookie(BinaryData& cookieBuf, const std::string& cookieName);
-   std::string getCookieName() const { return bipIDCookieName_; }
+   bool getClientIDCookie(BinaryData& cookieBuf);
+   std::string getCookiePath() const { return bipIDCookiePath_; }
    BinaryData getOwnPubKey() const;
    void addAuthPeer(const BinaryData& inKey, const std::string& keyName);
 
@@ -111,7 +111,7 @@ private:
    std::function<std::vector<std::string>()> cbTrustedClients_;
    const bool useClientIDCookie_;
    const bool makeServerIDCookie_;
-   const std::string bipIDCookieName_;
+   const std::string bipIDCookiePath_;
 
    const int   heartbeatInterval_ = 30000 * 2;   // allow some toleration on heartbeat miss
    std::unordered_map<std::string, std::chrono::steady_clock::time_point>  lastHeartbeats_;
