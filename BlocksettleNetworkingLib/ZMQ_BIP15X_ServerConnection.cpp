@@ -87,21 +87,18 @@ ZmqBIP15XServerConnection::ZmqBIP15XServerConnection(
 
 {
    if (makeServerIDCookie_ && readClientCookie) {
-      logger_->error("[{}] Cannot read client ID cookie and create ID cookie "
-         "at the same time. Connection is incomplete.", __func__);
-      return;
+      throw std::runtime_error("Cannot read client ID cookie and create ID " \
+         "cookie at the same time. Connection is incomplete.");
    }
 
    if (makeServerIDCookie_ && bipIDCookiePath_.empty()) {
-      logger_->error("[{}] ID cookie creation requested but no name supplied. "
-         "Connection is incomplete.", __func__);
-      return;
+      throw std::runtime_error("ID cookie creation requested but no name " \
+         "supplied. Connection is incomplete.");
    }
 
    if (readClientCookie && bipIDCookiePath_.empty()) {
-      logger_->error("[{}] ID cookie reading requested but no name supplied. "
-         "Connection is incomplete.", __func__);
-      return;
+      throw std::runtime_error("ID cookie reading requested but no name " \
+         "supplied. Connection is incomplete.");
    }
 
    authPeers_ = make_shared<AuthorizedPeers>();
