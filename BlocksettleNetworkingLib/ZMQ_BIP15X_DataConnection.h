@@ -6,8 +6,8 @@
 #include <mutex>
 #include <thread>
 #include <spdlog/spdlog.h>
+#include "ActiveStreamClient.h"
 #include "AuthorizedPeers.h"
-#include "ArmoryServersProvider.h"
 #include "BIP150_151.h"
 #include "ZmqDataConnection.h"
 #include "ZMQ_BIP15X_Msg.h"
@@ -41,7 +41,7 @@
 // New key + Callbacks - Depends on what the user wants.
 // Previously verified key - Accept the key and skip the callbacks.
 
-class ZmqBIP15XDataConnection : public ZmqDataConnection
+class ZmqBIP15XDataConnection : public ZmqDataConnection, public ActiveStreamClient
 {
 public:
    ZmqBIP15XDataConnection(const std::shared_ptr<spdlog::logger>& logger
@@ -54,6 +54,7 @@ public:
       , bool monitored);*/
    ~ZmqBIP15XDataConnection() noexcept override;
 
+   using ZmqDataConnection::logger_;
    using cbNewKey = std::function<void(const std::string&, const std::string&
       , std::shared_ptr<std::promise<bool>>)>;
    using invokeCB = std::function<void(const std::string&

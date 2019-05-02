@@ -1,5 +1,4 @@
 #include <chrono>
-#include <QStandardPaths>
 
 #include "FastLock.h"
 #include "MessageHolder.h"
@@ -22,8 +21,9 @@ ZmqBIP15XDataConnection::ZmqBIP15XDataConnection(
    const shared_ptr<spdlog::logger>& logger, const bool& ephemeralPeers
    , const bool& monitored, const bool& makeClientCookie
    , const bool& readServerCookie, const std::string& cookieNamePath)
-   : ZmqDataConnection(logger, monitored), makeClientIDCookie_(makeClientCookie)
-   , useServerIDCookie_(readServerCookie), bipIDCookiePath_(cookieNamePath)
+   : ZmqDataConnection(logger, monitored), ActiveStreamClient(logger)
+   , makeClientIDCookie_(makeClientCookie), useServerIDCookie_(readServerCookie)
+   , bipIDCookiePath_(cookieNamePath)
 {
    if (makeClientIDCookie_ && useServerIDCookie_) {
       throw std::runtime_error("Cannot read client ID cookie and create ID " \
@@ -42,9 +42,8 @@ ZmqBIP15XDataConnection::ZmqBIP15XDataConnection(
 
    outKeyTimePoint_ = chrono::steady_clock::now();
    currentReadMessage_.reset();
-   string datadir =
-      QStandardPaths::writableLocation(QStandardPaths::AppDataLocation).toStdString();
-   string filename(CLIENT_AUTH_PEER_FILENAME);
+   std::string datadir = SystemFilePaths::appDataLocation();
+   std::string filename(CLIENT_AUTH_PEER_FILENAME);
 
    // In general, load the server key from a special Armory wallet file.
    if (!ephemeralPeers) {

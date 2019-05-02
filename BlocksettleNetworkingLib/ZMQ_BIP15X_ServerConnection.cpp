@@ -1,5 +1,6 @@
 #include <chrono>
 
+#include "ZMQ_BIP15X_DataConnection.h"
 #include "ZMQ_BIP15X_ServerConnection.h"
 #include "MessageHolder.h"
 #include "SystemFileUtils.h"
@@ -34,7 +35,7 @@ ZmqBIP15XServerConnection::ZmqBIP15XServerConnection(
    , const std::vector<std::string>& trustedClients, const uint64_t& id
    , const bool& ephemeralPeers, const bool& makeServerCookie
    , const bool& readClientCookie, const std::string& cookiePath)
-   : ZmqServerConnection(logger, context), id_(id)
+   : ZmqStreamServerConnection(logger, context), id_(id)
    , makeServerIDCookie_(makeServerCookie), useClientIDCookie_(readClientCookie)
    , bipIDCookiePath_(cookiePath)
 {
@@ -80,7 +81,7 @@ ZmqBIP15XServerConnection::ZmqBIP15XServerConnection(
    , const std::function<std::vector<std::string>()> &cbTrustedClients
    , const bool& makeServerCookie, const bool& readClientCookie
    , const std::string& cookiePath)
-   : ZmqServerConnection(logger, context)
+   : ZmqStreamServerConnection(logger, context)
    , cbTrustedClients_(cbTrustedClients), makeServerIDCookie_(makeServerCookie)
    , useClientIDCookie_(readClientCookie), bipIDCookiePath_(cookiePath)
 
@@ -170,14 +171,15 @@ void ZmqBIP15XServerConnection::heartbeatThread()
    hbThread_ = std::thread(heartbeatProc);
 }
 
-// Create the data socket.
+// Create a dynamic data connection.
 //
 // INPUT:  None
 // OUTPUT: None
-// RETURN: The data socket. (ZmqContext::sock_ptr)
-ZmqContext::sock_ptr ZmqBIP15XServerConnection::CreateDataSocket()
+// RETURN: A pointer to the data socket. (ZmqStreamServerConnection::server_connection_ptr)
+ZmqStreamServerConnection::server_connection_ptr
+   ZmqBIP15XServerConnection::CreateActiveConnection()
 {
-   return context_->CreateServerSocket();
+   return std::make_shared<ZmqBIP15XDataConnection>(logger_);
 }
 
 // Get the incoming data.

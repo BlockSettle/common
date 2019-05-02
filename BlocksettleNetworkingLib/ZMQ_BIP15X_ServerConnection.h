@@ -7,10 +7,11 @@
 #include <mutex>
 #include <thread>
 #include <spdlog/spdlog.h>
+//#include "ActiveStreamClient.h"
 #include "AuthorizedPeers.h"
 #include "BIP150_151.h"
 #include "EncryptionUtils.h"
-#include "ZmqServerConnection.h"
+#include "ZmqStreamServerConnection.h"
 #include "ZMQ_BIP15X_Msg.h"
 
 #define SERVER_AUTH_PEER_FILENAME "server.peers"
@@ -47,7 +48,7 @@ public:
 // The class establishing ZMQ sockets and establishing BIP 150/151 handshakes
 // before encrypting/decrypting the on-the-wire data using BIP 150/151. Used by
 // the server in a connection.
-class ZmqBIP15XServerConnection : public ZmqServerConnection
+class ZmqBIP15XServerConnection : public ZmqStreamServerConnection
 {
 public:
    ZmqBIP15XServerConnection(const std::shared_ptr<spdlog::logger>& logger
@@ -82,8 +83,8 @@ public:
    void addAuthPeer(const BinaryData& inKey, const std::string& keyName);
 
 protected:
-   // Overridden functions from ZmqServerConnection.
-   ZmqContext::sock_ptr CreateDataSocket() override;
+   // Overridden functions from ZmqStreamServerConnection.
+   server_connection_ptr CreateActiveConnection() override;
    bool ReadFromDataSocket() override;
 
    void resetBIP151Connection(const std::string& clientID);
@@ -105,12 +106,11 @@ private:
    std::shared_ptr<AuthorizedPeers> authPeers_;
    std::map<std::string, std::unique_ptr<ZmqBIP15XPerConnData>> socketConnMap_;
    BinaryData leftOverData_;
-   bool bipIDCookieExists_ = false;
    uint64_t id_;
    std::mutex  clientsMtx_;
    std::function<std::vector<std::string>()> cbTrustedClients_;
-   const bool useClientIDCookie_;
    const bool makeServerIDCookie_;
+   const bool useClientIDCookie_;
    const std::string bipIDCookiePath_;
 
    const int   heartbeatInterval_ = 30000 * 2;   // allow some toleration on heartbeat miss
