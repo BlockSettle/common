@@ -208,6 +208,8 @@ bool ApplicationSettings::isDefault(Setting set) const
 
 void ApplicationSettings::set(Setting s, const QVariant &val, bool toFile)
 {
+   bool changed = false;
+
    if (val.isValid()) {
       FastLock lock(lock_);
       auto itSD = settingDefs_.find(s);
@@ -216,13 +218,18 @@ void ApplicationSettings::set(Setting s, const QVariant &val, bool toFile)
          itSD->second.read = true;
          if (val != itSD->second.value) {
             itSD->second.value = val;
-            emit settingChanged(s, val);
+            changed = true;
          }
 
          if (toFile && !itSD->second.path.isEmpty()) {
             settings_.setValue(itSD->second.path, val);
          }
       }
+   }
+
+   lock_.clear();
+   if (changed) {
+      emit settingChanged(s, val);
    }
 }
 

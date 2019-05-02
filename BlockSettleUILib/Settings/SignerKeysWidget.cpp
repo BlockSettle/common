@@ -63,6 +63,8 @@ void SignerKeysWidget::onDeleteSignerKey()
    if (selectedRow < 0) {
       return;
    }
+
+   signerKeysModel_->deleteSignerKey(selectedRow);
 }
 
 void SignerKeysWidget::onEdit()
@@ -91,6 +93,12 @@ void SignerKeysWidget::onSave()
    }
 
    int index = ui_->tableViewSignerKeys->selectionModel()->selectedIndexes().first().row();
+   SignerKey signerKey;
+   signerKey.name = ui_->lineEditName->text();
+   signerKey.address = ui_->lineEditAddress->text();
+   signerKey.key = ui_->lineEditKey->text();
+
+   signerKeysModel_->editSignerKey(index, signerKey);
 }
 
 void SignerKeysWidget::resetForm()

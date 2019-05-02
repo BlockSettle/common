@@ -75,10 +75,9 @@ QVariant SignerKeysModel::headerData(int section, Qt::Orientation orientation, i
 
 void SignerKeysModel::addSignerKey(const SignerKey &key)
 {
-   QList<SignerKey> keysCopy = signerKeys_;
-
-   keysCopy.append(key);
-   //appSettings_->set(ApplicationSettings::remoteSignerKeys, keysCopy);
+   QList<SignerKey> signerKeysCopy = signerKeys_;
+   signerKeysCopy.append(key);
+   saveSignerKeys(signerKeysCopy);
    update();
 }
 
@@ -86,12 +85,11 @@ void SignerKeysModel::deleteSignerKey(int index)
 {
    QList<SignerKey> signerKeysCopy = signerKeys_;
    signerKeysCopy.removeAt(index);
-
    saveSignerKeys(signerKeysCopy);
    update();
 }
 
-void SignerKeysModel::modifySignerKey(int index, const SignerKey &key)
+void SignerKeysModel::editSignerKey(int index, const SignerKey &key)
 {
    if (index < 0 || index > signerKeys_.size()) {
       return;
@@ -119,17 +117,17 @@ void SignerKeysModel::update()
    beginResetModel();
 
    signerKeys_.clear();
-   QStringList keysString = appSettings_->get(ApplicationSettings::remoteSignerKeys).toString().split(QStringLiteral(","));
+   QStringList keysString = appSettings_->get(ApplicationSettings::remoteSignerKeys).toStringList();
 
    SignerKey signerKey;
    for (const QString &s: keysString) {
-      const QStringList &keyString = s.split(QStringLiteral(""));
-      if (keyString.size() != 3) {
+      const QStringList &ks = s.split(QStringLiteral(":"));
+      if (ks.size() != 3) {
          continue;
       }
-      signerKey.name = keysString.at(0);
-      signerKey.address = keysString.at(1);
-      signerKey.key = keysString.at(2);
+      signerKey.name = ks.at(0);
+      signerKey.address = ks.at(1);
+      signerKey.key = ks.at(2);
 
       signerKeys_.append(signerKey);
    }
@@ -137,9 +135,5 @@ void SignerKeysModel::update()
    endResetModel();
 }
 
-void SignerKeysModel::getSignerKeys()
-{
-
-}
 
 

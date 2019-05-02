@@ -39,7 +39,7 @@ public:
 
    void addSignerKey(const SignerKey &key);
    void deleteSignerKey(int index);
-   void modifySignerKey(int index, const SignerKey &key);
+   void editSignerKey(int index, const SignerKey &key);
 
    void saveSignerKeys(QList<SignerKey> signerKeys);
 
@@ -49,7 +49,6 @@ public slots:
 
 private:
    std::shared_ptr<ApplicationSettings> appSettings_;
-   void getSignerKeys();
 
 
    enum ArmoryServersViewViewColumns : int
