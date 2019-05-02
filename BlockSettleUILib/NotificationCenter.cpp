@@ -221,7 +221,7 @@ void NotificationTrayIconResponder::respond(bs::ui::NotifyType nt, bs::ui::Notif
          return;
       }
       title = tr("New friend request");
-      text = msg[0].toString() + tr(" wants to be friends with you");
+      text = tr("%1 wants to be friends with you").arg(msg[0].toString());
       break;
 
    default: return;
