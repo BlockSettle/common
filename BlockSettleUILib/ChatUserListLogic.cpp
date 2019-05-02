@@ -79,7 +79,6 @@ void ChatUserListLogic::onIncomingFriendRequest(const UserIdList &userIdList)
    {
       const QString searchUserId = QString::fromStdString(userId);
       chatUserModelPtr_->setUserState(searchUserId, ChatUserData::State::IncomingFriendRequest);
-      NotificationCenter::notify(bs::ui::NotifyType::FriendRequest, { searchUserId });
    }
 }
 
