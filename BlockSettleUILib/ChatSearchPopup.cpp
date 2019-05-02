@@ -16,7 +16,7 @@ ChatSearchPopup::ChatSearchPopup(QWidget *parent) :
    connect(ui_->chatSearchPopupLabel, &QLabel::customContextMenuRequested, this, &ChatSearchPopup::showMenu);
 
    searchPopupMenu_ = new QMenu(this);   
-   userContactAction_ = searchPopupMenu_->addAction(tr(""));
+   userContactAction_ = searchPopupMenu_->addAction(QString());
 }
 
 ChatSearchPopup::~ChatSearchPopup()
