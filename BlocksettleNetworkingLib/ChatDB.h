@@ -79,10 +79,12 @@ public:
    bool updateContact(const ContactUserData &contact);
    bool getContact(const QString& userId, ContactUserData& contact);
 
-//   bool insertContactRecord(const std::shared_ptr<Chat::ContactRecordData> contact);
-//   bool removeContactRecord(const std::shared_ptr<Chat::ContactRecordData> contact);
-//   bool updateContactRecord(const std::shared_ptr<Chat::ContactRecordData> contact);
-//   std::vector<std::shared_ptr<Chat::ContactRecordData>> getContactRecordList(const QString userdId);
+   bool insertContactRecord(const std::shared_ptr<Chat::ContactRecordData>& contact);
+   bool removeContactRecord(const std::shared_ptr<Chat::ContactRecordData>& contact);
+   bool updateContactRecord(const std::shared_ptr<Chat::ContactRecordData>& contact);
+   bool isContactRecordExists(const QString& userId, const QString& contactId);
+   std::vector<std::shared_ptr<Chat::ContactRecordData>> getContactRecordList(const QString& userId);
+   std::shared_ptr<Chat::ContactRecordData> getContactRecord(const QString& userId, const QString& contactId);
 
 private:
    bool createMissingTables();

@@ -6,6 +6,18 @@
 #include <QtSql/QSqlError>
 #include <QVariant>
 
+#ifndef BS_QUERY
+#define BS_QUERY_DEFINED
+#define BS_QUERY(__name__, __cmd__) \
+   QSqlQuery __name__(db_); \
+   __name__.prepare(QLatin1String(__cmd__))
+#endif
+
+namespace {
+   using QueryExecutor = std::function<bool(QSqlQuery&, const char* codePlace)>;
+   static QueryExecutor queryCheckExecute = nullptr;
+   #define checkExecute(query) queryCheckExecute(query, __FUNCTION__)
+}
 
 ChatDB::ChatDB(const std::shared_ptr<spdlog::logger> &logger, const QString &dbFile)
    : logger_(logger)
@@ -13,10 +25,23 @@ ChatDB::ChatDB(const std::shared_ptr<spdlog::logger> &logger, const QString &dbF
       QLatin1String("user_keys"),
       QLatin1String("room_keys"),
       QLatin1String("messages"),
-      QLatin1String("contacts")})
+      QLatin1String("contacts"),
+      QLatin1String("contact_records")})
 {
+   queryCheckExecute = [this](QSqlQuery& q, const char* codePlace) -> bool
+   {
+//      /FastLock lock(dbLock_);
+      if (!q.exec()) {
+         logger_->error("[{}]: Requested query execution error: Query: {}, Error: {}", codePlace,
+            q.executedQuery().toStdString(), q.lastError().text().toStdString());
+         return false;
+      }
+      return true;
+   };
+
    db_ = QSqlDatabase::addDatabase(QLatin1String("QSQLITE"), QLatin1String("chat"));
    db_.setDatabaseName(dbFile);
+
 
    if (!db_.open()) {
       throw std::runtime_error("failed to open " + db_.connectionName().toStdString()
@@ -56,6 +81,24 @@ ChatDB::ChatDB(const std::shared_ptr<spdlog::logger> &logger, const QString &dbF
           }
            return true;
        }},
+      {QLatin1String("contact_records"), [this, db = db_] {
+       QString createQuery = QLatin1String("CREATE TABLE IF NOT EXISTS contact_records ("
+          "id INTEGER PRIMARY KEY, "
+          "user_id CHAR(16) NOT NULL, "
+          "contact_user_id CHAR(16) NOT NULL, "
+          "contact_status INTEGER, "
+          "public_key TEXT"
+          ");");
+
+          QSqlQuery query(db);
+          query.prepare(createQuery);
+          if (!query.exec()) {
+            logger_->warn("[ChatDB] failed to create table Error: {} Query: {}",
+             query.lastError().text().toStdString(), query.lastQuery().toStdString());
+            return false;
+          }
+          return true;
+     }},
 
       {QLatin1String("room_keys"), [db = db_] {
          const QLatin1String query("CREATE TABLE IF NOT EXISTS room_keys ("\
@@ -471,3 +514,103 @@ bool ChatDB::getContact(const QString& userId, ContactUserData& contact)
 
    return false;
 }
+
+bool ChatDB::insertContactRecord(const std::shared_ptr<Chat::ContactRecordData> &contact)
+{
+   BS_QUERY(query, "INSERT INTO contact_records (user_id, contact_user_id, contact_status, public_key) VALUES (:uid, :cuid, :status, :pk);");
+
+   query.bindValue(QLatin1String(":uid"), contact->getContactForId());
+   query.bindValue(QLatin1String(":cuid"), contact->getContactId());
+   query.bindValue(QLatin1String(":status"), static_cast<int>(contact->getContactStatus()));
+   query.bindValue(QLatin1String(":pk"), QString::fromStdString(Chat::publicKeyToString(contact->getContactPublicKey())));
+
+   return checkExecute(query);
+
+}
+
+bool ChatDB::removeContactRecord(const std::shared_ptr<Chat::ContactRecordData> &contact)
+{
+   BS_QUERY(query, "DELETE FROM user_contacts_relation WHERE(user_id =:uid, contact_user_id = :cuid);");
+
+   query.bindValue(QLatin1String(":uid"), contact->getContactForId());
+   query.bindValue(QLatin1String(":cuid"), contact->getContactId());
+
+   return checkExecute(query);
+}
+
+bool ChatDB::updateContactRecord(const std::shared_ptr<Chat::ContactRecordData> &contact)
+{
+   BS_QUERY(query, "UPDATE user_contacts_relation SET contact_status = :cstatus, public_key = :pk  WHERE (user_id = :uid AND contact_user_id = :cuid);");
+
+   query.bindValue(QLatin1String(":uid"), contact->getContactForId());
+   query.bindValue(QLatin1String(":cuid"), contact->getContactId());
+   query.bindValue(QLatin1String(":cstatus"), static_cast<int>(contact->getContactStatus()));
+   query.bindValue(QLatin1String(":pk"), QString::fromStdString(Chat::publicKeyToString(contact->getContactPublicKey())));
+
+   return checkExecute(query);
+}
+
+bool ChatDB::isContactRecordExists(const QString &userId, const QString &contactId)
+{
+   BS_QUERY(query, "SELECT * FROM contact_records "
+                   "WHERE (user_id =:uid, contact_user_id = :cuid);");
+
+   query.bindValue(QLatin1String(":uid"), userId);
+   query.bindValue(QLatin1String(":cuid"), contactId);
+
+   if (checkExecute(query)) {
+      return query.first();
+   }
+
+   return false;
+}
+
+std::vector<std::shared_ptr<Chat::ContactRecordData> > ChatDB::getContactRecordList(const QString &userId)
+{
+   BS_QUERY(query, "SELECT * FROM contact_records "
+                   "WHERE user_id = :uid;");
+
+   query.bindValue(QLatin1String(":uid"), userId);
+
+   std::vector<std::shared_ptr<Chat::ContactRecordData>> found;
+
+   if (checkExecute(query)) {
+      while (query.next()) {
+         QString uid = query.value(QLatin1String("user_id")).toString();
+         QString contactId = query.value(QLatin1String("contact_user_id")).toString();
+         Chat::ContactStatus status = static_cast<Chat::ContactStatus>(query.value(QLatin1String("contact_status")).toInt());
+         autheid::PublicKey publicKey = Chat::publicKeyFromString(query.value(QLatin1String("public_key")).toString().toStdString());
+         auto contact = std::make_shared<Chat::ContactRecordData>(uid, contactId, status, publicKey);
+         found.push_back(contact);
+      }
+   }
+   return found;
+}
+
+std::shared_ptr<Chat::ContactRecordData> ChatDB::getContactRecord(const QString &userId, const QString& contactId)
+{
+   BS_QUERY(query, "SELECT * FROM contact_records "
+                   "WHERE (user_id =:uid, contact_user_id = :cuid);");
+
+   query.bindValue(QLatin1String(":uid"), userId);
+   query.bindValue(QLatin1String(":cuid"), contactId);
+
+   std::shared_ptr<Chat::ContactRecordData> contact = nullptr;
+
+   if (checkExecute(query)) {
+      if (query.first()) {
+         QString uid = query.value(QLatin1String("user_id")).toString();
+         QString contactId = query.value(QLatin1String("contact_user_id")).toString();
+         Chat::ContactStatus status = static_cast<Chat::ContactStatus>(query.value(QLatin1String("contact_status")).toInt());
+         autheid::PublicKey publicKey = Chat::publicKeyFromString(query.value(QLatin1String("public_key")).toString().toStdString());
+         contact = std::make_shared<Chat::ContactRecordData>(uid, contactId, status, publicKey);
+      }
+   }
+
+   return contact;
+}
+
+#ifdef BS_QUERY_DEFINED
+#undef BS_QUERY_DEFINED
+#undef BS_QUERY
+#endif
