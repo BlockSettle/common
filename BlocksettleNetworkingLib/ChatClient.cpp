@@ -565,7 +565,7 @@ void ChatClient::OnMessages(const Chat::MessagesResponse &response)
          continue;
       }
 
-       msg->setFlag(Chat::MessageData::State::Acknowledged);
+      msg->setFlag(Chat::MessageData::State::Acknowledged);
       switch (msg->encryptionType()) {
          case Chat::MessageData::EncryptionType::AEAD:{
             const auto& itPublicKey = pubKeys_.find(msg->getSenderId());
@@ -575,7 +575,7 @@ void ChatClient::OnMessages(const Chat::MessagesResponse &response)
             } else {
                BinaryData remotePublicKey(itPublicKey->second.data(), itPublicKey->second.size());
                SecureBinaryData localPrivateKey(ownPrivKey_.data(), ownPrivKey_.size());
-               if (!msg->decrypt_aead(remotePublicKey, localPrivateKey, logger_)) {
+               if (!msg->decryptAead(remotePublicKey, localPrivateKey, logger_)) {
                   logger_->error("[ChatClient::{}] Failed to decrypt msg.", __func__);
                   msg->setFlag(Chat::MessageData::State::Invalid);
                }
@@ -589,7 +589,7 @@ void ChatClient::OnMessages(const Chat::MessagesResponse &response)
          }
             break;
          case Chat::MessageData::EncryptionType::IES:{
-            logger_->error("[ChatClient::{}] This could not happend! Failed to decrypt msg.", __func__);
+            logger_->error("[ChatClient::{}] This could not happen! Failed to decrypt msg.", __func__);
             model_->insertContactsMessage(msg);
          }
             break;
@@ -745,7 +745,7 @@ std::shared_ptr<Chat::MessageData> ChatClient::sendOwnMessage(
 
    BinaryData remotePublicKey(itPub->second.data(), itPub->second.size());
    SecureBinaryData localPrivateKey(ownPrivKey_.data(), ownPrivKey_.size());
-   if (!messageData.encrypt_aead(remotePublicKey, localPrivateKey, nonce, logger_)) {
+   if (!messageData.encryptAead(remotePublicKey, localPrivateKey, nonce, logger_)) {
       logger_->error("[ChatClient::sendMessage] failed to encrypt by aead {}", messageData.getId().toStdString());
       return result;
    }

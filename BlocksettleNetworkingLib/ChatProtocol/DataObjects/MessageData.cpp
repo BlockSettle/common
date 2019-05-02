@@ -110,7 +110,7 @@ namespace Chat {
       return true;
    }
 
-   bool MessageData::encrypt_aead(const BinaryData& receiverPubKey, const SecureBinaryData& ownPrivKey, const Botan::SecureVector<uint8_t> &nonce, const std::shared_ptr<spdlog::logger>& logger)
+   bool MessageData::encryptAead(const BinaryData& receiverPubKey, const SecureBinaryData& ownPrivKey, const Botan::SecureVector<uint8_t> &nonce, const std::shared_ptr<spdlog::logger>& logger)
    {
       if (encryptionType_ != EncryptionType::Unencrypted)
       {
@@ -175,7 +175,7 @@ namespace Chat {
       return true;
    }
 
-   bool MessageData::decrypt_aead(const BinaryData& senderPubKey, const SecureBinaryData& ownPrivKey, const std::shared_ptr<spdlog::logger>& logger)
+   bool MessageData::decryptAead(const BinaryData& senderPubKey, const SecureBinaryData& ownPrivKey, const std::shared_ptr<spdlog::logger>& logger)
    {
       if (encryptionType_ != EncryptionType::AEAD)
       {
