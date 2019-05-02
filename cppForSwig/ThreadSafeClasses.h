@@ -448,6 +448,10 @@ public:
 				{
 					auto&& retval = Queue<T>::pop_front(false);
 					waiting_.fetch_sub(1, std::memory_order_relaxed);
+
+               std::unique_lock<std::mutex> lock(condVarMutex_);
+               --flag_;
+
 					return std::move(retval);
 				}
 				catch (IsEmpty&)
