@@ -470,6 +470,12 @@ void ChatClient::readDatabase()
 
       auto pk = autheid::PublicKey();
 
+//      auto contacts = chatDb_->getContactRecordList(QString::fromStdString(currentUserId_));
+//      for (auto contact : contacts){
+//         model_->insertContactObject(contact);
+//         retrieveUserMessages(contact->getContactId());
+//      }
+
       auto contact = std::make_shared<Chat::ContactRecordData>(QString::fromStdString(model_->currentUser()), c.userId(), status, pk);
       model_->insertContactObject(contact);
       retrieveUserMessages(contact->getContactId());
