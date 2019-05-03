@@ -96,7 +96,7 @@ public:
 
    // If context is not null and cbInMainThread is true then the callback will be called
    // on main thread only if context is still alive.
-   bool getLedgerDelegateForAddress(const std::string &walletId, const bs::Address &, LedgerDelegateCb &);
+   bool getLedgerDelegateForAddress(const std::string &walletId, const bs::Address &, const LedgerDelegateCb &);
    virtual bool getWalletsLedgerDelegate(const LedgerDelegateCb &);
 
    using TxCb = std::function<void(const Tx&)>;
