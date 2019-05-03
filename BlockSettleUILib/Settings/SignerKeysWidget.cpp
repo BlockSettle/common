@@ -49,7 +49,7 @@ void SignerKeysWidget::onAddSignerKey()
    signerKey.address = ui_->lineEditAddress->text();
    signerKey.key = ui_->lineEditKey->text();
 
-   signerKeysModel_->addSignerKey(signerKey);
+   signerKeysModel_->addSignerPubKey(signerKey);
    resetForm();
 }
 
@@ -64,7 +64,7 @@ void SignerKeysWidget::onDeleteSignerKey()
       return;
    }
 
-   signerKeysModel_->deleteSignerKey(selectedRow);
+   signerKeysModel_->deleteSignePubrKey(selectedRow);
 }
 
 void SignerKeysWidget::onEdit()
@@ -74,11 +74,11 @@ void SignerKeysWidget::onEdit()
    }
 
    int index = ui_->tableViewSignerKeys->selectionModel()->selectedIndexes().first().row();
-   if (index >= signerKeysModel_->signerKeys_.size()) {
+   if (index >= signerKeysModel_->signerPubKeys().size()) {
       return;
    }
 
-   SignerKey signerKey = signerKeysModel_->signerKeys_.at(index);
+   SignerKey signerKey = signerKeysModel_->signerPubKeys().at(index);
    ui_->stackedWidgetAddSave->setCurrentWidget(ui_->pageSaveSignerKeyButton);
 
    ui_->lineEditName->setText(signerKey.name);
@@ -98,7 +98,7 @@ void SignerKeysWidget::onSave()
    signerKey.address = ui_->lineEditAddress->text();
    signerKey.key = ui_->lineEditKey->text();
 
-   signerKeysModel_->editSignerKey(index, signerKey);
+   signerKeysModel_->editSignerPubKey(index, signerKey);
 }
 
 void SignerKeysWidget::resetForm()

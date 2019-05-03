@@ -29,33 +29,32 @@ public:
    SignerKeysModel(SignerKeysModel&&) = delete;
    SignerKeysModel& operator = (SignerKeysModel&&) = delete;
 
-public:
    int columnCount(const QModelIndex &parent = QModelIndex()) const override;
    int rowCount(const QModelIndex &parent = QModelIndex()) const override;
 
    QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
    QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
 
+   void addSignerPubKey(const SignerKey &key);
+   void deleteSignePubrKey(int index);
+   void editSignerPubKey(int index, const SignerKey &key);
+   void saveSignerPubKeys(QList<SignerKey> signerKeys);
 
-   void addSignerKey(const SignerKey &key);
-   void deleteSignerKey(int index);
-   void editSignerKey(int index, const SignerKey &key);
+   QList<SignerKey> signerPubKeys() const;
 
-   void saveSignerKeys(QList<SignerKey> signerKeys);
-
-   QList<SignerKey> signerKeys_;
 public slots:
    void update();
 
 private:
    std::shared_ptr<ApplicationSettings> appSettings_;
+   QList<SignerKey> signerPubKeys_;
 
-
-   enum ArmoryServersViewViewColumns : int
+   enum ArmoryServersViewColumns : int
    {
       ColumnName,
       ColumnAddress,
-      ColumnKey
+      ColumnKey,
+      ColumnsCount
    };
 };
 

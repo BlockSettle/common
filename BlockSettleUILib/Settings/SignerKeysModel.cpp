@@ -4,10 +4,6 @@
 #include "EncryptionUtils.h"
 #include "ArmoryConnection.h"
 
-namespace {
-   int kSignerKeysColumns = 3;
-}
-
 SignerKeysModel::SignerKeysModel(const std::shared_ptr<ApplicationSettings> &appSettings
                                                , QObject *parent)
    : QAbstractTableModel(parent)
@@ -23,18 +19,18 @@ SignerKeysModel::SignerKeysModel(const std::shared_ptr<ApplicationSettings> &app
 
 int SignerKeysModel::columnCount(const QModelIndex&) const
 {
-   return kSignerKeysColumns;
+   return static_cast<int>(SignerKeysModel::ColumnsCount);
 }
 
 int SignerKeysModel::rowCount(const QModelIndex&) const
 {
-   return signerKeys_.size();
+   return signerPubKeys_.size();
 }
 
 QVariant SignerKeysModel::data(const QModelIndex &index, int role) const
 {
-   if (index.row() >= signerKeys_.size()) return QVariant();
-   SignerKey signerKey = signerKeys_.at(index.row());
+   if (index.row() >= signerPubKeys_.size()) return QVariant();
+   SignerKey signerKey = signerPubKeys_.at(index.row());
 
    if (role == Qt::DisplayRole) {
       switch (index.column()) {
@@ -58,12 +54,12 @@ QVariant SignerKeysModel::headerData(int section, Qt::Orientation orientation, i
    }
 
    if (role == Qt::DisplayRole) {
-      switch(static_cast<ArmoryServersViewViewColumns>(section)) {
-      case ArmoryServersViewViewColumns::ColumnName:
+      switch(static_cast<ArmoryServersViewColumns>(section)) {
+      case ArmoryServersViewColumns::ColumnName:
          return tr("Name");
-      case ArmoryServersViewViewColumns::ColumnAddress:
+      case ArmoryServersViewColumns::ColumnAddress:
          return tr("Address");
-      case ArmoryServersViewViewColumns::ColumnKey:
+      case ArmoryServersViewColumns::ColumnKey:
          return tr("Key");
       default:
          return QVariant();
@@ -73,35 +69,35 @@ QVariant SignerKeysModel::headerData(int section, Qt::Orientation orientation, i
    return QVariant();
 }
 
-void SignerKeysModel::addSignerKey(const SignerKey &key)
+void SignerKeysModel::addSignerPubKey(const SignerKey &key)
 {
-   QList<SignerKey> signerKeysCopy = signerKeys_;
+   QList<SignerKey> signerKeysCopy = signerPubKeys_;
    signerKeysCopy.append(key);
-   saveSignerKeys(signerKeysCopy);
+   saveSignerPubKeys(signerKeysCopy);
    update();
 }
 
-void SignerKeysModel::deleteSignerKey(int index)
+void SignerKeysModel::deleteSignePubrKey(int index)
 {
-   QList<SignerKey> signerKeysCopy = signerKeys_;
+   QList<SignerKey> signerKeysCopy = signerPubKeys_;
    signerKeysCopy.removeAt(index);
-   saveSignerKeys(signerKeysCopy);
+   saveSignerPubKeys(signerKeysCopy);
    update();
 }
 
-void SignerKeysModel::editSignerKey(int index, const SignerKey &key)
+void SignerKeysModel::editSignerPubKey(int index, const SignerKey &key)
 {
-   if (index < 0 || index > signerKeys_.size()) {
+   if (index < 0 || index > signerPubKeys_.size()) {
       return;
    }
-   QList<SignerKey> signerKeysCopy = signerKeys_;
+   QList<SignerKey> signerKeysCopy = signerPubKeys_;
    signerKeysCopy[index] = key;
 
-   saveSignerKeys(signerKeysCopy);
+   saveSignerPubKeys(signerKeysCopy);
    update();
 }
 
-void SignerKeysModel::saveSignerKeys(QList<SignerKey> signerKeys)
+void SignerKeysModel::saveSignerPubKeys(QList<SignerKey> signerKeys)
 {
    QStringList signerKeysString;
    for (const SignerKey &key : signerKeys) {
@@ -116,7 +112,7 @@ void SignerKeysModel::update()
 {
    beginResetModel();
 
-   signerKeys_.clear();
+   signerPubKeys_.clear();
    QStringList keysString = appSettings_->get(ApplicationSettings::remoteSignerKeys).toStringList();
 
    SignerKey signerKey;
@@ -129,10 +125,15 @@ void SignerKeysModel::update()
       signerKey.address = ks.at(1);
       signerKey.key = ks.at(2);
 
-      signerKeys_.append(signerKey);
+      signerPubKeys_.append(signerKey);
    }
 
    endResetModel();
+}
+
+QList<SignerKey> SignerKeysModel::signerPubKeys() const
+{
+   return signerPubKeys_;
 }
 
 
