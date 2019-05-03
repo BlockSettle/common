@@ -87,7 +87,7 @@ public:
 
    using RegisterWalletCb = std::function<void(const std::string &regId)>;
    using WalletsHistoryCb = std::function<void (const std::vector<ClientClasses::LedgerEntry>&)>;
-   using LedgerDelegateCb = const std::function<void(const std::shared_ptr<AsyncClient::LedgerDelegate> &)>;
+   using LedgerDelegateCb = std::function<void(const std::shared_ptr<AsyncClient::LedgerDelegate> &)>;
 
    virtual std::string registerWallet(std::shared_ptr<AsyncClient::BtcWallet> &, const std::string &walletId
       , const std::vector<BinaryData> &addrVec, const RegisterWalletCb&
