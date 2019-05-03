@@ -77,7 +77,7 @@ void SignerKeysModel::addSignerPubKey(const SignerKey &key)
    update();
 }
 
-void SignerKeysModel::deleteSignePubrKey(int index)
+void SignerKeysModel::deleteSignerPubKey(int index)
 {
    QList<SignerKey> signerKeysCopy = signerPubKeys_;
    signerKeysCopy.removeAt(index);

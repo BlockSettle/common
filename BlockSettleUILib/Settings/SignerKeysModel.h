@@ -36,7 +36,7 @@ public:
    QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
 
    void addSignerPubKey(const SignerKey &key);
-   void deleteSignePubrKey(int index);
+   void deleteSignerPubKey(int index);
    void editSignerPubKey(int index, const SignerKey &key);
    void saveSignerPubKeys(QList<SignerKey> signerKeys);
 

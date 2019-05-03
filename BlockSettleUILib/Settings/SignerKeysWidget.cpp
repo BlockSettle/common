@@ -64,7 +64,7 @@ void SignerKeysWidget::onDeleteSignerKey()
       return;
    }
 
-   signerKeysModel_->deleteSignePubrKey(selectedRow);
+   signerKeysModel_->deleteSignerPubKey(selectedRow);
 }
 
 void SignerKeysWidget::onEdit()

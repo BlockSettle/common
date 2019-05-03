@@ -148,9 +148,9 @@ void SignerSettingsPage::onManageSignerKeys()
    l->setContentsMargins(0,0,0,0);
    d->setLayout(l);
    d->setWindowTitle(tr("Import Signer Keys"));
-   d->resize(847, 593);
 
    SignerKeysWidget *signerKeysWidget = new SignerKeysWidget(appSettings_, this);
+   d->resize(signerKeysWidget->size());
 
    l->addWidget(signerKeysWidget);
 
