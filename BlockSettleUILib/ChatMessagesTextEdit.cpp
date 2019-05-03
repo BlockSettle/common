@@ -133,7 +133,7 @@ QImage ChatMessagesTextEdit::statusImage(const int &row)
    
    if (state & static_cast<int>(Chat::MessageData::State::Sent)){
 
-      if (isGroupRoom_){
+      if (isGroupRoom_) {
          statusImage = statusImageRead_;
       } else {
          statusImage = statusImageConnecting_;
