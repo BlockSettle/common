@@ -118,6 +118,7 @@ class QtSettings(Configurator):
         command.append('-prefix')
         command.append(self.get_install_dir())
 
+        compile_variables = os.environ.copy()
         result = subprocess.call(command, env=compile_variables)
         if result != 0:
             print('Configure of Qt failed')

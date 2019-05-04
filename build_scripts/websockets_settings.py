@@ -29,9 +29,13 @@ class WebsocketsSettings(Configurator):
         return True
 
     def config(self):
+        # Removing HTTPS is safe for our purposes. WS connections are secured by
+        # BIP 150/151, which basically acts as a lightweight TLS replacement.
         command = ['cmake',
                    os.path.join(self._project_settings.get_sources_dir(), self._package_name + '-' + self._version),
                    '-DLWS_WITHOUT_SERVER=OFF',
+                   '-DLWS_SSL_CLIENT_USE_OS_CA_CERTS=0',
+                   '-DLWS_WITH_SSL=0',
                    '-DLWS_WITHOUT_TESTAPPS=ON',
                    '-DLWS_WITHOUT_TEST_SERVER=ON',
                    '-DLWS_WITHOUT_TEST_PING=ON',
