@@ -420,6 +420,10 @@ void ChatMessagesTextEdit::onMessagesUpdate(const std::vector<std::shared_ptr<Ch
       insertMessage(message);
    }
    for (const auto& message : messages) {
+      if (message->getSenderId() != currentChatId_){
+         continue;
+      }
+
       if (messageReadHandler_ && !(message->getState() & (int)Chat::MessageData::State::Read) ){
          messageReadHandler_->onMessageRead(message);
       }

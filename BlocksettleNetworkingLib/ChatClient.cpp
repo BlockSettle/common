@@ -1094,4 +1094,5 @@ void ChatClient::onMessageRead(std::shared_ptr<Chat::MessageData> message)
    message->setFlag(Chat::MessageData::State::Read);
    chatDb_->updateMessageStatus(message->getId(), message->getState());
    model_->notifyMessageChanged(message);
+   sendUpdateMessageState(message);
 }
