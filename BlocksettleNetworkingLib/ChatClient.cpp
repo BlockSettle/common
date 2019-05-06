@@ -484,10 +484,10 @@ void ChatClient::sendHeartbeat()
    }
 }
 
-void ChatClient::onMessageRead(const std::shared_ptr<Chat::MessageData>& message)
-{
-   addMessageState(message, Chat::MessageData::State::Read);
-}
+//void ChatClient::onMessageRead(const std::shared_ptr<Chat::MessageData>& message)
+//{
+//   addMessageState(message, Chat::MessageData::State::Read);
+//}
 
 void ChatClient::onForceLogoutSignal()
 {
@@ -1087,4 +1087,11 @@ void ChatClient::onActionSearchUsers(const std::string &text)
 void ChatClient::onActionResetSearch()
 {
    model_->clearSearch();
+}
+
+void ChatClient::onMessageRead(std::shared_ptr<Chat::MessageData> message)
+{
+   message->setFlag(Chat::MessageData::State::Read);
+   chatDb_->updateMessageStatus(message->getId(), message->getState());
+   model_->notifyMessageChanged(message);
 }

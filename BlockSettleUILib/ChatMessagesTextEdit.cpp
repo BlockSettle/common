@@ -242,6 +242,11 @@ void ChatMessagesTextEdit::setHandler(std::shared_ptr<ChatItemActionsHandler> ha
    handler_ = handler;
 }
 
+void ChatMessagesTextEdit::setMessageReadHandler(std::shared_ptr<ChatMessageReadHandler> handler)
+{
+   messageReadHandler_ = handler;
+}
+
 void  ChatMessagesTextEdit::urlActivated(const QUrl &link) {
    if (link.toString() == QLatin1Literal("load_more")) {
       loadMore();
@@ -414,6 +419,11 @@ void ChatMessagesTextEdit::onMessagesUpdate(const std::vector<std::shared_ptr<Ch
    for (const auto& message : messages) {
       insertMessage(message);
    }
+   for (const auto& message : messages) {
+      if (messageReadHandler_ && !(message->getState() & (int)Chat::MessageData::State::Read) ){
+         messageReadHandler_->onMessageRead(message);
+      }
+   }
    return;
 
    if (isFirstFetch) {
@@ -478,11 +488,13 @@ void ChatMessagesTextEdit::onMessagesUpdate(const std::vector<std::shared_ptr<Ch
 
 void ChatMessagesTextEdit::onRoomMessagesUpdate(const std::vector<std::shared_ptr<Chat::MessageData>>& messages, bool isFirstFetch)
 {
-   for (const auto& message: messages) {
+   for (const auto& message : messages) {
       messages_[currentChatId_].push_back(message);
    }
 
-   for (const auto& message: messages) {
+
+
+   for (const auto& message : messages) {
       insertMessage(message);
    }
    return;
