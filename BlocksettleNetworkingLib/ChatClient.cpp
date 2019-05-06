@@ -116,13 +116,13 @@ void ChatClient::OnLoginReturned(const Chat::LoginResponse &response)
 {
    if (response.getStatus() == Chat::LoginResponse::Status::LoginOk) {
       loggedIn_ = true;
+      emit ConnectedToServer();
       model_->setCurrentUser(currentUserId_);
       readDatabase();
       auto request1 = std::make_shared<Chat::MessagesRequest>("", currentUserId_, currentUserId_);
       sendRequest(request1);
       auto request2 = std::make_shared<Chat::ContactsListRequest>("", currentUserId_);
       sendRequest(request2);
-      emit ConnectedToServer();
    }
    else {
       loggedIn_ = false;
