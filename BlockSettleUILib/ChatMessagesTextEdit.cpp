@@ -422,13 +422,6 @@ void ChatMessagesTextEdit::onMessagesUpdate(const std::vector<std::shared_ptr<Ch
    for (const auto& message : messages) {
       insertMessage(message);
    }
-   for (const auto& message : messages) {
-      if (message->getSenderId() != currentChatId_){
-         continue;
-      }
-
-
-   }
    return;
 
    if (isFirstFetch) {
