@@ -729,14 +729,6 @@ void BSTerminalMainWindow::InitChatView()
    //connect(ui_->widgetChat, &ChatWidget::LoginFailed, this, &BSTerminalMainWindow::onAutheIDFailed);
    connect(ui_->widgetChat, &ChatWidget::LogOut, this, &BSTerminalMainWindow::onLogout);
 
-   // hide tab icon when chat tab is active
-   connect(ui_->tabWidget, &QTabWidget::currentChanged, [this] () {
-      if (ui_->tabWidget->currentWidget() == ui_->widgetChat) {
-         const int chatIndex = ui_->tabWidget->indexOf(ui_->widgetChat);
-         ui_->tabWidget->setTabIcon(chatIndex, QIcon());
-      }
-   });
-
    if (NotificationCenter::instance() != NULL) {
       connect(NotificationCenter::instance(), &NotificationCenter::newChatMessageClick,
               ui_->widgetChat, &ChatWidget::onNewChatMessageTrayNotificationClicked);

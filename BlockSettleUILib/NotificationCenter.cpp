@@ -65,7 +65,7 @@ NotificationTabResponder::NotificationTabResponder(const Ui::BSTerminalMainWindo
 {
    mainWinUi_->tabWidget->setIconSize(QSize(8, 8));
    connect(mainWinUi_->tabWidget, &QTabWidget::currentChanged, [this](int index) {
-      if (index != mainWinUi_->tabWidget->indexOf(mainWinUi_->widgetChat)) {
+      if (index == mainWinUi_->tabWidget->indexOf(mainWinUi_->widgetChat)) {
          mainWinUi_->tabWidget->setTabIcon(index, QIcon());
       }
    });
