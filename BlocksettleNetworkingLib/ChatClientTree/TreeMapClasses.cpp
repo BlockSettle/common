@@ -311,7 +311,7 @@ bool CategoryElement::updateNewItemsFlag()
           && !message->testFlag(Chat::MessageData::State::Read)
           && root->currentUser() != message->getSenderId().toStdString()) {
          newItemsFlag_ = true;
-         break; //If found finst, no reason to continue
+         break; //If first is found, no reason to continue
       }
    }
    return newItemsFlag_;

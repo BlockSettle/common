@@ -68,9 +68,9 @@ private:
    std::shared_ptr<RootItem> root_;
    void beginChatInsertRows(const TreeItem::NodeType &type);
    void updateNewMessagesFlag();
-   NewMessageMonitor * newMessageMonitor_;
 
 private:
+   NewMessageMonitor * newMessageMonitor_;
    bool newMesagesFlag_;
 };
 
