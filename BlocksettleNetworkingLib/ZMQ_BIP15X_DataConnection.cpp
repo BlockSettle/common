@@ -843,7 +843,7 @@ void ZmqBIP15XDataConnection::verifyNewIDKey(const BinaryDataRef& newKey
 
       // Ask the user if they wish to accept the new identity key.
       BinaryData oldKey; // there shouldn't be any old key, at least in authPeerNameSearch
-      cbNewKey_(oldKey.toHexStr(), newKey.toHexStr(), srvAddrPort, serverPubkeyProm_);
+      cbNewKey_(oldKey.toHexStr(), newKey.toHexStr(), serverPubkeyProm_);
       serverPubkeySignalled_ = true;
 
       //have we seen the server's pubkey?

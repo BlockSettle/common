@@ -51,8 +51,8 @@ public:
       , const std::string& cookiePath = "");
    ~ZmqBIP15XDataConnection() noexcept override;
 
-   using cbNewKey = std::function<void(const std::string &newKey, const std::string &oldKey
-      , const std::string &srvAddrPort, std::shared_ptr<std::promise<bool>>)>;
+   using cbNewKey = std::function<void(const std::string&, const std::string&
+      , std::shared_ptr<std::promise<bool>>)>;
    using invokeCB = std::function<void(const std::string&
       , const std::string&
       , std::shared_ptr<std::promise<bool>>
