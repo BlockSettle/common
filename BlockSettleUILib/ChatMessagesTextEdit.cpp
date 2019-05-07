@@ -498,12 +498,17 @@ void ChatMessagesTextEdit::onRoomMessagesUpdate(const std::vector<std::shared_pt
    for (const auto& message : messages) {
       messages_[currentChatId_].push_back(message);
    }
-
-
-
    for (const auto& message : messages) {
       insertMessage(message);
+      if (messageReadHandler_ && !(message->getState() & (int)Chat::MessageData::State::Read) ){
+         messageReadHandler_->onMessageRead(message);
+      }
    }
+//   for (const auto& message : messages) {
+//      if (messageReadHandler_ && !(message->getState() & (int)Chat::MessageData::State::Read) ){
+//         messageReadHandler_->onMessageRead(message);
+//      }
+//   }
    return;
 
    if (isFirstFetch) {
