@@ -43,7 +43,7 @@ bool CCPubConnection::SubmitRequestToPB(const std::string &name, const std::stri
    // 150 identity key, if it has changed, will be accepted. It needs strings
    // for the old and new keys, and a promise to set once the user decides.
    ZmqBIP15XDataConnection::cbNewKey ourNewKeyCB =
-      [this](const std::string& oldKey, const std::string& newKey
+      [this](const std::string& oldKey, const std::string& newKey, const std::string& srvAddrPort
       , std::shared_ptr<std::promise<bool>> newKeyProm)->void
    {
       logger_->info("[CCPubConnection::SubmitRequestToPB] Temporary kludge for "

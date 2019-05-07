@@ -90,7 +90,7 @@ std::string ChatClient::loginToServer(const std::string& email, const std::strin
    // NB: This may need to be altered later. The PuB key should be hard-coded
    // and respected.
    ZmqBIP15XDataConnection::cbNewKey ourNewKeyCB =
-      [this](const std::string& oldKey, const std::string& newKey
+      [this](const std::string& oldKey, const std::string& newKey, const std::string& srvAddrPort
       , std::shared_ptr<std::promise<bool>> newKeyProm)->void
    {
       logger_->info("[ChatClient::{}] Temporary kludge for accepting the "
