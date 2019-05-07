@@ -40,5 +40,12 @@ public:
    virtual void onRoomMessageRead(std::shared_ptr<Chat::MessageData> message) = 0;
 };
 
+class NewMessageMonitor {
+public:
+
+   virtual  ~NewMessageMonitor() = default;
+   virtual void onNewMessagePresent(const bool isNewMessagePresented) = 0;
+};
+
 
 #endif // CHATHANDLEINTERFACES_H

@@ -260,7 +260,9 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
 {
    logger_ = logger;
    client_ = std::make_shared<ChatClient>(connectionManager, appSettings, logger);
-   ui_->treeViewUsers->setModel(client_->getDataModel().get());
+   auto model = client_->getDataModel();
+   model->setNewMessageMonitor(this);
+   ui_->treeViewUsers->setModel(model.get());
 //   ui_->treeViewUsers->expandAll();
    ui_->treeViewUsers->addWatcher(new LoggerWatcher());
    ui_->treeViewUsers->addWatcher(ui_->textEditMessages);
@@ -590,4 +592,9 @@ void ChatWidget::OnOTCResponseCreated()
    ui_->widgetNegotiateRequest->DisplayResponse(ui_->widgetCreateOTCRequest->GetSide(), priceRange, amountRange);
 
    ui_->stackedWidgetOTC->setCurrentIndex(static_cast<int>(OTCPages::OTCNegotiateRequest));
+}
+
+void ChatWidget::onNewMessagePresent(const bool isNewMessagePresented)
+{
+   qDebug() << "New Message: " << (isNewMessagePresented?"TRUE":"FALSE");
 }

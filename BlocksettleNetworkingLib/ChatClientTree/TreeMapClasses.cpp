@@ -289,11 +289,14 @@ void RootItem::notifyContactChanged(std::shared_ptr<Chat::ContactRecordData> con
    }
 }
 
-bool CategoryElement::isHaveNewItems() const
+bool CategoryElement::updateNewItemsFlag()
 {
    if (acceptType_ != NodeType::MessageDataNode) {
       return false;
    }
+   //Reset flag
+   newItemsFlag_ = false;
+
 
    for (const auto child : children_){
       auto messageNode = static_cast<TreeMessageNode*>(child);
@@ -303,9 +306,18 @@ bool CategoryElement::isHaveNewItems() const
       }
 
       auto message = messageNode->getMessage();
-      if (message && !message->testFlag(Chat::MessageData::State::Read)) {
-         return true;
+      const RootItem * root = static_cast<const RootItem*>(recursiveRoot());
+      if (message
+          && !message->testFlag(Chat::MessageData::State::Read)
+          && root->currentUser() != message->getSenderId().toStdString()) {
+         newItemsFlag_ = true;
+         break; //If found finst, no reason to continue
       }
    }
-   return false;
+   return newItemsFlag_;
+}
+
+bool CategoryElement::getNewItemsFlag() const
+{
+   return newItemsFlag_;
 }
