@@ -18,7 +18,8 @@ public:
       ContactStatusRole,
       ContactOnlineStatusRole,
       UserIdRole,
-      UserOnlineStatusRole
+      UserOnlineStatusRole,
+      ChatNewMessageRole
    };
 
    ChatClientDataModel(QObject * parent = nullptr);
@@ -60,6 +61,7 @@ private:
    QVariant roomData(const TreeItem * item, int role) const;
    QVariant contactData(const TreeItem * item, int role) const;
    QVariant userData(const TreeItem * item, int role) const;
+   QVariant chatNewMessageData(const TreeItem * item, int role) const;
 
 private:
    std::shared_ptr<RootItem> root_;

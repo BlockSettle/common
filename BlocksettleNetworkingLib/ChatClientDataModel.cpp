@@ -315,6 +315,8 @@ QVariant ChatClientDataModel::data(const QModelIndex &index, int role) const
       case UserIdRole:
       case UserOnlineStatusRole:
          return userData(item, role);
+   case ChatNewMessageRole:
+         return chatNewMessageData(item, role);
       default:
          return QVariant();
    }
@@ -397,6 +399,27 @@ QVariant ChatClientDataModel::userData(const TreeItem *item, int role) const
       default:
          return QVariant();
    }
+}
+
+QVariant ChatClientDataModel::chatNewMessageData(const TreeItem *item, int role) const
+{
+   bool newMessage = false;
+   if (item->getAcceptType() == TreeItem::NodeType::MessageDataNode) {
+
+      switch (role) {
+      case ChatNewMessageRole: {
+         const CategoryElement * categoryElement = static_cast<const CategoryElement*>(item);
+         if (categoryElement) {
+            newMessage = categoryElement->isHaveNewItems();
+         }
+      }
+         break;
+      default:
+         break;
+
+      }
+   }
+   return newMessage;
 }
 
 Qt::ItemFlags ChatClientDataModel::flags(const QModelIndex &index) const

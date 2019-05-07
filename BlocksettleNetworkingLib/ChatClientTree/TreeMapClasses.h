@@ -55,6 +55,7 @@ class CategoryElement : public TreeItem {
    }
 public:
    std::shared_ptr<Chat::DataObject> getDataObject() const {return dataObject_;}
+   bool isHaveNewItems() const;
    private:
    std::shared_ptr<Chat::DataObject> dataObject_;
 };

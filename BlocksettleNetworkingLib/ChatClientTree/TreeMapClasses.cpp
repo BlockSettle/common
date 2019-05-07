@@ -277,6 +277,7 @@ void RootItem::notifyMessageChanged(std::shared_ptr<Chat::MessageData> message)
                emit itemChanged(elem);
             }
          }
+         emit itemChanged(chatNode);
    }
 }
 
@@ -286,4 +287,25 @@ void RootItem::notifyContactChanged(std::shared_ptr<Chat::ContactRecordData> con
    if (chatNode && chatNode->getType() == TreeItem::NodeType::ContactsElement){
       emit itemChanged(chatNode);
    }
+}
+
+bool CategoryElement::isHaveNewItems() const
+{
+   if (acceptType_ != NodeType::MessageDataNode) {
+      return false;
+   }
+
+   for (const auto child : children_){
+      auto messageNode = static_cast<TreeMessageNode*>(child);
+
+      if (!messageNode) {
+         return false;
+      }
+
+      auto message = messageNode->getMessage();
+      if (message && message->testFlag(Chat::MessageData::State::Read)) {
+         return true;
+      }
+   }
+   return false;
 }
