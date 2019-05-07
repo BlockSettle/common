@@ -729,9 +729,22 @@ void BSTerminalMainWindow::InitChatView()
    //connect(ui_->widgetChat, &ChatWidget::LoginFailed, this, &BSTerminalMainWindow::onAutheIDFailed);
    connect(ui_->widgetChat, &ChatWidget::LogOut, this, &BSTerminalMainWindow::onLogout);
 
-   if (NotificationCenter::instance() != NULL)
+   // show tab icon
+   connect(ui_->widgetChat, &ChatWidget::shouldShowTabIcon, [this] () {
+      const int chatIndex = ui_->tabWidget->indexOf(ui_->widgetChat);
+       ui_->tabWidget->setTabIcon(chatIndex, QIcon(QLatin1String(":/ICON_DOT")));
+   });
+
+   // hide tab icon
+   connect(ui_->widgetChat, &ChatWidget::shouldHideTabIcon, [this] () {
+      const int chatIndex = ui_->tabWidget->indexOf(ui_->widgetChat);
+       ui_->tabWidget->setTabIcon(chatIndex, QIcon());
+   }); 
+
+   if (NotificationCenter::instance() != NULL) {
       connect(NotificationCenter::instance(), &NotificationCenter::newChatMessageClick,
               ui_->widgetChat, &ChatWidget::onNewChatMessageTrayNotificationClicked);
+   }
 }
 
 void BSTerminalMainWindow::InitChartsView()

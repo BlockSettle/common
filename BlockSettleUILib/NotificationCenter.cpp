@@ -281,6 +281,9 @@ void NotificationTrayIconResponder::messageClicked()
    else if (newChatMessage_) {
       if (!newChatId_.isNull() && globalInstance != NULL) {
          emit globalInstance->newChatMessageClick(newChatId_);
+
+         const int chatIndex = mainWinUi_->tabWidget->indexOf(mainWinUi_->widgetChat);
+         mainWinUi_->tabWidget->setTabIcon(chatIndex, QIcon());
          mainWinUi_->tabWidget->setCurrentWidget(mainWinUi_->widgetChat);
          mainWinUi_->tabWidget->activateWindow();
       }

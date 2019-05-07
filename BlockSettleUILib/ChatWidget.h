@@ -83,6 +83,8 @@ private slots:
 signals:
    void LoginFailed();
    void LogOut();
+   void shouldShowTabIcon();
+   void shouldHideTabIcon();
 
 private:
    void SetOTCLoggedInState();
@@ -130,7 +132,7 @@ public:
 
    // NewMessageMonitor interface
 public:
-   void onNewMessagePresent(const bool isNewMessagePresented) override;
+   void onNewMessagePresent(const bool isNewMessagePresented, const CategoryElement *element) override;
 };
 
 
