@@ -500,15 +500,10 @@ void ChatMessagesTextEdit::onRoomMessagesUpdate(const std::vector<std::shared_pt
    }
    for (const auto& message : messages) {
       insertMessage(message);
-      if (messageReadHandler_ && !(message->getState() & (int)Chat::MessageData::State::Read) ){
-         messageReadHandler_->onMessageRead(message);
+      if (messageReadHandler_ && !message->testFlag(Chat::MessageData::State::Read)){
+         messageReadHandler_->onRoomMessageRead(message);
       }
    }
-//   for (const auto& message : messages) {
-//      if (messageReadHandler_ && !(message->getState() & (int)Chat::MessageData::State::Read) ){
-//         messageReadHandler_->onMessageRead(message);
-//      }
-//   }
    return;
 
    if (isFirstFetch) {

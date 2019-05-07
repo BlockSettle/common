@@ -37,6 +37,7 @@ class ChatMessageReadHandler {
 public:
    virtual ~ChatMessageReadHandler() = default;
    virtual void onMessageRead(std::shared_ptr<Chat::MessageData> message) = 0;
+   virtual void onRoomMessageRead(std::shared_ptr<Chat::MessageData> message) = 0;
 };
 
 
