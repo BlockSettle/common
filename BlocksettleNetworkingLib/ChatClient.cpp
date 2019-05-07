@@ -1091,6 +1091,10 @@ void ChatClient::onActionResetSearch()
 
 void ChatClient::onMessageRead(std::shared_ptr<Chat::MessageData> message)
 {
+   if (message->getSenderId().toStdString() == model_->currentUser()) {
+      return;
+   }
+
    message->setFlag(Chat::MessageData::State::Read);
    chatDb_->updateMessageStatus(message->getId(), message->getState());
    model_->notifyMessageChanged(message);
