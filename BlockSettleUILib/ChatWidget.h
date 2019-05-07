@@ -83,8 +83,6 @@ private slots:
 signals:
    void LoginFailed();
    void LogOut();
-   void shouldShowTabIcon();
-   void shouldHideTabIcon();
 
 private:
    void SetOTCLoggedInState();

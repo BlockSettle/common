@@ -78,14 +78,10 @@ void NotificationTabResponder::respond(bs::ui::NotifyType nt, bs::ui::NotifyMess
       const bool isInCurrentChat = msg[2].toBool();
       const bool hasUnreadMessages = msg[3].toBool();
 
-      if (hasUnreadMessages) {
+      if (mainWinUi_->tabWidget->currentIndex() != chatIndex && !isInCurrentChat && hasUnreadMessages) {
          mainWinUi_->tabWidget->setTabIcon(chatIndex, iconDot_);
       } else {
-         if (mainWinUi_->tabWidget->currentIndex() != chatIndex && isInCurrentChat) {
-            mainWinUi_->tabWidget->setTabIcon(chatIndex, iconDot_);
-         } else {
-            mainWinUi_->tabWidget->setTabIcon(chatIndex, QIcon());
-         }
+         mainWinUi_->tabWidget->setTabIcon(chatIndex, QIcon());
       }
       
       return;

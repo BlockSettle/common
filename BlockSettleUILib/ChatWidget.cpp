@@ -654,8 +654,6 @@ void ChatWidget::onNewMessagePresent(const bool isNewMessagePresented, const Cat
 
          // don't show notification for global chat
          if (contact && contact->getContactId() != QLatin1String("global_chat")) {
-            emit shouldShowTabIcon();
-
             if ( contact->getContactId() != currentChat_ ){
                const bool isInCurrentChat = false;
                const bool hasUnreadMessages = true;
@@ -668,8 +666,5 @@ void ChatWidget::onNewMessagePresent(const bool isNewMessagePresented, const Cat
             }
          }
       }
-   }
-   else {
-      emit shouldHideTabIcon();
    }
 }
