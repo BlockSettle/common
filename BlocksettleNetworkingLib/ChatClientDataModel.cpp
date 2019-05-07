@@ -490,11 +490,8 @@ void ChatClientDataModel::updateNewMessagesFlag()
       for ( auto categoryElement : category->getChildren()) {
          if (categoryElement->getAcceptType() == TreeItem::NodeType::MessageDataNode) {
             CategoryElement * elem = static_cast<CategoryElement*>(categoryElement);
-            bool elementFlag = elem->updateNewItemsFlag();
-            if (elementFlag && !flag) {
-               //Do not set newMesagesFlag_ direcly,
-               //if this IF will not executed, flag will reset newMesagesFlag_
-               flag = elementFlag;
+            if (elem->updateNewItemsFlag()) {
+               flag = true;
             }
          }
       }
