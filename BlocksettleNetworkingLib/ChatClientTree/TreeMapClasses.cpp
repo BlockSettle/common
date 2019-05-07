@@ -303,7 +303,7 @@ bool CategoryElement::isHaveNewItems() const
       }
 
       auto message = messageNode->getMessage();
-      if (message && message->testFlag(Chat::MessageData::State::Read)) {
+      if (message && !message->testFlag(Chat::MessageData::State::Read)) {
          return true;
       }
    }
