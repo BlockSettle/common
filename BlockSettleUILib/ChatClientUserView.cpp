@@ -267,6 +267,7 @@ void ChatClientUserView::dataChanged(const QModelIndex &topLeft, const QModelInd
             auto node = static_cast<CategoryElement*>(item);
             notifyElementUpdated(node);
          }
+         break;
          default:
             break;
       }
