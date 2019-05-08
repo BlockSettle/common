@@ -9,13 +9,8 @@ using namespace std;
 // Used with remote connections (termina/Celer)
 const std::chrono::milliseconds ZmqBIP15XServerConnection::DefaultHeartbeatInterval = std::chrono::seconds(30);
 
-#if defined(NDEBUG) || 0
 // Used with local connections (terminal/signer/signer GUI)
 const std::chrono::milliseconds ZmqBIP15XServerConnection::LocalHeartbeatInterval = std::chrono::seconds(3);
-#else
-// Disable heartbeats for debug builds
-const std::chrono::milliseconds ZmqBIP15XServerConnection::LocalHeartbeatInterval = std::chrono::minutes(10);
-#endif
 
 // A call resetting the encryption-related data for individual connections.
 //

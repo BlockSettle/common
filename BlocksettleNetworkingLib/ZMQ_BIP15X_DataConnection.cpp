@@ -79,6 +79,7 @@ ZmqBIP15XDataConnection::ZmqBIP15XDataConnection(
    }
 
    const auto &heartbeatProc = [this] {
+      auto lastHeartbeat = std::chrono::steady_clock::now();
       while (hbThreadRunning_) {
          {
             std::unique_lock<std::mutex> lock(hbMutex_);
@@ -91,14 +92,14 @@ ZmqBIP15XDataConnection::ZmqBIP15XDataConnection(
             continue;
          }
          const auto curTime = std::chrono::steady_clock::now();
-         const auto diff = curTime - lastHeartbeat_;
+         const auto diff = curTime - lastHeartbeat;
          if (diff > heartbeatInterval_) {
+            lastHeartbeat = curTime;
             triggerHeartbeat();
          }
       }
    };
    hbThreadRunning_ = true;
-   lastHeartbeat_ = std::chrono::steady_clock::now();
    hbThread_ = std::thread(heartbeatProc);
 }
 

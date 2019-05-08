@@ -121,7 +121,6 @@ private:
 
    cbNewKey cbNewKey_;
 
-   std::chrono::steady_clock::time_point  lastHeartbeat_;
    std::atomic<std::chrono::steady_clock::time_point> lastHeartbeatReply_;
    std::atomic_bool        hbThreadRunning_;
    std::thread             hbThread_;
