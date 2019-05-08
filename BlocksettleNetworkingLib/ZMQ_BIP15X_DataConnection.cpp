@@ -835,7 +835,7 @@ void ZmqBIP15XDataConnection::setCBs(const cbNewKey& inNewKeyCB) {
       cbNewKey_ = inNewKeyCB;
    }
    else {
-      cbNewKey_ = [this](const std::string &, const std::string, const std::string
+      cbNewKey_ = [this](const std::string &, const std::string, const std::string&
          , const std::shared_ptr<std::promise<bool>> &prom) {
          logger_->error("[ZmqBIP15XDataConnection] no new key callback was set - auto-accepting connections");
          if (prom) {
