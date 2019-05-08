@@ -215,7 +215,6 @@ void ZmqBIP15XDataConnection::rekey()
 // ***Please use this function for sending all data from inside this class.***
 //
 // INPUT:  The data to send. (const string&)
-//         Flag for encryption usage. True by default. (const bool&)
 // OUTPUT: None
 // RETURN: True if success, false if failure.
 bool ZmqBIP15XDataConnection::sendPacket(const string& data)
