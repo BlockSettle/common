@@ -336,7 +336,7 @@ void ChatClient::OnContactsListResponse(const Chat::ContactsListResponse & respo
       }
       contactsListStr << QString::fromStdString(remote->toJsonString());
       pubKeys_[remote->getContactId()] = remote->getContactPublicKey();
-      addOrUpdateContact(remote->getContactId(), status, remote->getContactId());
+      addOrUpdateContact(remote->getContactId(), status, remote->getDisplayName());
    }
 
    logger_->debug("[ChatClient::OnContactsListResponse]:Received {} contacts, from server: [{}]"
@@ -455,7 +455,7 @@ void ChatClient::readDatabase()
 
       auto pk = autheid::PublicKey();
 
-      auto contact = std::make_shared<Chat::ContactRecordData>(QString::fromStdString(model_->currentUser()), c.userId(), status, pk);
+      auto contact = std::make_shared<Chat::ContactRecordData>(QString::fromStdString(model_->currentUser()), c.userId(), status, pk, c.userName());
       model_->insertContactObject(contact);
       retrieveUserMessages(contact->getContactId());
    }
@@ -833,13 +833,8 @@ bool ChatClient::getContacts(ContactUserDataList &contactList)
 bool ChatClient::addOrUpdateContact(const QString &userId, ContactUserData::Status status, const QString &userName)
 {
    ContactUserData contact;
-   QString newUserName = userName;
-   if (newUserName.isEmpty())
-   {
-      newUserName = userId;
-   }
    contact.setUserId(userId);
-   contact.setUserName(newUserName);
+   contact.setUserName(userName);
    contact.setStatus(status);
 
    if (chatDb_->isContactExist(userId))

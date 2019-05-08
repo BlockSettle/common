@@ -84,7 +84,7 @@ void ChatClientUsersViewItemDelegate::paintContactsElement(QPainter *painter, co
    ContactStatus contactStatus = index.data(Role::ContactStatusRole).value<ContactStatus>();
    OnlineStatus onlineStatus = index.data(Role::ContactOnlineStatusRole).value<OnlineStatus>();
    bool newMessage = index.data(Role::ChatNewMessageRole).toBool();
-   itemOption.text = index.data(Role::ContactIdRole).toString();   
+   itemOption.text = index.data(Role::ContactTitleRole).toString();
 
    switch (contactStatus) {
       case ContactStatus::Accepted:

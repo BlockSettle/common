@@ -313,6 +313,7 @@ QVariant ChatClientDataModel::data(const QModelIndex &index, int role) const
       case RoomTitleRole:
       case RoomIdRole:
          return roomData(item, role);
+      case ContactTitleRole:
       case ContactIdRole:
       case ContactStatusRole:
       case ContactOnlineStatusRole:
@@ -378,6 +379,11 @@ QVariant ChatClientDataModel::contactData(const TreeItem *item, int role) const
       }
 
       switch (role) {
+         case ContactTitleRole:
+            if (contact->getDisplayName().isEmpty()) {
+               return contact->getContactId();
+            }
+            return contact->getDisplayName();
          case ContactIdRole:
             return contact->getContactId();
          case ContactStatusRole:
