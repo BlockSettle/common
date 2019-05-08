@@ -31,15 +31,4 @@ private:
 public:
    QWidget *createEditor(QWidget *parent, const QStyleOptionViewItem &option, const QModelIndex &index) const override;
 };
-
-
-
-
-
-
-
-
-
-
-
 #endif // CHATCLIENTUSERSVIEWITEMDELEGATE_H

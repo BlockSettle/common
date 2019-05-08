@@ -80,19 +80,4 @@ public:
    bool setData(const QModelIndex &index, const QVariant &value, int role) override;
    void setModelChangesHandler(ModelChangesHandler *modelChangesHandler);
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 #endif // CHATCLIENTUSERSMODEL_H

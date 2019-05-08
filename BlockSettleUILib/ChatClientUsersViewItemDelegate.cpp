@@ -146,13 +146,6 @@ void ChatClientUsersViewItemDelegate::paintUserElement(QPainter *painter, const 
    QStyledItemDelegate::paint(painter, itemOption, index);
 }
 
-//QWidget *ChatClientUsersViewItemDelegate::createEditor(QWidget *parent, const QStyleOptionViewItem &option, const QModelIndex &index) const
-//{
-//   QLineEdit * editor = new QLineEdit(parent);
-//   editor->setText(index.data(Role::ContactTitleRole).toString());
-//   return editor;
-//}
-
 QWidget *ChatClientUsersViewItemDelegate::createEditor(QWidget *parent, const QStyleOptionViewItem &option, const QModelIndex &index) const
 {
    QWidget * editor = QStyledItemDelegate::createEditor(parent, option, index);

@@ -185,10 +185,4 @@ public:
 public:
    void onContactUpdatedByInput(std::shared_ptr<Chat::ContactRecordData> crecord) override;
 };
-
-
-
-
-
-
 #endif   // CHAT_CLIENT_H
