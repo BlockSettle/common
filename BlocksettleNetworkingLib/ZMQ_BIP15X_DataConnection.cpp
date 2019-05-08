@@ -835,7 +835,7 @@ void ZmqBIP15XDataConnection::setCBs(const cbNewKey& inNewKeyCB) {
       cbNewKey_ = inNewKeyCB;
    }
    else {
-      cbNewKey_ = [this](const std::string &, const std::string
+      cbNewKey_ = [this](const std::string &, const std::string, const std::string
          , const std::shared_ptr<std::promise<bool>> &prom) {
          logger_->error("[ZmqBIP15XDataConnection] no new key callback was set - auto-accepting connections");
          if (prom) {
@@ -902,7 +902,7 @@ bool ZmqBIP15XDataConnection::verifyNewIDKey(const BinaryDataRef& newKey
 
    // Ask the user if they wish to accept the new identity key.
    // There shouldn't be any old key, at least in authPeerNameSearch
-   cbNewKey_({}, newKey.toHexStr(), serverPubkeyProm_);
+   cbNewKey_({}, newKey.toHexStr(), srvAddrPort, serverPubkeyProm_);
    serverPubkeySignalled_ = true;
    bool cbResult = false;
 
