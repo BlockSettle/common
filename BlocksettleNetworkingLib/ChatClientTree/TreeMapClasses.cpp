@@ -40,24 +40,25 @@ bool RootItem::insertSearchUserObject(std::shared_ptr<Chat::UserData> data)
    return  res;
 }
 
-bool RootItem::insertRoomMessage(std::shared_ptr<Chat::MessageData> message)
-{
-   TreeMessageNode * messageNode = new TreeMessageNode(TreeItem::NodeType::RoomsElement, message);
-   bool res = insertMessageNode(messageNode);
-   if (!res){
-      delete messageNode;
-   }
-   return res;
-}
 
-bool RootItem::insertContactsMessage(std::shared_ptr<Chat::MessageData> message)
+TreeItem * RootItem::resolveMessageTargetNode(TreeMessageNode * messageNode)
 {
-   TreeMessageNode * messageNode = new TreeMessageNode(TreeItem::NodeType::ContactsElement, message);
-   bool res = insertMessageNode(messageNode);
-   if (!res){
-      delete messageNode;
+   if (!messageNode){
+      return nullptr;
    }
-   return res;
+
+   auto categoryIt = std::find_if(children_.begin(), children_.end(), [messageNode](TreeItem* child){
+      return child->getAcceptType() == messageNode->getTargetParentType();
+   });
+
+   if (categoryIt != children_.end()) {
+
+     TreeItem* target = (*categoryIt)->findSupportChild(messageNode);
+      if (target) {
+         return target;
+      }
+   }
+   return nullptr;
 }
 
 TreeItem* RootItem::findChatNode(const std::string &chatId)
@@ -276,6 +277,7 @@ void RootItem::notifyMessageChanged(std::shared_ptr<Chat::MessageData> message)
                emit itemChanged(elem);
             }
          }
+         emit itemChanged(chatNode);
    }
 }
 
@@ -285,4 +287,37 @@ void RootItem::notifyContactChanged(std::shared_ptr<Chat::ContactRecordData> con
    if (chatNode && chatNode->getType() == TreeItem::NodeType::ContactsElement){
       emit itemChanged(chatNode);
    }
+}
+
+bool CategoryElement::updateNewItemsFlag()
+{
+   if (acceptType_ != NodeType::MessageDataNode) {
+      return false;
+   }
+   //Reset flag
+   newItemsFlag_ = false;
+
+
+   for (const auto child : children_){
+      auto messageNode = static_cast<TreeMessageNode*>(child);
+
+      if (!messageNode) {
+         return false;
+      }
+
+      auto message = messageNode->getMessage();
+      const RootItem * root = static_cast<const RootItem*>(recursiveRoot());
+      if (message
+          && !message->testFlag(Chat::MessageData::State::Read)
+          && root->currentUser() != message->getSenderId().toStdString()) {
+         newItemsFlag_ = true;
+         break; //If first is found, no reason to continue
+      }
+   }
+   return newItemsFlag_;
+}
+
+bool CategoryElement::getNewItemsFlag() const
+{
+   return newItemsFlag_;
 }

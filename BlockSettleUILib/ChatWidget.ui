@@ -162,22 +162,6 @@
            </widget>
           </item>
           <item>
-           <spacer name="chatUsersVerticalSpacer">
-            <property name="orientation">
-             <enum>Qt::Vertical</enum>
-            </property>
-            <property name="sizeType">
-             <enum>QSizePolicy::Preferred</enum>
-            </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>20</width>
-              <height>40</height>
-             </size>
-            </property>
-           </spacer>
-          </item>
-          <item>
            <widget class="ChatClientUserView" name="treeViewUsers">
             <property name="focusPolicy">
              <enum>Qt::NoFocus</enum>
@@ -415,7 +399,7 @@
                      </property>
                      <property name="minimumSize">
                       <size>
-                       <width>110</width>
+                       <width>96</width>
                        <height>0</height>
                       </size>
                      </property>
@@ -634,6 +618,8 @@
             <property name="currentIndex">
              <number>0</number>
             </property>
+            <widget class="OTCLoginRequiredShield" name="widgetLoginRequiredShield"/>
+            <widget class="OTCGeneralRoomShield" name="widgetGeneralShield"/>
             <widget class="CreateOTCRequestWidget" name="widgetCreateOTCRequest"/>
             <widget class="CreateOTCResponseWidget" name="widgetCreateOTCResponse"/>
             <widget class="OTCNegotiationRequestWidget" name="widgetNegotiateRequest"/>
@@ -683,7 +669,7 @@
   <customwidget>
    <class>CreateOTCResponseWidget</class>
    <extends>QWidget</extends>
-   <header location="global">CreateOTCResponseWidget.h</header>
+   <header>CreateOTCResponseWidget.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
@@ -696,6 +682,18 @@
    <class>OTCNegotiationRequestWidget</class>
    <extends>QWidget</extends>
    <header>OTCNegotiationRequestWidget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>OTCLoginRequiredShield</class>
+   <extends>QWidget</extends>
+   <header>OTCLoginRequiredShield.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>OTCGeneralRoomShield</class>
+   <extends>QWidget</extends>
+   <header>OTCGeneralRoomShield.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

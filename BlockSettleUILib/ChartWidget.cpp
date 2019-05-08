@@ -7,11 +7,11 @@
 #include "market_data_history.pb.h"
 #include "trade_history.pb.h"
 
-const qreal BASE_FACTOR = 1.0;
-
 const QColor BACKGROUND_COLOR = QColor(28, 40, 53);
 const QColor FOREGROUND_COLOR = QColor(Qt::white);
 const QColor VOLUME_COLOR = QColor(32, 159, 223);
+
+using namespace Blocksettle::Communication::TradeHistory;
 
 ComboBoxDelegate::ComboBoxDelegate(QObject* parent)
    : QItemDelegate(parent)
@@ -104,15 +104,14 @@ void ChartWidget::init(const std::shared_ptr<ApplicationSettings>& appSettings
    logger_ = logger;
 
    connect(mdhsClient_.get(), &MdhsClient::DataReceived, this, &ChartWidget::OnDataReceived);
-   connect(mdProvider_.get(), &MarketDataProvider::MDUpdate, this, &ChartWidget::OnMdUpdated);
-   connect(mdProvider_.get(), &MarketDataProvider::OnNewFXTrade, this, &ChartWidget::OnNewXBTorFXTrade);
-   connect(mdProvider_.get(), &MarketDataProvider::OnNewPMTrade, this, &ChartWidget::OnNewPMTrade);
-   connect(mdProvider_.get(), &MarketDataProvider::OnNewXBTTrade, this, &ChartWidget::OnNewXBTorFXTrade);
 
    connect(ui_->pushButtonMDConnection, &QPushButton::clicked, this, &ChartWidget::ChangeMDSubscriptionState);
 
-   connect(mdProvider.get(), &MarketDataProvider::WaitingForConnectionDetails, this,
-           &ChartWidget::OnLoadingNetworkSettings);
+   connect(mdProvider.get(), &MarketDataProvider::MDUpdate, this, &ChartWidget::OnMdUpdated);
+   connect(mdProvider.get(), &MarketDataProvider::OnNewFXTrade, this, &ChartWidget::OnNewXBTorFXTrade);
+   connect(mdProvider.get(), &MarketDataProvider::OnNewPMTrade, this, &ChartWidget::OnNewPMTrade);
+   connect(mdProvider.get(), &MarketDataProvider::OnNewXBTTrade, this, &ChartWidget::OnNewXBTorFXTrade);
+   connect(mdProvider.get(), &MarketDataProvider::WaitingForConnectionDetails, this, &ChartWidget::OnLoadingNetworkSettings);
    connect(mdProvider.get(), &MarketDataProvider::StartConnecting, this, &ChartWidget::OnMDConnecting);
    connect(mdProvider.get(), &MarketDataProvider::Connected, this, &ChartWidget::OnMDConnected);
    connect(mdProvider.get(), &MarketDataProvider::Disconnecting, this, &ChartWidget::OnMDDisconnecting);
@@ -129,6 +128,11 @@ void ChartWidget::setAuthorized(bool authorized)
 {
    ui_->pushButtonMDConnection->setEnabled(!authorized);
    authorized_ = authorized;
+}
+
+void ChartWidget::disconnect()
+{
+   OnMDDisconnecting();
 }
 
 ChartWidget::~ChartWidget()
@@ -169,21 +173,6 @@ void ChartWidget::OnMdUpdated(bs::network::Asset::Type assetType, const QString&
    }
 
    for (const auto& field : mdFields) {
-      if (field.type == bs::network::MDField::PriceLast && getCurrentProductName() == security) {
-         if (!candlesticksChart_->data()->isEmpty()) {
-            auto lastCandle = candlesticksChart_->data()->end() - 1;
-            lastCandle->high = qMax(lastCandle->high, field.value);
-            lastCandle->low = qMin(lastCandle->low, field.value);
-            if (!qFuzzyCompare(lastCandle->close, field.value)) {
-               lastCandle->close = field.value;
-               UpdateOHLCInfo(IntervalWidth(dateRange_.checkedId()) / 1000,
-                              ui_->customPlot->xAxis->pixelToCoord(ui_->customPlot->mapFromGlobal(QCursor::pos()).x()));
-               rescalePlot();
-               ui_->customPlot->replot();
-            }
-         }
-      }
-
       if (field.type == bs::network::MDField::MDTimestamp) {
          currentTimestamp_ = field.value;
          CheckToAddNewCandle(currentTimestamp_);
@@ -324,17 +313,17 @@ void ChartWidget::ProcessOhlcHistoryResponse(const std::string& data)
       maxTimestamp = qMax(maxTimestamp, static_cast<quint64>(candle.timestamp()));
 
       bool isLast = (i == 0);
-      if (candle.timestamp() >= lastCandle_.timestamp() || lastCandle_.timestamp() - candle.timestamp() < IntervalWidth(
-         interval, 1, QDateTime::fromMSecsSinceEpoch(candle.timestamp()))) {
+      if (candle.timestamp() >= lastCandle_.timestamp() 
+         || lastCandle_.timestamp() - candle.timestamp() < IntervalWidth( interval, 1, QDateTime::fromMSecsSinceEpoch(candle.timestamp(), Qt::TimeSpec::UTC))) {
          logger_->error("Invalid distance between candles from mdhs. The last timestamp: {}  new timestamp: {}",
                         lastCandle_.timestamp(), candle.timestamp());
       }
       else {
          if (lastCandle_.timestamp() - candle.timestamp() != IntervalWidth(
-            interval, 1, QDateTime::fromMSecsSinceEpoch(candle.timestamp())) && candlesticksChart_->data()->size()) {
+            interval, 1, QDateTime::fromMSecsSinceEpoch(candle.timestamp(), Qt::TimeSpec::UTC)) && candlesticksChart_->data()->size()) {
             for (int j = 0; j < (lastCandle_.timestamp() - candle.timestamp()) / IntervalWidth(
-                    interval, 1, QDateTime::fromMSecsSinceEpoch(candle.timestamp())) - 1; j++) {
-               AddDataPoint(lastCandle_.close(), lastCandle_.close(), lastCandle_.close(), lastCandle_.close(),
+                    interval, 1, QDateTime::fromMSecsSinceEpoch(candle.timestamp(), Qt::TimeSpec::UTC)) - 1; j++) {
+               AddDataPoint(candle.close(), candle.close(), candle.close(), candle.close(),
                             lastCandle_.timestamp() - IntervalWidth(interval) * (j + 1), 0);
             }
          }
@@ -343,14 +332,16 @@ void ChartWidget::ProcessOhlcHistoryResponse(const std::string& data)
       lastCandle_ = candle;
 
       AddDataPoint(candle.open(), candle.high(), candle.low(), candle.close(), candle.timestamp(), candle.volume());
+#if 0
       qDebug("Added: %s, open: %f, high: %f, low: %f, close: %f, volume: %f"
-             , QDateTime::fromMSecsSinceEpoch(candle.timestamp())
+             , QDateTime::fromMSecsSinceEpoch(candle.timestamp(), Qt::TimeSpec::UTC)
                .toUTC().toString(Qt::ISODateWithMs).toStdString().c_str()
              , candle.open()
              , candle.high()
              , candle.low()
              , candle.close()
              , candle.volume());
+#endif
       if (firstPortion && isLast) {
          lastHigh_ = candle.high();
          lastLow_ = candle.low();
@@ -402,7 +393,7 @@ void ChartWidget::ProcessEodResponse(const std::string& data)
    if (candlesticksChart_->data()->size() < 2) {
       return;
    }
-   auto delta = dateRange_.checkedId() <= Interval::OneWeek ? 2 : 1; //should we update last or pre-last candle
+   auto delta = dateRange_.checkedId() >= Interval::TwentyFourHours ? 2 : 1; //should we update last or pre-last candle
    auto lastCandle = candlesticksChart_->data()->end() - delta;
    lastCandle->high = qMax(lastCandle->high, eodPrice.price());
    lastCandle->low = qMin(lastCandle->low, eodPrice.price());
@@ -470,6 +461,7 @@ void ChartWidget::AddNewCandle()
    candle.set_volume(0.0);
 
    AddDataPoint(candle.open(), candle.high(), candle.low(), candle.close(), candle.timestamp(), candle.volume());
+#if 0
    qDebug("Added: %s, open: %f, high: %f, low: %f, close: %f, volume: %f"
           , QDateTime::fromMSecsSinceEpoch(candle.timestamp()).toUTC().toString(Qt::ISODateWithMs).toStdString().c_str()
           , candle.open()
@@ -477,6 +469,7 @@ void ChartWidget::AddNewCandle()
           , candle.low()
           , candle.close()
           , candle.volume());
+#endif
 }
 
 void ChartWidget::ModifyCandle()
@@ -657,7 +650,7 @@ QString ChartWidget::GetFormattedStamp(double timestamp)
    default:
       resultFormat = QStringLiteral("dd MMM yy");
    }
-   return QDateTime::fromSecsSinceEpoch(timestamp).toUTC().toString(resultFormat);
+   return QDateTime::fromSecsSinceEpoch(qint64(timestamp)).toUTC().toString(resultFormat);
 }
 
 void ChartWidget::UpdateOHLCInfo(double width, double timestamp)
@@ -721,7 +714,7 @@ void ChartWidget::OnPlotMouseMove(QMouseEvent* event)
       auto upper_bound = volumeAxisRect_->axis(QCPAxis::atBottom)->range().upper;
       auto diff = upper_bound - lower_bound;
       auto directionCoeff = (currentXPos - lastDragCoord_.x() > 0) ? -1 : 1;
-      double scalingCoeff = qAbs(currentXPos - startDragCoordX_) / ui_->customPlot->size().width();
+      //double scalingCoeff = qAbs(currentXPos - startDragCoordX_) / ui_->customPlot->size().width();
       lastDragCoord_.setX(currentXPos);
       double tempCoeff = 10.0; //change this to impact on xAxis scale speed, the lower coeff the faster scaling
       lower_bound += diff / tempCoeff * /*scalingCoeff * */ directionCoeff;
@@ -875,7 +868,8 @@ void ChartWidget::OnWheelScroll(QWheelEvent* event)
 
 void ChartWidget::OnAutoScaleBtnClick()
 {
-   if (autoScaling_ = !autoScaling_) {
+   autoScaling_ = !autoScaling_;
+   if (autoScaling_) {
       rescalePlot();
    }
    setAutoScaleBtnColor();
@@ -1158,10 +1152,10 @@ void ChartWidget::OnMDDisconnecting()
    ui_->pushButtonMDConnection->setText(tr("Disconnecting"));
    ui_->pushButtonMDConnection->setEnabled(false);
 
-   if (candlesticksChart_ != NULL)
+   if (candlesticksChart_ != nullptr)
       candlesticksChart_->data()->clear();
 
-   if (volumeChart_ != NULL)
+   if (volumeChart_ != nullptr)
       volumeChart_->data()->clear();
 
    ui_->ohlcLbl->setText({});

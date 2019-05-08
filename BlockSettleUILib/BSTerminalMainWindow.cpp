@@ -16,6 +16,7 @@
 
 #include "AboutDialog.h"
 #include "ArmoryServersProvider.h"
+#include "SignersProvider.h"
 #include "AssetManager.h"
 #include "AuthAddressDialog.h"
 #include "AuthAddressManager.h"
@@ -42,6 +43,7 @@
 #include "NewWalletDialog.h"
 #include "NotificationCenter.h"
 #include "OfflineSigner.h"
+#include "PubKeyLoader.h"
 #include "QuoteProvider.h"
 #include "RequestReplyCommand.h"
 #include "SelectWalletDialog.h"
@@ -74,10 +76,11 @@ BSTerminalMainWindow::BSTerminalMainWindow(const std::shared_ptr<ApplicationSett
    loginButtonText_ = tr("Login");
 
    armoryServersProvider_= std::make_shared<ArmoryServersProvider>(applicationSettings_);
+   signersProvider_= std::make_shared<SignersProvider>(applicationSettings_);
 
    bool licenseAccepted = showStartupDialog();
    if (!licenseAccepted) {
-      QTimer::singleShot(0, this, [this](){
+      QTimer::singleShot(0, this, []() {
          qApp->exit(EXIT_FAILURE);
       });
       return;
@@ -99,6 +102,11 @@ BSTerminalMainWindow::BSTerminalMainWindow(const std::shared_ptr<ApplicationSett
    setupIcon();
    UiUtils::setupIconFont(this);
    NotificationCenter::createInstance(applicationSettings_, ui_.get(), sysTrayIcon_, this);
+
+   cbApprovePuB_ = PubKeyLoader::getApprovingCallback(PubKeyLoader::KeyType::PublicBridge
+      , this, applicationSettings_);
+   cbApproveChat_ = PubKeyLoader::getApprovingCallback(PubKeyLoader::KeyType::Chat
+      , this, applicationSettings_);
 
    InitConnections();
 
@@ -150,6 +158,8 @@ BSTerminalMainWindow::BSTerminalMainWindow(const std::shared_ptr<ApplicationSett
 
    UpdateMainWindowAppearence();
    setWidgetsAuthorized(false);
+
+   updateControlEnabledState();
 }
 
 void BSTerminalMainWindow::onMDConnectionDetailsRequired()
@@ -187,33 +197,7 @@ void BSTerminalMainWindow::GetNetworkSettingsFromPuB(const std::function<void()>
    }
 
    const auto connection = connectionManager_->CreateZMQBIP15XDataConnection();
-
-   // Define the callback that will be used to determine if the signer's BIP
-   // 150 identity key, if it has changed, will be accepted. It needs strings
-   // for the old and new keys, and a promise to set once the user decides.
-   //
-   // NB: This may need to be altered later. The PuB key should be hard-coded
-   // and respected.
-   ZmqBIP15XDataConnection::cbNewKey ourNewKeyCB =
-      [this](const std::string& oldKey, const std::string& newKey
-      , std::shared_ptr<std::promise<bool>> newKeyProm)->void
-      {
-      QMetaObject::invokeMethod(this, [this, oldKey, newKey, newKeyProm] {
-         BSMessageBox *box = new BSMessageBox(BSMessageBox::question
-            , tr("Server identity key has changed")
-            , tr("Do you wish to import the new PuB server identity key?")
-            , tr("Old Key: %1\nNew Key: %2")
-            .arg(QString::fromStdString(oldKey))
-            .arg(QString::fromStdString(newKey))
-            , this);
-
-         const bool answer = (box->exec() == QDialog::Accepted);
-         box->deleteLater();
-
-         newKeyProm->set_value(answer);
-      });
-   };
-   connection->setCBs(ourNewKeyCB);
+   connection->setCBs(cbApprovePuB_);
 
    Blocksettle::Communication::RequestPacket reqPkt;
    reqPkt.set_requesttype(Blocksettle::Communication::GetNetworkSettingsType);
@@ -458,12 +442,13 @@ void BSTerminalMainWindow::LoadWallets()
 //      splashScreen.SetProgress(progress);
       logMgr_->logger()->debug("Loaded wallet {} of {}", cur, total);
    };
+   walletsMgr_->reset();
    walletsMgr_->syncWallets(progressDelegate);
 }
 
 void BSTerminalMainWindow::InitAuthManager()
 {
-   authManager_ = std::make_shared<AuthAddressManager>(logMgr_->logger(), armory_);
+   authManager_ = std::make_shared<AuthAddressManager>(logMgr_->logger(), armory_, cbApprovePuB_);
    authManager_->init(applicationSettings_, walletsMgr_, authSignManager_, signContainer_);
 
    connect(authManager_.get(), &AuthAddressManager::NeedVerify, this, &BSTerminalMainWindow::openAuthDlgVerify);
@@ -482,8 +467,12 @@ std::shared_ptr<SignContainer> BSTerminalMainWindow::createSigner()
 {
    std::shared_ptr<SignContainer> retPtr;
    auto runMode = static_cast<SignContainer::OpMode>(applicationSettings_->get<int>(ApplicationSettings::signerRunMode));
-   auto signerHost = applicationSettings_->get<QString>(ApplicationSettings::signerHost);
-   const auto signerPort = applicationSettings_->get<QString>(ApplicationSettings::signerPort);
+   SignerHost signerHost = signersProvider_->getCurrentSigner();
+
+   QString resultHost = signerHost.address;
+   QString resultPort = QString::number(signerHost.port);
+   NetworkType netType = applicationSettings_->get<NetworkType>(ApplicationSettings::netType);
+   QString localSignerPort = applicationSettings_->get<QString>(ApplicationSettings::localSignerPort);
 
    // These callbacks will only be used for remote signers. Note the code below,
    // where a local signer is eventually marked as remote. We'll work around
@@ -521,24 +510,28 @@ std::shared_ptr<SignContainer> BSTerminalMainWindow::createSigner()
          });
       };
    }
-   else if ((runMode == SignContainer::OpMode::Local)
-      && SignerConnectionExists(QLatin1String("127.0.0.1"), signerPort)) {
-      if (BSMessageBox(BSMessageBox::messageBoxType::question
-         , tr("Signer Local Connection")
-         , tr("Another Signer (or some other program occupying port %1) is "
-         "running. Would you like to continue connecting to it?").arg(signerPort)
-         , tr("If you wish to continue using GUI signer running on the same "
-         "host, just select Remote Signer in settings and configure local "
-         "connection")
-         , this).exec() == QDialog::Rejected) {
-         return retPtr;
+   else if (runMode == SignContainer::OpMode::Local) {
+      resultPort = localSignerPort;
+
+      if (SignerConnectionExists(QLatin1String("127.0.0.1"), localSignerPort)) {
+         runMode = SignContainer::OpMode::Remote;
+         resultHost = QLatin1String("127.0.0.1");
+
+         if (BSMessageBox(BSMessageBox::messageBoxType::question
+            , tr("Signer Local Connection")
+            , tr("Another Signer (or some other program occupying port %1) is "
+            "running. Would you like to continue connecting to it?").arg(localSignerPort)
+            , tr("If you wish to continue using GUI signer running on the same "
+            "host, just select Remote Signer in settings and configure local "
+            "connection")
+            , this).exec() == QDialog::Rejected) {
+            return retPtr;
+         }
       }
-      runMode = SignContainer::OpMode::Remote;
-      signerHost = QLatin1String("127.0.0.1");
    }
 
    retPtr = CreateSigner(logMgr_->logger(), applicationSettings_, runMode
-      , signerHost, connectionManager_, ephemeralDataConnKeys, ourNewKeyCB);
+      , resultHost, resultPort, netType, connectionManager_, ephemeralDataConnKeys, ourNewKeyCB);
    return retPtr;
 }
 
@@ -552,6 +545,7 @@ bool BSTerminalMainWindow::InitSigningContainer()
    }
    connect(signContainer_.get(), &SignContainer::ready, this, &BSTerminalMainWindow::SignerReady, Qt::QueuedConnection);
    connect(signContainer_.get(), &SignContainer::connectionError, this, &BSTerminalMainWindow::onSignerConnError, Qt::QueuedConnection);
+   connect(signContainer_.get(), &SignContainer::disconnected, this, &BSTerminalMainWindow::updateControlEnabledState, Qt::QueuedConnection);
 
    walletsMgr_->setSignContainer(signContainer_);
 
@@ -560,6 +554,8 @@ bool BSTerminalMainWindow::InitSigningContainer()
 
 void BSTerminalMainWindow::SignerReady()
 {
+   updateControlEnabledState();
+
    if (signContainer_->hasUI()) {
       disconnect(signContainer_.get(), &SignContainer::PasswordRequested, this, &BSTerminalMainWindow::onPasswordRequested);
    }
@@ -628,7 +624,7 @@ void BSTerminalMainWindow::acceptMDAgreement()
 void BSTerminalMainWindow::updateControlEnabledState()
 {
    action_send_->setEnabled(walletsMgr_->hdWalletsCount() > 0
-      && armory_->isOnline() && signContainer_);
+      && armory_->isOnline() && signContainer_ && signContainer_->isReady());
 }
 
 bool BSTerminalMainWindow::isMDLicenseAccepted() const
@@ -670,7 +666,7 @@ bool BSTerminalMainWindow::showStartupDialog()
 void BSTerminalMainWindow::InitAssets()
 {
    ccFileManager_ = std::make_shared<CCFileManager>(logMgr_->logger(), applicationSettings_
-      , authSignManager_, connectionManager_);
+      , authSignManager_, connectionManager_, cbApprovePuB_);
    assetManager_ = std::make_shared<AssetManager>(logMgr_->logger(), walletsMgr_, mdProvider_, celerConnection_);
    assetManager_->init();
 
@@ -713,9 +709,10 @@ void BSTerminalMainWindow::InitChatView()
    //connect(ui_->widgetChat, &ChatWidget::LoginFailed, this, &BSTerminalMainWindow::onAutheIDFailed);
    connect(ui_->widgetChat, &ChatWidget::LogOut, this, &BSTerminalMainWindow::onLogout);
 
-   if (NotificationCenter::instance() != NULL)
+   if (NotificationCenter::instance() != NULL) {
       connect(NotificationCenter::instance(), &NotificationCenter::newChatMessageClick,
               ui_->widgetChat, &ChatWidget::onNewChatMessageTrayNotificationClicked);
+   }
 }
 
 void BSTerminalMainWindow::InitChartsView()
@@ -871,7 +868,7 @@ void BSTerminalMainWindow::connectSigner()
       return;
    }
 
-   if(!signContainer_->Start()) {
+   if (!signContainer_->Start()) {
       BSMessageBox(BSMessageBox::warning, tr("BlockSettle Signer Connection")
          , tr("Failed to start signer connection.")).exec();
    }
@@ -928,6 +925,7 @@ void BSTerminalMainWindow::showError(const QString &title, const QString &text)
 
 void BSTerminalMainWindow::onSignerConnError(const QString &err)
 {
+   updateControlEnabledState();
    showError(tr("Signer connection error"), tr("Signer connection error details: %1").arg(err));
 }
 
@@ -1054,7 +1052,7 @@ void BSTerminalMainWindow::openAuthDlgVerify(const QString &addrToVerify)
 
 void BSTerminalMainWindow::openConfigDialog()
 {
-   ConfigDialog configDialog(applicationSettings_, armoryServersProvider_, signContainer_, this);
+   ConfigDialog configDialog(applicationSettings_, armoryServersProvider_, signersProvider_, signContainer_, this);
    connect(&configDialog, &ConfigDialog::reconnectArmory, this, &BSTerminalMainWindow::onArmoryNeedsReconnect);
    configDialog.exec();
 
@@ -1114,7 +1112,7 @@ void BSTerminalMainWindow::onReadyToLogin()
 
    if (loginDialog.exec() == QDialog::Accepted) {
       currentUserLogin_ = loginDialog.getUsername();
-      auto id = ui_->widgetChat->login(currentUserLogin_.toStdString(), loginDialog.getJwt());
+      auto id = ui_->widgetChat->login(currentUserLogin_.toStdString(), loginDialog.getJwt(), cbApproveChat_);
       setLoginButtonText(currentUserLogin_);
       setWidgetsAuthorized(true);
 
@@ -1136,6 +1134,7 @@ void BSTerminalMainWindow::onLogout()
 {
    ui_->widgetWallets->setUsername(QString());
    ui_->widgetChat->logout();
+   ui_->widgetChart->disconnect();
 
    if (celerConnection_->IsConnected()) {
       celerConnection_->CloseConnection();
@@ -1193,6 +1192,7 @@ void BSTerminalMainWindow::onUserLoggedOut()
    if (authManager_) {
       authManager_->OnDisconnectedFromCeler();
    }
+   mdProvider_->UnsubscribeFromMD();
 }
 
 void BSTerminalMainWindow::onCelerConnected()
@@ -1293,7 +1293,7 @@ void BSTerminalMainWindow::onZCreceived(const std::vector<bs::TXEntry> entries)
       return;
    }
    for (const auto &entry : entries) {
-      const auto &cbTx = [this, id = entry.id, txTime = entry.txTime, value = entry.value](Tx tx) {
+      const auto &cbTx = [this, id = entry.id, txTime = entry.txTime, value = entry.value](const Tx &tx) {
          const auto wallet = walletsMgr_->getWalletById(id);
          if (!wallet) {
             return;
@@ -1607,7 +1607,7 @@ void BSTerminalMainWindow::showArmoryServerPrompt(const BinaryData &srvPubKey, c
 
 void BSTerminalMainWindow::onArmoryNeedsReconnect()
 {
-   disconnect(statusBarView_.get(), 0, 0, 0);
+   disconnect(statusBarView_.get(), nullptr, nullptr, nullptr);
    statusBarView_->deleteLater();
    QApplication::processEvents();
 

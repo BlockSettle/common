@@ -96,7 +96,7 @@ private slots:
 //            addAction(tr("Add friend"), this, &ChatUsersContextMenu::onAddToContacts);
 //            break;
          case Chat::ContactStatus::Accepted:
-            addAction(tr("Remove friend"), this, &ChatUsersContextMenu::onRemoveFromContacts);
+            addAction(tr("Remove from contacts"), this, &ChatUsersContextMenu::onRemoveFromContacts);
             break;
          case Chat::ContactStatus::Incoming:
             addAction(tr("Accept friend request"), this, &ChatUsersContextMenu::onAcceptFriendRequest);
@@ -131,6 +131,10 @@ ChatClientUserView::ChatClientUserView(QWidget *parent)
    setContextMenuPolicy(Qt::CustomContextMenu);
    connect(this, &QAbstractItemView::customContextMenuRequested, this, &ChatClientUserView::onCustomContextMenu);
    setItemDelegate(new ChatClientUsersViewItemDelegate(this));
+
+   // expand/collapse categories only on single click
+   setExpandsOnDoubleClick(false);
+   connect(this, &QTreeView::clicked, this, &ChatClientUserView::onClicked);
 }
 
 void ChatClientUserView::addWatcher(ViewItemWatcher * watcher)
@@ -152,6 +156,22 @@ void ChatClientUserView::onCustomContextMenu(const QPoint & point)
    }
    if (contextMenu_){
       contextMenu_->execMenu(point);
+   }
+}
+
+void ChatClientUserView::onClicked(const QModelIndex &index)
+{
+   if (index.isValid()) {
+      const auto nodeType = qvariant_cast<TreeItem::NodeType>(index.data(ChatClientDataModel::Role::ItemTypeRole));
+
+      if (nodeType == TreeItem::NodeType::CategoryNode) {
+         if (isExpanded(index)) {
+            collapse(index);
+         }
+         else {
+            expand(index);
+         }
+      }
    }
 }
 
@@ -254,17 +274,23 @@ void ChatClientUserView::dataChanged(const QModelIndex &topLeft, const QModelInd
 
 void LoggerWatcher::onElementSelected(CategoryElement *element)
 {
+#if 0
    qDebug() << "Item selected:\n" << QString::fromStdString(element->getDataObject()->toJsonString());
+#endif
 }
 
 void LoggerWatcher::onElementUpdated(CategoryElement *element)
 {
+#if 0
    qDebug() << "Item updated:\n" << QString::fromStdString(element->getDataObject()->toJsonString());
+#endif
 }
 
 void LoggerWatcher::onMessageChanged(std::shared_ptr<Chat::MessageData> message)
 {
+#if 0
    qDebug() << "Message changed:\n" << QString::fromStdString(message->toJsonString());
+#endif
 }
 
 void ChatClientUserView::rowsInserted(const QModelIndex &parent, int start, int end)

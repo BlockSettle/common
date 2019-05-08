@@ -93,7 +93,7 @@ ApplicationSettings::ApplicationSettings(const QString &appName
       { armoryPathName,          SettingDef(QString(), armoryDBAppPathName) },
       { pubBridgeHost,           SettingDef(QLatin1String("PublicBridgeHost"), QLatin1String("185.213.153.36")) },
       { pubBridgePort,           SettingDef(QLatin1String("PublicBridgePort"), 9091) },
-      { pubBridgePubKey,         SettingDef(QString(), QLatin1String("AEJL[u[3-i>v#4D?v3Te!B}S0nO7cG!QOsmI*--g")) },
+      { pubBridgePubKey,         SettingDef(QLatin1String("PubBridgePubKey"), QString()) },
       { envConfiguration,        SettingDef(QLatin1String("envConfiguration"), 0) },
       { celerHost,               SettingDef(QString()) },
       { celerPort,               SettingDef(QString()) },
@@ -103,14 +103,14 @@ ApplicationSettings::ApplicationSettings(const QString &appName
       { mdhsPort,                SettingDef(QString()) },
       { chatServerHost,          SettingDef(QString()) },
       { chatServerPort,          SettingDef(QString()) },
-      { chatServerPubKey,        SettingDef(QString(), QLatin1String("@:2IFYqVXa}+eRpKW9Q310j4cB%%nKe8$-v6bSOg")) },
+      { chatServerPubKey,        SettingDef(QLatin1String("ChatServerPubKey"), QString()) },
       { chatPrivKey,             SettingDef(QString()) },
       { chatPubKey,              SettingDef(QString()) },
       { chatDbFile,              SettingDef(QString(), AppendToWritableDir(QLatin1String("chat.db"))) },
       { celerUsername,           SettingDef(QLatin1String("MatchSystemUsername")) },
-      { signerHost,              SettingDef(QLatin1String("SignerHost"), QLatin1String("127.0.0.1")) },
-      { signerPort,              SettingDef(QLatin1String("SignerPort"), 23456) },
+      { localSignerPort,         SettingDef(QLatin1String("SignerPort"), 23456) },
       { signerRunMode,           SettingDef(QLatin1String("SignerRunMode"), 1) },
+      { signerIndex,             SettingDef(QLatin1String("SignerIndex"), -1) },
       { signerOfflineDir,        SettingDef(QLatin1String("SignerOfflineDir"), QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation)) },
       { autoSignSpendLimit,      SettingDef(QLatin1String("AutoSignSpendLimit"), 0.0) },
       { launchToTray,            SettingDef(QLatin1String("LaunchToTray"), false) },
@@ -151,7 +151,7 @@ ApplicationSettings::ApplicationSettings(const QString &appName
       { MDLicenseAccepted,                SettingDef(QLatin1String("MDLicenseAccepted"), false) },
       { authPrivKey,                      SettingDef(QLatin1String("AuthPrivKey")) },
       { zmqLocalSignerPubKeyFilePath,     SettingDef(QLatin1String("ZmqLocalSignerPubKeyFilePath"), AppendToWritableDir(zmqSignerKeyFileName)) },
-      { zmqRemoteSignerPubKey,            SettingDef(QLatin1String("ZmqRemoteSignerPubKey")) },
+      { remoteSigners,                    SettingDef(QLatin1String("RemoteSignerKeys")) },
       { rememberLoginUserName,            SettingDef(QLatin1String("RememberLoginUserName"), true) },
       { armoryServers,                    SettingDef(QLatin1String("ArmoryServers")) },
       { defaultArmoryServersKeys,         SettingDef(QLatin1String("DefaultArmoryServersKeys")) },
@@ -208,6 +208,8 @@ bool ApplicationSettings::isDefault(Setting set) const
 
 void ApplicationSettings::set(Setting s, const QVariant &val, bool toFile)
 {
+   bool changed = false;
+
    if (val.isValid()) {
       FastLock lock(lock_);
       auto itSD = settingDefs_.find(s);
@@ -216,13 +218,18 @@ void ApplicationSettings::set(Setting s, const QVariant &val, bool toFile)
          itSD->second.read = true;
          if (val != itSD->second.value) {
             itSD->second.value = val;
-            emit settingChanged(s, val);
+            changed = true;
          }
 
          if (toFile && !itSD->second.path.isEmpty()) {
             settings_.setValue(itSD->second.path, val);
          }
       }
+   }
+
+   lock_.clear();
+   if (changed) {
+      emit settingChanged(s, val);
    }
 }
 

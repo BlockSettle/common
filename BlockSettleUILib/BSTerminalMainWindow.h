@@ -12,6 +12,7 @@
 #include "CelerClient.h"
 #include "QWalletInfo.h"
 #include "SignContainer.h"
+#include "ZMQ_BIP15X_DataConnection.h"
 
 namespace Ui {
     class BSTerminalMainWindow;
@@ -26,6 +27,7 @@ namespace bs {
 
 class AboutDialog;
 class ArmoryServersProvider;
+class SignersProvider;
 class AssetManager;
 class AuthAddressDialog;
 class AuthAddressManager;
@@ -130,6 +132,7 @@ private:
    std::shared_ptr<ApplicationSettings>   applicationSettings_;
    std::shared_ptr<bs::sync::WalletsManager> walletsMgr_;
    std::shared_ptr<ArmoryServersProvider> armoryServersProvider_;
+   std::shared_ptr<SignersProvider>       signersProvider_;
    std::shared_ptr<AuthAddressManager>    authManager_;
    std::shared_ptr<AuthSignManager>       authSignManager_;
    std::shared_ptr<ArmoryObject>          armory_;
@@ -231,6 +234,9 @@ private:
    bool armoryKeyDialogShown_ = false;
    bool armoryBDVRegistered_ = false;
    bool walletsSynched_ = false;
+
+   ZmqBIP15XDataConnection::cbNewKey   cbApprovePuB_ = nullptr;
+   ZmqBIP15XDataConnection::cbNewKey   cbApproveChat_ = nullptr;
 };
 
 #endif // __BS_TERMINAL_MAIN_WINDOW_H__

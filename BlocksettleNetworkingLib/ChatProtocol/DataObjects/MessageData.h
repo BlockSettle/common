@@ -50,11 +50,12 @@ namespace Chat {
 
       void setFlag(const State);
       void unsetFlag(const State);
+      bool testFlag(const State stateFlag);
       void updateState(const int newState);
       bool decrypt(const autheid::PrivateKey& privKey);
       bool encrypt(const autheid::PublicKey& pubKey);
-      bool encrypt_aead(const BinaryData& receiverPubKey, const SecureBinaryData& ownPrivKey, const Botan::SecureVector<uint8_t> &nonce, const std::shared_ptr<spdlog::logger>& logger);
-      bool decrypt_aead(const BinaryData& senderPubKey, const SecureBinaryData& privKey, const std::shared_ptr<spdlog::logger>& logger);
+      bool encryptAead(const BinaryData& receiverPubKey, const SecureBinaryData& ownPrivKey, const Botan::SecureVector<uint8_t> &nonce, const std::shared_ptr<spdlog::logger>& logger);
+      bool decryptAead(const BinaryData& senderPubKey, const SecureBinaryData& privKey, const std::shared_ptr<spdlog::logger>& logger);
       
       //Set ID for message, returns old ID that was replaced
       QString setId(const QString& id);

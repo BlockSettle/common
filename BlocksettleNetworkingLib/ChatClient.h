@@ -14,14 +14,14 @@
 
 #include "ChatClientTree/TreeObjects.h"
 #include "ChatHandleInterfaces.h"
+#include "ZMQ_BIP15X_DataConnection.h"
+
 namespace spdlog {
    class logger;
 }
 namespace Chat {
    class Request;
 }
-
-
 class ConnectionManager;
 class ZmqBIP15XDataConnection;
 class ApplicationSettings;
@@ -34,6 +34,7 @@ class ChatClient : public QObject
              , public Chat::ResponseHandler
              , public ChatItemActionsHandler
              , public ChatSearchActionsHandler
+             , public ChatMessageReadHandler
 {
    Q_OBJECT
 
@@ -50,7 +51,8 @@ public:
 
    std::shared_ptr<ChatClientDataModel> getDataModel();
 
-   std::string loginToServer(const std::string& email, const std::string& jwt);
+   std::string loginToServer(const std::string& email, const std::string& jwt
+      , const ZmqBIP15XDataConnection::cbNewKey &);
    void logout(bool send = true);
 
    void OnHeartbeatPong(const Chat::HeartbeatPongResponse &) override;
@@ -98,6 +100,8 @@ public:
    void sendSearchUsersRequest(const QString& userIdPattern);
    QString deriveKey(const QString& email) const;
    void clearSearch();
+   bool isFriend(const QString &userId);
+   QString getUserId();
 
 private:
    void sendRequest(const std::shared_ptr<Chat::Request>& request);
@@ -125,7 +129,7 @@ signals:
 
    void ForceLogoutSignal();
 public slots:
-   void onMessageRead(const std::shared_ptr<Chat::MessageData>& message);
+   //void onMessageRead(const std::shared_ptr<Chat::MessageData>& message);
    
 private slots:
    void onForceLogoutSignal();
@@ -170,6 +174,11 @@ public:
 public:
    void onActionSearchUsers(const std::string &text) override;
    void onActionResetSearch() override;
+
+   // ChatMessageReadHandler interface
+public:
+   void onMessageRead(std::shared_ptr<Chat::MessageData> message) override;
+   void onRoomMessageRead(std::shared_ptr<Chat::MessageData> message) override;
 };
 
 #endif   // CHAT_CLIENT_H

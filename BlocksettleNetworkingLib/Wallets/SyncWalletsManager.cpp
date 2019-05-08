@@ -58,7 +58,7 @@ void WalletsManager::reset()
 
 void WalletsManager::syncWallets(const CbProgress &cb)
 {
-   const auto &cbWalletInfo = [this, cb](std::vector<bs::sync::WalletInfo> wi) {
+   const auto &cbWalletInfo = [this, cb](const std::vector<bs::sync::WalletInfo> &wi) {
       auto walletIds = std::make_shared<std::unordered_set<std::string>>();
       for (const auto &info : wi) {
          walletIds->insert(info.id);
@@ -125,6 +125,10 @@ void WalletsManager::syncWallets(const CbProgress &cb)
       logger_->debug("[WalletsManager::syncWallets] initial wallets synchronized");
       if (wi.empty()) {
          emit walletDeleted("");
+      }
+
+      if (wi.empty()) {
+         emit walletsSynchronized();
       }
    };
    if (!signContainer_) {
@@ -672,7 +676,7 @@ bool WalletsManager::getTransactionDirection(Tx tx, const std::string &walletId
       txOutIndices[op.getTxHash()].push_back(op.getTxOutIndex());
    }
 
-   const auto &cbProcess = [this, wallet, tx, txKey, txOutIndices, cb](std::vector<Tx> txs) {
+   const auto &cbProcess = [this, wallet, tx, txKey, txOutIndices, cb](const std::vector<Tx> &txs) {
       bool ourOuts = false;
       bool otherOuts = false;
       bool ourIns = false;
@@ -829,7 +833,7 @@ bool WalletsManager::getTransactionMainAddress(const Tx &tx, const std::string &
          txOutIndices[op.getTxHash()].push_back(op.getTxOutIndex());
       }
 
-      const auto &cbProcess = [this, txOutIndices, wallet, cbProcessAddresses](std::vector<Tx> txs) {
+      const auto &cbProcess = [this, txOutIndices, wallet, cbProcessAddresses](const std::vector<Tx> &txs) {
          std::set<bs::Address> addresses;
          for (const auto &prevTx : txs) {
             const auto &itIdx = txOutIndices.find(prevTx.getThisHash());

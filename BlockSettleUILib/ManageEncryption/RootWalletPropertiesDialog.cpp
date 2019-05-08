@@ -72,6 +72,8 @@ RootWalletPropertiesDialog::RootWalletPropertiesDialog(const std::shared_ptr<spd
 {
    ui_->setupUi(this);
 
+   ui_->labelEncRank->clear();
+
    walletFilter_ = new CurrentWalletFilter(wallet, this);
    walletFilter_->setSourceModel(walletsModel);
    ui_->treeViewWallets->setModel(walletFilter_);
@@ -116,7 +118,7 @@ RootWalletPropertiesDialog::~RootWalletPropertiesDialog() = default;
 
 void RootWalletPropertiesDialog::onDeleteWallet()
 {
-   int createReqId_ = signingContainer_->customDialogRequest(bs::signer::ui::DialogType::DeleteWallet
+   signingContainer_->customDialogRequest(bs::signer::ui::DialogType::DeleteWallet
                                                              , {{ QLatin1String("rootId"), walletInfo_.rootId() }});
    close();
 
@@ -129,7 +131,7 @@ void RootWalletPropertiesDialog::onDeleteWallet()
 
 void RootWalletPropertiesDialog::onBackupWallet()
 {
-   int createReqId_ = signingContainer_->customDialogRequest(bs::signer::ui::DialogType::BackupWallet
+   signingContainer_->customDialogRequest(bs::signer::ui::DialogType::BackupWallet
                                                              , {{ QLatin1String("rootId"), walletInfo_.rootId() }});
    close();
 
@@ -139,7 +141,7 @@ void RootWalletPropertiesDialog::onBackupWallet()
 
 void RootWalletPropertiesDialog::onChangePassword()
 {
-   int createReqId_ = signingContainer_->customDialogRequest(bs::signer::ui::DialogType::ManageWallet
+   signingContainer_->customDialogRequest(bs::signer::ui::DialogType::ManageWallet
                                                              , {{ QLatin1String("rootId"), walletInfo_.rootId() }});
    close();
 

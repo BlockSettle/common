@@ -45,13 +45,10 @@ class ZmqBIP15XDataConnection : public ZmqDataConnection, public ActiveStreamCli
 {
 public:
    ZmqBIP15XDataConnection(const std::shared_ptr<spdlog::logger>& logger
-      , const bool& ephemeralPeers = false, const bool& monitored = false
-      , const bool& makeClientCookie = false
-      , const bool& readServerCookie = false
+      , const bool ephemeralPeers = false, const bool monitored = false
+      , const bool makeClientCookie = false
+      , const bool readServerCookie = false
       , const std::string& cookiePath = "");
-/*   ZmqBIP15XDataConnection(const std::shared_ptr<spdlog::logger>& logger
-      , const ArmoryServersProvider& trustedServer, const bool& ephemeralPeers
-      , bool monitored);*/
    ~ZmqBIP15XDataConnection() noexcept override;
 
    using ZmqDataConnection::logger_;
@@ -78,6 +75,8 @@ public:
    bool send(const std::string& data) override; // Send data from outside class.
    bool closeConnection() override;
 
+   void rekey();
+
 protected:
    bool startBIP151Handshake(const std::function<void()> &cbCompleted);
    bool handshakeCompleted() {
@@ -97,11 +96,12 @@ protected:
 private:
    void ProcessIncomingData(BinaryData& payload);
    bool processAEADHandshake(const ZmqBIP15XMsgPartial& msgObj);
-   void verifyNewIDKey(const BinaryDataRef& newKey
+   bool verifyNewIDKey(const BinaryDataRef& newKey
       , const std::string& srvAddrPort);
    AuthPeersLambdas getAuthPeerLambda() const;
-   void rekeyIfNeeded(const size_t& dataSize);
+   void rekeyIfNeeded(size_t dataSize);
 
+private:
    std::shared_ptr<std::promise<bool>> serverPubkeyProm_;
    bool  serverPubkeySignalled_ = false;
    std::shared_ptr<AuthorizedPeers> authPeers_;

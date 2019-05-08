@@ -17,6 +17,8 @@
 #include <thread>
 #include <spdlog/spdlog.h>
 #include "ChatClientDataModel.h"
+#include "NotificationCenter.h"
+#include "ZMQ_BIP15X_DataConnection.h"
 
 
 Q_DECLARE_METATYPE(std::vector<std::string>)
@@ -24,13 +26,28 @@ Q_DECLARE_METATYPE(std::vector<std::string>)
 
 enum class OTCPages : int
 {
-   OTCCreateRequest = 0,
-   OTCCreateResponse,
-   OTCNegotiateRequest,
-   OTCNegotiateResponse
+   OTCLoginRequiredShieldPage = 0,
+   OTCGeneralRoomShieldPage,
+   OTCCreateRequestPage,
+   OTCCreateResponsePage,
+   OTCNegotiateRequestPage,
+   OTCNegotiateResponsePage
 };
 
 constexpr int kShowEmptyFoundUserListTimeoutMs = 3000;
+
+bool IsOTCChatRoom(const QString& chatRoom)
+{
+   static const QString targetRoomName = QLatin1String("otc_chat");
+   return chatRoom == targetRoomName;
+}
+
+bool IsGlobalChatRoom(const QString& chatRoom)
+{
+   static const QString targetRoomName = QLatin1String("global_chat");
+   return chatRoom == targetRoomName;
+}
+
 
 class ChatWidgetState {
 public:
@@ -42,7 +59,8 @@ public:
    explicit ChatWidgetState(ChatWidget* chat, ChatWidget::State type) : chat_(chat), type_(type) {}
    virtual ~ChatWidgetState() = default;
 
-   virtual std::string login(const std::string& email, const std::string& jwt) = 0;
+   virtual std::string login(const std::string& email, const std::string& jwt
+      , const ZmqBIP15XDataConnection::cbNewKey &) = 0;
    virtual void logout() = 0;
    virtual void onLoggedOut() { }
    virtual void onSendButtonClicked() = 0;
@@ -72,14 +90,15 @@ public:
       chat_->ui_->chatSearchLineEdit->clear();
       chat_->ui_->chatSearchLineEdit->setEnabled(false);
       chat_->ui_->labelUserName->setText(QLatin1String("offline"));
+
+      chat_->SetLoggedOutOTCState();
    }
 
-   std::string login(const std::string& email, const std::string& jwt) override {
+   std::string login(const std::string& email, const std::string& jwt
+      , const ZmqBIP15XDataConnection::cbNewKey &cb) override {
       chat_->logger_->debug("Set user name {}", email);
-      const auto userId = chat_->client_->loginToServer(email, jwt);
+      const auto userId = chat_->client_->loginToServer(email, jwt, cb);
       chat_->ui_->textEditMessages->setOwnUserId(userId);
-      chat_->ui_->labelUserName->setText(QString::fromStdString(userId));
-
       return userId;
    }
 
@@ -109,13 +128,20 @@ public:
       chat_->ui_->input_textEdit->setVisible(true);
       chat_->ui_->input_textEdit->setEnabled(true);
       chat_->ui_->chatSearchLineEdit->setEnabled(true);
+      chat_->ui_->treeViewUsers->expandAll();
+      chat_->ui_->labelUserName->setText(chat_->client_->getUserId());
+
+      chat_->SetOTCLoggedInState();
+
+      selectFirstRoom();
    }
 
    void onStateExit() override {
       chat_->onUserClicked({});
    }
 
-   std::string login(const std::string& /*email*/, const std::string& /*jwt*/) override {
+   std::string login(const std::string& /*email*/, const std::string& /*jwt*/
+      , const ZmqBIP15XDataConnection::cbNewKey &) override {
       chat_->logger_->info("Already logged in! You should first logout!");
       return std::string();
    }
@@ -169,7 +195,7 @@ public:
    }
 
    void onRoomClicked(const QString& roomId) override {
-      if (roomId == QLatin1Literal("otc_chat")) {
+      if (IsOTCChatRoom(roomId)) {
          chat_->ui_->stackedWidgetMessages->setCurrentIndex(1);
       } else {
          chat_->ui_->stackedWidgetMessages->setCurrentIndex(0);
@@ -207,6 +233,25 @@ public:
    }
 
    void onUsersDeleted(const std::vector<std::string> &/*users*/)  override {}
+
+   void selectFirstRoom()
+   {
+      onRoomClicked(QLatin1String("global_chat"));
+
+      QModelIndexList indexes = chat_->ui_->treeViewUsers->model()->match(chat_->ui_->treeViewUsers->model()->index(0,0),
+                                                                Qt::DisplayRole,
+                                                                QLatin1String("*"),
+                                                                -1,
+                                                                Qt::MatchWildcard|Qt::MatchRecursive);
+      
+      // highlight first room
+      for (auto index : indexes) {
+         if (index.data(ChatClientDataModel::Role::ItemTypeRole).value<TreeItem::NodeType>() == TreeItem::NodeType::RoomsElement) {
+            chat_->ui_->treeViewUsers->selectionModel()->select(index, QItemSelectionModel::ClearAndSelect);
+            break;
+         }
+      }
+   }
 };
 
 ChatWidget::ChatWidget(QWidget *parent)
@@ -240,37 +285,35 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
 {
    logger_ = logger;
    client_ = std::make_shared<ChatClient>(connectionManager, appSettings, logger);
-   ui_->treeViewUsers->setModel(client_->getDataModel().get());
-   ui_->treeViewUsers->expandAll();
+   auto model = client_->getDataModel();
+   model->setNewMessageMonitor(this);
+   ui_->treeViewUsers->setModel(model.get());
+//   ui_->treeViewUsers->expandAll();
    ui_->treeViewUsers->addWatcher(new LoggerWatcher());
    ui_->treeViewUsers->addWatcher(ui_->textEditMessages);
    ui_->treeViewUsers->addWatcher(this);
    ui_->treeViewUsers->setHandler(client_);
    ui_->textEditMessages->setHandler(client_);
+   ui_->textEditMessages->setMessageReadHandler(client_);
+
    ui_->treeViewUsers->setActiveChatLabel(ui_->labelActiveChat);
-   ui_->chatSearchLineEdit->setActionsHandler(client_);
+   //ui_->chatSearchLineEdit->setActionsHandler(client_);
 
    connect(client_.get(), &ChatClient::LoginFailed, this, &ChatWidget::onLoginFailed);
    connect(client_.get(), &ChatClient::LoggedOut, this, &ChatWidget::onLoggedOut);
+   connect(client_.get(), &ChatClient::SearchUserListReceived, this, &ChatWidget::onSearchUserListReceived);
+   connect(client_.get(), &ChatClient::ConnectedToServer, this, &ChatWidget::onConnectedToServer);
    connect(ui_->input_textEdit, &BSChatInput::sendMessage, this, &ChatWidget::onSendButtonClicked);
-
-   connect(ui_->treeViewUsers->model(), &QAbstractItemModel::modelReset, this, &ChatWidget::treeViewUsersModelReset);
-   connect(ui_->treeViewUsers->model(), &QAbstractItemModel::rowsAboutToBeInserted, this, &ChatWidget::treeViewUsersModelRowsAboutToBeInserted);
-   connect(ui_->treeViewUsers->model(), &QAbstractItemModel::rowsInserted, this, &ChatWidget::treeViewUsersModelRowsInserted);
+   connect(ui_->chatSearchLineEdit, &ChatSearchLineEdit::textEdited, this, &ChatWidget::onSearchUserTextEdited);
 
 //   connect(client_.get(), &ChatClient::SearchUserListReceived,
 //           this, &ChatWidget::onSearchUserListReceived);
    //connect(ui_->chatSearchLineEdit, &ChatSearchLineEdit::returnPressed, this, &ChatWidget::onSearchUserReturnPressed);
+
    changeState(State::LoggedOut); //Initial state is LoggedOut
+   initPopup();
 }
 
-void ChatWidget::onChatUserRemoved(const ChatUserDataPtr &chatUserDataPtr)
-{
-   if (currentChat_ == chatUserDataPtr->userId())
-   {
-      onUserClicked({});
-   }
-}
 
 void ChatWidget::onAddChatRooms(const std::vector<std::shared_ptr<Chat::RoomData> >& roomList)
 {
@@ -286,21 +329,17 @@ void ChatWidget::onSearchUserListReceived(const std::vector<std::shared_ptr<Chat
 {
    if (users.size() > 0) {
       std::shared_ptr<Chat::UserData> firstUser = users.at(0);
-      popup_->setUserID(firstUser->getUserId());
+      popup_->setUserID(firstUser->getUserId()); 
+      popup_->setUserIsInContacts(client_->isFriend(firstUser->getUserId()));
    } else {
       popup_->setUserID(QString());
    }
 
-   popup_->setGeometry(0, 0, ui_->chatSearchLineEdit->width(), static_cast<int>(ui_->chatSearchLineEdit->height() * 1.2));
-   popup_->setCustomPosition(ui_->chatSearchLineEdit, 0, 5);
-   popup_->show();
+   setPopupVisible(true);
 
-   if (users.size() == 0) {
-      QTimer::singleShot(kShowEmptyFoundUserListTimeoutMs, [this] {
-         popup_->hide();
-         ui_->chatSearchLineEdit->setFocus();
-      });
-   }
+   // hide popup after a few sec
+   if (users.size() == 0) 
+      popupVisibleTimer_->start(kShowEmptyFoundUserListTimeoutMs);
 }
 
 void ChatWidget::onUserClicked(const QString& userId)
@@ -311,46 +350,6 @@ void ChatWidget::onUserClicked(const QString& userId)
 void ChatWidget::onUsersDeleted(const std::vector<std::string> &users)
 {
    stateCurrent_->onUsersDeleted(users);
-}
-
-void ChatWidget::treeViewUsersModelReset()
-{
-   // expand all by default
-   ui_->treeViewUsers->expandAll();
-}
-
-void ChatWidget::treeViewUsersModelRowsAboutToBeInserted()
-{
-   // get all indexes
-   QModelIndexList indexes = ui_->treeViewUsers->model()->match(ui_->treeViewUsers->model()->index(0,0),
-                                                                Qt::DisplayRole,
-                                                                QLatin1String("*"),
-                                                                -1,
-                                                                Qt::MatchWildcard|Qt::MatchRecursive);
-   
-   // save expanded indexes
-   expandedIndexes_.clear();
-   for (const auto &index : indexes)
-      if (ui_->treeViewUsers->isExpanded(index))
-         expandedIndexes_.insert(index);
-}
-
-void ChatWidget::treeViewUsersModelRowsInserted()
-{
-   // get all indexes
-   QModelIndexList indexes = ui_->treeViewUsers->model()->match(ui_->treeViewUsers->model()->index(0,0),
-                                                                Qt::DisplayRole,
-                                                                QLatin1String("*"),
-                                                                -1,
-                                                                Qt::MatchWildcard|Qt::MatchRecursive);
-
-    // restore expand and collaps states for all indexes
-   for (const auto &index : indexes) {
-      if (expandedIndexes_.find(index) != expandedIndexes_.end())
-	      ui_->treeViewUsers->expand(index);
-      else
-         ui_->treeViewUsers->collapse(index);
-   }
 }
 
 void ChatWidget::changeState(ChatWidget::State state)
@@ -389,11 +388,57 @@ void ChatWidget::onMessagesUpdated()
    return stateCurrent_->onMessagesUpdated();
 }
 
-std::string ChatWidget::login(const std::string& email, const std::string& jwt)
+void ChatWidget::initPopup()
+{   
+   // create popup
+   popup_ = new ChatSearchPopup(this);
+   popup_->setGeometry(0, 0, ui_->chatSearchLineEdit->width(), static_cast<int>(ui_->chatSearchLineEdit->height() * 1.2));
+   popup_->setVisible(false);
+   connect(popup_, &ChatSearchPopup::sendFriendRequest, this, &ChatWidget::onSendFriendRequest);
+   connect(popup_, &ChatSearchPopup::removeFriendRequest, this, &ChatWidget::onRemoveFriendRequest);
+   qApp->installEventFilter(this);
+
+   // insert popup under chat search line edit
+   QVBoxLayout *boxLayout = qobject_cast<QVBoxLayout*>(ui_->chatSearchLineEdit->parentWidget()->layout());
+   int index = boxLayout->indexOf(ui_->chatSearchLineEdit) + 1;
+   boxLayout->insertWidget(index, popup_);
+
+   // create spacer under popup
+   chatUsersVerticalSpacer_ = new QSpacerItem(20, 40);
+   boxLayout->insertSpacerItem(index+1, chatUsersVerticalSpacer_);
+
+   // create timer
+   popupVisibleTimer_ = new QTimer();
+   popupVisibleTimer_->setSingleShot(true);
+   connect(popupVisibleTimer_, &QTimer::timeout, [=]() {
+      setPopupVisible(false);
+   });
+}
+
+void ChatWidget::setPopupVisible(const bool &value)
+{
+   if (popup_ != NULL)
+      popup_->setVisible(value);
+
+   // resize spacer
+   if (chatUsersVerticalSpacer_ != NULL) {
+      if (value)
+         chatUsersVerticalSpacer_->changeSize(20, 13);
+      else
+         chatUsersVerticalSpacer_->changeSize(20, 40);
+      ui_->chatSearchLineEdit->parentWidget()->layout()->update();
+   }
+
+   if (popupVisibleTimer_ != NULL) {
+      popupVisibleTimer_->stop();
+   }
+}
+
+std::string ChatWidget::login(const std::string& email, const std::string& jwt
+   , const ZmqBIP15XDataConnection::cbNewKey &cb)
 {
    try {
-      const auto userId = stateCurrent_->login(email, jwt);
-      changeState(State::LoggedIn);
+      const auto userId = stateCurrent_->login(email, jwt, cb);
       needsToStartFirstRoom_ = true;
       return userId;
    }
@@ -438,18 +483,11 @@ void ChatWidget::onNewChatMessageTrayNotificationClicked(const QString &chatId)
    switchToChat(chatId);
 }
 
-void ChatWidget::onSearchUserReturnPressed()
+void ChatWidget::onSearchUserTextEdited(const QString& text)
 {
-   if (!popup_)
-   {
-      popup_ = new ChatSearchPopup(this);
-      connect(popup_, &ChatSearchPopup::sendFriendRequest,
-              this, &ChatWidget::onSendFriendRequest);
-      qApp->installEventFilter(this);
-   }
-
    QString userToAdd = ui_->chatSearchLineEdit->text();
    if (userToAdd.isEmpty() || userToAdd.length() < 3) {
+      setPopupVisible(false);
       return;
    }
 
@@ -463,29 +501,18 @@ void ChatWidget::onSearchUserReturnPressed()
    client_->sendSearchUsersRequest(userToAdd);
 }
 
+void ChatWidget::onConnectedToServer()
+{
+   changeState(State::LoggedIn);
+}
+
 bool ChatWidget::eventFilter(QObject *obj, QEvent *event)
 {
-   if (!popup_)
-      return QWidget::eventFilter(obj, event);
-
-   if (obj == this->window()
-       && event->type() == QEvent::Move)
-   {
-      popup_->move(ui_->chatSearchLineEdit->mapToGlobal(ui_->chatSearchLineEdit->rect().bottomLeft()));
-   }
-
-   if (event->type() == QEvent::MouseButtonRelease)
-   {
-      QMouseEvent *mouseEvent = static_cast<QMouseEvent*>(event);
-      QPoint pos = mouseEvent->pos();
+   if ( popup_->isVisible() && event->type() == QEvent::MouseButtonRelease) {
+      QPoint pos = popup_->mapFromGlobal(QCursor::pos());
 
       if (!popup_->rect().contains(pos))
-      {
-         qApp->removeEventFilter(this);
-         client_->clearSearch();
-         popup_->deleteLater();
-         popup_ = nullptr;
-      }
+         setPopupVisible(false);
    }
 
    return QWidget::eventFilter(obj, event);
@@ -493,23 +520,14 @@ bool ChatWidget::eventFilter(QObject *obj, QEvent *event)
 
 void ChatWidget::onSendFriendRequest(const QString &userId)
 {
-   // check if user isn't already in contacts
-   /*ChatUserModelPtr chatUserModelPtr = chatUserListLogicPtr_->chatUserModelPtr();
+   client_->sendFriendRequest(userId);
+   setPopupVisible(false);
+}
 
-   if (chatUserModelPtr && !chatUserModelPtr->isChatUserInContacts(userId))
-   {
-      // add user to contacts as friend
-      chatUserModelPtr->setUserState(userId, ChatUserData::State::OutgoingFriendRequest);
-      ChatUserDataPtr chatUserDataPtr = chatUserModelPtr->getUserByUserId(userId);
-      // save user in DB
-      client_->addOrUpdateContact(chatUserDataPtr->userId(),ContactUserData::Status::Outgoing, chatUserDataPtr->userName());
-      // and send friend request to ChatClient
-      client_->sendFriendRequest(chatUserDataPtr->userId());
-   }*/
-
-   popup_->deleteLater();
-   popup_ = nullptr;
-   qApp->removeEventFilter(this);
+void ChatWidget::onRemoveFriendRequest(const QString &userId)
+{
+   client_->removeContact(userId);
+   setPopupVisible(false);
 }
 
 void ChatWidget::onRoomClicked(const QString& roomId)
@@ -551,10 +569,17 @@ void ChatWidget::onElementSelected(CategoryElement *element)
             break;
 
       }
-      if (currentChat_ == QLatin1Literal("otc_chat")) {
+
+      if (IsOTCChatRoom(currentChat_)) {
          ui_->stackedWidgetMessages->setCurrentIndex(1);
+         OTCSwitchToCommonRoom();
       } else {
          ui_->stackedWidgetMessages->setCurrentIndex(0);
+         if (IsGlobalChatRoom(currentChat_)) {
+            OTCSwitchToGlobalRoom();
+         } else {
+            OTCSwitchToDMRoom();
+         }
       }
    }
 }
@@ -582,7 +607,7 @@ void ChatWidget::DisplayOTCRequest(const bs::network::Side::Type& side, const bs
    ui_->widgetCreateOTCResponse->SetSide(side);
    ui_->widgetCreateOTCResponse->SetRange(range);
 
-   ui_->stackedWidgetOTC->setCurrentIndex(static_cast<int>(OTCPages::OTCCreateResponse));
+   ui_->stackedWidgetOTC->setCurrentIndex(static_cast<int>(OTCPages::OTCCreateResponsePage));
 }
 
 
@@ -592,5 +617,59 @@ void ChatWidget::OnOTCResponseCreated()
    auto amountRange = ui_->widgetCreateOTCResponse->GetResponseQuantityRange();
    ui_->widgetNegotiateRequest->DisplayResponse(ui_->widgetCreateOTCRequest->GetSide(), priceRange, amountRange);
 
-   ui_->stackedWidgetOTC->setCurrentIndex(static_cast<int>(OTCPages::OTCNegotiateRequest));
+   ui_->stackedWidgetOTC->setCurrentIndex(static_cast<int>(OTCPages::OTCNegotiateRequestPage));
+}
+
+
+void ChatWidget::SetOTCLoggedInState()
+{
+   OTCSwitchToGlobalRoom();
+}
+
+void ChatWidget::SetLoggedOutOTCState()
+{
+   ui_->stackedWidgetOTC->setCurrentIndex(static_cast<int>(OTCPages::OTCLoginRequiredShieldPage));
+}
+
+void ChatWidget::OTCSwitchToCommonRoom()
+{
+   ui_->stackedWidgetOTC->setCurrentIndex(static_cast<int>(OTCPages::OTCCreateRequestPage));
+}
+
+void ChatWidget::OTCSwitchToDMRoom()
+{
+   ui_->stackedWidgetOTC->setCurrentIndex(static_cast<int>(OTCPages::OTCCreateRequestPage));
+}
+
+void ChatWidget::OTCSwitchToGlobalRoom()
+{
+   ui_->stackedWidgetOTC->setCurrentIndex(static_cast<int>(OTCPages::OTCGeneralRoomShieldPage));
+}
+
+void ChatWidget::onNewMessagePresent(const bool isNewMessagePresented, const CategoryElement *element)
+{
+   qDebug() << "New Message: " << (isNewMessagePresented?"TRUE":"FALSE");
+
+   // show notification about new message in tray icon
+   if (isNewMessagePresented) {
+      auto data = element->getDataObject();
+
+      if (data->getType() == Chat::DataObject::Type::ContactRecordData) {
+         auto contact = std::dynamic_pointer_cast<Chat::ContactRecordData>(data);
+
+         // don't show notification for global chat
+         if (contact && contact->getContactId() != QLatin1String("global_chat")) {
+            if ( contact->getContactId() != currentChat_ ){
+               const bool isInCurrentChat = false;
+               const bool hasUnreadMessages = true;
+
+               NotificationCenter::notify(bs::ui::NotifyType::UpdateUnreadMessage, 
+                                         {contact->getContactId(), 
+                                          tr("New message"), 
+                                          QVariant(isInCurrentChat), 
+                                          QVariant(hasUnreadMessages)});
+            }
+         }
+      }
+   }
 }

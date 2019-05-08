@@ -80,6 +80,11 @@ namespace Chat {
       state_ &= ~(int)state;
    }
 
+   bool MessageData::testFlag(const MessageData::State stateFlag)
+   {
+      return state_ & static_cast<int>(stateFlag);
+   }
+
    void MessageData::updateState(const int newState)
    {
       state_ = newState;
@@ -106,11 +111,11 @@ namespace Chat {
       const QByteArray message_bytes = messageData_.toUtf8();
       auto data = autheid::encryptData(message_bytes.data(), size_t(message_bytes.size()), pubKey);
       messageData_ = QString::fromLatin1(QByteArray(reinterpret_cast<const char*>(data.data()), int(data.size())).toBase64());
-      encryptionType_ == EncryptionType::IES;
+      encryptionType_ = EncryptionType::IES;
       return true;
    }
 
-   bool MessageData::encrypt_aead(const BinaryData& receiverPubKey, const SecureBinaryData& ownPrivKey, const Botan::SecureVector<uint8_t> &nonce, const std::shared_ptr<spdlog::logger>& logger)
+   bool MessageData::encryptAead(const BinaryData& receiverPubKey, const SecureBinaryData& ownPrivKey, const Botan::SecureVector<uint8_t> &nonce, const std::shared_ptr<spdlog::logger>& logger)
    {
       if (encryptionType_ != EncryptionType::Unencrypted)
       {
@@ -170,12 +175,12 @@ namespace Chat {
       }
 
       messageData_ = QString::fromLatin1(QByteArray(reinterpret_cast<const char*>(encrypted_data.data()), int(encrypted_data.size())).toBase64());
-      encryptionType_ == EncryptionType::AEAD;
+      encryptionType_ = EncryptionType::AEAD;
 
       return true;
    }
 
-   bool MessageData::decrypt_aead(const BinaryData& senderPubKey, const SecureBinaryData& ownPrivKey, const std::shared_ptr<spdlog::logger>& logger)
+   bool MessageData::decryptAead(const BinaryData& senderPubKey, const SecureBinaryData& ownPrivKey, const std::shared_ptr<spdlog::logger>& logger)
    {
       if (encryptionType_ != EncryptionType::AEAD)
       {
@@ -234,7 +239,7 @@ namespace Chat {
       }
 
       messageData_ = QString::fromUtf8((char*)decrypted_data.data(), (int)decrypted_data.size());
-      encryptionType_ == EncryptionType::Unencrypted;
+      encryptionType_ = EncryptionType::Unencrypted;
 
       return true;
    }
