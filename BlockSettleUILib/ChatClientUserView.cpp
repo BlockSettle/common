@@ -261,6 +261,7 @@ void ChatClientUserView::dataChanged(const QModelIndex &topLeft, const QModelInd
             auto mnode = static_cast<TreeMessageNode*>(item);
             notifyMessageChanged(mnode->getMessage());
          }
+         break;
          case TreeItem::NodeType::RoomsElement:
          case TreeItem::NodeType::ContactsElement:{
             auto node = static_cast<CategoryElement*>(item);

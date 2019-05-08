@@ -1,6 +1,7 @@
 #include "ChatClientUsersViewItemDelegate.h"
 #include "ChatClientDataModel.h"
 #include <QPainter>
+#include <QLineEdit>
 
 using NodeType = TreeItem::NodeType;
 using Role = ChatClientDataModel::Role;
@@ -143,4 +144,18 @@ void ChatClientUsersViewItemDelegate::paintUserElement(QPainter *painter, const 
    }
    itemOption.text = index.data(Role::UserIdRole).toString();
    QStyledItemDelegate::paint(painter, itemOption, index);
+}
+
+//QWidget *ChatClientUsersViewItemDelegate::createEditor(QWidget *parent, const QStyleOptionViewItem &option, const QModelIndex &index) const
+//{
+//   QLineEdit * editor = new QLineEdit(parent);
+//   editor->setText(index.data(Role::ContactTitleRole).toString());
+//   return editor;
+//}
+
+QWidget *ChatClientUsersViewItemDelegate::createEditor(QWidget *parent, const QStyleOptionViewItem &option, const QModelIndex &index) const
+{
+   QWidget * editor = QStyledItemDelegate::createEditor(parent, option, index);
+   editor->setProperty("contact_editor", true);
+   return editor;
 }

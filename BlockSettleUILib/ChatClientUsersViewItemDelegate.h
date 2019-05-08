@@ -27,7 +27,14 @@ protected:
 private:
    ChatUsersViewItemStyle itemStyle_;
 
+   // QAbstractItemDelegate interface
+public:
+   QWidget *createEditor(QWidget *parent, const QStyleOptionViewItem &option, const QModelIndex &index) const override;
 };
+
+
+
+
 
 
 
