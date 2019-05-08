@@ -72,6 +72,16 @@ void ChatClientUsersViewItemDelegate::paintRoomsElement(QPainter *painter, const
    bool newMessage = index.data(Role::ChatNewMessageRole).toBool();
    itemOption.text = index.data(Role::RoomTitleRole).toString();
    QStyledItemDelegate::paint(painter, itemOption, index);
+
+   // draw dot
+   if (newMessage) {
+      QFontMetrics fm(itemOption.font, painter->device());
+      auto textRect = fm.boundingRect(itemOption.rect, 0, itemOption.text);
+      const QPixmap pixmap(QLatin1String(":/ICON_DOT"));
+      const int dotSize = 8;
+      const QRect r(itemOption.rect.left() + textRect.width() + dotSize, itemOption.rect.top() + itemOption.rect.height() / 2 - dotSize / 2 + 1, dotSize, dotSize);
+      painter->drawPixmap(r, pixmap, pixmap.rect());
+   }
 }
 
 void ChatClientUsersViewItemDelegate::paintContactsElement(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const
@@ -115,12 +125,11 @@ void ChatClientUsersViewItemDelegate::paintContactsElement(QPainter *painter, co
 
    // draw dot
    if (newMessage) {
-      auto text = index.data(Role::ContactIdRole).toString();
       QFontMetrics fm(itemOption.font, painter->device());
-      auto textRect = fm.boundingRect(itemOption.rect, 0, text);
-      auto textWidth = textRect.width();
+      auto textRect = fm.boundingRect(itemOption.rect, 0, itemOption.text);
       const QPixmap pixmap(QLatin1String(":/ICON_DOT"));
-      const QRect r(itemOption.rect.left() + textWidth + pixmap.width(), itemOption.rect.top() + pixmap.height() - 1, pixmap.width(), pixmap.height());
+      const int dotSize = 8;
+      const QRect r(itemOption.rect.left() + textRect.width() + dotSize, itemOption.rect.top() + itemOption.rect.height() / 2 - dotSize / 2 + 1, dotSize, dotSize);
       painter->drawPixmap(r, pixmap, pixmap.rect());
    }
 }

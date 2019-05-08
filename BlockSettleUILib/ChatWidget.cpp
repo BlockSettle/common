@@ -303,6 +303,9 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
    connect(client_.get(), &ChatClient::LoggedOut, this, &ChatWidget::onLoggedOut);
    connect(client_.get(), &ChatClient::SearchUserListReceived, this, &ChatWidget::onSearchUserListReceived);
    connect(client_.get(), &ChatClient::ConnectedToServer, this, &ChatWidget::onConnectedToServer);
+   connect(client_.get(), &ChatClient::NewContactRequest, this, [=] (const QString &userId) {
+            NotificationCenter::notify(bs::ui::NotifyType::FriendRequest, {userId});
+   });
    connect(ui_->input_textEdit, &BSChatInput::sendMessage, this, &ChatWidget::onSendButtonClicked);
    connect(ui_->chatSearchLineEdit, &ChatSearchLineEdit::textEdited, this, &ChatWidget::onSearchUserTextEdited);
 
@@ -650,30 +653,30 @@ void ChatWidget::OTCSwitchToGlobalRoom()
    ui_->stackedWidgetOTC->setCurrentIndex(static_cast<int>(OTCPages::OTCGeneralRoomShieldPage));
 }
 
-void ChatWidget::onNewMessagePresent(const bool isNewMessagePresented, const CategoryElement *element)
+void ChatWidget::onNewMessagePresent(const bool isNewMessagePresented, std::shared_ptr<Chat::MessageData> message)
 {
    qDebug() << "New Message: " << (isNewMessagePresented?"TRUE":"FALSE");
 
-   // show notification about new message in tray icon
+   // show notification of new message in tray icon
    if (isNewMessagePresented) {
-      auto data = element->getDataObject();
 
-      if (data->getType() == Chat::DataObject::Type::ContactRecordData) {
-         auto contact = std::dynamic_pointer_cast<Chat::ContactRecordData>(data);
+      // don't show notification for global chat
+      if (message && message->receiverId() != QLatin1String("global_chat")) {
+         const bool isInCurrentChat = message->senderId() == currentChat_;
+         const bool hasUnreadMessages = true;
 
-         // don't show notification for global chat
-         if (contact && contact->getContactId() != QLatin1String("global_chat")) {
-            if ( contact->getContactId() != currentChat_ ){
-               const bool isInCurrentChat = false;
-               const bool hasUnreadMessages = true;
+         auto messageText = message->messageData();
+         const int maxMessageLength = 20;
 
-               NotificationCenter::notify(bs::ui::NotifyType::UpdateUnreadMessage, 
-                                         {contact->getContactId(), 
-                                          tr("New message"), 
-                                          QVariant(isInCurrentChat), 
-                                          QVariant(hasUnreadMessages)});
-            }
+         if (messageText.length() > maxMessageLength) {
+            messageText = messageText.mid(0, maxMessageLength) + QLatin1String("...");
          }
+
+         NotificationCenter::notify(bs::ui::NotifyType::UpdateUnreadMessage,
+                                   {message->senderId(),
+                                    messageText,
+                                    QVariant(isInCurrentChat),
+                                    QVariant(hasUnreadMessages)});
       }
    }
 }
