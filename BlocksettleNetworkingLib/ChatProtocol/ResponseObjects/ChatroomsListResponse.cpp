@@ -6,7 +6,10 @@ namespace Chat {
    {
       roomList_.reserve(dataList_.size());
       for (const auto& roomData: dataList_){
-         roomList_.push_back(RoomData::fromJSON(roomData));
+         auto room = RoomData::fromJSON(roomData);
+         if (room->getId() == QLatin1String("global_chat"))
+            room->setDisplayTrayNotification(false);
+         roomList_.push_back(room);
       }
    }
    
@@ -16,6 +19,8 @@ namespace Chat {
    {
       std::vector<std::string> rooms;
       for (const auto& room: roomList_){
+         if (room->getId() == QLatin1String("global_chat"))
+            room->setDisplayTrayNotification(false);
          rooms.push_back(room->toJsonString());
       }
       dataList_ = std::move(rooms);

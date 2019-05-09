@@ -37,6 +37,9 @@ namespace Chat {
 
       bool haveNewMessage() const;
       void setHaveNewMessage(bool haveNewMessage);
+
+      bool displayTrayNotification() const;
+      void setDisplayTrayNotification(bool displayTrayNotification);
       
    private:
       QString id_;
@@ -47,6 +50,7 @@ namespace Chat {
       bool sendUserUpdates_;
       bool displayUserList_;
       bool haveNewMessage_;
+      bool displayTrayNotification_;
       //QList<UserRecord> userList_;
       
       

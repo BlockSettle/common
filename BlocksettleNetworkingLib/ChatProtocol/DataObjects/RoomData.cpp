@@ -12,6 +12,7 @@ RoomData::RoomData(const QString& roomId, const QString& ownerId, const QString&
    , sendUserUpdates_(sendUserUpdates)
    , displayUserList_(displayUserList)
    , haveNewMessage_(false)
+   , displayTrayNotification_(true)
 {}
 
 QString RoomData::getId() {return id_;}
@@ -38,6 +39,16 @@ void RoomData::setHaveNewMessage(bool haveNewMessage)
    haveNewMessage_ = haveNewMessage;
 }
 
+bool RoomData::displayTrayNotification() const
+{
+   return displayTrayNotification_;
+}
+
+void RoomData::setDisplayTrayNotification(bool displayTrayNotification)
+{
+   displayTrayNotification_ = displayTrayNotification;
+}
+
 QJsonObject RoomData::toJson() const
 {
    QJsonObject data = DataObject::toJson();
@@ -49,6 +60,7 @@ QJsonObject RoomData::toJson() const
    data[RoomIsPrivateKey] = isPrivate_;
    data[RoomSendUserUpdatesKey] = sendUserUpdates_;
    data[RoomDisplayUserListKey] = displayUserList_;
+   data[RoomDisplayTrayNotificationKey] = displayTrayNotification_;
          
    return data;
 }
@@ -64,6 +76,10 @@ std::shared_ptr<RoomData> RoomData::fromJSON(const std::string& jsonData)
    bool isPrivate = data[RoomIsPrivateKey].toBool();
    bool sendUserUpdates = data[RoomSendUserUpdatesKey].toBool();
    bool displayUserList = data[RoomDisplayUserListKey].toBool();
+   bool displayTrayNotification = data[RoomDisplayTrayNotificationKey].toBool();
    
-   return std::make_shared<RoomData>(id, ownerId, title, roomKey, isPrivate, sendUserUpdates, displayUserList);
+   auto room = std::make_shared<RoomData>(id, ownerId, title, roomKey, isPrivate, sendUserUpdates, displayUserList);
+   room->setDisplayTrayNotification(displayTrayNotification);
+
+   return room;
 }

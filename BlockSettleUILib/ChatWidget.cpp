@@ -38,13 +38,13 @@ constexpr int kShowEmptyFoundUserListTimeoutMs = 3000;
 
 bool IsOTCChatRoom(const QString& chatRoom)
 {
-   static const QString targetRoomName = Chat::OTCRoomKey;
+   static const QString targetRoomName = QStringLiteral("otc_chat");
    return chatRoom == targetRoomName;
 }
 
 bool IsGlobalChatRoom(const QString& chatRoom)
 {
-   static const QString targetRoomName = Chat::GlobalRoomKey;
+   static const QString targetRoomName = QStringLiteral("global_chat");
    return chatRoom == targetRoomName;
 }
 
@@ -243,7 +243,7 @@ public:
 
    void selectFirstRoom()
    {
-      onRoomClicked(Chat::GlobalRoomKey);
+      onRoomClicked(QStringLiteral("global_chat"));
 
       QModelIndexList indexes = chat_->ui_->treeViewUsers->model()->match(chat_->ui_->treeViewUsers->model()->index(0,0),
                                                                 Qt::DisplayRole,
@@ -676,8 +676,16 @@ void ChatWidget::onNewMessagePresent(const bool isNewMessagePresented, std::shar
    // show notification of new message in tray icon
    if (isNewMessagePresented) {
 
-      // don't show notification for global chat
-      if (message && !IsGlobalChatRoom(message->receiverId())) {
+      bool displayTrayNotification = true;
+
+      auto item = client_->getDataModel()->findChatNode(message->receiverId().toStdString());
+      if (item && item->getType() == TreeItem::NodeType::RoomsElement) {
+         auto room_element = static_cast<const ChatRoomElement*>(item);
+         auto room = room_element->getRoomData();
+         displayTrayNotification = room->displayTrayNotification();
+      }
+
+      if (message && displayTrayNotification) {
          const bool isInCurrentChat = message->senderId() == currentChat_;
          const bool hasUnreadMessages = true;
 
