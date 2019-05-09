@@ -860,8 +860,9 @@ void ZmqBIP15XServerConnection::setBIP151Connection(const string& clientID)
             authPeers_->addPeer(inKey, vector<string>{ clientID });
          }
          catch (const std::exception &e) {
-            logger_->error("[{}] Trusted client key {} [{}] for {} is malformed: {}"
-               , __func__, inKey.toHexStr(), inKey.getSize(), clientID, e.what());
+            logger_->error("[{}] Trusted client key {} [{} bytes] for {} is not "
+               "accepted: {}", __func__, inKey.toHexStr(), inKey.getSize()
+               , clientID, e.what());
             return;
          }
       }
