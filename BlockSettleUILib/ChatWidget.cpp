@@ -668,7 +668,7 @@ void ChatWidget::onNewMessagePresent(const bool isNewMessagePresented, std::shar
    if (isNewMessagePresented) {
 
       // don't show notification for global chat
-      if (message && message->receiverId() != Chat::GlobalRoomKey) {
+      if (message && !IsGlobalChatRoom(message->receiverId())) {
          const bool isInCurrentChat = message->senderId() == currentChat_;
          const bool hasUnreadMessages = true;
 
