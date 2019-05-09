@@ -3,6 +3,9 @@
 #include <QPainter>
 #include <QLineEdit>
 
+static const int kDotSize = 8;
+static const QString kDotPathname = QLatin1String(":/ICON_DOT");
+
 using NodeType = TreeItem::NodeType;
 using Role = ChatClientDataModel::Role;
 using OnlineStatus = ChatContactElement::OnlineStatus;
@@ -77,9 +80,10 @@ void ChatClientUsersViewItemDelegate::paintRoomsElement(QPainter *painter, const
    if (newMessage) {
       QFontMetrics fm(itemOption.font, painter->device());
       auto textRect = fm.boundingRect(itemOption.rect, 0, itemOption.text);
-      const QPixmap pixmap(QLatin1String(":/ICON_DOT"));
-      const int dotSize = 8;
-      const QRect r(itemOption.rect.left() + textRect.width() + dotSize, itemOption.rect.top() + itemOption.rect.height() / 2 - dotSize / 2 + 1, dotSize, dotSize);
+      const QPixmap pixmap(kDotPathname);
+      const QRect r(itemOption.rect.left() + textRect.width() + kDotSize,
+                    itemOption.rect.top() + itemOption.rect.height() / 2 - kDotSize / 2 + 1,
+                    kDotSize, kDotSize);
       painter->drawPixmap(r, pixmap, pixmap.rect());
    }
 }
@@ -127,9 +131,10 @@ void ChatClientUsersViewItemDelegate::paintContactsElement(QPainter *painter, co
    if (newMessage) {
       QFontMetrics fm(itemOption.font, painter->device());
       auto textRect = fm.boundingRect(itemOption.rect, 0, itemOption.text);
-      const QPixmap pixmap(QLatin1String(":/ICON_DOT"));
-      const int dotSize = 8;
-      const QRect r(itemOption.rect.left() + textRect.width() + dotSize, itemOption.rect.top() + itemOption.rect.height() / 2 - dotSize / 2 + 1, dotSize, dotSize);
+      const QPixmap pixmap(kDotPathname);
+      const QRect r(itemOption.rect.left() + textRect.width() + kDotSize,
+                    itemOption.rect.top() + itemOption.rect.height() / 2 - kDotSize / 2 + 1,
+                    kDotSize, kDotSize);
       painter->drawPixmap(r, pixmap, pixmap.rect());
    }
 }

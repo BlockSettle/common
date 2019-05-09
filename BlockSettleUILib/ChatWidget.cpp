@@ -38,13 +38,13 @@ constexpr int kShowEmptyFoundUserListTimeoutMs = 3000;
 
 bool IsOTCChatRoom(const QString& chatRoom)
 {
-   static const QString targetRoomName = QLatin1String("otc_chat");
+   static const QString targetRoomName = Chat::OTCRoomKey;
    return chatRoom == targetRoomName;
 }
 
 bool IsGlobalChatRoom(const QString& chatRoom)
 {
-   static const QString targetRoomName = QLatin1String("global_chat");
+   static const QString targetRoomName = Chat::GlobalRoomKey;
    return chatRoom == targetRoomName;
 }
 
@@ -92,6 +92,13 @@ public:
       chat_->ui_->labelUserName->setText(QLatin1String("offline"));
 
       chat_->SetLoggedOutOTCState();
+
+      // hide tab icon for unread messages
+      NotificationCenter::notify(bs::ui::NotifyType::UpdateUnreadMessage,
+                                   {QString(),
+                                    QString(),
+                                    QVariant(false),
+                                    QVariant(false)});
    }
 
    std::string login(const std::string& email, const std::string& jwt
@@ -236,7 +243,7 @@ public:
 
    void selectFirstRoom()
    {
-      onRoomClicked(QLatin1String("global_chat"));
+      onRoomClicked(Chat::GlobalRoomKey);
 
       QModelIndexList indexes = chat_->ui_->treeViewUsers->model()->match(chat_->ui_->treeViewUsers->model()->index(0,0),
                                                                 Qt::DisplayRole,
@@ -661,7 +668,7 @@ void ChatWidget::onNewMessagePresent(const bool isNewMessagePresented, std::shar
    if (isNewMessagePresented) {
 
       // don't show notification for global chat
-      if (message && message->receiverId() != QLatin1String("global_chat")) {
+      if (message && message->receiverId() != Chat::GlobalRoomKey) {
          const bool isInCurrentChat = message->senderId() == currentChat_;
          const bool hasUnreadMessages = true;
 

@@ -208,10 +208,12 @@ void NotificationTrayIconResponder::respond(bs::ui::NotifyType nt, bs::ui::Notif
       hasUnreadMessages = msg[3].toBool();
 
       if (!hasUnreadMessages && !isInCurrentChat) {
+         mainWinUi_->tabWidget->setTabIcon(chatIndex, QIcon());
          return;
       }
 
       if (isChatTab && QApplication::activeWindow()) {
+         mainWinUi_->tabWidget->setTabIcon(chatIndex, QIcon());
          return;
       }
 
