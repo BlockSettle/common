@@ -4,6 +4,7 @@
 #include <memory>
 #include <unordered_map>
 #include <QWidget>
+#include <QItemSelection>
 #include "Address.h"
 #include "TabWithShortcut.h"
 
@@ -26,7 +27,7 @@ namespace bs {
 class AddressListModel;
 class AddressSortFilterModel;
 class ApplicationSettings;
-class ArmoryConnection;
+class ArmoryObject;
 class AssetManager;
 class AuthAddressManager;
 class QAction;
@@ -51,7 +52,7 @@ public:
       , const std::shared_ptr<ConnectionManager> &connectionManager
       , const std::shared_ptr<AssetManager> &
       , const std::shared_ptr<AuthAddressManager> &
-      , const std::shared_ptr<ArmoryConnection> &);
+      , const std::shared_ptr<ArmoryObject> &);
 
    void setUsername(const QString& username);
 
@@ -71,6 +72,7 @@ private:
 
    int getUIFilterSettings() const;
    void updateAddressFilters(int filterSettings);
+   void keepSelection();
 
 signals:
    void showContextMenu(QMenu *, QPoint);
@@ -93,6 +95,9 @@ private slots:
    void onEnterKeyInWalletsPressed(const QModelIndex &index);
    void onShowContextMenu(QMenu *, QPoint);
    void onWalletBalanceChanged(std::string);
+   void treeViewAddressesSelectionChanged(const QItemSelection &selected, const QItemSelection &deselected);
+   void treeViewAddressesLayoutChanged();
+   void scrollChanged();
 
 private:
    std::unique_ptr<Ui::WalletsWidget> ui_;
@@ -104,7 +109,7 @@ private:
    std::shared_ptr<ConnectionManager>     connectionManager_;
    std::shared_ptr<AssetManager>          assetManager_;
    std::shared_ptr<AuthAddressManager>    authMgr_;
-   std::shared_ptr<ArmoryConnection>      armory_;
+   std::shared_ptr<ArmoryObject>          armory_;
    WalletsViewModel        *  walletsModel_;
    AddressListModel        *  addressModel_;
    AddressSortFilterModel  *  addressSortFilterModel_;
@@ -118,6 +123,10 @@ private:
    unsigned int   revokeReqId_ = 0;
    QString username_;
    std::vector<std::shared_ptr<bs::sync::Wallet>>  prevSelectedWallets_;
+   int prevSelectedWalletRow_;
+   int prevSelectedAddressRow_;
+   QPoint walletsScrollPos_;
+   QPoint addressesScrollPos_;
 };
 
 #endif // __WALLETS_WIDGET_H__

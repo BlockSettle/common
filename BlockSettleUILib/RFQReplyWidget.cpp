@@ -108,7 +108,7 @@ void RFQReplyWidget::init(std::shared_ptr<spdlog::logger> logger
    , const std::shared_ptr<ApplicationSettings> &appSettings
    , const std::shared_ptr<DialogManager> &dialogManager
    , const std::shared_ptr<SignContainer> &container
-   , const std::shared_ptr<ArmoryConnection> &armory
+   , const std::shared_ptr<ArmoryObject> &armory
    , const std::shared_ptr<ConnectionManager> &connectionManager)
 {
    logger_ = logger;
@@ -266,7 +266,7 @@ void RFQReplyWidget::onReadyToAutoSign()
    }
 }
 
-void RFQReplyWidget::onAutoSignActivated(const SecureBinaryData &password, const QString &hdWalletId, bool active)
+void RFQReplyWidget::onAutoSignActivated(const QString &hdWalletId, bool active)
 {
    if (walletsManager_ == nullptr) {
       return;
@@ -278,7 +278,12 @@ void RFQReplyWidget::onAutoSignActivated(const SecureBinaryData &password, const
          , hdWalletId.toStdString());
       hdWallet = walletsManager_->getPrimaryWallet();
    }
-   signingContainer_->setLimits(hdWallet->walletId(), password, active);
+   if (!hdWallet) {
+      return;
+   }
+   if (signingContainer_->isReady()) {
+      signingContainer_->setLimits(hdWallet->walletId(), {}, active);
+   }
 }
 
 void RFQReplyWidget::saveTxData(QString orderId, std::string txData)

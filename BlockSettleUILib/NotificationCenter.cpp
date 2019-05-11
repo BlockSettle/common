@@ -28,6 +28,11 @@ void NotificationCenter::createInstance(const std::shared_ptr<ApplicationSetting
    globalInstance = std::make_shared<NotificationCenter>(appSettings, ui, trayIcon, parent);
 }
 
+NotificationCenter *NotificationCenter::instance()
+{
+   return globalInstance.get();
+}
+
 void NotificationCenter::destroyInstance()
 {
    globalInstance = nullptr;
@@ -60,29 +65,13 @@ NotificationTabResponder::NotificationTabResponder(const Ui::BSTerminalMainWindo
 {
    mainWinUi_->tabWidget->setIconSize(QSize(8, 8));
    connect(mainWinUi_->tabWidget, &QTabWidget::currentChanged, [this](int index) {
-      if (index != mainWinUi_->tabWidget->indexOf(mainWinUi_->widgetChat)) {
-         mainWinUi_->tabWidget->setTabIcon(index, QIcon());
-      }
+      mainWinUi_->tabWidget->setTabIcon(index, QIcon());
    });
 }
 
 void NotificationTabResponder::respond(bs::ui::NotifyType nt, bs::ui::NotifyMessage msg)
 {
-   if (nt == bs::ui::NotifyType::UpdateUnreadMessage) {
-      const int chatIndex = mainWinUi_->tabWidget->indexOf(mainWinUi_->widgetChat);
-      const bool isInCurrentChat = msg[2].toBool();
-      const bool hasUnreadMessages = msg[3].toBool();
-
-      if (hasUnreadMessages) {
-         mainWinUi_->tabWidget->setTabIcon(chatIndex, iconDot_);
-      } else {
-         if (mainWinUi_->tabWidget->currentIndex() != chatIndex && isInCurrentChat) {
-            mainWinUi_->tabWidget->setTabIcon(chatIndex, iconDot_);
-         } else {
-            mainWinUi_->tabWidget->setTabIcon(chatIndex, QIcon());
-         }
-      }
-      
+   if (nt == bs::ui::NotifyType::UpdateUnreadMessage) {  
       return;
    }
 
@@ -121,14 +110,14 @@ NotificationTrayIconResponder::NotificationTrayIconResponder(const Ui::BSTermina
    , dbus_(new DBusNotification(tr("BlockSettle Terminal"), this))
 #endif
 {
-   connect(trayIcon_.get(), &QSystemTrayIcon::messageClicked, this, &NotificationTrayIconResponder::newVersionMessageClicked);
+   connect(trayIcon_.get(), &QSystemTrayIcon::messageClicked, this, &NotificationTrayIconResponder::messageClicked);
 
 #ifdef BS_USE_DBUS
    if(dbus_->isValid()) {
       notifMode_ = Freedesktop;
 
       disconnect(trayIcon_.get(), &QSystemTrayIcon::messageClicked,
-         this, &NotificationTrayIconResponder::newVersionMessageClicked);
+         this, &NotificationTrayIconResponder::messageClicked);
       connect(dbus_, &DBusNotification::actionInvoked,
          this, &NotificationTrayIconResponder::notificationAction);
    }
@@ -143,8 +132,8 @@ void NotificationTrayIconResponder::respond(bs::ui::NotifyType nt, bs::ui::Notif
    QString title, text;
    int msecs = 10000;
    newVersionMessage_ = false;
-   bool isInCurrentChat;
-   bool hasUnreadMessages;
+   newChatMessage_ = false;
+   newChatId_ = QString();
    
    const int chatIndex = mainWinUi_->tabWidget->indexOf(mainWinUi_->widgetChat);
    const bool isChatTab = mainWinUi_->tabWidget->currentIndex() == chatIndex;
@@ -201,19 +190,34 @@ void NotificationTrayIconResponder::respond(bs::ui::NotifyType nt, bs::ui::Notif
       break;
 
    case bs::ui::NotifyType::UpdateUnreadMessage:
-      isInCurrentChat = msg[2].toBool();
-      hasUnreadMessages = msg[3].toBool();
 
-      if (!hasUnreadMessages && !isInCurrentChat) {
+      if (isChatTab && QApplication::activeWindow()) {
+         mainWinUi_->tabWidget->setTabIcon(chatIndex, QIcon());
          return;
       }
 
-      if (isChatTab && QApplication::activeWindow()) {
+      if (msg.size() != 2) {
          return;
       }
 
       title = msg[0].toString();
       text = msg[1].toString();
+
+      if (title.length() == 0 || text.length() == 0) {
+         return;
+      }
+      
+      newChatMessage_ = true;
+      newChatId_ = title;
+      mainWinUi_->tabWidget->setTabIcon(chatIndex, QIcon(QLatin1String(":/ICON_DOT")));
+      break;
+
+   case bs::ui::NotifyType::FriendRequest:
+      if (msg.size() != 1) {
+         return;
+      }
+      title = tr("New contact request");
+      text = tr("%1 wants to add you to contact list").arg(msg[0].toString());
       break;
 
    default: return;
@@ -231,7 +235,7 @@ void NotificationTrayIconResponder::respond(bs::ui::NotifyType nt, bs::ui::Notif
 #endif // BS_USE_DBUS
 }
 
-void NotificationTrayIconResponder::newVersionMessageClicked()
+void NotificationTrayIconResponder::messageClicked()
 {
    if (newVersionMessage_) {
       const auto url = appSettings_->get<std::string>(ApplicationSettings::Binaries_Dl_Url);
@@ -261,6 +265,16 @@ void NotificationTrayIconResponder::newVersionMessageClicked()
       mb.exec();
 #endif
    }
+   else if (newChatMessage_) {
+      if (!newChatId_.isNull() && globalInstance != NULL) {
+         emit globalInstance->newChatMessageClick(newChatId_);
+
+         const int chatIndex = mainWinUi_->tabWidget->indexOf(mainWinUi_->widgetChat);
+         mainWinUi_->tabWidget->setTabIcon(chatIndex, QIcon());
+         mainWinUi_->tabWidget->setCurrentWidget(mainWinUi_->widgetChat);
+         mainWinUi_->tabWidget->activateWindow();
+      }
+   }
 }
 
 #ifdef BS_USE_DBUS
@@ -268,7 +282,7 @@ void NotificationTrayIconResponder::notificationAction(const QString &action)
 {
    if (action == c_newVersionAction) {
       newVersionMessage_ = true;
-      newVersionMessageClicked();
+      messageClicked();
    }
 }
 #endif // BS_USE_DBUS

@@ -2,13 +2,17 @@
 #include <QDesktopServices>
 #include <set>
 #include "ChatMessagesTextEdit.h"
-#include "ChatClient.h"
 #include "ChatProtocol/ChatProtocol.h"
+#include <QApplication>
+#include <QClipboard>
+#include <QMimeData>
+#include <QScrollBar>
+#include "ChatClientTree/TreeObjects.h"
 
 const int FIRST_FETCH_MESSAGES_SIZE = 20;
 
 ChatMessagesTextEdit::ChatMessagesTextEdit(QWidget* parent)
-   : QTextBrowser(parent), internalStyle_(this)
+   : QTextBrowser(parent), handler_(nullptr), internalStyle_(this)
 {
    tableFormat.setBorder(0);
    tableFormat.setCellPadding(0);
@@ -16,7 +20,7 @@ ChatMessagesTextEdit::ChatMessagesTextEdit(QWidget* parent)
 
    QVector <QTextLength> col_widths;
    col_widths << QTextLength (QTextLength::FixedLength, 110);
-   col_widths << QTextLength (QTextLength::FixedLength, 20);
+   col_widths << QTextLength (QTextLength::FixedLength, 34);
    col_widths << QTextLength (QTextLength::FixedLength, 90);
    col_widths << QTextLength (QTextLength::VariableLength, 50);
    tableFormat.setColumnWidthConstraints (col_widths);
@@ -33,15 +37,10 @@ ChatMessagesTextEdit::ChatMessagesTextEdit(QWidget* parent)
    statusImageRead_ = QImage(QLatin1Literal(":/ICON_MSG_STATUS_READ"), "PNG");
 
    connect(this, &QTextBrowser::anchorClicked, this, &ChatMessagesTextEdit::urlActivated);
+   connect(this, &QTextBrowser::textChanged, this, &ChatMessagesTextEdit::onTextChanged);
 
    userMenu_ = new QMenu(this);
-   QAction *addUserToContactsAction = userMenu_->addAction(QObject::tr("Add to contacts"));
-   addUserToContactsAction->setStatusTip(QObject::tr("Click to add user to contact list"));
-   connect(addUserToContactsAction, &QAction::triggered,
-      [this](bool) {
-         emit sendFriendRequest(username_); 
-      }
-   );
+   userContactAction_ = userMenu_->addAction(QString());
 }
 
 QString ChatMessagesTextEdit::data(const int &row, const Column &column)
@@ -53,14 +52,14 @@ QString ChatMessagesTextEdit::data(const int &row, const Column &column)
    switch (column) {
       case Column::Time:
       {
-         const auto dateTime = messages_[currentChatId_][row]->getDateTime().toLocalTime();
+         const auto dateTime = messages_[currentChatId_][row]->dateTime().toLocalTime();
          return toHtmlText(dateTime.toString(QString::fromUtf8("MM/dd/yy hh:mm:ss")));
       }
 
       case Column::User:
       {
          static const auto ownSender = tr("you");
-         QString sender = messages_[currentChatId_][row]->getSenderId();
+         QString sender = messages_[currentChatId_][row]->senderId();
          if (sender == ownUserId_) {
             sender = ownSender;
          } else if (isGroupRoom_) {
@@ -70,14 +69,14 @@ QString ChatMessagesTextEdit::data(const int &row, const Column &column)
       }
       case Column::Status:{
          std::shared_ptr<Chat::MessageData> message = messages_[currentChatId_][row];
-         if (message->getSenderId() != ownUserId_){
-            if (!(message->getState() & static_cast<int>(Chat::MessageData::State::Read))){
+         if (message->senderId() != ownUserId_){
+            if (!(message->state() & static_cast<int>(Chat::MessageData::State::Read))){
                emit MessageRead(message);
             }
             return QString();
             
          }
-         int state = message->getState();
+         int state = message->state();
          QString status = QLatin1String("Sending");
 
          if (state & static_cast<int>(Chat::MessageData::State::Sent)){
@@ -94,9 +93,20 @@ QString ChatMessagesTextEdit::data(const int &row, const Column &column)
          return status;
       }
 
-      case Column::Message:
-         return toHtmlText(messages_[currentChatId_][row]->getMessageData());
+      case Column::Message: {
+         std::shared_ptr<Chat::MessageData> message = messages_[currentChatId_][row];
+         QString text = QLatin1String("[%1] %2");
+         text = text.arg(messages_[currentChatId_][row]->id());
 
+         if (message->state() & static_cast<int>(Chat::MessageData::State::Invalid)) {
+            return toHtmlInvalid(text.arg(QLatin1String("INVALID MESSAGE!")));
+         } else if (message->encryptionType() == Chat::MessageData::EncryptionType::IES) {
+            return toHtmlInvalid(text.arg(QLatin1String("IES ENCRYPTED!")));
+         } else if ( message->encryptionType() == Chat::MessageData::EncryptionType::AEAD) {
+            return toHtmlInvalid(text.arg(QLatin1String("AEAD ENCRYPTED!")));
+         }
+         return toHtmlText(text.arg(messages_[currentChatId_][row]->messageData()));
+      }
       default:
          break;
    }
@@ -108,15 +118,21 @@ QImage ChatMessagesTextEdit::statusImage(const int &row)
 {
 
    std::shared_ptr<Chat::MessageData> message = messages_[currentChatId_][row];
-   if (message->getSenderId() != ownUserId_){
+   if (message->senderId() != ownUserId_){
       return QImage();
    }
-   int state = message->getState();
+   int state = message->state();
 
    QImage statusImage = statusImageOffline_;
    
    if (state & static_cast<int>(Chat::MessageData::State::Sent)){
-      statusImage = statusImageConnecting_;
+
+      if (isGroupRoom_) {
+         statusImage = statusImageRead_;
+      } else {
+         statusImage = statusImageConnecting_;
+      }
+
    }
    
    if (state & static_cast<int>(Chat::MessageData::State::Acknowledged)){
@@ -128,6 +144,83 @@ QImage ChatMessagesTextEdit::statusImage(const int &row)
    }
    
    return statusImage;
+}
+
+void ChatMessagesTextEdit::mousePressEvent(QMouseEvent *ev)
+{
+   // make focus to the widget to allow use default shortcuts (like ctrl+c) from keyboard
+   if (!this->hasFocus())
+      this->setFocus();
+
+   // proceed default mouse press behaviour
+   QTextBrowser::mousePressEvent(ev);
+}
+
+void ChatMessagesTextEdit::contextMenuEvent(QContextMenuEvent *e)
+{
+   textCursor_ = cursorForPosition(e->pos());
+   
+   // keep selection
+   if (textCursor().hasSelection()) {
+      textCursor_.setPosition(textCursor().selectionStart(), QTextCursor::MoveAnchor);
+      textCursor_.setPosition(textCursor().selectionEnd(), QTextCursor::KeepAnchor);
+   }
+
+   setTextCursor(textCursor_);
+   QString text = textCursor_.block().text();
+
+   // create custom context menu
+   if (text.length() > 0 || textCursor_.hasSelection()) {
+      QMenu contextMenu(this);
+
+      QAction copyAction(tr("Copy"), this);
+      QAction copyLinkLocationAction(tr("Copy Link Location"), this);
+      QAction selectAllAction(tr("Select All"), this);
+
+      connect(&copyAction, SIGNAL(triggered()), this, SLOT(copyActionTriggered()));
+      connect(&copyLinkLocationAction, SIGNAL(triggered()), this, SLOT(copyLinkLocationActionTriggered()));
+      connect(&selectAllAction, SIGNAL(triggered()), this, SLOT(selectAllActionTriggered()));
+
+      contextMenu.addAction(&copyAction);
+
+      // show Copy Link Location only when it needed
+      anchor_ = this->anchorAt(e->pos());
+      if (!anchor_.isEmpty()) {
+         contextMenu.addAction(&copyLinkLocationAction);
+      }
+
+      contextMenu.addSeparator();
+      contextMenu.addAction(&selectAllAction);
+
+      contextMenu.exec(e->globalPos());
+   }
+}
+
+void ChatMessagesTextEdit::copyActionTriggered()
+{
+   if (textCursor_.hasSelection()) {
+      QApplication::clipboard()->setMimeData(this->createMimeDataFromSelection());
+   }
+   else {
+      QTextDocument doc;
+      doc.setHtml(textCursor_.block().text());
+      QApplication::clipboard()->setText(doc.toPlainText());
+   }
+}
+
+void ChatMessagesTextEdit::copyLinkLocationActionTriggered()
+{
+   QApplication::clipboard()->setText(anchor_);
+}
+
+void ChatMessagesTextEdit::selectAllActionTriggered()
+{
+   this->selectAll();
+}
+
+void ChatMessagesTextEdit::onTextChanged()
+{
+   verticalScrollBar()->setValue(verticalScrollBar()->maximum());
 }
 
 void ChatMessagesTextEdit::switchToChat(const QString& chatId, bool isGroupRoom)
@@ -143,13 +236,43 @@ void ChatMessagesTextEdit::switchToChat(const QString& chatId, bool isGroupRoom)
    emit userHaveNewMessageChanged(chatId, false, false);
 }
 
+void ChatMessagesTextEdit::setHandler(std::shared_ptr<ChatItemActionsHandler> handler)
+{
+   handler_ = handler;
+}
+
+void ChatMessagesTextEdit::setMessageReadHandler(std::shared_ptr<ChatMessageReadHandler> handler)
+{
+   messageReadHandler_ = handler;
+}
+
 void  ChatMessagesTextEdit::urlActivated(const QUrl &link) {
    if (link.toString() == QLatin1Literal("load_more")) {
       loadMore();
    } 
    else if  (link.toString().startsWith(QLatin1Literal("user:"))) {
       username_ = link.toString().mid(QString(QLatin1Literal("user:")).length());
-      userMenu_->exec(QCursor::pos());
+
+      userContactAction_->disconnect();
+
+      if (handler_) {
+         if (handler_->onActionIsFriend(username_)) {
+            userContactAction_->setText(tr("Remove from contacts"));
+            userContactAction_->setStatusTip(tr("Click to remove user from contact list"));
+            connect(userContactAction_, &QAction::triggered, [this](bool) {
+               // TODO:
+               //handler_->onActionRemoveFromContacts(username_);
+            });
+         }
+         else {
+            userContactAction_->setText(tr("Add to contacts"));
+            userContactAction_->setStatusTip(tr("Click to add user to contact list"));
+            connect(userContactAction_, &QAction::triggered, [this](bool) {
+               handler_->onActionAddToContacts(username_);
+            });
+         }
+         userMenu_->exec(QCursor::pos());
+      }
    }
    else {
       QDesktopServices::openUrl(link);
@@ -256,7 +379,7 @@ std::shared_ptr<Chat::MessageData> ChatMessagesTextEdit::findMessage(const QStri
    std::shared_ptr<Chat::MessageData> found = nullptr;
    if (messages_.contains(chatId)) {
       auto it = std::find_if(messages_[chatId].begin(), messages_[chatId].end(), [messageId](std::shared_ptr<Chat::MessageData> data){
-         return data->getId() == messageId;
+         return data->id() == messageId;
       });
       
       if (it != messages_[chatId].end()) {
@@ -268,14 +391,14 @@ std::shared_ptr<Chat::MessageData> ChatMessagesTextEdit::findMessage(const QStri
 
 void ChatMessagesTextEdit::notifyMessageChanged(std::shared_ptr<Chat::MessageData> message)
 {
-   const QString chatId = message->getSenderId() == ownUserId_
-                          ? message->getReceiverId()
-                          : message->getSenderId();
+   const QString chatId = message->senderId() == ownUserId_
+                          ? message->receiverId()
+                          : message->senderId();
    
    if (messages_.contains(chatId)) {
-      QString id = message->getId();
+      QString id = message->id();
       auto it = std::find_if(messages_[chatId].begin(), messages_[chatId].end(), [id](std::shared_ptr<Chat::MessageData> data){
-         return data->getId() == id;
+         return data->id() == id;
       });
       
       if (it != messages_[chatId].end()) {
@@ -308,13 +431,28 @@ void ChatMessagesTextEdit::notifyMessageChanged(std::shared_ptr<Chat::MessageDat
 
 void ChatMessagesTextEdit::onMessagesUpdate(const std::vector<std::shared_ptr<Chat::MessageData>>& messages, bool isFirstFetch)
 {
+
+   for (const auto& message: messages) {
+      messages_[currentChatId_].push_back(message);
+   }
+   for (const auto& message : messages) {
+      insertMessage(message);
+   }
+   for (const auto& message : messages) {
+      if (messageReadHandler_ && !(message->state() & (int)Chat::MessageData::State::Read) ){
+         messageReadHandler_->onMessageRead(message);
+      }
+   }
+   return;
+
    if (isFirstFetch) {
       for (const auto &msg : messages) {
-         if (msg->getSenderId() == currentChatId_) {
+         if (msg->senderId() == currentChatId_) {
             messagesToLoadMore_.push_back(msg);
+            emit MessageRead(msg);
          }
          else {
-            messages_[msg->getSenderId()].push_back(msg);
+            messages_[msg->senderId()].push_back(msg);
          }
       }
 
@@ -348,15 +486,18 @@ void ChatMessagesTextEdit::onMessagesUpdate(const std::vector<std::shared_ptr<Ch
    }
    else {
       for (const auto &msg : messages) {
-         if (msg->getSenderId() == currentChatId_) {
+         if (msg->senderId() == currentChatId_) {
             insertMessage(msg);
+            if (!(msg->state() & static_cast<int>(Chat::MessageData::State::Read))){
+               emit MessageRead(msg);
+            }
             
-            emit userHaveNewMessageChanged(msg->getSenderId(), false, true);
+            emit userHaveNewMessageChanged(msg->senderId(), false, true);
          }
          else {
-            messages_[msg->getSenderId()].push_back(msg);
+            messages_[msg->senderId()].push_back(msg);
 
-            emit userHaveNewMessageChanged(msg->getSenderId(), true, false);
+            emit userHaveNewMessageChanged(msg->senderId(), true, false);
          }
       }
    }
@@ -366,13 +507,24 @@ void ChatMessagesTextEdit::onMessagesUpdate(const std::vector<std::shared_ptr<Ch
 
 void ChatMessagesTextEdit::onRoomMessagesUpdate(const std::vector<std::shared_ptr<Chat::MessageData>>& messages, bool isFirstFetch)
 {
+   for (const auto& message : messages) {
+      messages_[currentChatId_].push_back(message);
+   }
+   for (const auto& message : messages) {
+      insertMessage(message);
+      if (messageReadHandler_ && !message->testFlag(Chat::MessageData::State::Read)){
+         messageReadHandler_->onRoomMessageRead(message);
+      }
+   }
+   return;
+
    if (isFirstFetch) {
       for (const auto &msg : messages) {
-         if (msg->getReceiverId() == currentChatId_) {
+         if (msg->receiverId() == currentChatId_) {
             messagesToLoadMore_.push_back(msg);
          }
          else {
-            messages_[msg->getReceiverId()].push_back(msg);
+            messages_[msg->receiverId()].push_back(msg);
          }
       }
 
@@ -407,12 +559,12 @@ void ChatMessagesTextEdit::onRoomMessagesUpdate(const std::vector<std::shared_pt
    else {
       std::set<QString> receivers;
       for (const auto &msg : messages) {
-         receivers.insert(msg->getReceiverId());
-         if (msg->getReceiverId() == currentChatId_) {
+         receivers.insert(msg->receiverId());
+         if (msg->receiverId() == currentChatId_) {
             insertMessage(msg);
          }
          else {
-            messages_[msg->getReceiverId()].push_back(msg);
+            messages_[msg->receiverId()].push_back(msg);
          }
       }
       for (const QString& recv : receivers) {
@@ -427,6 +579,12 @@ QString ChatMessagesTextEdit::toHtmlUsername(const QString &username)
 {
    QString changedUsername = QString(QLatin1Literal("<a href=\"user:%1\" style=\"color:%2\">%1</a>")).arg(username).arg(internalStyle_.colorHyperlink().name());
    return changedUsername;
+}
+
+QString ChatMessagesTextEdit::toHtmlInvalid(const QString &text)
+{
+   QString changedText = QString(QLatin1Literal("<font color=\"%1\">%2</font>")).arg(QLatin1String("red")).arg(text);
+   return changedText;
 }
 
 QString ChatMessagesTextEdit::toHtmlText(const QString &text)
@@ -463,4 +621,93 @@ QString ChatMessagesTextEdit::toHtmlText(const QString &text)
    changedText = QString(QLatin1Literal("<font color=\"%1\">%2</font>")).arg(internalStyle_.colorWhite().name()).arg(changedText);
 
    return changedText;
+}
+
+void ChatMessagesTextEdit::onElementSelected(CategoryElement *element)
+{
+   if (!element){
+      return;
+   }
+
+   std::vector<std::shared_ptr<Chat::MessageData>> messages;
+   for (auto msg_item : element->getChildren()){
+      auto item = static_cast<TreeMessageNode*>(msg_item);
+      if (item){
+         auto msg = item->getMessage();
+         if (msg) {
+            messages.push_back(msg);
+         }
+      }
+   }
+
+   auto data = element->getDataObject();
+   switch (data->getType()) {
+      case Chat::DataObject::Type::RoomData:{
+         auto room = std::dynamic_pointer_cast<Chat::RoomData>(data);
+         if (room) {
+            switchToChat(room->getId(), true);
+            onRoomMessagesUpdate(messages, true);
+         }
+      }
+      break;
+      case Chat::DataObject::Type::ContactRecordData: {
+         auto contact = std::dynamic_pointer_cast<Chat::ContactRecordData>(data);
+         if (contact) {
+            switchToChat(contact->getContactId(), false);
+            onMessagesUpdate(messages, true);
+         }
+      }
+      break;
+      default:
+         return;
+   }
+}
+
+void ChatMessagesTextEdit::onMessageChanged(std::shared_ptr<Chat::MessageData> message)
+{
+   qDebug() << __func__ << " " << QString::fromStdString(message->toJsonString());
+   if (message->senderId() == currentChatId_ || message->receiverId() == currentChatId_) {
+      notifyMessageChanged(message);
+   }
+}
+
+void ChatMessagesTextEdit::onElementUpdated(CategoryElement *element)
+{
+   //TODO: Important! optimize messages reload
+   auto data = element->getDataObject();
+   switch (data->getType()) {
+      case Chat::DataObject::Type::RoomData:{
+         auto room = std::dynamic_pointer_cast<Chat::RoomData>(data);
+         if (room && room->getId() == currentChatId_){
+            messages_.clear();
+            clear();
+            std::vector<std::shared_ptr<Chat::MessageData>> messages;
+            for (auto msg_item : element->getChildren()){
+               auto item = static_cast<TreeMessageNode*>(msg_item);
+               auto msg = item->getMessage();
+               messages.push_back(msg);
+            }
+            onRoomMessagesUpdate(messages, true);
+         }
+      }
+      break;
+      case Chat::DataObject::Type::ContactRecordData: {
+         auto contact = std::dynamic_pointer_cast<Chat::ContactRecordData>(data);
+         if (contact && contact->getContactId() == currentChatId_){
+            messages_.clear();
+            clear();
+            std::vector<std::shared_ptr<Chat::MessageData>> messages;
+            for (auto msg_item : element->getChildren()){
+               auto item = static_cast<TreeMessageNode*>(msg_item);
+               auto msg = item->getMessage();
+               messages.push_back(msg);
+            }
+            onMessagesUpdate(messages, true);
+         }
+      }
+      break;
+      default:
+         return;
+   }
+
 }

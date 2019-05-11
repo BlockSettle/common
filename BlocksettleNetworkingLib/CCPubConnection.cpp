@@ -2,7 +2,7 @@
 
 #include "ConnectionManager.h"
 #include "RequestReplyCommand.h"
-#include "ZmqSecuredDataConnection.h"
+#include "ZMQ_BIP15X_DataConnection.h"
 
 #include "bs_communication.pb.h"
 
@@ -11,9 +11,11 @@
 using namespace Blocksettle::Communication;
 
 CCPubConnection::CCPubConnection(const std::shared_ptr<spdlog::logger> &logger
-   , const std::shared_ptr<ConnectionManager>& connectionManager)
- : logger_{logger}
- , connectionManager_{connectionManager}
+   , const std::shared_ptr<ConnectionManager> &connectionManager
+   , const ZmqBIP15XDataConnection::cbNewKey &cb)
+   : logger_{logger}
+   , connectionManager_{connectionManager}
+   , cbApproveConn_(cb)
 {}
 
 bool CCPubConnection::LoadCCDefinitionsFromPub()
@@ -35,26 +37,36 @@ bool CCPubConnection::LoadCCDefinitionsFromPub()
    return SubmitRequestToPB("get_cc_gen_list", request.SerializeAsString());
 }
 
-bool CCPubConnection::SubmitRequestToPB(const std::string& name, const std::string& data)
+bool CCPubConnection::SubmitRequestToPB(const std::string &name, const std::string& data)
 {
-   const auto connection = connectionManager_->CreateSecuredDataConnection();
-   BinaryData inSrvPubKey(GetPuBKey());
-   connection->SetServerPublicKey(inSrvPubKey);
-   auto command = std::make_shared<RequestReplyCommand>(name, connection, logger_);
+   const auto connection = connectionManager_->CreateZMQBIP15XDataConnection();
+   connection->setCBs(cbApproveConn_);
 
-   command->SetReplyCallback([command, this](const std::string& data) {
+   cmdPuB_ = std::make_shared<RequestReplyCommand>(name, connection, logger_);
+
+   cmdPuB_->SetReplyCallback([this](const std::string& data) {
       OnDataReceived(data);
-      command->CleanupCallbacks();
+
+      // CleanupCallbacks will destroy this functional object (invalidating `this` field).
+      // Make a copy before that to prevent crash.
+      CCPubConnection *thisCopy = this;
+      thisCopy->cmdPuB_->CleanupCallbacks();
+      thisCopy->cmdPuB_->resetConnection();
       return true;
    });
 
-   command->SetErrorCallback([command, this](const std::string& message) {
-      logger_->error("[CCPubConnection::{}] error callback: {}", command->GetName(), message);
-      command->CleanupCallbacks();
+   cmdPuB_->SetErrorCallback([this](const std::string& message) {
+      logger_->error("[CCPubConnection::SubmitRequestToPB] error callback {}: {}"
+         , cmdPuB_->GetName(), message);
+
+      // Fix possible crash, see notes above
+      CCPubConnection *thisCopy = this;
+      thisCopy->cmdPuB_->CleanupCallbacks();
+      thisCopy->cmdPuB_->resetConnection();
    });
 
-   if (!command->ExecuteRequest(GetPuBHost(), GetPuBPort(), data)) {
-      logger_->error("[CCPubConnection::SubmitRequestToPB] failed to send request {}", name);
+   if (!cmdPuB_->ExecuteRequest(GetPuBHost(), GetPuBPort(), data, true)) {
+      logger_->error("[CCPubConnection::{}] failed to send request {}", __func__, name);
       return false;
    }
 

@@ -22,8 +22,6 @@ class ConnectionManager;
 namespace spdlog { class logger; }
 class MdhsClient;
 
-using namespace Blocksettle::Communication::TradeHistory;
-
 #include <QItemDelegate>
 #include <QPainter>
 
@@ -31,7 +29,7 @@ class ComboBoxDelegate : public QItemDelegate
 {
    Q_OBJECT
 public:
-   explicit ComboBoxDelegate(QObject *parent = 0);
+   explicit ComboBoxDelegate(QObject *parent = nullptr);
 protected:
    void paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const;
    QSize sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const;
@@ -43,11 +41,15 @@ class ChartWidget : public QWidget
 
 public:
     explicit ChartWidget(QWidget* pParent = nullptr);
-    ~ChartWidget();
+    ~ChartWidget() override;
+    void SendEoDRequest();
     void init(const std::shared_ptr<ApplicationSettings>&
               , const std::shared_ptr<MarketDataProvider>&
               , const std::shared_ptr<ConnectionManager>&
               , const std::shared_ptr<spdlog::logger>&);
+
+    void setAuthorized(bool authorized);
+    void disconnect();
 
 protected slots:
    void OnDataReceived(const std::string& data);
@@ -55,6 +57,7 @@ protected slots:
    void OnMdUpdated(bs::network::Asset::Type, const QString &security, bs::network::MDFields);
    void OnInstrumentChanged(const QString &text);
    QString GetFormattedStamp(double timestamp);
+   void UpdateOHLCInfo(double width, double timestamp);
    void OnPlotMouseMove(QMouseEvent* event);
    void leaveEvent(QEvent* event) override;
    void rescaleCandlesYAxis();
@@ -68,7 +71,7 @@ protected slots:
    bool isBeyondUpperLimit(QCPRange newRange, int interval);
    bool isBeyondLowerLimit(QCPRange newRange, int interval);
    void OnVolumeAxisRangeChanged(QCPRange newRange, QCPRange oneRange);
-   static QString ProductTypeToString(TradeHistoryTradeType type);
+   static QString ProductTypeToString(Blocksettle::Communication::TradeHistory::TradeHistoryTradeType type);
    void SetupCrossfire();
 
    void OnLoadingNetworkSettings();
@@ -78,17 +81,24 @@ protected slots:
    void OnMDDisconnected();
    void ChangeMDSubscriptionState();
 
+   void OnNewTrade(const std::string& productName, uint64_t timestamp, double price, double amount);
+   void OnNewXBTorFXTrade(const bs::network::NewTrade& trade);
+   void OnNewPMTrade(const bs::network::NewPMTrade& trade);
+
 protected:
    quint64 GetCandleTimestamp(const uint64_t& timestamp,
       const Blocksettle::Communication::MarketDataHistory::Interval& interval) const;
    void AddDataPoint(const qreal& open, const qreal& high, const qreal& low, const qreal& close, const qreal& timestamp, const qreal& volume) const;
-   void UpdateChart(const int& interval) const;
+   void UpdateChart(const int& interval);
    void InitializeCustomPlot();
    quint64 IntervalWidth(int interval = -1, int count = 1, const QDateTime& specialDate = {}) const;
-   static int FractionSizeForProduct(TradeHistoryTradeType type);
+   static int FractionSizeForProduct(Blocksettle::Communication::TradeHistory::TradeHistoryTradeType type);
    void ProcessProductsListResponse(const std::string& data);
    void ProcessOhlcHistoryResponse(const std::string& data);
+   void ProcessEodResponse(const std::string& data);
    double CountOffsetFromRightBorder();
+
+   void CheckToAddNewCandle(qint64 stamp);
 
    void setAutoScaleBtnColor() const;
 
@@ -98,8 +108,6 @@ protected:
    void ModifyCandle();
    void UpdatePlot(const int& interval, const qint64& timestamp);
 
-   void timerEvent(QTimerEvent* event);
-   std::chrono::seconds getTimerInterval() const;
    bool needLoadNewData(const QCPRange& range, QSharedPointer<QCPFinancialDataContainer> data) const;
 
    void LoadAdditionalPoints(const QCPRange& range);
@@ -117,11 +125,14 @@ private:
    std::shared_ptr<spdlog::logger>					logger_;
 
    bool                                         isProductListInitialized_{ false };
-   std::map<std::string, TradeHistoryTradeType> productTypesMapper;
+   std::map<std::string, Blocksettle::Communication::TradeHistory::TradeHistoryTradeType> productTypesMapper;
 
    QSharedPointer<QCPAxisTickerDateTime> dateTimeTicker{ new QCPAxisTickerDateTime };
 
    const int loadDistance{ 15 };
+
+   bool eodUpdated_{ false };
+   bool eodRequestSent_{ false };
 
    constexpr static int requestLimit{ 100 };
    constexpr static int candleViewLimit{ 60 };
@@ -145,26 +156,28 @@ private:
    double lastLow_;
    double lastClose_;
    double currentTimestamp_;
+   quint64 newestCandleTimestamp_;
 
    bool autoScaling_{ true };
 
    qreal currentMinPrice_{ 0 };
    qreal currentMaxPrice_{ 0 };
 
-   int timerId_;
    int lastInterval_;
    int dragY_;
 
    bool isDraggingYAxis_;
    bool isDraggingXAxis_{ false };
    bool isDraggingMainPlot_{ false };
-   QCPRange dragStartRange_;
+   QCPRange dragStartRangeX_;
+   QCPRange dragStartRangeY_;
    QPointF dragStartPos_;
 
    QPoint lastDragCoord_;
    qreal startDragCoordX_{ 0.0 };
 
    quint64 firstTimestampInDb_{ 0 };
+   bool authorized_{ false };
 };
 
 #endif // CHARTWIDGET_H

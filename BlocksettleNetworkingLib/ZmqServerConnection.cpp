@@ -1,5 +1,5 @@
 #include "ZmqServerConnection.h"
-#include "ZMQHelperFunctions.h"
+#include "ZmqHelperFunctions.h"
 
 #include "FastLock.h"
 #include "MessageHolder.h"
@@ -173,12 +173,10 @@ void ZmqServerConnection::listenFunction()
 
    logger_->debug("[{}] poll thread started for {}", __func__, connectionName_);
 
-   int result;
-
    int errorCount = 0;
 
    while(true) {
-      result = zmq_poll(poll_items, 3, -1);
+      int result = zmq_poll(poll_items, 3, -1);
       if (result == -1) {
          errorCount++;
          if ((zmq_errno() != EINTR) || (errorCount > 10)) {
@@ -325,6 +323,13 @@ void ZmqServerConnection::notifyListenerOnDisconnectedClient(const std::string& 
       listener_->OnClientDisconnected(clientId);
    }
    clientInfo_.erase(clientId);
+}
+
+void ZmqServerConnection::notifyListenerOnClientError(const std::string& clientId, const std::string &error)
+{
+   if (listener_) {
+      listener_->onClientError(clientId, error);
+   }
 }
 
 std::string ZmqServerConnection::GetClientInfo(const std::string &clientId) const

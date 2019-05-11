@@ -4,113 +4,55 @@
 #include "ui_SignerSettingsPage.h"
 #include "ApplicationSettings.h"
 #include "BtcUtils.h"
-#include "ZMQHelperFunctions.h"
 #include "BSMessageBox.h"
 #include "SignContainer.h"
-
-
-enum RunModeIndex {
-   Local = 0,
-   Remote,
-   Offline
-};
-
+#include "SignersManageWidget.h"
 
 SignerSettingsPage::SignerSettingsPage(QWidget* parent)
    : SettingsPage{parent}
    , ui_{new Ui::SignerSettingsPage{}}
 {
    ui_->setupUi(this);
-   ui_->lineEditRemoteZmqPubKey->setVisible(false);
 
    connect(ui_->comboBoxRunMode, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &SignerSettingsPage::runModeChanged);
-   connect(ui_->pushButtonOfflineDir, &QPushButton::clicked, this, &SignerSettingsPage::onOfflineDirSel);
-   connect(ui_->pushButtonZmqPubKey, &QPushButton::clicked, this, &SignerSettingsPage::onZmqPubKeySel);
    connect(ui_->spinBoxAsSpendLimit, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &SignerSettingsPage::onAsSpendLimitChanged);
+   connect(ui_->pushButtonManageSignerKeys, &QPushButton::clicked, this, &SignerSettingsPage::onManageSignerKeys);
 
-   connect(ui_->comboBoxZmqImportType, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int index){
-      ui_->lineEditRemoteZmqPubKey->setVisible(index != 0);
-      ui_->pushButtonZmqPubKey->setVisible(index == 0);
-      ui_->lineEditZmqKeyPath->setVisible(index == 0);
-   });
+   ui_->widgetTwoWayAuth->hide();
+   ui_->checkBoxTwoWayAuth->hide();
+
+   ui_->widgetTwoWayAuth->setMaximumHeight(0);
+   ui_->checkBoxTwoWayAuth->setMaximumHeight(0);
 }
 
 SignerSettingsPage::~SignerSettingsPage() = default;
 
 void SignerSettingsPage::runModeChanged(int index)
 {
-   onModeChanged(index);
+   onModeChanged(static_cast<SignContainer::OpMode>(index + 1));
 }
 
-void SignerSettingsPage::onOfflineDirSel()
+void SignerSettingsPage::onModeChanged(SignContainer::OpMode mode)
 {
-   const auto dir = QFileDialog::getExistingDirectory(this, tr("Dir for offline signer files")
-      , ui_->labelOfflineDir->text(), QFileDialog::ShowDirsOnly);
-   if (dir.isEmpty()) {
-      return;
-   }
-   ui_->labelOfflineDir->setText(dir);
-}
-
-void SignerSettingsPage::onZmqPubKeySel()
-{
-   const auto file = QFileDialog::getOpenFileName(this, tr("Select ZMQ public key")
-      , QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation)
-      , QStringLiteral("*.pub"));
-   if (file.isEmpty()) {
-      return;
-   }
-
-   SecureBinaryData zmqSignerPubKey;
-   if (!bs::network::readZmqKeyFile(file, zmqSignerPubKey, true)) {
-      BSMessageBox info(BSMessageBox::critical, tr("Import ZMQ key failed")
-         , tr("Failed to parse ZMQ public key from file")
-         , QStringLiteral(""), this);
-      info.exec();
-      return;
-   }
-
-   ui_->lineEditRemoteZmqPubKey->setText(QString::fromStdString(zmqSignerPubKey.toBinStr()));
-   ui_->lineEditZmqKeyPath->setText(file);
-}
-
-void SignerSettingsPage::onModeChanged(int index)
-{
-   switch (static_cast<RunModeIndex>(index)) {
-   case Local:
+   switch (mode) {
+   case SignContainer::OpMode::Local:
       showHost(false);
       showPort(true);
-      ui_->spinBoxPort->setValue(appSettings_->get<int>(ApplicationSettings::signerPort));
-      showZmqPubKey(false);
-      showOfflineDir(false);
+      ui_->spinBoxPort->setValue(appSettings_->get<int>(ApplicationSettings::localSignerPort));
       showLimits(true);
-      showTwoWayAuth(false);
+      showSignerKeySettings(false);
       ui_->spinBoxAsSpendLimit->setValue(appSettings_->get<double>(ApplicationSettings::autoSignSpendLimit));
       ui_->formLayoutConnectionParams->setSpacing(3);
       break;
 
-   case Remote:
+   case SignContainer::OpMode::Remote:
       showHost(true);
-      ui_->lineEditHost->setText(appSettings_->get<QString>(ApplicationSettings::signerHost));
-      showPort(true);
-      ui_->spinBoxPort->setValue(appSettings_->get<int>(ApplicationSettings::signerPort));
-      showZmqPubKey(true);
-      ui_->lineEditRemoteZmqPubKey->setText(appSettings_->get<QString>(ApplicationSettings::zmqRemoteSignerPubKey));
-      showOfflineDir(false);
-      showLimits(false);
-      showTwoWayAuth(true);
-      ui_->formLayoutConnectionParams->setSpacing(6);
-      break;
-
-   case Offline:
-      showHost(false);
+      ui_->comboBoxRemoteSigner->setCurrentIndex(appSettings_->get<int>(ApplicationSettings::signerIndex));
       showPort(false);
-      showZmqPubKey(false);
-      showOfflineDir(true);
-      ui_->labelOfflineDir->setText(appSettings_->get<QString>(ApplicationSettings::signerOfflineDir));
+      ui_->spinBoxPort->setValue(appSettings_->get<int>(ApplicationSettings::localSignerPort));
       showLimits(false);
-      showTwoWayAuth(false);
-      ui_->formLayoutConnectionParams->setSpacing(0);
+      showSignerKeySettings(true);
+      ui_->formLayoutConnectionParams->setSpacing(6);
       break;
 
    default:    break;
@@ -119,16 +61,19 @@ void SignerSettingsPage::onModeChanged(int index)
 
 void SignerSettingsPage::display()
 {
-   const auto modeIndex = appSettings_->get<int>(ApplicationSettings::signerRunMode) - 1;
-   onModeChanged(modeIndex);
-   ui_->comboBoxRunMode->setCurrentIndex(modeIndex);
+   const auto modeIndex = appSettings_->get<int>(ApplicationSettings::signerRunMode);
+   SignContainer::OpMode opMode = static_cast<SignContainer::OpMode>(modeIndex);
+   onModeChanged(opMode);
+   ui_->comboBoxRunMode->setCurrentIndex(modeIndex - 1);
+   ui_->checkBoxTwoWayAuth->setChecked(appSettings_->get<bool>(ApplicationSettings::twoWayAuth));
 }
 
 void SignerSettingsPage::reset()
 {
-   for (const auto &setting : {ApplicationSettings::signerRunMode, ApplicationSettings::signerHost
-      , ApplicationSettings::signerPort, ApplicationSettings::signerOfflineDir
-      , ApplicationSettings::zmqRemoteSignerPubKey, ApplicationSettings::autoSignSpendLimit}) {
+   for (const auto &setting : {ApplicationSettings::signerRunMode
+      , ApplicationSettings::localSignerPort, ApplicationSettings::signerOfflineDir
+      , ApplicationSettings::remoteSigners, ApplicationSettings::autoSignSpendLimit
+      , ApplicationSettings::twoWayAuth}) {
       appSettings_->reset(setting, false);
    }
    display();
@@ -137,26 +82,13 @@ void SignerSettingsPage::reset()
 void SignerSettingsPage::showHost(bool show)
 {
    ui_->labelHost->setVisible(show);
-   ui_->lineEditHost->setVisible(show);
+   ui_->comboBoxRemoteSigner->setVisible(show);
 }
 
 void SignerSettingsPage::showPort(bool show)
 {
    ui_->labelPort->setVisible(show);
    ui_->spinBoxPort->setVisible(show);
-}
-
-void SignerSettingsPage::showZmqPubKey(bool show)
-{
-   ui_->widgetZmqLabel->setVisible(show);
-   ui_->widgetZmqComboBox->setVisible(show);
-   ui_->widgetZmqContent->setVisible(show);
-}
-
-void SignerSettingsPage::showOfflineDir(bool show)
-{
-   ui_->labelDirHint->setVisible(show);
-   ui_->widgetOfflineDir->setVisible(show);
 }
 
 void SignerSettingsPage::showLimits(bool show)
@@ -167,10 +99,11 @@ void SignerSettingsPage::showLimits(bool show)
    onAsSpendLimitChanged(ui_->spinBoxAsSpendLimit->value());
 }
 
-void SignerSettingsPage::showTwoWayAuth(bool show)
+void SignerSettingsPage::showSignerKeySettings(bool show)
 {
    ui_->widgetTwoWayAuth->setVisible(show);
    ui_->checkBoxTwoWayAuth->setVisible(show);
+   ui_->widgetSignerKeyComboBox->setVisible(show);
 }
 
 void SignerSettingsPage::onAsSpendLimitChanged(double value)
@@ -183,33 +116,56 @@ void SignerSettingsPage::onAsSpendLimitChanged(double value)
    }
 }
 
+void SignerSettingsPage::onManageSignerKeys()
+{
+   // workaround here - wrap widget by QDialog
+   // TODO: fix stylesheet to support popup widgets
+
+   QDialog *d = new QDialog(this);
+   QVBoxLayout *l = new QVBoxLayout(d);
+   l->setContentsMargins(0,0,0,0);
+   d->setLayout(l);
+   d->setWindowTitle(tr("Manage Signer Connection"));
+
+   SignerKeysWidget *signerKeysWidget = new SignerKeysWidget(signersProvider_, appSettings_, this);
+   d->resize(signerKeysWidget->size());
+
+   l->addWidget(signerKeysWidget);
+
+   connect(signerKeysWidget, &SignerKeysWidget::needClose, this, [d](){
+      d->reject();
+   });
+
+   d->exec();
+
+   emit signersChanged();
+}
+
 void SignerSettingsPage::apply()
 {
-   switch (static_cast<RunModeIndex>(ui_->comboBoxRunMode->currentIndex())) {
-   case Local:
-      appSettings_->set(ApplicationSettings::signerPort, ui_->spinBoxPort->value());
+   appSettings_->set(ApplicationSettings::signerRunMode, ui_->comboBoxRunMode->currentIndex() + 1);
+   appSettings_->set(ApplicationSettings::twoWayAuth, ui_->checkBoxTwoWayAuth->isChecked());
+
+   switch (static_cast<SignContainer::OpMode>(ui_->comboBoxRunMode->currentIndex() + 1)) {
+   case SignContainer::OpMode::Local:
+      appSettings_->set(ApplicationSettings::localSignerPort, ui_->spinBoxPort->value());
       appSettings_->set(ApplicationSettings::autoSignSpendLimit, ui_->spinBoxAsSpendLimit->value());
       break;
 
-   case Remote:
-      appSettings_->set(ApplicationSettings::signerHost, ui_->lineEditHost->text());
-      appSettings_->set(ApplicationSettings::signerPort, ui_->spinBoxPort->value());
-      saveZmqRemotePubKey();
-      break;
-
-   case Offline:
-      appSettings_->set(ApplicationSettings::signerOfflineDir, ui_->labelOfflineDir->text());
+   case SignContainer::OpMode::Remote:
+      signersProvider_->setupSigner(ui_->comboBoxRemoteSigner->currentIndex());
       break;
 
    default:    break;
    }
-   appSettings_->set(ApplicationSettings::signerRunMode, ui_->comboBoxRunMode->currentIndex() + 1);
 }
 
-void SignerSettingsPage::saveZmqRemotePubKey()
+void SignerSettingsPage::initSettings()
 {
-   const QString &remoteSignerZmqPubKey = ui_->lineEditRemoteZmqPubKey->text();
-   if (!remoteSignerZmqPubKey.isEmpty() && (remoteSignerZmqPubKey != appSettings_->get<QString>(ApplicationSettings::zmqRemoteSignerPubKey))) {
-      appSettings_->set(ApplicationSettings::zmqRemoteSignerPubKey, remoteSignerZmqPubKey);
-   }
+   signersModel_ = new SignersModel(signersProvider_);
+   signersModel_->setSingleColumnMode(true);
+   signersModel_->setHighLightSelectedServer(false);
+   ui_->comboBoxRemoteSigner->setModel(signersModel_);
+
+   connect(signersProvider_.get(), &SignersProvider::dataChanged, this, &SignerSettingsPage::display);
 }

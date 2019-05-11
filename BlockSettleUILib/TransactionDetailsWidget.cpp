@@ -84,13 +84,15 @@ TransactionDetailsWidget::~TransactionDetailsWidget() = default;
 
 // Initialize the widget and related widgets (block, address, Tx)
 void TransactionDetailsWidget::init(
-   const std::shared_ptr<ArmoryConnection> &armory,
-   const std::shared_ptr<spdlog::logger> &inLogger)
+   const std::shared_ptr<ArmoryObject> &armory
+   , const std::shared_ptr<spdlog::logger> &inLogger
+   , const std::shared_ptr<QTimer> &inTimer)
 {
    armory_ = armory;
    logger_ = inLogger;
+   expTimer_ = inTimer;
 
-   connect(armory_.get(), &ArmoryConnection::newBlock, this
+   connect(armory_.get(), &ArmoryObject::newBlock, this
       , &TransactionDetailsWidget::onNewBlock, Qt::QueuedConnection);
 }
 
@@ -112,7 +114,7 @@ void TransactionDetailsWidget::populateTransactionWidget(BinaryTXID rpcTXID,
    }
    // get the transaction data from armory
    std::string txidStr = rpcTXID.getRPCTXID().toHexStr();
-   const auto &cbTX = [this, txidStr](Tx tx) {
+   const auto &cbTX = [this, txidStr](const Tx &tx) {
       if (tx.isInitialized()) {
          processTxData(tx);
       }
@@ -138,7 +140,7 @@ void TransactionDetailsWidget::processTxData(Tx tx)
 
    // Get each Tx object associated with the Tx's TxIn object. Needed to calc
    // the fees.
-   const auto &cbProcessTX = [this](std::vector<Tx> prevTxs) {
+   const auto &cbProcessTX = [this](const std::vector<Tx> &prevTxs) {
       for (const auto &prevTx : prevTxs) {
          BinaryTXID intPrevTXHash(prevTx.getThisHash(), false);
          prevTxMap_[intPrevTXHash] = prevTx;
@@ -192,6 +194,7 @@ void TransactionDetailsWidget::getHeaderData(const BinaryData& inHeader)
    curTxNonce = READ_UINT32_LE(inHeader.getPtr() + 76);*/
 }
 
+// The function that will actually populate the GUI with TX data.
 void TransactionDetailsWidget::setTxGUIValues()
 {
    // Get Tx header data. NOT USED FOR NOW.
@@ -210,6 +213,10 @@ void TransactionDetailsWidget::setTxGUIValues()
          totIn += prevOut.getValue();
       }
    }
+
+   // It's now safe to stop the query expiration timer. Do it right away.
+   expTimer_->stop();
+
    uint64_t fees = totIn - curTx_.getSumOfOutputs();
    float feePerByte = (float)fees / (float)curTx_.getTxWeight();
 
@@ -279,7 +286,7 @@ void TransactionDetailsWidget::loadTreeIn(CustomTreeWidget *tree)
       }
       else {
          typeStr = QString::fromStdString("Input");
-         addrStr = outAddr.display();
+         addrStr = QString::fromStdString(outAddr.display());
       }
 
       // create a top level item using type, address, amount, wallet values
@@ -327,7 +334,7 @@ void TransactionDetailsWidget::loadTreeOut(CustomTreeWidget *tree)
       }
       else {
          typeStr = QString::fromStdString("Output");
-         addrStr = outAddr.display();
+         addrStr = QString::fromStdString(outAddr.display());
       }
 
       // create a top level item using type, address, amount, wallet values

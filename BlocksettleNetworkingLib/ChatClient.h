@@ -10,6 +10,11 @@
 #include "DataConnectionListener.h"
 #include "SecureBinaryData.h"
 #include <queue>
+#include <QAbstractItemModel>
+
+#include "ChatClientTree/TreeObjects.h"
+#include "ChatHandleInterfaces.h"
+#include "ZMQ_BIP15X_DataConnection.h"
 
 namespace spdlog {
    class logger;
@@ -17,16 +22,20 @@ namespace spdlog {
 namespace Chat {
    class Request;
 }
-
 class ConnectionManager;
 class ZmqBIP15XDataConnection;
 class ApplicationSettings;
 class UserHasher;
+class ChatClientDataModel;
 
 
 class ChatClient : public QObject
              , public DataConnectionListener
              , public Chat::ResponseHandler
+             , public ChatItemActionsHandler
+             , public ChatSearchActionsHandler
+             , public ChatMessageReadHandler
+             , public ModelChangesHandler
 {
    Q_OBJECT
 
@@ -41,7 +50,10 @@ public:
    ChatClient(ChatClient&&) = delete;
    ChatClient& operator = (ChatClient&&) = delete;
 
-   std::string loginToServer(const std::string& email, const std::string& jwt);
+   std::shared_ptr<ChatClientDataModel> getDataModel();
+
+   std::string loginToServer(const std::string& email, const std::string& jwt
+      , const ZmqBIP15XDataConnection::cbNewKey &);
    void logout(bool send = true);
 
    void OnHeartbeatPong(const Chat::HeartbeatPongResponse &) override;
@@ -88,9 +100,15 @@ public:
    void sendUpdateMessageState(const std::shared_ptr<Chat::MessageData>& message);
    void sendSearchUsersRequest(const QString& userIdPattern);
    QString deriveKey(const QString& email) const;
+   void clearSearch();
+   bool isFriend(const QString &userId);
+   bool encryptByIESAndSaveMessageInDb(const std::shared_ptr<Chat::MessageData>& message);
+   bool decryptIESMessage(std::shared_ptr<Chat::MessageData>& message);
+   QString getUserId();
 
 private:
    void sendRequest(const std::shared_ptr<Chat::Request>& request);
+   void readDatabase();
 
 signals:
    void ConnectedToServer();
@@ -111,24 +129,32 @@ signals:
    void MessageStatusUpdated(const QString& messageId, const QString& chatId, int newStatus);
    void RoomsAdd(const std::vector<std::shared_ptr<Chat::RoomData>>& rooms);
    void SearchUserListReceived(const std::vector<std::shared_ptr<Chat::UserData>>& users);
+   void NewContactRequest(const QString &userId);
+   void ContactRequestAccepted(const QString &userId);
 
+   void ForceLogoutSignal();
 public slots:
-   void onMessageRead(const std::shared_ptr<Chat::MessageData>& message);
+   //void onMessageRead(const std::shared_ptr<Chat::MessageData>& message);
    
 private slots:
+   void onForceLogoutSignal();
    void sendHeartbeat();
    void addMessageState(const std::shared_ptr<Chat::MessageData>& message, Chat::MessageData::State state);
-   
+   void retrySendQueuedMessages(const std::string userId);
+   void eraseQueuedMessages(const std::string userId);
 
 private:
    std::shared_ptr<ConnectionManager>     connectionManager_;
    std::shared_ptr<ApplicationSettings>   appSettings_;
    std::shared_ptr<spdlog::logger>        logger_;
 
+
+
    std::unique_ptr<ChatDB>                   chatDb_;
    std::map<QString, autheid::PublicKey>     pubKeys_;
-   std::shared_ptr<ZmqBIP15XDataConnection> connection_;
-   std::shared_ptr<UserHasher> hasher_;
+   std::shared_ptr<ZmqBIP15XDataConnection>  connection_;
+   std::shared_ptr<UserHasher>               hasher_;
+   std::map<QString, Botan::SecureVector<uint8_t>>   userNonces_;
 
    // Queue of messages to be sent for each receiver, once we received the public key.
    std::map<QString, std::queue<QString>>    enqueued_messages_;
@@ -140,6 +166,28 @@ private:
    std::atomic_bool  loggedIn_{ false };
 
    autheid::PrivateKey  ownPrivKey_;
-};
+   std::shared_ptr<ChatClientDataModel> model_;
 
+   // ChatItemActionsHandler interface
+public:
+   void onActionAddToContacts(const QString& userId) override;
+   void onActionRemoveFromContacts(std::shared_ptr<Chat::ContactRecordData> crecord) override;
+   void onActionAcceptContactRequest(std::shared_ptr<Chat::ContactRecordData> crecord) override;
+   void onActionRejectContactRequest(std::shared_ptr<Chat::ContactRecordData> crecord) override;
+   bool onActionIsFriend(const QString& userId) override;
+
+   // ChatSearchActionsHandler interface
+public:
+   void onActionSearchUsers(const std::string &text) override;
+   void onActionResetSearch() override;
+
+   // ChatMessageReadHandler interface
+public:
+   void onMessageRead(std::shared_ptr<Chat::MessageData> message) override;
+   void onRoomMessageRead(std::shared_ptr<Chat::MessageData> message) override;
+
+   // ModelChangesHandler interface
+public:
+   void onContactUpdatedByInput(std::shared_ptr<Chat::ContactRecordData> crecord) override;
+};
 #endif   // CHAT_CLIENT_H

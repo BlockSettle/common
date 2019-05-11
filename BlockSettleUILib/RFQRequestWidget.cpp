@@ -15,6 +15,11 @@
 #include <QPushButton>
 #include <QLineEdit>
 
+enum class RFQPages : int
+{
+   LoginRequierdPage = 0,
+   EditableRFQPage
+};
 
 RFQRequestWidget::RFQRequestWidget(QWidget* parent)
    : TabWithShortcut(parent)
@@ -85,6 +90,11 @@ void RFQRequestWidget::shortcutActivated(ShortcutType s)
    }
 }
 
+void RFQRequestWidget::setAuthorized(bool authorized)
+{
+   ui_->widgetMarketData->setAuthorized(authorized);
+}
+
 void RFQRequestWidget::initWidgets(const std::shared_ptr<MarketDataProvider>& mdProvider
    , const std::shared_ptr<ApplicationSettings> &appSettings)
 {
@@ -99,7 +109,7 @@ void RFQRequestWidget::init(std::shared_ptr<spdlog::logger> logger
    , const std::shared_ptr<AssetManager>& assetManager
    , const std::shared_ptr<DialogManager> &dialogManager
    , const std::shared_ptr<SignContainer> &container
-   , const std::shared_ptr<ArmoryConnection> &armory
+   , const std::shared_ptr<ArmoryObject> &armory
    , const std::shared_ptr<ConnectionManager> &connectionManager)
 {
    logger_ = logger;
@@ -138,6 +148,7 @@ void RFQRequestWidget::onConnectedToCeler()
    connect(ui_->widgetMarketData, &MarketDataWidget::BuyClicked, ui_->pageRFQTicket, &RFQTicketXBT::setSecuritySell);
    connect(ui_->widgetMarketData, &MarketDataWidget::SellClicked, ui_->pageRFQTicket, &RFQTicketXBT::setSecurityBuy);
 
+   ui_->stackedWidgetRFQ->setCurrentIndex(static_cast<int>(RFQPages::EditableRFQPage));
    ui_->pageRFQTicket->enablePanel();
 }
 
@@ -147,6 +158,8 @@ void RFQRequestWidget::onDisconnectedFromCeler()
    disconnect(ui_->widgetMarketData, &MarketDataWidget::BuyClicked, ui_->pageRFQTicket, &RFQTicketXBT::setSecuritySell);
    disconnect(ui_->widgetMarketData, &MarketDataWidget::SellClicked, ui_->pageRFQTicket, &RFQTicketXBT::setSecurityBuy);
 
+
+   ui_->stackedWidgetRFQ->setCurrentIndex(static_cast<int>(RFQPages::LoginRequierdPage));
    ui_->pageRFQTicket->disablePanel();
 }
 
@@ -162,4 +175,3 @@ void RFQRequestWidget::onRFQSubmit(const bs::network::RFQ& rfq)
 
    ui_->pageRFQTicket->resetTicket();
 }
-

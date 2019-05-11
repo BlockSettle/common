@@ -9,6 +9,8 @@ FILE(GLOB SOURCES
    ChatProtocol/DataObjects/*.cpp
    ChatProtocol/RequestObjects/*.cpp
    ChatProtocol/ResponseObjects/*.cpp
+   ChatClientTree/*.cpp
+   Encryption/*.cpp
 )
 
 IF (DISABLE_CELER)
@@ -54,6 +56,8 @@ FILE(GLOB HEADERS
    ChatProtocol/DataObjects/*.h
    ChatProtocol/RequestObjects/*.h
    ChatProtocol/ResponseObjects/*.h
+   ChatClientTree/*.h
+   Encryption/*.cpp
 )
 
 IF (DISABLE_CELER)

@@ -15,15 +15,15 @@
 #include "SignContainer.h"
 #include "Wallets/SyncHDWallet.h"
 #include "Wallets/SyncWalletsManager.h"
-#include "ZmqSecuredDataConnection.h"
-
+#include "ZMQ_BIP15X_DataConnection.h"
 
 using namespace Blocksettle::Communication;
 
 
 AuthAddressManager::AuthAddressManager(const std::shared_ptr<spdlog::logger> &logger
-   , const std::shared_ptr<ArmoryConnection> &armory)
-   : QObject(nullptr), logger_(logger), armory_(armory)
+   , const std::shared_ptr<ArmoryConnection> &armory
+   , const ZmqBIP15XDataConnection::cbNewKey &cb)
+   : QObject(nullptr), logger_(logger), armory_(armory), cbApproveConn_(cb)
 {}
 
 void AuthAddressManager::init(const std::shared_ptr<ApplicationSettings>& appSettings
@@ -85,7 +85,7 @@ bool AuthAddressManager::setup()
       }
       const auto address = addr->GetChainedAddress();
       if (GetState(address) != state) {
-         logger_->info("Address verification {} for {}", to_string(state), address.display<std::string>());
+         logger_->info("Address verification {} for {}", to_string(state), address.display());
          SetState(address, state);
          SetInitialTxHash(address, addr->GetInitialTransactionTxHash());
          SetVerifChangeTxHash(address, addr->GetVerificationChangeTxHash());
@@ -255,7 +255,7 @@ bool AuthAddressManager::Verify(const bs::Address &address)
       return false;
    }
 
-   const auto &cbInputs = [this, address](std::vector<UTXO> inputs) {
+   const auto &cbInputs = [this, address](const std::vector<UTXO> &inputs) {
       std::set<BinaryData> txHashSet;
       std::vector<UTXO> utxos;
       const auto &initialTxHash = GetInitialTxHash(address);
@@ -265,7 +265,7 @@ bool AuthAddressManager::Verify(const bs::Address &address)
             utxos.emplace_back(std::move(utxo));
          }
       }
-      const auto &cbTXs = [this, address, utxos](std::vector<Tx> txs) {
+      const auto &cbTXs = [this, address, utxos](const std::vector<Tx> &txs) {
          for (const auto &tx : txs) {
             const bs::TxChecker txChecker(tx);
             for (const auto &utxo : utxos) {
@@ -451,7 +451,7 @@ bool AuthAddressManager::SubmitAddressToPublicBridge(const bs::Address &address)
    request.set_requestdata(addressRequest.SerializeAsString());
 
    logger_->debug("[AuthAddressManager::SubmitAddressToPublicBridge] submitting address {} => {}"
-      , address.display<std::string>(), address.unprefixed().toHexStr());
+      , address.display(), address.unprefixed().toHexStr());
 
    return SubmitRequestToPB("submit_address", request.SerializeAsString());
 }
@@ -461,7 +461,7 @@ bool AuthAddressManager::ConfirmSubmitForVerification(const bs::Address &address
    ConfirmAuthSubmitRequest request;
 
    request.set_username(celerClient_->userName());
-   request.set_address(address.display<std::string>());
+   request.set_address(address.display());
    request.set_networktype((settings_->get<NetworkType>(ApplicationSettings::netType) != NetworkType::MainNet)
       ? AddressNetworkType::TestNetType : AddressNetworkType::MainNetType);
    request.set_scripttype(mapToScriptType(address.getType()));
@@ -491,7 +491,7 @@ bool AuthAddressManager::CancelSubmitForVerification(const bs::Address &address)
    CancelAuthAddressSubmitRequest request;
 
    request.set_username(celerClient_->userName());
-   request.set_address(address.display<std::string>());
+   request.set_address(address.display());
    request.set_userid(celerClient_->userId());
 
    RequestPacket  packet;
@@ -500,7 +500,7 @@ bool AuthAddressManager::CancelSubmitForVerification(const bs::Address &address)
    packet.set_requestdata(request.SerializeAsString());
 
    logger_->debug("[AuthAddressManager::CancelSubmitForVerification] cancel submission of {}"
-      , address.display<std::string>());
+      , address.display());
 
    return SubmitRequestToPB("confirm_submit_auth_addr", packet.SerializeAsString());
 }
@@ -518,7 +518,7 @@ AddressEntryType AuthAddressManager::mapFromScriptType(AddressScriptType scrType
 void AuthAddressManager::SubmitToCeler(const bs::Address &address)
 {
    if (celerClient_->IsConnected()) {
-      const std::string addressString = address.display<std::string>();
+      const std::string addressString = address.display();
       std::unordered_set<std::string> submittedAddresses = celerClient_->GetSubmittedAuthAddressSet();
       if (submittedAddresses.find(addressString) == submittedAddresses.end()) {
          submittedAddresses.emplace(addressString);
@@ -569,13 +569,13 @@ void AuthAddressManager::ProcessConfirmAuthAddressSubmit(const std::string &resp
 
    const bs::Address address(response.address());
    if (response.has_errormsg()) {
-      emit AuthAddrSubmitError(address.display(), QString::fromStdString(response.errormsg()));
+      emit AuthAddrSubmitError(QString::fromStdString(address.display()), QString::fromStdString(response.errormsg()));
    }
    else {
       SubmitToCeler(address);
       SetState(address, AddressVerificationState::Submitted);
       emit AddressListUpdated();
-      emit AuthAddrSubmitSuccess(address.display());
+      emit AuthAddrSubmitSuccess(QString::fromStdString(address.display()));
    }
 }
 
@@ -593,7 +593,7 @@ void AuthAddressManager::ProcessCancelAuthSubmitResponse(const std::string& resp
    } else {
       SetState(address, AddressVerificationState::NotSubmitted);
       emit AddressListUpdated();
-      emit AuthAddressSubmitCancelled(address.display());
+      emit AuthAddressSubmitCancelled(QString::fromStdString(address.display()));
    }
 }
 
@@ -629,7 +629,7 @@ void AuthAddressManager::VerifyWalletAddressesFunction()
       if (authWallet_ != nullptr) {
          for (const auto &addr : authWallet_->getUsedAddressList()) {
             AddAddress(addr);
-            if (submittedAddresses.find(addr.display<std::string>()) != submittedAddresses.end()) {
+            if (submittedAddresses.find(addr.display()) != submittedAddresses.end()) {
                SetState(addr, AddressVerificationState::Submitted);
             }
          }
@@ -641,14 +641,14 @@ void AuthAddressManager::VerifyWalletAddressesFunction()
 
       auto defaultAuthAddrStr = settings_->get<QString>(ApplicationSettings::defaultAuthAddr);
       if (!defaultAuthAddrStr.isEmpty()) {
-         defaultAddr_ = bs::Address(defaultAuthAddrStr);
+         defaultAddr_ = bs::Address(defaultAuthAddrStr.toStdString());
       }
 
       if (defaultAddr_.isNull()) {
          logger_->debug("Default auth address not found");
       }
       else {
-         logger_->debug("Default auth address: {}", defaultAddr_.display<std::string>());
+         logger_->debug("Default auth address: {}", defaultAddr_.display());
       }
    }
 
@@ -751,9 +751,9 @@ bool AuthAddressManager::SendGetBSAddressListRequest()
 
 bool AuthAddressManager::SubmitRequestToPB(const std::string& name, const std::string& data)
 {
-   const auto connection = connectionManager_->CreateSecuredDataConnection();
-   BinaryData inSrvPubKey(settings_->get<std::string>(ApplicationSettings::pubBridgePubKey));
-   connection->SetServerPublicKey(inSrvPubKey);
+   const auto connection = connectionManager_->CreateZMQBIP15XDataConnection();
+   connection->setCBs(cbApproveConn_);
+
    auto command = std::make_shared<RequestReplyCommand>(name, connection, logger_);
 
    command->SetReplyCallback([command, this](const std::string& data) {
@@ -778,8 +778,7 @@ bool AuthAddressManager::SubmitRequestToPB(const std::string& name, const std::s
 
    if (!command->ExecuteRequest(settings_->get<std::string>(ApplicationSettings::pubBridgeHost)
          , settings_->get<std::string>(ApplicationSettings::pubBridgePort)
-         , data))
-   {
+         , data, true)) {
       logger_->error("[AuthAddressManager::SubmitRequestToPB] failed to send request {}", name);
       FastLock locker(lockCommands_);
       activeCommands_.erase(command);
@@ -840,14 +839,14 @@ void AuthAddressManager::SetState(const bs::Address &addr, AddressVerificationSt
    states_[addr.prefixed()] = state;
 
    if (state == AddressVerificationState::PendingVerification) {
-      emit NeedVerify(addr.display());
+      emit NeedVerify(QString::fromStdString(addr.display()));
    }
    else if ((state == AddressVerificationState::Verified) && (prevState == AddressVerificationState::VerificationSubmitted)) {
-      emit AddrStateChanged(addr.display(), tr("Verified"));
+      emit AddrStateChanged(QString::fromStdString(addr.display()), tr("Verified"));
    }
    else if (((state == AddressVerificationState::Revoked) || (state == AddressVerificationState::RevokedByBS))
       && (prevState == AddressVerificationState::Verified)) {
-      emit AddrStateChanged(addr.display(), tr("Revoked"));
+      emit AddrStateChanged(QString::fromStdString(addr.display()), tr("Revoked"));
    }
 }
 

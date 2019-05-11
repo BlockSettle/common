@@ -7,26 +7,24 @@
 #include "market_data_history.pb.h"
 #include "trade_history.pb.h"
 
-const qreal BASE_FACTOR = 1.0;
-
 const QColor BACKGROUND_COLOR = QColor(28, 40, 53);
 const QColor FOREGROUND_COLOR = QColor(Qt::white);
-const QColor VOLUME_COLOR     = QColor(32, 159, 223);
+const QColor VOLUME_COLOR = QColor(32, 159, 223);
 
-ComboBoxDelegate::ComboBoxDelegate(QObject *parent)
-   :QItemDelegate(parent)
+using namespace Blocksettle::Communication::TradeHistory;
+
+ComboBoxDelegate::ComboBoxDelegate(QObject* parent)
+   : QItemDelegate(parent)
 {
 }
 
-void ComboBoxDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const
+void ComboBoxDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const
 {
-   if (index.data(Qt::AccessibleDescriptionRole).toString() == QLatin1String("separator"))
-   {
+   if (index.data(Qt::AccessibleDescriptionRole).toString() == QLatin1String("separator")) {
       painter->setPen(Qt::gray);
       painter->drawLine(option.rect.left(), option.rect.center().y(), option.rect.right(), option.rect.center().y());
    }
-   else if (index.data(Qt::AccessibleDescriptionRole).toString() == QLatin1String("parent"))
-   {
+   else if (index.data(Qt::AccessibleDescriptionRole).toString() == QLatin1String("parent")) {
       QStyleOptionViewItem parentOption = option;
       parentOption.state |= QStyle::State_Enabled;
       QItemDelegate::paint(painter, parentOption, index);
@@ -38,13 +36,12 @@ void ComboBoxDelegate::paint(QPainter *painter, const QStyleOptionViewItem &opti
       childOption.textElideMode = Qt::ElideNone;
       QItemDelegate::paint(painter, childOption, index);
    }
-   else
-   {
+   else {
       QItemDelegate::paint(painter, option, index);
    }
 }
 
-QSize ComboBoxDelegate::sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const
+QSize ComboBoxDelegate::sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const
 {
    QString type = index.data(Qt::AccessibleDescriptionRole).toString();
    if (type == QLatin1String("separator"))
@@ -54,18 +51,18 @@ QSize ComboBoxDelegate::sizeHint(const QStyleOptionViewItem &option, const QMode
 
 ChartWidget::ChartWidget(QWidget* pParent)
    : QWidget(pParent)
-   , ui_(new Ui::ChartWidget)
-   , candlesticksChart_(nullptr)
-   , volumeChart_(nullptr)
-   , volumeAxisRect_(nullptr)
-   , lastHigh_(0.0)
-   , lastLow_(0.0)
-   , lastClose_(0.0)
-   , currentTimestamp_(0.0)
-   , timerId_(0)
-   , lastInterval_(-1)
-   , dragY_(0)
-   , isDraggingYAxis_(false) {
+     , ui_(new Ui::ChartWidget)
+     , candlesticksChart_(nullptr)
+     , volumeChart_(nullptr)
+     , volumeAxisRect_(nullptr)
+     , lastHigh_(0.0)
+     , lastLow_(0.0)
+     , lastClose_(0.0)
+     , currentTimestamp_(0)
+     , lastInterval_(-1)
+     , dragY_(0)
+     , isDraggingYAxis_(false)
+{
    ui_->setupUi(this);
    horLine = new QCPItemLine(ui_->customPlot);
    vertLine = new QCPItemLine(ui_->customPlot);
@@ -90,6 +87,10 @@ ChartWidget::ChartWidget(QWidget* pParent)
    cboModel_ = new QStandardItemModel(this);
    ui_->cboInstruments->setItemDelegate(new ComboBoxDelegate);
    ui_->cboInstruments->setModel(cboModel_);
+
+   //uncomment when there will we enought data
+   ui_->btn1y->hide();
+   ui_->btn6m->hide();
 }
 
 void ChartWidget::init(const std::shared_ptr<ApplicationSettings>& appSettings
@@ -103,10 +104,13 @@ void ChartWidget::init(const std::shared_ptr<ApplicationSettings>& appSettings
    logger_ = logger;
 
    connect(mdhsClient_.get(), &MdhsClient::DataReceived, this, &ChartWidget::OnDataReceived);
-   connect(mdProvider_.get(), &MarketDataProvider::MDUpdate, this, &ChartWidget::OnMdUpdated);
 
    connect(ui_->pushButtonMDConnection, &QPushButton::clicked, this, &ChartWidget::ChangeMDSubscriptionState);
 
+   connect(mdProvider.get(), &MarketDataProvider::MDUpdate, this, &ChartWidget::OnMdUpdated);
+   connect(mdProvider.get(), &MarketDataProvider::OnNewFXTrade, this, &ChartWidget::OnNewXBTorFXTrade);
+   connect(mdProvider.get(), &MarketDataProvider::OnNewPMTrade, this, &ChartWidget::OnNewPMTrade);
+   connect(mdProvider.get(), &MarketDataProvider::OnNewXBTTrade, this, &ChartWidget::OnNewXBTorFXTrade);
    connect(mdProvider.get(), &MarketDataProvider::WaitingForConnectionDetails, this, &ChartWidget::OnLoadingNetworkSettings);
    connect(mdProvider.get(), &MarketDataProvider::StartConnecting, this, &ChartWidget::OnMDConnecting);
    connect(mdProvider.get(), &MarketDataProvider::Connected, this, &ChartWidget::OnMDConnected);
@@ -120,59 +124,85 @@ void ChartWidget::init(const std::shared_ptr<ApplicationSettings>& appSettings
    ui_->btn1h->click();
 }
 
-ChartWidget::~ChartWidget() {
-   killTimer(timerId_);
+void ChartWidget::setAuthorized(bool authorized)
+{
+   ui_->pushButtonMDConnection->setEnabled(!authorized);
+   authorized_ = authorized;
+}
+
+void ChartWidget::disconnect()
+{
+   OnMDDisconnecting();
+}
+
+ChartWidget::~ChartWidget()
+{
    delete ui_;
 }
 
+void ChartWidget::SendEoDRequest()
+{
+   OhlcRequest ohlcRequest;
+   ohlcRequest.set_product(getCurrentProductName().toStdString());
+   ohlcRequest.set_interval(static_cast<Interval>(dateRange_.checkedId()));
+   ohlcRequest.set_count(1);
+   ohlcRequest.set_lesser_then(-1);
+
+   MarketDataHistoryRequest request;
+   request.set_request_type(MarketDataHistoryMessageType::EoDPriceType);
+   request.set_request(ohlcRequest.SerializeAsString());
+   mdhsClient_->SendRequest(request);
+   eodRequestSent_ = true;
+}
+
 // Populate combo box with existing instruments comeing from mdProvider
-void ChartWidget::OnMdUpdated(bs::network::Asset::Type assetType, const QString &security, bs::network::MDFields mdFields) {
+void ChartWidget::OnMdUpdated(bs::network::Asset::Type assetType, const QString& security,
+                              bs::network::MDFields mdFields)
+{
    if ((assetType == bs::network::Asset::Undefined) && security.isEmpty()) // Celer disconnected
    {
       isProductListInitialized_ = false;
       cboModel_->clear();
       return;
    }
-   else if (!isProductListInitialized_)
-   {
+   if (!isProductListInitialized_) {
       isProductListInitialized_ = true;
       MarketDataHistoryRequest request;
       request.set_request_type(MarketDataHistoryMessageType::ProductsListType);
       mdhsClient_->SendRequest(request);
    }
 
-   if (getCurrentProductName() == security)
-   {
-      for (const auto& field : mdFields)
-      {
-         if (field.type == bs::network::MDField::PriceLast)
-         {
-            if (field.value == lastClose_)
-               return;
-            else
-               lastClose_ = field.value;
-
-            if (lastClose_ > lastHigh_)
-               lastHigh_ = lastClose_;
-
-            if (lastClose_ < lastLow_)
-               lastLow_ = lastClose_;
-            ModifyCandle();
+   for (const auto& field : mdFields) {
+      if (field.type == bs::network::MDField::MDTimestamp) {
+         currentTimestamp_ = field.value;
+         CheckToAddNewCandle(currentTimestamp_);
+         auto date = QDateTime::fromMSecsSinceEpoch(currentTimestamp_, Qt::TimeSpec::UTC).time();
+         if (!eodUpdated_
+            && !eodRequestSent_
+            && date.hour() == 0
+            && date.minute() == 0
+            && date.second() > 5
+         ) {
+            SendEoDRequest();
+            QTimer::singleShot(5000, [this]()
+            {
+               if (!eodUpdated_) {
+                  SendEoDRequest();
+               }
+            });
          }
-
-         if (field.type == bs::network::MDField::MDTimestamp)
-         {
-            currentTimestamp_ = field.value;
-            timerId_ = startTimer(getTimerInterval());
+         if (date.hour() != 0) {
+            eodUpdated_ = false;
+            eodRequestSent_ = false;
          }
       }
    }
-
-
 }
 
-void ChartWidget::UpdateChart(const int& interval) const
+void ChartWidget::UpdateChart(const int& interval)
 {
+   eodUpdated_ = false;
+   eodRequestSent_ = false;
    auto product = getCurrentProductName();
    if (product.isEmpty())
       return;
@@ -184,7 +214,6 @@ void ChartWidget::UpdateChart(const int& interval) const
    qreal width = 0.8 * IntervalWidth(interval) / 1000;
    candlesticksChart_->setWidth(width);
    volumeChart_->setWidth(width);
-   const auto currentTimestamp = QDateTime::currentMSecsSinceEpoch();
    OhlcRequest ohlcRequest;
    ohlcRequest.set_product(product.toStdString());
    ohlcRequest.set_interval(static_cast<Interval>(interval));
@@ -199,15 +228,13 @@ void ChartWidget::UpdateChart(const int& interval) const
 
 void ChartWidget::OnDataReceived(const std::string& data)
 {
-   if (data.empty())
-   {
+   if (data.empty()) {
       logger_->error("Empty data received from mdhs.");
       return;
    }
 
    MarketDataHistoryResponse response;
-   if (!response.ParseFromString(data))
-   {
+   if (!response.ParseFromString(data)) {
       logger_->error("can't parse response from mdhs: {}", data);
       return;
    }
@@ -219,6 +246,11 @@ void ChartWidget::OnDataReceived(const std::string& data)
    case MarketDataHistoryMessageType::OhlcHistoryType:
       ProcessOhlcHistoryResponse(response.response());
       break;
+   case MarketDataHistoryMessageType::EoDPriceType:
+      {
+         ProcessEodResponse(response.response());
+      }
+      break;
    default:
       logger_->error("[ApiServerConnectionListener::OnDataReceived] undefined message type");
       break;
@@ -227,46 +259,41 @@ void ChartWidget::OnDataReceived(const std::string& data)
 
 void ChartWidget::ProcessProductsListResponse(const std::string& data)
 {
-   if (data.empty())
-   {
+   if (data.empty()) {
       logger_->error("Empty data received from mdhs.");
       return;
    }
 
    ProductsListResponse response;
-   if (!response.ParseFromString(data))
-   {
+   if (!response.ParseFromString(data)) {
       logger_->error("can't parse response from mdhs: {}", data);
       return;
    }
    std::map<TradeHistoryTradeType, std::vector<std::string>> tempMap;
-   for (const auto& product : response.products())
-   {
+   for (const auto& product : response.products()) {
       tempMap[product.type()].push_back(product.product());
       productTypesMapper[product.product()] = product.type();
    }
-   for (const auto& mapElement: tempMap) {
+   for (const auto& mapElement : tempMap) {
       AddParentItem(cboModel_, ProductTypeToString(mapElement.first));
       for (const auto& name : mapElement.second) {
          AddChildItem(cboModel_, QString::fromStdString(name));
       }
    }
    connect(ui_->cboInstruments, &QComboBox::currentTextChanged,
-      this, &ChartWidget::OnInstrumentChanged);
+           this, &ChartWidget::OnInstrumentChanged);
    ui_->cboInstruments->setCurrentIndex(1); //to prevent automatic selection of parent item
 }
 
 void ChartWidget::ProcessOhlcHistoryResponse(const std::string& data)
 {
-   if (data.empty())
-   {
+   if (data.empty()) {
       logger_->error("Empty data received from mdhs.");
       return;
    }
 
    OhlcResponse response;
-   if (!response.ParseFromString(data))
-   {
+   if (!response.ParseFromString(data)) {
       logger_->error("can't parse response from mdhs: {}", data);
       return;
    }
@@ -281,33 +308,40 @@ void ChartWidget::ProcessOhlcHistoryResponse(const std::string& data)
 
    quint64 maxTimestamp = 0;
 
-   for (int i = 0; i < response.candles_size(); i++)
-   {
+   for (int i = 0; i < response.candles_size(); i++) {
       auto candle = response.candles(i);
       maxTimestamp = qMax(maxTimestamp, static_cast<quint64>(candle.timestamp()));
 
       bool isLast = (i == 0);
-      if (candle.timestamp() >=  lastCandle_.timestamp() || lastCandle_.timestamp() - candle.timestamp() < IntervalWidth(interval, 1, QDateTime::fromMSecsSinceEpoch(candle.timestamp()))) {
-         logger_->error("Invalid distance between candles from mdhs. The last timestamp: {}  new timestamp: {}", lastCandle_.timestamp(), candle.timestamp());
-      } else {
-         if (lastCandle_.timestamp() - candle.timestamp() != IntervalWidth(interval, 1, QDateTime::fromMSecsSinceEpoch(candle.timestamp())) && candlesticksChart_->data()->size()) {
-            for (int j = 0; j < (lastCandle_.timestamp() - candle.timestamp()) / IntervalWidth(interval, 1, QDateTime::fromMSecsSinceEpoch(candle.timestamp())) - 1; j++) {
-               AddDataPoint(lastCandle_.close(), lastCandle_.close(), lastCandle_.close(), lastCandle_.close(), lastCandle_.timestamp() - IntervalWidth(interval) * (j + 1), 0);
+      if (candle.timestamp() >= lastCandle_.timestamp() 
+         || lastCandle_.timestamp() - candle.timestamp() < IntervalWidth( interval, 1, QDateTime::fromMSecsSinceEpoch(candle.timestamp(), Qt::TimeSpec::UTC))) {
+         logger_->error("Invalid distance between candles from mdhs. The last timestamp: {}  new timestamp: {}",
+                        lastCandle_.timestamp(), candle.timestamp());
+      }
+      else {
+         if (lastCandle_.timestamp() - candle.timestamp() != IntervalWidth(
+            interval, 1, QDateTime::fromMSecsSinceEpoch(candle.timestamp(), Qt::TimeSpec::UTC)) && candlesticksChart_->data()->size()) {
+            for (int j = 0; j < (lastCandle_.timestamp() - candle.timestamp()) / IntervalWidth(
+                    interval, 1, QDateTime::fromMSecsSinceEpoch(candle.timestamp(), Qt::TimeSpec::UTC)) - 1; j++) {
+               AddDataPoint(candle.close(), candle.close(), candle.close(), candle.close(),
+                            lastCandle_.timestamp() - IntervalWidth(interval) * (j + 1), 0);
             }
          }
       }
 
       lastCandle_ = candle;
 
-
       AddDataPoint(candle.open(), candle.high(), candle.low(), candle.close(), candle.timestamp(), candle.volume());
+#if 0
       qDebug("Added: %s, open: %f, high: %f, low: %f, close: %f, volume: %f"
-         , QDateTime::fromMSecsSinceEpoch(candle.timestamp()).toUTC().toString(Qt::ISODateWithMs).toStdString().c_str()
-         , candle.open()
-         , candle.high()
-         , candle.low()
-         , candle.close()
-         , candle.volume());
+             , QDateTime::fromMSecsSinceEpoch(candle.timestamp(), Qt::TimeSpec::UTC)
+               .toUTC().toString(Qt::ISODateWithMs).toStdString().c_str()
+             , candle.open()
+             , candle.high()
+             , candle.low()
+             , candle.close()
+             , candle.volume());
+#endif
       if (firstPortion && isLast) {
          lastHigh_ = candle.high();
          lastLow_ = candle.low();
@@ -315,20 +349,27 @@ void ChartWidget::ProcessOhlcHistoryResponse(const std::string& data)
       }
    }
 
-
    if (firstPortion) {
-      auto currentCandleTimestamp = GetCandleTimestamp(QDateTime::currentMSecsSinceEpoch(), static_cast<Interval>(interval));
+      if (!qFuzzyIsNull(currentTimestamp_)) {
+         newestCandleTimestamp_ = GetCandleTimestamp(currentTimestamp_, static_cast<Interval>(interval));
+      }
+      else {
+         logger_->warn("Data from mdhs came before MD update, or MD send wrong current timestamp");
+         newestCandleTimestamp_ = GetCandleTimestamp(QDateTime::currentDateTimeUtc().toMSecsSinceEpoch(),
+                                                     static_cast<Interval>(interval));
+      }
       if (!response.candles_size()) {
-         AddDataPoint(0, 0, 0, 0, currentCandleTimestamp, 0);
-         maxTimestamp = currentCandleTimestamp;
-      } else {
-         auto currentCandleTimestamp = GetCandleTimestamp(QDateTime::currentMSecsSinceEpoch(), static_cast<Interval>(interval));
-         if (currentCandleTimestamp > maxTimestamp) {
+         AddDataPoint(0, 0, 0, 0, newestCandleTimestamp_, 0);
+         maxTimestamp = newestCandleTimestamp_;
+      }
+      else {
+         if (newestCandleTimestamp_ > maxTimestamp) {
             auto lastCandle = *(candlesticksChart_->data()->at(candlesticksChart_->data()->size() - 1));
-            for (quint64 i = 0; i < (currentCandleTimestamp - maxTimestamp) / IntervalWidth(interval); i++) {
-               AddDataPoint(lastCandle.close, lastCandle.close, lastCandle.close, lastCandle.close, currentCandleTimestamp - IntervalWidth(interval) * i, 0);
+            for (quint64 i = 0; i < (newestCandleTimestamp_ - maxTimestamp) / IntervalWidth(interval); i++) {
+               AddDataPoint(lastCandle.close, lastCandle.close, lastCandle.close, lastCandle.close,
+                            newestCandleTimestamp_ - IntervalWidth(interval) * i, 0);
             }
-            maxTimestamp = currentCandleTimestamp;
+            maxTimestamp = newestCandleTimestamp_;
          }
       }
       firstTimestampInDb_ = response.first_stamp_in_db() / 1000;
@@ -341,15 +382,60 @@ void ChartWidget::ProcessOhlcHistoryResponse(const std::string& data)
    }
 }
 
+void ChartWidget::ProcessEodResponse(const std::string& data)
+{
+   eodRequestSent_ = false;
+   EodPrice eodPrice;
+   eodPrice.ParseFromString(data);
+   if (getCurrentProductName().toStdString() != eodPrice.product()) {
+      return;
+   }
+   if (candlesticksChart_->data()->size() < 2) {
+      return;
+   }
+   auto delta = dateRange_.checkedId() >= Interval::TwentyFourHours ? 2 : 1; //should we update last or pre-last candle
+   auto lastCandle = candlesticksChart_->data()->end() - delta;
+   lastCandle->high = qMax(lastCandle->high, eodPrice.price());
+   lastCandle->low = qMin(lastCandle->low, eodPrice.price());
+   if (!qFuzzyCompare(lastCandle->close, eodPrice.price())) {
+      lastCandle->close = eodPrice.price();
+      UpdateOHLCInfo(IntervalWidth(dateRange_.checkedId()) / 1000,
+                     ui_->customPlot->xAxis->pixelToCoord(ui_->customPlot->mapFromGlobal(QCursor::pos()).x()));
+      rescalePlot();
+      ui_->customPlot->replot();
+   }
+   eodUpdated_ = true;
+}
+
 double ChartWidget::CountOffsetFromRightBorder()
 {
    return ui_->customPlot->xAxis->pixelToCoord(6) - ui_->customPlot->xAxis->pixelToCoord(0);
 }
 
+void ChartWidget::CheckToAddNewCandle(qint64 stamp)
+{
+   if (stamp <= newestCandleTimestamp_ + IntervalWidth(dateRange_.checkedId()) || !volumeChart_->data()->size()) {
+      return;
+   }
+   auto candleStamp = GetCandleTimestamp(stamp, static_cast<Interval>(dateRange_.checkedId()));
+   auto lastCandle = *(candlesticksChart_->data()->at(candlesticksChart_->data()->size() - 1));
+   for (quint64 i = 0; i < (candleStamp - newestCandleTimestamp_) / IntervalWidth(dateRange_.checkedId()); i++) {
+      AddDataPoint(lastCandle.close, lastCandle.close, lastCandle.close, lastCandle.close,
+                   candleStamp - IntervalWidth(dateRange_.checkedId()) * i, 0);
+   }
+   newestCandleTimestamp_ = candleStamp;
+   auto upper = ui_->customPlot->xAxis->range().upper;
+   if (upper + IntervalWidth(dateRange_.checkedId()) / 1000 > newestCandleTimestamp_ / 1000) {
+      ui_->customPlot->xAxis->moveRange(IntervalWidth(dateRange_.checkedId()) / 1000);
+   }
+   AddDataPoint(lastClose_, lastClose_, lastClose_, lastClose_, newestCandleTimestamp_, 0);
+   ui_->customPlot->replot();
+}
+
 void ChartWidget::setAutoScaleBtnColor() const
 {
    QString color = QStringLiteral("background-color: transparent; border: none; color: %1").
-   arg(autoScaling_ ? QStringLiteral("rgb(36,124,172)") : QStringLiteral("rgb(255, 255, 255)"));
+      arg(autoScaling_ ? QStringLiteral("rgb(36,124,172)") : QStringLiteral("rgb(255, 255, 255)"));
    ui_->autoScaleBtn->setStyleSheet(color);
 }
 
@@ -375,13 +461,15 @@ void ChartWidget::AddNewCandle()
    candle.set_volume(0.0);
 
    AddDataPoint(candle.open(), candle.high(), candle.low(), candle.close(), candle.timestamp(), candle.volume());
+#if 0
    qDebug("Added: %s, open: %f, high: %f, low: %f, close: %f, volume: %f"
-      , QDateTime::fromMSecsSinceEpoch(candle.timestamp()).toUTC().toString(Qt::ISODateWithMs).toStdString().c_str()
-      , candle.open()
-      , candle.high()
-      , candle.low()
-      , candle.close()
-      , candle.volume());
+          , QDateTime::fromMSecsSinceEpoch(candle.timestamp()).toUTC().toString(Qt::ISODateWithMs).toStdString().c_str()
+          , candle.open()
+          , candle.high()
+          , candle.low()
+          , candle.close()
+          , candle.volume());
+#endif
 }
 
 void ChartWidget::ModifyCandle()
@@ -406,39 +494,11 @@ void ChartWidget::UpdatePlot(const int& interval, const qint64& timestamp)
    qreal lower = upper - IntervalWidth(interval, requestLimit) / 1000 - IntervalWidth(interval) / 1000 / 2;
 
    ui_->customPlot->xAxis->setRange(lower, upper);
-   ui_->customPlot->xAxis->setRange(lower - CountOffsetFromRightBorder(), upper + CountOffsetFromRightBorder()); //call setRange second time cause CountOffset relies on current range
+   auto margin = IntervalWidth(dateRange_.checkedId()) / 1000 * 0.5;
+   ui_->customPlot->xAxis->setRange(lower - margin, upper + margin);
    rescaleCandlesYAxis();
-   ui_->customPlot->yAxis2->setNumberPrecision(FractionSizeForProduct(productTypesMapper[getCurrentProductName().toStdString()]));
-
-}
-
-void ChartWidget::timerEvent(QTimerEvent* event)
-{
-   killTimer(timerId_);
-
-   timerId_ = startTimer(getTimerInterval());
-
-   AddNewCandle();
-}
-
-std::chrono::seconds ChartWidget::getTimerInterval() const
-{
-   auto currentTime = QDateTime::fromMSecsSinceEpoch(static_cast<qint64> (currentTimestamp_)).time();
-
-   auto timerInterval = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::milliseconds ((int) IntervalWidth(dateRange_.checkedId())));
-   if (currentTime.second() != std::chrono::seconds(0).count())
-   {
-      if (currentTime.minute() != std::chrono::minutes(0).count())
-      {
-         auto currentSeconds = currentTime.minute() * 60 + currentTime.second();
-         auto diff = timerInterval.count() - currentSeconds;
-         timerInterval = std::chrono::seconds(diff);
-      }
-   }
-
-   qDebug() << "timer will start after " << timerInterval.count() << " seconds";
-
-   return timerInterval;
+   ui_->customPlot->yAxis2->setNumberPrecision(
+      FractionSizeForProduct(productTypesMapper[getCurrentProductName().toStdString()]));
 }
 
 bool ChartWidget::needLoadNewData(const QCPRange& range, const QSharedPointer<QCPFinancialDataContainer> data) const
@@ -496,7 +556,7 @@ void ChartWidget::AddParentItem(QStandardItemModel* model, const QString& text)
    item->setFlags(item->flags() & ~(Qt::ItemIsEnabled | Qt::ItemIsSelectable));
    item->setData(QStringLiteral("parent"), Qt::AccessibleDescriptionRole);
    QFont font = item->font();
-   font.setBold( true );
+   font.setBold(true);
    item->setFont(font);
    model->appendRow(item);
 }
@@ -508,7 +568,8 @@ void ChartWidget::AddChildItem(QStandardItemModel* model, const QString& text)
    model->appendRow(item);
 }
 
-void ChartWidget::AddDataPoint(const qreal& open, const qreal& high, const qreal& low, const qreal& close, const qreal& timestamp, const qreal& volume) const
+void ChartWidget::AddDataPoint(const qreal& open, const qreal& high, const qreal& low, const qreal& close,
+                               const qreal& timestamp, const qreal& volume) const
 {
    if (candlesticksChart_) {
       candlesticksChart_->data()->add(QCPFinancialData(timestamp / 1000, open, high, low, close));
@@ -526,7 +587,7 @@ quint64 ChartWidget::IntervalWidth(int interval, int count, const QDateTime& spe
    qreal hour = 3600000;
    switch (static_cast<Interval>(interval)) {
    case Interval::OneYear:
-      return hour * (specialDate.isValid() ? specialDate.date().daysInYear() * 24:  8760) * count;
+      return hour * (specialDate.isValid() ? specialDate.date().daysInYear() * 24 : 8760) * count;
    case Interval::SixMonths:
       return hour * (specialDate.isValid() ? 24 * specialDate.date().daysInMonth() * 6 : 4320) * count;
    case Interval::OneMonth:
@@ -548,8 +609,7 @@ quint64 ChartWidget::IntervalWidth(int interval, int count, const QDateTime& spe
 
 int ChartWidget::FractionSizeForProduct(TradeHistoryTradeType type)
 {
-   switch (type)
-   {
+   switch (type) {
    case FXTradeType:
       return 4;
    case XBTTradeType:
@@ -562,17 +622,18 @@ int ChartWidget::FractionSizeForProduct(TradeHistoryTradeType type)
 }
 
 // Handles changes of date range.
-void ChartWidget::OnDateRangeChanged(int interval) {
-   if (lastInterval_ != interval)
-   {
+void ChartWidget::OnDateRangeChanged(int interval)
+{
+   if (lastInterval_ != interval) {
       lastInterval_ = interval;
       UpdateChart(interval);
+
    }
 }
 
-void ChartWidget::OnInstrumentChanged(const QString &text) {
-   if (text != getCurrentProductName())
-   {
+void ChartWidget::OnInstrumentChanged(const QString& text)
+{
+   if (text != getCurrentProductName()) {
       UpdateChart(dateRange_.checkedId());
    }
 }
@@ -580,53 +641,60 @@ void ChartWidget::OnInstrumentChanged(const QString &text) {
 QString ChartWidget::GetFormattedStamp(double timestamp)
 {
    QString resultFormat;
-   switch (static_cast<Interval>(dateRange_.checkedId())) { 
-   case TwelveHours: 
-   case SixHours: 
+   switch (static_cast<Interval>(dateRange_.checkedId())) {
+   case TwelveHours:
+   case SixHours:
    case OneHour:
       resultFormat = QStringLiteral("dd MMM yy hh:mm");
       break;
    default:
       resultFormat = QStringLiteral("dd MMM yy");
    }
-   return QDateTime::fromSecsSinceEpoch(timestamp).toString(resultFormat);
+   return QDateTime::fromSecsSinceEpoch(qint64(timestamp)).toUTC().toString(resultFormat);
 }
 
-void ChartWidget::OnPlotMouseMove(QMouseEvent *event)
+void ChartWidget::UpdateOHLCInfo(double width, double timestamp)
 {
+   auto ohlcValue = *candlesticksChart_->data()->findBegin(timestamp + width / 2);
+   auto volumeValue = *volumeChart_->data()->findBegin(timestamp + width / 2);
+   //ohlcValue.close >= ohlcValue.open ? c_greenColor : c_redColor
+   const auto& color = VOLUME_COLOR.name();
+   auto prec = FractionSizeForProduct(productTypesMapper[getCurrentProductName().toStdString()]);
+   QString partForm = QStringLiteral("<font color=\"%2\">%1</font>");
+   QString format =      QStringLiteral(
+"&nbsp;&nbsp;%1&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%2 %3&nbsp;&nbsp;&nbsp;%4 %5&nbsp;&nbsp;&nbsp;%6 %7&nbsp;&nbsp;&nbsp;%8 %9&nbsp;&nbsp;&nbsp;%10 %11"
+)
+                         .arg(partForm.arg(GetFormattedStamp(ohlcValue.key)).arg(FOREGROUND_COLOR.name()))
+                         .arg(partForm.arg(QStringLiteral("O:")).arg(FOREGROUND_COLOR.name()))
+                         .arg(partForm.arg(ohlcValue.open, 0, 'f', prec).arg(color))
+                         .arg(partForm.arg(QStringLiteral("H:")).arg(FOREGROUND_COLOR.name()))
+                         .arg(partForm.arg(ohlcValue.high, 0, 'f', prec).arg(color))
+                         .arg(partForm.arg(QStringLiteral("L:")).arg(FOREGROUND_COLOR.name()))
+                         .arg(partForm.arg(ohlcValue.low, 0, 'f', prec).arg(color))
+                         .arg(partForm.arg(QStringLiteral("C:")).arg(FOREGROUND_COLOR.name()))
+                         .arg(partForm.arg(ohlcValue.close, 0, 'f', prec).arg(color))
+                         .arg(partForm.arg(QStringLiteral("Volume:")).arg(FOREGROUND_COLOR.name()))
+                         .arg(partForm.arg(volumeValue.value).arg(color));
+   ui_->ohlcLbl->setText(format);
+}
 
+void ChartWidget::OnPlotMouseMove(QMouseEvent* event)
+{
    DrawCrossfire(event);
 
    double x = event->localPos().x();
    double width = IntervalWidth(dateRange_.checkedId()) / 1000;
    double timestamp = ui_->customPlot->xAxis->pixelToCoord(x);
    if (!candlesticksChart_->data()->size() ||
-      timestamp > candlesticksChart_->data()->at(candlesticksChart_->data()->size() - 1)->key + width / 2 || 
+      timestamp > candlesticksChart_->data()->at(candlesticksChart_->data()->size() - 1)->key + width / 2 ||
       timestamp < candlesticksChart_->data()->at(0)->key - width / 2) {
       ui_->ohlcLbl->setText({});
-   } else {
-      auto ohlcValue = *candlesticksChart_->data()->findBegin(timestamp);
-      auto volumeValue = *volumeChart_->data()->findBegin(timestamp);
-      const auto& color = (ohlcValue.close >= ohlcValue.open ? c_greenColor : c_redColor).name();
-      auto prec = FractionSizeForProduct(productTypesMapper[getCurrentProductName().toStdString()]);
-      QString partForm = QStringLiteral("<font color=\"%2\">%1</font>");
-      QString format = QStringLiteral("&nbsp;&nbsp;%1&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%2 %3&nbsp;&nbsp;&nbsp;%4 %5&nbsp;&nbsp;&nbsp;%6 %7&nbsp;&nbsp;&nbsp;%8 %9&nbsp;&nbsp;&nbsp;%10 %11")
-         .arg(partForm.arg(GetFormattedStamp(ohlcValue.key)).arg(FOREGROUND_COLOR.name()))
-         .arg(partForm.arg(QStringLiteral("O:")).arg(FOREGROUND_COLOR.name()))
-         .arg(partForm.arg(ohlcValue.open, 0, 'g', prec).arg(color))
-         .arg(partForm.arg(QStringLiteral("H:")).arg(FOREGROUND_COLOR.name()))
-         .arg(partForm.arg(ohlcValue.high, 0, 'g', prec).arg(color))
-         .arg(partForm.arg(QStringLiteral("L:")).arg(FOREGROUND_COLOR.name()))
-         .arg(partForm.arg(ohlcValue.low, 0, 'g', prec).arg(color))
-         .arg(partForm.arg(QStringLiteral("C:")).arg(FOREGROUND_COLOR.name()))
-         .arg(partForm.arg(ohlcValue.close, 0, 'g', prec).arg(color))
-         .arg(partForm.arg(QStringLiteral("Volume:")).arg(FOREGROUND_COLOR.name()))
-         .arg(partForm.arg(volumeValue.value).arg(color));
-      ui_->ohlcLbl->setText(format);
+   }
+   else {
+      UpdateOHLCInfo(width, timestamp);
    }
 
-   if (isDraggingYAxis_)
-   {
+   if (isDraggingYAxis_) {
       auto rightAxis = ui_->customPlot->yAxis2;
       auto currentYPos = event->pos().y();
       auto lower_bound = rightAxis->range().lower;
@@ -646,31 +714,40 @@ void ChartWidget::OnPlotMouseMove(QMouseEvent *event)
       auto upper_bound = volumeAxisRect_->axis(QCPAxis::atBottom)->range().upper;
       auto diff = upper_bound - lower_bound;
       auto directionCoeff = (currentXPos - lastDragCoord_.x() > 0) ? -1 : 1;
-      double scalingCoeff = qAbs(currentXPos - startDragCoordX_) / ui_->customPlot->size().width();
+      //double scalingCoeff = qAbs(currentXPos - startDragCoordX_) / ui_->customPlot->size().width();
       lastDragCoord_.setX(currentXPos);
       double tempCoeff = 10.0; //change this to impact on xAxis scale speed, the lower coeff the faster scaling
       lower_bound += diff / tempCoeff * /*scalingCoeff * */ directionCoeff;
       bottomAxis->setRange(lower_bound, upper_bound);
    }
-   if (isDraggingMainPlot_)
-   {
+   if (isDraggingMainPlot_) {
       auto axis = ui_->customPlot->xAxis;
       const double startPixel = dragStartPos_.x();
       const double currentPixel = event->pos().x();
       const double diff = axis->pixelToCoord(startPixel) - axis->pixelToCoord(currentPixel);
       auto size = candlesticksChart_->data()->size();
       double upper_bound = size ? candlesticksChart_->data()->at(size - 1)->key : QDateTime::currentSecsSinceEpoch();
-      upper_bound += IntervalWidth(dateRange_.checkedId()) / 1000 / 2  + CountOffsetFromRightBorder();
+      upper_bound += IntervalWidth(dateRange_.checkedId()) / 1000 / 2 + CountOffsetFromRightBorder();
       double lower_bound = QDateTime(QDate(2009, 1, 3)).toSecsSinceEpoch();
-      if (dragStartRange_.upper + diff > upper_bound && diff > 0) {
-         dragStartPos_ = event->pos();
-         dragStartRange_ = axis->range();
-      } else if (dragStartRange_.lower + diff < lower_bound && diff < 0){
-         dragStartPos_ = event->pos();
-         dragStartRange_ = axis->range();
-      } else {
-         axis->setRange(dragStartRange_.lower + diff, dragStartRange_.upper + diff);
+      if (dragStartRangeX_.upper + diff > upper_bound && diff > 0) {
+         dragStartPos_.setX(event->pos().x());
+         dragStartRangeX_ = axis->range();
       }
+      else if (dragStartRangeX_.lower + diff < lower_bound && diff < 0) {
+         dragStartPos_.setX(event->pos().x());
+         dragStartRangeX_ = axis->range();
+      }
+      else {
+         axis->setRange(dragStartRangeX_.lower + diff, dragStartRangeX_.upper + diff);
+      }
+      if (!autoScaling_) {
+         auto axisY = ui_->customPlot->yAxis2;
+         const double startPixelY = dragStartPos_.y();
+         const double currentPixelY = event->pos().y();
+         const double diffY = axisY->pixelToCoord(startPixelY) - axisY->pixelToCoord(currentPixelY);
+         axisY->setRange(dragStartRangeY_.lower + diffY, dragStartRangeY_.upper + diffY);
+      }
+
    }
    ui_->customPlot->replot();
 }
@@ -693,10 +770,12 @@ void ChartWidget::rescaleCandlesYAxis()
       const double margin = 0.15;
       if (!QCPRange::validRange(newRange)) // likely due to range being zero
       {
-         double center = (newRange.lower + newRange.upper)*0.5; // upper and lower should be equal anyway, but just to make sure, incase validRange returned false for other reason
+         double center = (newRange.lower + newRange.upper) * 0.5;
+         // upper and lower should be equal anyway, but just to make sure, incase validRange returned false for other reason
          newRange.lower = center - candlesticksChart_->valueAxis()->range().size() * margin / 2.0;
          newRange.upper = center + candlesticksChart_->valueAxis()->range().size() * margin / 2.0;
-      } else {
+      }
+      else {
          auto old = candlesticksChart_->valueAxis()->range();
          if (old != newRange) {
             newRange.lower -= newRange.size() * margin;
@@ -732,7 +811,6 @@ void ChartWidget::rescalePlot()
       rescaleCandlesYAxis();
    }
    rescaleVolumesYAxis();
-
 }
 
 void ChartWidget::OnMousePressed(QMouseEvent* event)
@@ -748,12 +826,14 @@ void ChartWidget::OnMousePressed(QMouseEvent* event)
    auto selectXPoint = volumeAxisRect_->axis(QCPAxis::atBottom)->selectTest(event->pos(), false);
    isDraggingXAxis_ = selectXPoint != -1.0;
    if (isDraggingXAxis_) {
-      volumeAxisRect_->axis(QCPAxis::atBottom)->axisRect()->setRangeDrag(volumeAxisRect_->axis(QCPAxis::atBottom)->orientation());
+      volumeAxisRect_->axis(QCPAxis::atBottom)->axisRect()->setRangeDrag(
+         volumeAxisRect_->axis(QCPAxis::atBottom)->orientation());
       startDragCoordX_ = event->pos().x();
    }
 
    if (ui_->customPlot->axisRect()->rect().contains(event->pos()) || volumeAxisRect_->rect().contains(event->pos())) {
-      dragStartRange_ = ui_->customPlot->xAxis->range();
+      dragStartRangeX_ = ui_->customPlot->xAxis->range();
+      dragStartRangeY_ = ui_->customPlot->yAxis2->range();
       dragStartPos_ = event->pos();
       isDraggingMainPlot_ = true;
    }
@@ -762,7 +842,6 @@ void ChartWidget::OnMousePressed(QMouseEvent* event)
       lastDragCoord_ = event->pos();
       isDraggingMainPlot_ = false;
    }
-
 }
 
 void ChartWidget::OnMouseReleased(QMouseEvent* event)
@@ -780,16 +859,17 @@ void ChartWidget::OnWheelScroll(QWheelEvent* event)
    auto upper_bound = volumeAxisRect_->axis(QCPAxis::atBottom)->range().upper;
    auto diff = upper_bound - lower_bound;
    auto directionCoeff = event->angleDelta().y() < 0 ? -1 : 1;
-   double tempCoeff = 120.0 / qAbs(event->angleDelta().y()) * 10; //change this to impact on xAxis scale speed, the lower coeff the faster scaling
-   lower_bound += diff / tempCoeff *  directionCoeff;
+   double tempCoeff = 120.0 / qAbs(event->angleDelta().y()) * 10;
+   //change this to impact on xAxis scale speed, the lower coeff the faster scaling
+   lower_bound += diff / tempCoeff * directionCoeff;
    bottomAxis->setRange(lower_bound, upper_bound);
    ui_->customPlot->replot();
 }
 
 void ChartWidget::OnAutoScaleBtnClick()
 {
-   if (autoScaling_ = !autoScaling_)
-   {
+   autoScaling_ = !autoScaling_;
+   if (autoScaling_) {
       rescalePlot();
    }
    setAutoScaleBtnColor();
@@ -798,10 +878,12 @@ void ChartWidget::OnAutoScaleBtnClick()
 void ChartWidget::OnResetBtnClick()
 {
    if (candlesticksChart_->data()->size()) {
-      auto new_upper = candlesticksChart_->data()->at(candlesticksChart_->data()->size() - 1)->key + IntervalWidth(dateRange_.checkedId()) / 1000 / 2;
+      auto new_upper = candlesticksChart_->data()->at(candlesticksChart_->data()->size() - 1)->key + IntervalWidth(
+         dateRange_.checkedId()) / 1000 / 2;
       QCPRange defaultRange(new_upper - IntervalWidth(dateRange_.checkedId(), requestLimit) / 1000, new_upper);
       volumeAxisRect_->axis(QCPAxis::atBottom)->setRange(defaultRange);
-      volumeAxisRect_->axis(QCPAxis::atBottom)->setRange(defaultRange.lower - CountOffsetFromRightBorder(), defaultRange.upper + CountOffsetFromRightBorder());
+      volumeAxisRect_->axis(QCPAxis::atBottom)->setRange(defaultRange.lower - CountOffsetFromRightBorder(),
+                                                         defaultRange.upper + CountOffsetFromRightBorder());
    }
    if (!autoScaling_) {
       autoScaling_ = true;
@@ -815,45 +897,51 @@ quint64 ChartWidget::GetCandleTimestamp(const uint64_t& timestamp, const Interva
    QDateTime now = QDateTime::fromMSecsSinceEpoch(timestamp).toUTC();
    QDateTime result = now;
    switch (interval) {
-   case Interval::OneYear: {
-      result.setTime(QTime(0, 0));
-      result.setDate(QDate(now.date().year(), 1, 1));
-      break;
-   }
-   case Interval::SixMonths: {
-      int month = now.date().month(); // 1 - January, 12 - December
-      int mod = month % 6;
-      result.setTime(QTime(0, 0));
-      result.setDate(QDate(now.date().year(), month - mod + 1, 1));
-      break;
-   }
-   case Interval::OneMonth: {
-      result.setTime(QTime(0, 0));
-      result.setDate(QDate(now.date().year(), now.date().month(), 1));
-      break;
-   }
-   case Interval::OneWeek: {
-      auto date = now.date();
-      auto start = date.addDays(1 - date.dayOfWeek()); //1 - Monday, 7 - Sunday
-      result.setTime(QTime(0, 0));
-      result.setDate(start);
-      break;
-   }
+   case Interval::OneYear:
+      {
+         result.setTime(QTime(0, 0));
+         result.setDate(QDate(now.date().year(), 1, 1));
+         break;
+      }
+   case Interval::SixMonths:
+      {
+         int month = now.date().month(); // 1 - January, 12 - December
+         int mod = month % 6;
+         result.setTime(QTime(0, 0));
+         result.setDate(QDate(now.date().year(), month - mod + 1, 1));
+         break;
+      }
+   case Interval::OneMonth:
+      {
+         result.setTime(QTime(0, 0));
+         result.setDate(QDate(now.date().year(), now.date().month(), 1));
+         break;
+      }
+   case Interval::OneWeek:
+      {
+         auto date = now.date();
+         auto start = date.addDays(1 - date.dayOfWeek()); //1 - Monday, 7 - Sunday
+         result.setTime(QTime(0, 0));
+         result.setDate(start);
+         break;
+      }
    case Interval::TwentyFourHours:
       result.setTime(QTime(0, 0));
       break;
-   case Interval::TwelveHours: {
-      int hour = now.time().hour();
-      int mod = hour % 12;
-      result.setTime(QTime(hour - mod, 0));
-      break;
-   }
-   case Interval::SixHours: {
-      int hour = now.time().hour();
-      int mod = hour % 6;
-      result.setTime(QTime(hour - mod, 0));
-      break;
-   }
+   case Interval::TwelveHours:
+      {
+         int hour = now.time().hour();
+         int mod = hour % 12;
+         result.setTime(QTime(hour - mod, 0));
+         break;
+      }
+   case Interval::SixHours:
+      {
+         int hour = now.time().hour();
+         int mod = hour % 6;
+         result.setTime(QTime(hour - mod, 0));
+         break;
+      }
    case Interval::OneHour:
       result.setTime(QTime(now.time().hour(), 0));
       break;
@@ -878,12 +966,14 @@ void ChartWidget::OnVolumeAxisRangeChanged(QCPRange newRange, QCPRange oneRange)
    auto interval = dateRange_.checkedId() == -1 ? 0 : dateRange_.checkedId();
 
    if (isBeyondUpperLimit(newRange, interval)) {
-      volumeAxisRect_->axis(QCPAxis::atBottom)->setRange(oneRange.upper - IntervalWidth(interval, candleCountOnScreenLimit) / 1000, oneRange.upper);
+      volumeAxisRect_->axis(QCPAxis::atBottom)->setRange(
+         oneRange.upper - IntervalWidth(interval, candleCountOnScreenLimit) / 1000, oneRange.upper);
       ui_->customPlot->xAxis->setRange(volumeAxisRect_->axis(QCPAxis::atBottom)->range());
    }
    else {
       if (isBeyondLowerLimit(newRange, interval)) {
-         volumeAxisRect_->axis(QCPAxis::atBottom)->setRange(oneRange.upper - IntervalWidth(interval, candleViewLimit) / 1000 - 1.0, oneRange.upper);
+         volumeAxisRect_->axis(QCPAxis::atBottom)->setRange(
+            oneRange.upper - IntervalWidth(interval, candleViewLimit) / 1000 - 1.0, oneRange.upper);
          ui_->customPlot->xAxis->setRange(volumeAxisRect_->axis(QCPAxis::atBottom)->range());
       }
       else {
@@ -898,10 +988,10 @@ void ChartWidget::OnVolumeAxisRangeChanged(QCPRange newRange, QCPRange oneRange)
 
 QString ChartWidget::ProductTypeToString(TradeHistoryTradeType type)
 {
-   switch (type) { 
-   case FXTradeType: return QStringLiteral("FX");  
-   case XBTTradeType: return QStringLiteral("XBT"); 
-   case PMTradeType: return QStringLiteral("PM"); 
+   switch (type) {
+   case FXTradeType: return QStringLiteral("FX");
+   case XBTTradeType: return QStringLiteral("XBT");
+   case PMTradeType: return QStringLiteral("PM");
    default: return QStringLiteral("");
    }
 }
@@ -926,11 +1016,15 @@ void ChartWidget::SetupCrossfire()
    horLine->end->setType(QCPItemPosition::ptAbsolute);
    horLine->setPen(pen);
    horLine->setClipToAxisRect(false);
+
+   if (!ui_->customPlot->rect().contains(mapFromGlobal(QCursor::pos()))) {
+      vertLine->setVisible(false);
+      horLine->setVisible(false);
+   }
 }
 
 void ChartWidget::InitializeCustomPlot()
 {
-
    SetupCrossfire();
 
    QBrush bgBrush(BACKGROUND_COLOR);
@@ -967,7 +1061,7 @@ void ChartWidget::InitializeCustomPlot()
    volumeAxisRect_->axis(QCPAxis::atBottom)->grid()->setLayer(QStringLiteral("grid"));
    // bring bottom and main axis rect closer together:
    ui_->customPlot->plotLayout()->setRowSpacing(0);
-   volumeAxisRect_->setAutoMargins(QCP::msLeft|QCP::msRight|QCP::msBottom);
+   volumeAxisRect_->setAutoMargins(QCP::msLeft | QCP::msRight | QCP::msBottom);
    volumeAxisRect_->setMargins(QMargins(0, 0, 0, 0));
    // create two bar plottables, for positive (green) and negative (red) volume bars:
    ui_->customPlot->setAutoAddPlottableToLegend(false);
@@ -985,7 +1079,8 @@ void ChartWidget::InitializeCustomPlot()
    volumeAxisRect_->axis(QCPAxis::atRight)->setTickLength(0, 8);
    volumeAxisRect_->axis(QCPAxis::atRight)->setSubTickLength(0, 4);
    volumeAxisRect_->axis(QCPAxis::atRight)->ticker()->setTickCount(2);
-   volumeAxisRect_->axis(QCPAxis::atRight)->setTickLabelFont(ui_->customPlot->axisRect()->axis(QCPAxis::atRight)->labelFont());
+   volumeAxisRect_->axis(QCPAxis::atRight)->setTickLabelFont(
+      ui_->customPlot->axisRect()->axis(QCPAxis::atRight)->labelFont());
 
    volumeAxisRect_->axis(QCPAxis::atBottom)->setBasePen(QPen(FOREGROUND_COLOR));
    volumeAxisRect_->axis(QCPAxis::atBottom)->setTickPen(QPen(FOREGROUND_COLOR));
@@ -999,11 +1094,10 @@ void ChartWidget::InitializeCustomPlot()
    connect(ui_->customPlot->xAxis, SIGNAL(rangeChanged(QCPRange))
            , volumeAxisRect_->axis(QCPAxis::atBottom), SLOT(setRange(QCPRange)));
 
-
    connect(volumeAxisRect_->axis(QCPAxis::atBottom),
-      qOverload<const QCPRange&, const QCPRange&>(&QCPAxis::rangeChanged),
-      this,
-      &ChartWidget::OnVolumeAxisRangeChanged);
+           qOverload<const QCPRange&, const QCPRange&>(&QCPAxis::rangeChanged),
+           this,
+           &ChartWidget::OnVolumeAxisRangeChanged);
 
    // configure axes of both main and bottom axis rect:
    dateTimeTicker->setDateTimeSpec(Qt::UTC);
@@ -1014,17 +1108,17 @@ void ChartWidget::InitializeCustomPlot()
    volumeAxisRect_->axis(QCPAxis::atBottom)->setTickLabelFont(QFont(QStringLiteral("Arial"), 9));
    ui_->customPlot->xAxis->setBasePen(Qt::NoPen);
    ui_->customPlot->xAxis->setTickLabels(false);
-   ui_->customPlot->xAxis->setTicks(false); // only want vertical grid in main axis rect, so hide xAxis backbone, ticks, and labels
+   ui_->customPlot->xAxis->setTicks(false);
+   // only want vertical grid in main axis rect, so hide xAxis backbone, ticks, and labels
    ui_->customPlot->xAxis->setTicker(dateTimeTicker);
    ui_->customPlot->rescaleAxes();
    ui_->customPlot->xAxis->scaleRange(1.025, ui_->customPlot->xAxis->range().center());
    ui_->customPlot->yAxis->scaleRange(1.1, ui_->customPlot->yAxis->range().center());
 
    // make axis rects' left side line up:
-   QCPMarginGroup *group = new QCPMarginGroup(ui_->customPlot);
-   ui_->customPlot->axisRect()->setMarginGroup(QCP::msLeft|QCP::msRight, group);
-   volumeAxisRect_->setMarginGroup(QCP::msLeft|QCP::msRight, group);
-
+   QCPMarginGroup* group = new QCPMarginGroup(ui_->customPlot);
+   ui_->customPlot->axisRect()->setMarginGroup(QCP::msLeft | QCP::msRight, group);
+   volumeAxisRect_->setMarginGroup(QCP::msLeft | QCP::msRight, group);
 
    connect(ui_->customPlot, &QCustomPlot::mouseMove, this, &ChartWidget::OnPlotMouseMove);
    connect(ui_->customPlot, &QCustomPlot::mousePress, this, &ChartWidget::OnMousePressed);
@@ -1050,19 +1144,31 @@ void ChartWidget::OnMDConnecting()
 void ChartWidget::OnMDConnected()
 {
    ui_->pushButtonMDConnection->setText(tr("Disconnect"));
-   ui_->pushButtonMDConnection->setEnabled(true);
+   ui_->pushButtonMDConnection->setEnabled(!authorized_);
 }
 
 void ChartWidget::OnMDDisconnecting()
 {
    ui_->pushButtonMDConnection->setText(tr("Disconnecting"));
    ui_->pushButtonMDConnection->setEnabled(false);
+
+   if (candlesticksChart_ != nullptr)
+      candlesticksChart_->data()->clear();
+
+   if (volumeChart_ != nullptr)
+      volumeChart_->data()->clear();
+
+   ui_->ohlcLbl->setText({});
+   ui_->customPlot->replot();
+
+   mdProvider_->UnsubscribeFromMD();
+   mdProvider_->DisconnectFromMDSource();
 }
 
 void ChartWidget::OnMDDisconnected()
 {
    ui_->pushButtonMDConnection->setText(tr("Subscribe"));
-   ui_->pushButtonMDConnection->setEnabled(true);
+   ui_->pushButtonMDConnection->setEnabled(!authorized_);
 }
 
 void ChartWidget::ChangeMDSubscriptionState()
@@ -1075,4 +1181,35 @@ void ChartWidget::ChangeMDSubscriptionState()
    }
 }
 
+void ChartWidget::OnNewTrade(const std::string& productName, uint64_t timestamp, double price, double amount)
+{
+   if (productName != getCurrentProductName().toStdString() ||
+      !candlesticksChart_->data()->size() ||
+      !volumeChart_->data()->size()) {
+      return;
+   }
 
+   auto lastVolume = volumeChart_->data()->end() - 1;
+   lastVolume->value += amount;
+   auto lastCandle = candlesticksChart_->data()->end() - 1;
+   lastCandle->high = qMax(lastCandle->high, price);
+   lastCandle->low = qMin(lastCandle->low, price);
+   if (!qFuzzyCompare(lastCandle->close, price) || !qFuzzyIsNull(amount)) {
+      lastCandle->close = price;
+      UpdateOHLCInfo(IntervalWidth(dateRange_.checkedId()) / 1000,
+                     ui_->customPlot->xAxis->pixelToCoord(ui_->customPlot->mapFromGlobal(QCursor::pos()).x()));
+      rescalePlot();
+      ui_->customPlot->replot();
+   }
+   CheckToAddNewCandle(timestamp);
+}
+
+void ChartWidget::OnNewXBTorFXTrade(const bs::network::NewTrade& trade)
+{
+   OnNewTrade(trade.product, trade.timestamp, trade.price, trade.amount);
+}
+
+void ChartWidget::OnNewPMTrade(const bs::network::NewPMTrade& trade)
+{
+   OnNewTrade(trade.product, trade.timestamp, trade.price, trade.amount);
+}

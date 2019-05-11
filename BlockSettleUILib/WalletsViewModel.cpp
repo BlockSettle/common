@@ -167,8 +167,8 @@ protected:
 
    QString getState() const {
       switch (state_) {
-      case State::Connected:     return QObject::tr("Connected");
-      case State::Offline:       return QObject::tr("Offline");
+      case State::Connected:     return QObject::tr("Full");
+      case State::Offline:       return QObject::tr("Watching-Only");
       default:    return {};
       }
    }
@@ -283,7 +283,7 @@ WalletsViewModel::WalletsViewModel(const std::shared_ptr<bs::sync::WalletsManage
    rootNode_ = std::make_shared<WalletNode>(this, WalletNode::Type::Root);
    connect(walletsManager_.get(), &bs::sync::WalletsManager::walletsReady, this, &WalletsViewModel::onWalletChanged);
    connect(walletsManager_.get(), &bs::sync::WalletsManager::walletChanged, this, &WalletsViewModel::onWalletChanged);
-   connect(walletsManager_.get(), &bs::sync::WalletsManager::walletDeleted, this, &WalletsViewModel::onWalletChanged);
+   connect(walletsManager_.get(), &bs::sync::WalletsManager::walletDeleted, [this](std::string) { onWalletChanged(); });
    connect(walletsManager_.get(), &bs::sync::WalletsManager::blockchainEvent, this, &WalletsViewModel::onWalletChanged);
    connect(walletsManager_.get(), &bs::sync::WalletsManager::walletBalanceUpdated, this, &WalletsViewModel::onWalletChanged);
    connect(walletsManager_.get(), &bs::sync::WalletsManager::newWalletAdded, this, &WalletsViewModel::onNewWalletAdded);
@@ -396,7 +396,7 @@ QVariant WalletsViewModel::headerData(int section, Qt::Orientation orientation, 
          case WalletColumns::ColumnName:
             return tr("Name");
          case WalletColumns::ColumnState:
-            return tr("Signer state");
+            return tr("Wallet type");
          case WalletColumns::ColumnNbAddresses:
             return tr("# Used Addrs");
          case WalletColumns::ColumnID:
@@ -485,7 +485,7 @@ void WalletsViewModel::onHDWalletError(unsigned int id, std::string)
    }
    const auto walletId = hdInfoReqIds_[id];
    hdInfoReqIds_.erase(id);
-   const auto state = WalletNode::State::Offline;
+   const auto state = WalletNode::State::Undefined;
    signerStates_[walletId] = state;
    for (int i = 0; i < rootNode_->nbChildren(); i++) {
       auto hdNode = rootNode_->child(i);
@@ -549,14 +549,11 @@ void WalletsViewModel::LoadWallets(bool keepSelection)
       rootNode_->add(hdNode);
       hdNode->addGroups(hdWallet->getGroups());
       if (signContainer_) {
-         if ((signContainer_->opMode() == SignContainer::OpMode::Offline) || signContainer_->isOffline()) {
+         if (signContainer_->isOffline() || signContainer_->isWalletOffline(hdWallet->walletId())) {
             hdNode->setState(WalletNode::State::Offline);
          }
          else {
-            const auto stateIt = signerStates_.find(hdWallet->walletId());
-            if (stateIt != signerStates_.end()) {
-               hdNode->setState(stateIt->second);
-            }
+            hdNode->setState(WalletNode::State::Connected);
          }
       }
    }

@@ -196,7 +196,7 @@ unsigned int TXNode::level() const
 }
 
 
-TransactionsViewModel::TransactionsViewModel(const std::shared_ptr<ArmoryConnection> &armory
+TransactionsViewModel::TransactionsViewModel(const std::shared_ptr<ArmoryObject> &armory
                          , const std::shared_ptr<bs::sync::WalletsManager> &walletsManager
                          , const std::shared_ptr<AsyncClient::LedgerDelegate> &ledgerDelegate
                          , const std::shared_ptr<spdlog::logger> &logger
@@ -214,7 +214,7 @@ TransactionsViewModel::TransactionsViewModel(const std::shared_ptr<ArmoryConnect
    QtConcurrent::run(this, &TransactionsViewModel::loadLedgerEntries);
 }
 
-TransactionsViewModel::TransactionsViewModel(const std::shared_ptr<ArmoryConnection> &armory
+TransactionsViewModel::TransactionsViewModel(const std::shared_ptr<ArmoryObject> &armory
                          , const std::shared_ptr<bs::sync::WalletsManager> &walletsManager
                                  , const std::shared_ptr<spdlog::logger> &logger
                                              , QObject* parent)
@@ -237,10 +237,10 @@ void TransactionsViewModel::init()
 
    if (armory_) {
       connect(armory_.get(), SIGNAL(stateChanged(ArmoryConnection::State)), this, SLOT(onArmoryStateChanged(ArmoryConnection::State)), Qt::QueuedConnection);
-      connect(armory_.get(), &ArmoryConnection::newBlock, this, &TransactionsViewModel::updatePage, Qt::QueuedConnection);
+      connect(armory_.get(), &ArmoryObject::newBlock, this, &TransactionsViewModel::updatePage, Qt::QueuedConnection);
    }
    connect(walletsManager_.get(), &bs::sync::WalletsManager::walletChanged, this, &TransactionsViewModel::refresh, Qt::QueuedConnection);
-   connect(walletsManager_.get(), &bs::sync::WalletsManager::walletDeleted, this, &TransactionsViewModel::cleanRefresh, Qt::QueuedConnection);
+   connect(walletsManager_.get(), &bs::sync::WalletsManager::walletDeleted, this, &TransactionsViewModel::onWalletDeleted, Qt::QueuedConnection);
    connect(walletsManager_.get(), &bs::sync::WalletsManager::walletImportFinished, this, &TransactionsViewModel::refresh, Qt::QueuedConnection);
    connect(walletsManager_.get(), &bs::sync::WalletsManager::walletsReady, this, &TransactionsViewModel::updatePage, Qt::QueuedConnection);
    connect(walletsManager_.get(), &bs::sync::WalletsManager::newTransactions, this, &TransactionsViewModel::onNewTransactions, Qt::QueuedConnection);
@@ -370,7 +370,7 @@ void TransactionsViewModel::refresh()
    updatePage();
 }
 
-void TransactionsViewModel::cleanRefresh()
+void TransactionsViewModel::onWalletDeleted(std::string)
 {
    clear();
    updatePage();
@@ -822,7 +822,7 @@ void TransactionsViewItem::initialize(const std::shared_ptr<ArmoryConnection> &a
       }
    };
 
-   const auto cbTXs = [this, cbInit, userCB](std::vector<Tx> txs) {
+   const auto cbTXs = [this, cbInit, userCB](const std::vector<Tx> &txs) {
       for (const auto &tx : txs) {
          const auto &txHash = tx.getThisHash();
          txIns[txHash] = tx;
@@ -887,7 +887,7 @@ void TransactionsViewItem::initialize(const std::shared_ptr<ArmoryConnection> &a
       cbInit();
    };
 
-   const auto cbTX = [this, armory, walletsMgr, cbTXs, cbInit, cbDir, cbMainAddr, userCB](Tx newTx) {
+   const auto cbTX = [this, armory, walletsMgr, cbTXs, cbInit, cbDir, cbMainAddr, userCB](const Tx &newTx) {
       if (!newTx.isInitialized()) {
          userCB(nullptr);
          return;

@@ -8,8 +8,7 @@
 #include "CoreWallet.h"
 #include "EncryptionUtils.h"
 #include "ServerConnectionListener.h"
-#include "SignContainer.h"
-
+#include "SignerDefs.h"
 #include "headless.pb.h"
 
 namespace spdlog {
@@ -27,6 +26,22 @@ namespace bs {
 }
 class ServerConnection;
 
+class HeadlessContainerCallbacks
+{
+public:
+   virtual ~HeadlessContainerCallbacks() = default;
+
+   virtual void peerConn(const std::string &) = 0;
+   virtual void peerDisconn(const std::string &) = 0;
+   virtual void clientDisconn(const std::string &) = 0;
+   virtual void pwd(const bs::core::wallet::TXSignRequest &, const std::string &) = 0;
+   virtual void txSigned(const BinaryData &) = 0;
+   virtual void cancelTxSign(const BinaryData &) = 0;
+   virtual void xbtSpent(int64_t, bool) = 0;
+   virtual void asAct(const std::string &) = 0;
+   virtual void asDeact(const std::string &) = 0;
+   virtual void customDialog(const std::string &, const std::string &) = 0;
+};
 
 class HeadlessContainerListener : public ServerConnectionListener
 {
@@ -40,25 +55,18 @@ public:
       , const bool &backupEnabled = true);
    ~HeadlessContainerListener() noexcept override;
 
-   void SetLimits(const SignContainer::Limits &limits);
+   void SetLimits(const bs::signer::Limits &limits);
 
    bool disconnect(const std::string &clientId = {});
 
-   void setCallbacks(const std::function<void(const std::string &)> &cbPeerConn
-      , const std::function<void(const std::string &)> &cbPeerDisconn
-      , const std::function<void(const bs::core::wallet::TXSignRequest &, const std::string &)> &cbPwd
-      , const std::function<void(const BinaryData &)> &cbTxSigned
-      , const std::function<void(const BinaryData &)> &cbCancelTxSign
-      , const std::function<void(int64_t, bool)> &cbXbtSpent
-      , const std::function<void(const std::string &)> &cbAsAct
-      , const std::function<void(const std::string &)> &cbAsDeact
-      , const std::function<void(const std::string &, const std::string &)> &cbCustomDialog);
+   void setCallbacks(HeadlessContainerCallbacks *callbacks);
 
    void passwordReceived(const std::string &walletId
       , const SecureBinaryData &password, bool cancelledByUser);
    void activateAutoSign(const std::string &clientId, const std::string &walletId, const SecureBinaryData &password);
    void deactivateAutoSign(const std::string &clientId = {}, const std::string &walletId = {}, const std::string &reason = {});
    void addPendingAutoSignReq(const std::string &walletId);
+   void walletsListUpdated();
 
 protected:
    bool isAutoSignActive(const std::string &walletId) const;
@@ -90,7 +98,6 @@ private:
    bool onSetLimits(const std::string &clientId, Blocksettle::Communication::headless::RequestPacket &packet);
    bool onGetRootKey(const std::string &clientId, Blocksettle::Communication::headless::RequestPacket &packet);
    bool onGetHDWalletInfo(const std::string &clientId, Blocksettle::Communication::headless::RequestPacket &packet);
-   bool onChangePassword(const std::string &clientId, Blocksettle::Communication::headless::RequestPacket &packet);
    bool onCancelSignTx(const std::string &clientId, Blocksettle::Communication::headless::RequestPacket packet);
    bool onSyncWalletInfo(const std::string &clientId, Blocksettle::Communication::headless::RequestPacket packet);
    bool onSyncHDWallet(const std::string &clientId, Blocksettle::Communication::headless::RequestPacket packet);
@@ -109,7 +116,6 @@ private:
       , const std::string &errorOrId);
    void GetHDWalletInfoResponse(const std::string &clientId, unsigned int id, const std::string &walletId
       , const std::shared_ptr<bs::core::hd::Wallet> &, const std::string &error = {});
-   void ChangePasswordResponse(const std::string &clientId, unsigned int id, const std::string &walletId, bool ok);
    void AutoSignActiveResponse(const std::string &clientId, const std::string &walletId, bool active
       , const std::string &error = {}, unsigned int id = 0);
 
@@ -136,7 +142,7 @@ private:
    const std::string                   walletsPath_;
    const std::string                   backupPath_;
    const NetworkType                   netType_;
-   SignContainer::Limits               limits_;
+   bs::signer::Limits                  limits_;
    const bool                          watchingOnly_;
    std::unordered_set<std::string>     connectedClients_;
 
@@ -154,15 +160,7 @@ private:
 
    const bool backupEnabled_ = true;
 
-   std::function<void(const std::string &)> cbPeerConn_ = nullptr;
-   std::function<void(const std::string &)> cbPeerDisconn_ = nullptr;
-   std::function<void(const bs::core::wallet::TXSignRequest &, const std::string &)> cbPwd_ = nullptr;
-   std::function<void(const BinaryData &)> cbTxSigned_ = nullptr;
-   std::function<void(const BinaryData &)> cbCancelTxSign_ = nullptr;
-   std::function<void(int64_t, bool)> cbXbtSpent_ = nullptr;
-   std::function<void(const std::string &)> cbAsAct_ = nullptr;
-   std::function<void(const std::string &)> cbAsDeact_ = nullptr;
-   std::function<void(const std::string &, const std::string &)> cbCustomDialog_ = nullptr;
+   HeadlessContainerCallbacks *callbacks_{};
 };
 
 #endif // __HEADLESS_CONTAINER_LISTENER_H__

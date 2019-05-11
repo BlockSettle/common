@@ -21,7 +21,9 @@ RequestReplyCommand::RequestReplyCommand(const std::string& name
 
 RequestReplyCommand::~RequestReplyCommand() noexcept
 {
-   connection_->closeConnection();
+   if (connection_) {
+      connection_->closeConnection();
+   }
 }
 
 void RequestReplyCommand::SetReplyCallback(const data_callback_type& callback)
@@ -54,7 +56,7 @@ bool RequestReplyCommand::ExecuteRequest(const std::string& host
    requestCompleted_ = std::make_shared<ManualResetEvent>();
    requestCompleted_->ResetEvent();
 
-   if (!(replyCallback_ || errorCallback_)) {
+   if (!replyCallback_ || !errorCallback_) {
       logger_->error("[RequestReplyCommand] {}: not all callbacks are set", name_);
       return false;
    }
@@ -101,12 +103,11 @@ void RequestReplyCommand::OnDataReceived(const std::string& data)
 
 void RequestReplyCommand::OnConnected()
 {
-   logger_->debug("[RequestReplyCommand::OnConnected]");
    if (executeOnConnect_) {
       if (!connection_->send(requestData_)) {
          std::string errorMessage = name_ + ": failed to send request";
-         logger_->error("{}", errorMessage);
-         if (!dropResult_) {
+         logger_->error("[RequestReplyCommand::OnConnected] {}", errorMessage);
+         if (!dropResult_ && errorCallback_) {
             errorCallback_(errorMessage);
          }
          requestCompleted_->SetEvent();
@@ -119,7 +120,7 @@ void RequestReplyCommand::OnDisconnected()
    if (!replyReceived_) {
       std::string errorMessage = name_ + ": disconnected from server without reply";
       logger_->error("[RequestReplyCommand::OnDisconnected]: {}", errorMessage);
-      if (!dropResult_) {
+      if (!dropResult_ && errorCallback_) {
          errorCallback_(errorMessage);
       }
       requestCompleted_->SetEvent();
@@ -130,7 +131,7 @@ void RequestReplyCommand::OnError(DataConnectionError errorCode)
 {
    std::string errorMessage = name_ + ": get error from data connection " + std::to_string(errorCode);
    logger_->error("{}", errorMessage);
-   if (!dropResult_) {
+   if (!dropResult_ && errorCallback_) {
       errorCallback_(errorMessage);
    }
    requestCompleted_->SetEvent();

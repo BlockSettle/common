@@ -4,8 +4,11 @@
 #include <QWidget>
 #include <QStringListModel>
 #include <QScopedPointer>
+#include <QLayoutItem>
 
-#include "ChatUserListLogic.h"
+#include "ChatHandleInterfaces.h"
+#include "CommonTypes.h"
+#include "ZMQ_BIP15X_DataConnection.h"
 
 #include <memory>
 
@@ -16,6 +19,11 @@ namespace spdlog {
    class logger;
 }
 
+namespace Chat {
+   class RoomData;
+   class UserData;
+}
+
 class ChatClient;
 class ConnectionManager;
 class ApplicationSettings;
@@ -24,6 +32,8 @@ class ChatSearchPopup;
 class OTCRequestViewModel;
 
 class ChatWidget : public QWidget
+                 , public ViewItemWatcher
+                 , public NewMessageMonitor
 {
    Q_OBJECT
 
@@ -43,11 +53,15 @@ public:
            , const std::shared_ptr<ApplicationSettings> &appSettings
            , const std::shared_ptr<spdlog::logger>& logger);
 
-   std::string login(const std::string& email, const std::string& jwt);
+   std::string login(const std::string& email, const std::string& jwt
+      , const ZmqBIP15XDataConnection::cbNewKey &);
    void logout();
    bool hasUnreadMessages();
+   void switchToChat(const QString& chatId);
+
 public slots:
    void onLoggedOut();
+   void onNewChatMessageTrayNotificationClicked(const QString &chatId);
 
 private slots:
    void onSendButtonClicked();
@@ -56,17 +70,31 @@ private slots:
    void onMessagesUpdated();
    void onLoginFailed();
    void onUsersDeleted(const std::vector<std::string> &);
-   void onSearchUserReturnPressed();
-   void onChatUserRemoved(const ChatUserDataPtr &);
    void onSendFriendRequest(const QString &userId);
-   void onAcceptFriendRequest(const QString &userId);
-   void onDeclineFriendRequest(const QString &userId);
+   void onRemoveFriendRequest(const QString &userId);
    void onAddChatRooms(const std::vector<std::shared_ptr<Chat::RoomData> >& roomList);
    void onSearchUserListReceived(const std::vector<std::shared_ptr<Chat::UserData>>& users);
+   void onSearchUserTextEdited(const QString& text);
+   void onConnectedToServer();
+   void selectFirstRoom();
+   void onContactRequestAccepted(const QString &userId);
+
+   void OnOTCRequestCreated();
+   void DisplayOTCRequest(const bs::network::Side::Type& side, const bs::network::OTCRangeID& range);
+
+   void OnOTCResponseCreated();
 
 signals:
    void LoginFailed();
    void LogOut();
+
+private:
+   void SetOTCLoggedInState();
+   void SetLoggedOutOTCState();
+
+   void OTCSwitchToCommonRoom();
+   void OTCSwitchToDMRoom();
+   void OTCSwitchToGlobalRoom();
 
 private:
    QScopedPointer<Ui::ChatWidget> ui_;
@@ -78,10 +106,11 @@ private:
    QString  currentChat_;
    ChatSearchPopup *popup_;
    bool isRoom_;
+   QSpacerItem *chatUsersVerticalSpacer_;
+   QTimer *popupVisibleTimer_;
 
 private:
    std::shared_ptr<ChatWidgetState> stateCurrent_;
-   ChatUserListLogicPtr chatUserListLogicPtr_;
    QMap<QString, QString> draftMessages_;
    bool needsToStartFirstRoom_;
 
@@ -92,8 +121,28 @@ private:
    bool isRoom();
    void setIsRoom(bool);
    void changeState(ChatWidget::State state);
+   void initPopup();
+   void setPopupVisible(const bool &value);
 
    bool eventFilter(QObject * obj, QEvent * event) override;
+
+   // ViewItemWatcher interface
+public:
+   void onElementSelected(CategoryElement *element) override;
+   void onMessageChanged(std::shared_ptr<Chat::MessageData> message) override;
+   void onElementUpdated(CategoryElement *element) override;
+
+   // NewMessageMonitor interface
+public:
+   void onNewMessagePresent(const bool isNewMessagePresented, std::shared_ptr<Chat::MessageData> message) override;
 };
+
+
+
+
+
+
+
+
 
 #endif // CHAT_WIDGET_H

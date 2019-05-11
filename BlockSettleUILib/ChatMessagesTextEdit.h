@@ -10,6 +10,7 @@
 #include <QTextTable>
 #include <QImage>
 #include <QMenu>
+#include "ChatClientUserView.h"
 
 namespace Chat {
    class MessageData;
@@ -46,7 +47,7 @@ private:
    QColor colorWhite_;
 };
 
-class ChatMessagesTextEdit : public QTextBrowser
+class ChatMessagesTextEdit : public QTextBrowser, public ViewItemWatcher
 {
    Q_OBJECT
 
@@ -57,6 +58,9 @@ public:
 public:
    void setOwnUserId(const std::string &userId) { ownUserId_ = QString::fromStdString(userId); }
    void switchToChat(const QString& chatId, bool isGroupRoom = false);
+   void setHandler(std::shared_ptr<ChatItemActionsHandler> handler);
+   void setMessageReadHandler(std::shared_ptr<ChatMessageReadHandler> handler);
+
    
 signals:
    void MessageRead(const std::shared_ptr<Chat::MessageData> &) const;
@@ -76,6 +80,8 @@ protected:
    QString data(const int &row, const Column &column);
    QImage statusImage(const int &row);
 
+   virtual void mousePressEvent(QMouseEvent *ev) override;
+   virtual void contextMenuEvent(QContextMenuEvent *e);
    
 public slots:
    void onMessagesUpdate(const std::vector<std::shared_ptr<Chat::MessageData>> & messages, bool isFirstFetch);
@@ -84,7 +90,12 @@ public slots:
    void onMessageIdUpdate(const QString& oldId, const QString& newId,const QString& chatId);
    void onMessageStatusChanged(const QString& messageId, const QString chatId, int newStatus);
    void urlActivated(const QUrl &link);
-
+   
+private slots:
+   void copyActionTriggered();
+   void copyLinkLocationActionTriggered();
+   void selectAllActionTriggered();
+   void onTextChanged();
 
 private:
    using MessagesHistory = std::vector<std::shared_ptr<Chat::MessageData>>;
@@ -92,6 +103,8 @@ private:
    MessagesHistory messagesToLoadMore_;
    QString   currentChatId_;
    QString   ownUserId_;
+   std::shared_ptr<ChatItemActionsHandler> handler_;
+   std::shared_ptr<ChatMessageReadHandler> messageReadHandler_;
    
 private:
    std::shared_ptr<Chat::MessageData> findMessage(const QString& chatId, const QString& messageId);
@@ -101,12 +114,14 @@ private:
    void loadMore();
    QString toHtmlText(const QString &text);
    QString toHtmlUsername(const QString &username);
+   QString toHtmlInvalid(const QString &text);
 
    QTextTableFormat tableFormat;
    QTextTable *table;
    ChatMessagesTextEditStyle internalStyle_;
 
    QMenu *userMenu_;
+   QAction *userContactAction_;
    QString username_;
    bool isGroupRoom_;
 
@@ -114,6 +129,20 @@ private:
    QImage statusImageConnecting_;
    QImage statusImageOnline_;
    QImage statusImageRead_;
+
+   // ViewItemWatcher interface
+public:
+   void onElementSelected(CategoryElement *element) override;
+   void onMessageChanged(std::shared_ptr<Chat::MessageData> message) override;
+   void onElementUpdated(CategoryElement *element) override;
+   QTextCursor textCursor_;
+   QString anchor_;
 };
+
+
+
+
+
+
 
 #endif

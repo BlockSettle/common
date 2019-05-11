@@ -26,7 +26,8 @@ Q_OBJECT
 
 public:
    BSMarketDataProvider(const std::shared_ptr<ConnectionManager>& connectionManager
-      , const std::shared_ptr<spdlog::logger>& logger);
+      , const std::shared_ptr<spdlog::logger>& logger
+      , bool receiveUSD = false);
    ~BSMarketDataProvider() noexcept override = default;
 
    BSMarketDataProvider(const BSMarketDataProvider&) = delete;
@@ -41,6 +42,7 @@ public:
 
 protected:
    bool StartMDConnection() override;
+   void StopMDConnection() override;
 
 private:
    void onDataFromMD(const std::string& data);
@@ -49,6 +51,11 @@ private:
 
    void OnFullSnapshot(const std::string& data);
    void OnIncrementalUpdate(const std::string& data);
+
+   void OnNewTradeUpdate(const std::string& data);
+   void OnNewFXTradeUpdate(const std::string& data);
+   void OnNewXBTTradeUpdate(const std::string& data);
+   void OnNewPMTradeUpdate(const std::string& data);
 
    void OnProductSnapshot(const bs::network::Asset::Type& assetType
       , const Blocksettle::Communication::BlocksettleMarketData::ProductPriceInfo& productInfo
@@ -61,6 +68,8 @@ private:
    std::shared_ptr<ConnectionManager>  connectionManager_;
    std::shared_ptr<SubscriberConnection> mdConnection_ = nullptr;
    std::shared_ptr<SubscriberConnectionListenerCB> listener_ = nullptr;
+
+   const bool receiveUSD_ = false;
 };
 
 #endif // __BS_MARKET_DATA_PROVIDER_H__

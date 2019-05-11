@@ -1,5 +1,4 @@
 #include "ConnectionManager.h"
-
 #include <QNetworkAccessManager>
 #include "CelerClientConnection.h"
 #include "CelerStreamServerConnection.h"
@@ -29,8 +28,8 @@ ConnectionManager::ConnectionManager(const std::shared_ptr<spdlog::logger>& logg
 }
 
 ConnectionManager::ConnectionManager(const std::shared_ptr<spdlog::logger>& logger
-   , QStringList ZMQTrustedTerminals)
-   : logger_(logger), ZMQTrustedTerminals_(ZMQTrustedTerminals)
+   , const std::vector<std::string> &zmqTrustedTerminals)
+   : logger_(logger), zmqTrustedTerminals_(zmqTrustedTerminals)
 {
    // init network
    isInitialized_ = InitNetworkLibs();
@@ -120,25 +119,35 @@ std::shared_ptr<ZmqSecuredDataConnection> ConnectionManager::CreateSecuredDataCo
    return connection;
 }
 
-std::shared_ptr<ZmqBIP15XServerConnection> ConnectionManager::CreateZMQBIP15XServerConnection() const
+std::shared_ptr<ZmqBIP15XServerConnection>
+   ConnectionManager::CreateZMQBIP15XChatServerConnection(bool ephemeral
+      , const std::string& ownKeyFileDir
+      , const std::string& ownKeyFileName) const
 {
    BinaryData bdID = CryptoPRNG::generateRandom(8);
+   auto cbTrustedClients = [this]() -> std::vector<std::string> {
+      return zmqTrustedTerminals_;
+   };
+
    return std::make_shared<ZmqBIP15XServerConnection>(logger_, zmqContext_
-                                                      , ZMQTrustedTerminals_, READ_UINT64_LE(bdID.getPtr()), false);
+      , READ_UINT64_LE(bdID.getPtr()), cbTrustedClients, ephemeral
+      , ownKeyFileDir, ownKeyFileName, false);
 }
 
-std::shared_ptr<ZmqBIP15XServerConnection> ConnectionManager::CreateZMQBIP15XChatServerConnection(bool ephemeral) const
-{
-   BinaryData bdID = CryptoPRNG::generateRandom(8);
-   return std::make_shared<ZmqBIP15XServerConnection>(logger_, zmqContext_
-                                                      , ZMQTrustedTerminals_, READ_UINT64_LE(bdID.getPtr()), ephemeral);
-}
-
-std::shared_ptr<ZmqBIP15XDataConnection> ConnectionManager::CreateZMQBIP15XDataConnection(
-   bool monitored) const
+std::shared_ptr<ZmqBIP15XDataConnection>
+   ConnectionManager::CreateZMQBIP15XDataConnection(bool ephemeral
+   , const std::string& ownKeyFileDir, const std::string& ownKeyFileName
+   , bool makeClientCookie, bool readServerCookie
+   , const std::string& cookieName) const
 {
    auto connection = std::make_shared<ZmqBIP15XDataConnection>(logger_
-      , true, monitored);
+      , ephemeral
+      , ownKeyFileDir
+      , ownKeyFileName
+      , true  // Monitor the conn. It relies on a connection event.
+      , makeClientCookie
+      , readServerCookie
+      , cookieName);
    connection->SetContext(zmqContext_);
 
    return connection;

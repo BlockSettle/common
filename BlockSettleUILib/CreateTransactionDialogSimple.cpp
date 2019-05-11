@@ -134,7 +134,7 @@ void CreateTransactionDialogSimple::onAddressTextChanged(const QString &addressS
 {
    bool addrStateOk = true;
    try {
-      bs::Address address{ addressString.trimmed() };
+      bs::Address address{ addressString.trimmed().toStdString() };
       addrStateOk = address.isValid() && (address.format() != bs::Address::Format::Hex);
       if (addrStateOk) {
          transactionData_->UpdateRecipientAddress(recipientId_, address);
@@ -200,7 +200,7 @@ bool CreateTransactionDialogSimple::userRequestedAdvancedDialog() const
 std::shared_ptr<CreateTransactionDialogAdvanced> CreateTransactionDialogSimple::CreateAdvancedDialog()
 {
    auto advancedDialog = std::make_shared<CreateTransactionDialogAdvanced>(armory_, walletsManager_
-      , signingContainer_, true, logger_, transactionData_, parentWidget());
+      , signContainer_, true, logger_, transactionData_, parentWidget());
 
    if (!offlineTransactions_.empty()) {
       advancedDialog->SetImportedTransactions(offlineTransactions_);

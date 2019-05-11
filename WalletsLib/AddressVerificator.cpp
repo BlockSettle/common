@@ -5,8 +5,6 @@
 #include "FastLock.h"
 #include "BlockDataManagerConfig.h"
 
-#include <QDateTime>
-
 #include <cassert>
 #include <spdlog/spdlog.h>
 
@@ -45,20 +43,20 @@ struct AddressVerificationData
 
 AddressVerificator::AddressVerificator(const std::shared_ptr<spdlog::logger>& logger, const std::shared_ptr<ArmoryConnection> &armory
    , const std::string& walletId, verification_callback callback)
-   : QObject(nullptr)
-   , logger_(logger)
+   : logger_(logger)
    , armory_(armory)
    , walletId_(walletId)
    , userCallback_(callback)
    , stopExecution_(false)
 {
-   connect(armory_.get(), &ArmoryConnection::refresh, this, &AddressVerificator::OnRefresh, Qt::QueuedConnection);
+   reqId_ = armory_->setRefreshCb([this](std::vector<BinaryData> ids, bool) { onRefresh(ids); });
 
    startCommandQueue();
 }
 
 AddressVerificator::~AddressVerificator() noexcept
 {
+   armory_->unsetRefreshCb(reqId_);
    stopCommandQueue();
 }
 
@@ -84,8 +82,7 @@ bool AddressVerificator::stopCommandQueue()
 
 void AddressVerificator::commandQueueThreadFunction()
 {
-   forever
-   {
+   while(true) {
       ExecutionCommand nextCommand;
 
       {
@@ -114,7 +111,7 @@ bool AddressVerificator::SetBSAddressList(const std::unordered_set<std::string>&
 {
    for (const auto &addr : addressList) {
       bs::Address address(addr);
-      logger_->debug("BS address: {}", address.display<std::string>());
+      logger_->debug("BS address: {}", address.display());
       bsAddressList_.emplace(address.prefixed());
    }
    return true;
@@ -126,7 +123,7 @@ bool AddressVerificator::StartAddressVerification(const std::shared_ptr<AuthAddr
 
    if (AddressWasRegistered(addressCopy)) {
       logger_->debug("[AddressVerificator::StartAddressVerification] adding verification command to queue: {}"
-         , addressCopy->GetChainedAddress().display<std::string>());
+         , addressCopy->GetChainedAddress().display());
       if (registered_) {
          AddCommandToQueue(CreateAddressValidationCommand(addressCopy));
       }
@@ -240,13 +237,13 @@ void AddressVerificator::ValidateAddress(const std::shared_ptr<AddressVerificati
       return;
    }
 
-   const auto &cbCollectOutTXs = [this, state](std::vector<Tx> txs) {
+   const auto &cbCollectOutTXs = [this, state](const std::vector<Tx> &txs) {
       for (const auto &tx : txs) {
          state->txs[tx.getThisHash()] = tx;
       }
       doValidateAddress(state);
    };
-   const auto &cbCollectInitialTXs = [this, state, cbCollectOutTXs](std::vector<Tx> txs) {
+   const auto &cbCollectInitialTXs = [this, state, cbCollectOutTXs](const std::vector<Tx> &txs) {
       std::set<BinaryData> txOutHashes;
       for (const auto &tx : txs) {
          state->txs[tx.getThisHash()] = tx;
@@ -319,7 +316,7 @@ void AddressVerificator::ValidateAddress(const std::shared_ptr<AddressVerificati
          addressRetries_[prefixedAddress]++;    // reschedule validation since error occured
       }
       else {
-         logger_->error("[AddressVerificator::ValidateAddress] Failed to validate address {}", state->address->GetChainedAddress().display<std::string>());
+         logger_->error("[AddressVerificator::ValidateAddress] Failed to validate address {}", state->address->GetChainedAddress().display());
          state->currentState = AddressVerificationState::VerificationFailed;
          ReturnValidationResult(state);
          addressRetries_.erase(prefixedAddress);
@@ -347,7 +344,7 @@ void AddressVerificator::CheckBSAddressState(const std::shared_ptr<AddressVerifi
       }
       ReturnValidationResult(state);
    };
-   const auto &cbCollectTXs = [state, cbCheckState](std::vector<Tx> txs) {
+   const auto &cbCollectTXs = [state, cbCheckState](const std::vector<Tx> &txs) {
       for (const auto &tx : txs) {
          const auto &txHash = tx.getThisHash();
          state->txs[txHash] = tx;
@@ -388,7 +385,7 @@ void AddressVerificator::CheckBSAddressState(const std::shared_ptr<AddressVerifi
    if (!armory_->getLedgerDelegateForAddress(walletId_, state->address->GetChainedAddress(), cbLedgerDelegate)) {
       logger_->error("[AddressVerificator::CheckBSAddressState] Could not validate address. Looks like armory is offline.");
       if (state->bsAddressValidationErrorCount >= MaxBSAddressValidationErrorCount) {
-         logger_->error("[AddressVerificator::CheckBSAddressState] marking address as failed to validate {}", state->bsFundingAddress.display<std::string>());
+         logger_->error("[AddressVerificator::CheckBSAddressState] marking address as failed to validate {}", state->bsFundingAddress.display());
          state->currentState = AddressVerificationState::VerificationFailed;
          ReturnValidationResult(state);
       } else {
@@ -652,7 +649,7 @@ void AddressVerificator::RegisterAddresses()
    }
 }
 
-void AddressVerificator::OnRefresh(std::vector<BinaryData> ids)
+void AddressVerificator::onRefresh(std::vector<BinaryData> ids)
 {
    const auto &it = std::find(ids.begin(), ids.end(), regId_);
    if (it == ids.end()) {

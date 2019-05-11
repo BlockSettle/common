@@ -2,7 +2,9 @@
 #include "ChatProtocol/ChatProtocol.h"
 
 #include <spdlog/spdlog.h>
-#include "botan/base64.h"
+#include <botan/bigint.h>
+#include <botan/base64.h>
+#include <botan/auto_rng.h>
 
 #include "ZMQ_BIP15X_DataConnection.h"
 #include "ChatDB.h"
@@ -10,8 +12,16 @@
 #include "ApplicationSettings.h"
 #include "autheid_utils.h"
 #include "UserHasher.h"
+#include "ChatClientDataModel.h"
+#include <QRegularExpression>
+
+#include "Encryption/AEAD_Encryption.h"
+#include "Encryption/AEAD_Decryption.h"
+#include "Encryption/IES_Encryption.h"
+#include "Encryption/IES_Decryption.h"
 
 #include <QDateTime>
+#include <QDebug>
 
 Q_DECLARE_METATYPE(std::shared_ptr<Chat::MessageData>)
 Q_DECLARE_METATYPE(std::vector<std::shared_ptr<Chat::MessageData>>)
@@ -20,14 +30,36 @@ Q_DECLARE_METATYPE(std::vector<std::shared_ptr<Chat::RoomData>>)
 Q_DECLARE_METATYPE(std::shared_ptr<Chat::UserData>)
 Q_DECLARE_METATYPE(std::vector<std::shared_ptr<Chat::UserData>>)
 
-//We have current flags
-//We have upladed flags
-//We need to put flags to updated flags
-//But only in places that allowed by mask
-static int syncFlagsByMask(int flags, int uflags, int mask){
-   int set_mask = mask & uflags;
-   int unset_mask = (mask & uflags) ^ mask;
-   return (flags & ~unset_mask) | set_mask;
+namespace {
+   const QRegularExpression rx_email(QLatin1String(R"(^[a-z0-9._-]+@([a-z0-9-]+\.)+[a-z]+$)"), QRegularExpression::CaseInsensitiveOption);
+}
+
+namespace {
+   Chat::ContactStatus contactStatusFromDBStatus(ContactUserData::Status status){
+      switch (status) {
+         case ContactUserData::Status::Friend:
+            return  Chat::ContactStatus::Accepted;
+         case ContactUserData::Status::Incoming:
+            return Chat::ContactStatus::Incoming;
+         case ContactUserData::Status::Outgoing:
+            return Chat::ContactStatus::Outgoing;
+         case ContactUserData::Status::Rejected:
+            return Chat::ContactStatus::Rejected;
+      }
+   }
+
+   ContactUserData::Status contactStatusToDBStatus(Chat::ContactStatus status){
+      switch (status) {
+         case Chat::ContactStatus::Accepted:
+            return ContactUserData::Status::Friend;
+         case Chat::ContactStatus::Incoming:
+            return ContactUserData::Status::Incoming;
+         case Chat::ContactStatus::Outgoing:
+            return ContactUserData::Status::Outgoing;
+         case Chat::ContactStatus::Rejected:
+            return ContactUserData::Status::Rejected;
+      }
+   }
 }
 
 ChatClient::ChatClient(const std::shared_ptr<ConnectionManager>& connectionManager
@@ -46,12 +78,17 @@ ChatClient::ChatClient(const std::shared_ptr<ConnectionManager>& connectionManag
    qRegisterMetaType<std::shared_ptr<Chat::UserData>>();
    qRegisterMetaType<std::vector<std::shared_ptr<Chat::UserData>>>();
 
+   //This is required (with Qt::QueuedConnection), because of ZmqBIP15XDataConnection crashes when delete it from this (callback) thread
+   connect(this, &ChatClient::ForceLogoutSignal, this, &ChatClient::onForceLogoutSignal, Qt::QueuedConnection);
+
    chatDb_ = make_unique<ChatDB>(logger, appSettings_->get<QString>(ApplicationSettings::chatDbFile));
    if (!chatDb_->loadKeys(pubKeys_)) {
       throw std::runtime_error("failed to load chat public keys");
    }
 
    hasher_ = std::make_shared<UserHasher>();
+   model_ = std::make_shared<ChatClientDataModel>();
+   model_->setModelChangesHandler(this);
 
    heartbeatTimer_.setInterval(30 * 1000);
    heartbeatTimer_.setSingleShot(false);
@@ -61,34 +98,34 @@ ChatClient::ChatClient(const std::shared_ptr<ConnectionManager>& connectionManag
 
 ChatClient::~ChatClient() noexcept
 {
-   if (loggedIn_) {
-      logout();
-   }
+   // Let's not call anything here as this could cause crash
 }
 
-std::string ChatClient::loginToServer(const std::string& email, const std::string& jwt)
+std::shared_ptr<ChatClientDataModel> ChatClient::getDataModel()
+{
+   return model_;
+}
+
+std::string ChatClient::loginToServer(const std::string& email, const std::string& jwt
+   , const ZmqBIP15XDataConnection::cbNewKey &cb)
 {
    if (connection_) {
       logger_->error("[ChatClient::loginToServer] connecting with not purged connection");
-      return std::string();
+      return {};
    }
 
-   //auto bytesHash = autheid::getSHA256(email.c_str(), email.size());
-   //currentUserId_ = QString::fromStdString(autheid::base64Encode(bytesHash).substr(0, 8)).toLower().toStdString();
    currentUserId_ = hasher_->deriveKey(email);
    currentJwt_ = jwt;
 
-   connection_ = connectionManager_->CreateZMQBIP15XDataConnection(true);
-   //BinaryData inSrvPubKey(appSettings_->get<std::string>(ApplicationSettings::chatServerPubKey));
-   //connection_->SetServerPublicKey(inSrvPubKey);
+   connection_ = connectionManager_->CreateZMQBIP15XDataConnection();
+   connection_->setCBs(cb);
+
    if (!connection_->openConnection(appSettings_->get<std::string>(ApplicationSettings::chatServerHost)
                             , appSettings_->get<std::string>(ApplicationSettings::chatServerPort), this))
    {
       logger_->error("[ChatClient::loginToServer] failed to open ZMQ data connection");
       connection_.reset();
    }
-
-
 
    return currentUserId_;
 }
@@ -97,8 +134,13 @@ void ChatClient::OnLoginReturned(const Chat::LoginResponse &response)
 {
    if (response.getStatus() == Chat::LoginResponse::Status::LoginOk) {
       loggedIn_ = true;
-      auto request = std::make_shared<Chat::MessagesRequest>("", currentUserId_, currentUserId_);
-      sendRequest(request);
+      emit ConnectedToServer();
+      model_->setCurrentUser(currentUserId_);
+      readDatabase();
+      auto request1 = std::make_shared<Chat::MessagesRequest>("", currentUserId_, currentUserId_);
+      sendRequest(request1);
+      auto request2 = std::make_shared<Chat::ContactsListRequest>("", currentUserId_);
+      sendRequest(request2);
    }
    else {
       loggedIn_ = false;
@@ -109,7 +151,7 @@ void ChatClient::OnLoginReturned(const Chat::LoginResponse &response)
 void ChatClient::OnLogoutResponse(const Chat::LogoutResponse & response)
 {
    logger_->debug("[ChatClient::OnLogoutResponse]: Server sent logout response with data: {}", response.getData());
-   logout(false);
+   emit ForceLogoutSignal();
 }
 
 void ChatClient::OnSendMessageResponse(const Chat::SendMessageResponse& response)
@@ -120,13 +162,16 @@ void ChatClient::OnSendMessageResponse(const Chat::SendMessageResponse& response
       QString localId = QString::fromStdString(response.clientMessageId());
       QString serverId = QString::fromStdString(response.serverMessageId());
       QString receiverId = QString::fromStdString(response.receiverId());
-      bool res = chatDb_->syncMessageId(localId, serverId);
-      
+      auto message = model_->findMessageItem(receiverId.toStdString(), localId.toStdString());
+      if (message){
+         message->setId(serverId);
+         message->setFlag(Chat::MessageData::State::Sent);
+      }
+      model_->notifyMessageChanged(message);
+      bool res = message && chatDb_->syncMessageId(localId, serverId);
+
       logger_->debug("[ChatClient::OnSendMessageResponse]: message id sync: {}", res?"Success":"Failed");
-      
-      emit MessageIdUpdated(localId, serverId, receiverId);
-      
-      
+
    }
 }
 
@@ -146,13 +191,17 @@ void ChatClient::OnMessageChangeStatusResponse(const Chat::MessageChangeStatusRe
                   senderId,
                   receiverId,
                   newStatus);
-   
+
+
    if (chatDb_->updateMessageStatus(QString::fromStdString(messageId), newStatus)) {
       QString chatId = QString::fromStdString(response.messageSenderId() == currentUserId_
                     ? response.messageReceiverId()
                     : response.messageSenderId());
-      
-      emit MessageStatusUpdated(QString::fromStdString(messageId), chatId, newStatus);
+      auto message = model_->findMessageItem(chatId.toStdString(), messageId);
+      if (message){
+         message->updateState(newStatus);
+      }
+      model_->notifyMessageChanged(message);
    }
    return;
 }
@@ -166,25 +215,60 @@ void ChatClient::OnContactsActionResponseDirect(const Chat::ContactsActionRespon
          QString senderId = QString::fromStdString(response.senderId());
          pubKeys_[senderId] = response.getSenderPublicKey();
          chatDb_->addKey(senderId, response.getSenderPublicKey());
+         auto contactNode = model_->findContactNode(senderId.toStdString());
+         if (contactNode){
+            auto data = contactNode->getContactData();
+            data->setStatus(Chat::ContactStatus::Accepted);
+            contactNode->setOnlineStatus(ChatContactElement::OnlineStatus::Online);
+            model_->notifyContactChanged(data);
+         }
          addOrUpdateContact(senderId, ContactUserData::Status::Friend);
-         emit FriendRequestAccepted({response.senderId()});
+         auto requestS = std::make_shared<Chat::ContactActionRequestServer>("", currentUserId_, senderId.toStdString(), Chat::ContactsActionServer::UpdateContactRecord, Chat::ContactStatus::Accepted, response.getSenderPublicKey());
+         sendRequest(requestS);
+         // reprocess message again
+         retrySendQueuedMessages(response.senderId());
       }
       break;
       case Chat::ContactsAction::Reject: {
          actionString = "ContactsAction::Reject";
          addOrUpdateContact(QString::fromStdString(response.senderId()), ContactUserData::Status::Rejected);
+         auto contactNode = model_->findContactNode(response.senderId());
+         if (contactNode){
+            auto data = contactNode->getContactData();
+            data->setStatus(Chat::ContactStatus::Rejected);
+            contactNode->setOnlineStatus(ChatContactElement::OnlineStatus::Online);
+            model_->notifyContactChanged(data);
+         }
+         auto requestS = std::make_shared<Chat::ContactActionRequestServer>("", currentUserId_, response.senderId(), Chat::ContactsActionServer::UpdateContactRecord, Chat::ContactStatus::Rejected, response.getSenderPublicKey());
+         sendRequest(requestS);
          //removeContact(QString::fromStdString(response.senderId()));
-         emit FriendRequestRejected({response.senderId()});
+         eraseQueuedMessages(response.senderId());
       }
       break;
       case Chat::ContactsAction::Request: {
          actionString = "ContactsAction::Request";
-         QString senderId = QString::fromStdString(response.senderId());
-         addOrUpdateContact(senderId, ContactUserData::Status::Incoming);
+         QString userId = QString::fromStdString(response.receiverId());
+         QString contactId = QString::fromStdString(response.senderId());
+         autheid::PublicKey pk = response.getSenderPublicKey();
+         pubKeys_[contactId] = response.getSenderPublicKey();
+         chatDb_->addKey(contactId, response.getSenderPublicKey());
+
+         auto contactNode = model_->findContactNode(response.senderId());
+         if (contactNode){
+            auto data = contactNode->getContactData();
+            data->setStatus(Chat::ContactStatus::Accepted);
+            contactNode->setOnlineStatus(ChatContactElement::OnlineStatus::Online);
+            model_->notifyContactChanged(data);
+         } else {
+            auto contact = std::make_shared<Chat::ContactRecordData>(userId, contactId, Chat::ContactStatus::Incoming, pk);
+            model_->insertContactObject(contact, true);
+            addOrUpdateContact(contactId, ContactUserData::Status::Incoming);
+            auto requestS = std::make_shared<Chat::ContactActionRequestServer>("", currentUserId_, contactId.toStdString(), Chat::ContactsActionServer::AddContactRecord, Chat::ContactStatus::Incoming, pk);
+            sendRequest(requestS);            
+            emit NewContactRequest(contactId);
+         }
+
          //addOrUpdateContact(QString::fromStdString(response.senderId()), QStringLiteral(""), true);
-         pubKeys_[senderId] = response.getSenderPublicKey();
-         chatDb_->addKey(senderId, response.getSenderPublicKey());
-         emit IncomingFriendRequest({senderId.toStdString()});
       }
       break;
    }
@@ -201,17 +285,16 @@ void ChatClient::OnContactsActionResponseServer(const Chat::ContactsActionRespon
       case Chat::ContactsActionServer::AddContactRecord:
          actionString = "ContactsActionServer::AddContactRecord";
          //addOrUpdateContact(QString::fromStdString(response.userId()));
-         //emit AcceptFriendRequest({response.userId()});
+         retrySendQueuedMessages(response.contactId());
       break;
       case Chat::ContactsActionServer::RemoveContactRecord:
          actionString = "ContactsActionServer::RemoveContactRecord";
          //removeContact(QString::fromStdString(response.userId()));
-         //emit RejectFriendRequest({response.userId()});
+         retrySendQueuedMessages(response.contactId());
       break;
       case Chat::ContactsActionServer::UpdateContactRecord:
          actionString = "ContactsActionServer::UpdateContactRecord";
          //addOrUpdateContact(QString::fromStdString(response.userId()), QStringLiteral(""), true);
-         //emit IncomingFriendRequest({response.userId()});
       break;
       default:
       break;
@@ -246,26 +329,66 @@ void ChatClient::OnContactsActionResponseServer(const Chat::ContactsActionRespon
 void ChatClient::OnContactsListResponse(const Chat::ContactsListResponse & response)
 {
    QStringList contactsListStr;
-   const auto& contacts = response.getContactsList();
-   for (auto &contact : contacts){
-      contactsListStr << QString::fromStdString(contact->toJsonString());
+   const auto& remoteContacts = response.getContactsList();
+   const auto localContacts = model_->getAllContacts();
+
+   for (auto local : localContacts) {
+      auto rit = std::find_if(remoteContacts.begin(), remoteContacts.end(), [local](std::shared_ptr<Chat::ContactRecordData> remote){
+                 return local->getContactId() == remote->getContactId();
+      });
+
+      if (rit == remoteContacts.end()) {
+         chatDb_->removeContact(local->getContactId());
+         model_->removeContactNode(local->getContactId().toStdString());
+      }
+   }
+
+   for (auto remote : remoteContacts) {
+      auto citem = model_->findContactItem(remote->getContactId().toStdString());
+
+      ContactUserData::Status status = ContactUserData::Status::Rejected;
+      switch (remote->getContactStatus()) {
+         case Chat::ContactStatus::Accepted:
+            status = ContactUserData::Status::Friend;
+            break;
+         case Chat::ContactStatus::Incoming:
+            status = ContactUserData::Status::Incoming;
+            break;
+         case Chat::ContactStatus::Outgoing:
+            status = ContactUserData::Status::Outgoing;
+            break;
+         case Chat::ContactStatus::Rejected:
+            status = ContactUserData::Status::Rejected;
+            break;
+      }
+
+      if (!citem) {
+         model_->insertContactObject(remote);
+         retrieveUserMessages(remote->getContactId());
+      } else {
+         citem->setStatus(remote->getContactStatus());
+         model_->notifyContactChanged(citem);
+      }
+      contactsListStr << QString::fromStdString(remote->toJsonString());
+      pubKeys_[remote->getContactId()] = remote->getContactPublicKey();
+      addOrUpdateContact(remote->getContactId(), status, remote->getDisplayName());
    }
 
    logger_->debug("[ChatClient::OnContactsListResponse]:Received {} contacts, from server: [{}]"
-               , QString::number(contacts.size()).toStdString()
+               , QString::number(contactsListStr.size()).toStdString()
                , contactsListStr.join(QLatin1String(", ")).toStdString());
 }
 
 void ChatClient::OnChatroomsList(const Chat::ChatroomsListResponse& response)
 {
    QStringList rooms;
-   
+
    std::vector<std::shared_ptr<Chat::RoomData>> roomList = response.getChatRoomList();
    for (auto room : roomList){
+      model_->insertRoomObject(room);
       rooms << QString::fromStdString(room->toJsonString());
       chatDb_->removeRoomMessages(room->getId());
    }
-   emit RoomsAdd(roomList);
    logger_->debug("[ChatClient::OnChatroomsList]: Received chatroom list from server: {}",
                   rooms.join(QLatin1String(", ")).prepend(QLatin1Char('[')).append(QLatin1Char(']')).toStdString()
                   );
@@ -274,24 +397,22 @@ void ChatClient::OnChatroomsList(const Chat::ChatroomsListResponse& response)
 void ChatClient::OnRoomMessages(const Chat::RoomMessagesResponse& response)
 {
    logger_->debug("Received chatroom messages from server (receiver id is chatroom): {}", response.getData());
-   std::vector<std::shared_ptr<Chat::MessageData>> messages;
    for (const auto &msgStr : response.getDataList()) {
       const auto msg = Chat::MessageData::fromJSON(msgStr);
       msg->setFlag(Chat::MessageData::State::Acknowledged);
-      chatDb_->add(*msg);
+      /*chatDb_->add(*msg);
 
-      if (msg->getState() & (int)Chat::MessageData::State::Encrypted) {
+      if (msg->encryptionType() == Chat::MessageData::EncryptionType::IES) {
          if (!msg->decrypt(ownPrivKey_)) {
             logger_->error("Failed to decrypt msg {}", msg->getId().toStdString());
             msg->setFlag(Chat::MessageData::State::Invalid);
          }
-      }
-      messages.push_back(msg);
-      //int mask = old_state ^ msg->getState();
-      //sendUpdateMessageState(msg);
+         else {
+            msg->setEncryptionType(Chat::MessageData::EncryptionType::Unencrypted);
+         }
+      }*/
+      model_->insertRoomMessage(msg);
    }
-
-   emit RoomMessagesUpdate(messages, false);
 }
 
 void ChatClient::OnSearchUsersResponse(const Chat::SearchUsersResponse & response)
@@ -299,6 +420,8 @@ void ChatClient::OnSearchUsersResponse(const Chat::SearchUsersResponse & respons
    QStringList users;
 
    std::vector<std::shared_ptr<Chat::UserData>> userList = response.getUsersList();
+   model_->insertSearchUserList(userList);
+
    for (auto user : userList){
       users << QString::fromStdString(user->toJsonString());
    }
@@ -325,7 +448,9 @@ void ChatClient::logout(bool send)
 
    currentUserId_.clear();
    currentJwt_.clear();
+
    connection_.reset();
+   model_->clearModel();
 
    emit LoggedOut();
 }
@@ -341,6 +466,21 @@ void ChatClient::sendRequest(const std::shared_ptr<Chat::Request>& request)
    connection_->send(requestData);
 }
 
+void ChatClient::readDatabase()
+{
+   ContactUserDataList clist;
+   chatDb_->getContacts(clist);
+   for (auto c : clist) {
+      Chat::ContactStatus status = contactStatusFromDBStatus(c.status());
+
+      auto pk = autheid::PublicKey();
+
+      auto contact = std::make_shared<Chat::ContactRecordData>(QString::fromStdString(model_->currentUser()), c.userId(), status, pk, c.userName());
+      model_->insertContactObject(contact);
+      retrieveUserMessages(contact->getContactId());
+   }
+}
+
 void ChatClient::sendHeartbeat()
 {
    if (loggedIn_ && connection_->isActive()) {
@@ -348,21 +488,26 @@ void ChatClient::sendHeartbeat()
    }
 }
 
-void ChatClient::onMessageRead(const std::shared_ptr<Chat::MessageData>& message)
+//void ChatClient::onMessageRead(const std::shared_ptr<Chat::MessageData>& message)
+//{
+//   addMessageState(message, Chat::MessageData::State::Read);
+//}
+
+void ChatClient::onForceLogoutSignal()
 {
-   addMessageState(message, Chat::MessageData::State::Read);
+   logout(false);
 }
 
 void ChatClient::addMessageState(const std::shared_ptr<Chat::MessageData>& message, Chat::MessageData::State state)
 {
    message->setFlag(state);
-   if (chatDb_->updateMessageStatus(message->getId(), message->getState()))
+   if (chatDb_->updateMessageStatus(message->id(), message->state()))
    {
-      QString chatId = message->getSenderId() == QString::fromStdString(currentUserId_)
-                    ? message->getReceiverId()
-                    : message->getSenderId();
+      QString chatId = message->senderId() == QString::fromStdString(currentUserId_)
+                    ? message->receiverId()
+                    : message->senderId();
       sendUpdateMessageState(message);
-      emit MessageStatusUpdated(message->getId(), chatId, message->getState());
+      emit MessageStatusUpdated(message->id(), chatId, message->state());
    } else {
       message->unsetFlag(state);
    }
@@ -376,44 +521,107 @@ void ChatClient::OnHeartbeatPong(const Chat::HeartbeatPongResponse &response)
 void ChatClient::OnUsersList(const Chat::UsersListResponse &response)
 {
    logger_->debug("Received users list from server: {}", response.getData());
+   auto dataList = response.getDataList();
+
+   //This switch for compatibility with old code, if presented somewhere
    switch (response.command()) {
-   case Chat::UsersListResponse::Command::Replace:
-      emit UsersReplace(response.getDataList());
-      break;
-   case Chat::UsersListResponse::Command::Add:
-      emit UsersAdd(response.getDataList());
-      break;
-   case Chat::UsersListResponse::Command::Delete:
-      emit UsersDel(response.getDataList());
-      break;
+      case Chat::UsersListResponse::Command::Replace:
+         emit UsersReplace(dataList);
+         break;
+      case Chat::UsersListResponse::Command::Add:
+         emit UsersAdd(dataList);
+         break;
+      case Chat::UsersListResponse::Command::Delete:
+         emit UsersDel(dataList);
+         break;
    }
+
+   std::for_each(dataList.begin(), dataList.end(), [response, this](const std::string& user)
+   {
+      auto contact = model_->findContactNode(user);
+      if (contact) {
+         ChatContactElement::OnlineStatus status = ChatContactElement::OnlineStatus::Offline;
+         switch (response.command()) {
+            case Chat::UsersListResponse::Command::Replace:
+               status = ChatContactElement::OnlineStatus::Online;
+               break;
+            case Chat::UsersListResponse::Command::Add:
+               status = ChatContactElement::OnlineStatus::Online;
+               break;
+            case Chat::UsersListResponse::Command::Delete:
+               status = ChatContactElement::OnlineStatus::Offline;
+               break;
+         }
+         contact->setOnlineStatus(status);
+         model_->notifyContactChanged(contact->getContactData());
+      }
+
+   });
+
 }
 
 void ChatClient::OnMessages(const Chat::MessagesResponse &response)
 {
-   logger_->debug("Received messages from server: {}", response.getData());
+   logger_->debug("[ChatClient::{}] Received messages from server: {}", __func__, response.getData());
    std::vector<std::shared_ptr<Chat::MessageData>> messages;
    for (const auto &msgStr : response.getDataList()) {
-      const auto msg = Chat::MessageData::fromJSON(msgStr);
-      if (!chatDb_->isContactExist(msg->getSenderId())) {
+      auto msg = Chat::MessageData::fromJSON(msgStr);
+      if (!chatDb_->isContactExist(msg->senderId())) {
          continue;
       }
 
       msg->setFlag(Chat::MessageData::State::Acknowledged);
-      chatDb_->add(*msg);
 
-      if (msg->getState() & (int)Chat::MessageData::State::Encrypted) {
-         if (!msg->decrypt(ownPrivKey_)) {
-            logger_->error("Failed to decrypt msg {}", msg->getId().toStdString());
-            msg->setFlag(Chat::MessageData::State::Invalid);
+      switch (msg->encryptionType()) {
+         case Chat::MessageData::EncryptionType::AEAD: {
+
+            const auto& itPublicKey = pubKeys_.find(msg->senderId());
+
+            if (itPublicKey == pubKeys_.end()) {
+               logger_->error("[ChatClient::{}] Can't find public key for sender {}", __func__, msg->senderId().toStdString());
+               msg->setFlag(Chat::MessageData::State::Invalid);
+            }
+            else {
+               BinaryData remotePublicKey(itPublicKey->second.data(), itPublicKey->second.size());
+               SecureBinaryData localPrivateKey(ownPrivKey_.data(), ownPrivKey_.size());
+
+               std::unique_ptr<Encryption::AEAD_Decryption> dec = Encryption::AEAD_Decryption::create(logger_);
+               dec->setPrivateKey(localPrivateKey);
+               dec->setPublicKey(remotePublicKey);
+               dec->setNonce(msg->nonce());
+               dec->setData(QByteArray::fromBase64(msg->messageData().toLatin1()).toStdString());
+               dec->setAssociatedData(msg->jsonAssociatedData());
+
+               try {
+                  Botan::SecureVector<uint8_t> decodedData;
+                  dec->finish(decodedData);
+
+                  msg->setMessageData(QString::fromUtf8((char*)decodedData.data(), (int)decodedData.size()));
+                  msg->setEncryptionType(Chat::MessageData::EncryptionType::Unencrypted);
+               }
+               catch (std::exception & e) {
+                  logger_->error("[ChatClient::{}] Failed to decrypt aead msg {}", __func__, e.what());
+                  msg->setFlag(Chat::MessageData::State::Invalid);
+               }
+            }
+
+            model_->insertContactsMessage(msg);
+
+            encryptByIESAndSaveMessageInDb(msg);
          }
+         break;
+
+         case Chat::MessageData::EncryptionType::IES: {
+            logger_->error("[ChatClient::{}] This could not happen! Failed to decrypt msg.", __func__);
+            model_->insertContactsMessage(msg);
+         }
+         break;
+         
+         default:
+         break;
       }
-      messages.push_back(msg);
-      //int mask = old_state ^ msg->getState();
       sendUpdateMessageState(msg);
    }
-
-   emit MessagesUpdate(messages, false);
 }
 
 void ChatClient::OnAskForPublicKey(const Chat::AskForPublicKeyResponse &response)
@@ -463,7 +671,10 @@ void ChatClient::OnDataReceived(const std::string& data)
       logger_->error("[ChatClient::OnDataReceived] failed to parse message:\n{}", data);
       return;
    }
-   response->handle(*this);
+   // Process on main thread because otherwise ChatDB could crash
+   QMetaObject::invokeMethod(this, [this, response] {
+      response->handle(*this);
+   });
 }
 
 void ChatClient::OnConnected()
@@ -476,6 +687,7 @@ void ChatClient::OnConnected()
 void ChatClient::OnDisconnected()
 {
    logger_->debug("[ChatClient::OnDisconnected]");
+   emit ForceLogoutSignal();
 }
 
 void ChatClient::OnError(DataConnectionError errorCode)
@@ -486,10 +698,31 @@ void ChatClient::OnError(DataConnectionError errorCode)
 std::shared_ptr<Chat::MessageData> ChatClient::sendOwnMessage(
       const QString &message, const QString &receiver)
 {
-   Chat::MessageData msg(QString::fromStdString(currentUserId_), receiver
-      , QString::fromStdString(CryptoPRNG::generateRandom(8).toHexStr())
-      , QDateTime::currentDateTimeUtc(), message);
-   auto result = std::make_shared<Chat::MessageData>(msg);
+   Chat::MessageData messageData(QString::fromStdString(currentUserId_), receiver,
+      QString::fromStdString(CryptoPRNG::generateRandom(8).toHexStr()),
+      QDateTime::currentDateTimeUtc(), message);
+   auto result = std::make_shared<Chat::MessageData>(messageData);
+
+   if (!chatDb_->isContactExist(messageData.receiverId()))
+   {
+      // make friend request before sending direct message. Enqueue the message to be sent, once our friend request accepted.
+      enqueued_messages_[receiver].push(message);
+      sendFriendRequest(messageData.receiverId());
+      return result;
+   }
+   else
+   {
+      // is contact rejected?
+      ContactUserData contact;
+      chatDb_->getContact(messageData.receiverId(), contact);
+
+      if (contact.status() == ContactUserData::Status::Rejected)
+      {
+         logger_->error("[ChatClient::sendOwnMessage] {}", "Receiver has rejected state. Discarding message.");
+         result->setFlag(Chat::MessageData::State::Invalid);
+         return result;
+      }
+   }
 
    const auto &itPub = pubKeys_.find(receiver);
    if (itPub == pubKeys_.end()) {
@@ -508,19 +741,60 @@ std::shared_ptr<Chat::MessageData> ChatClient::sendOwnMessage(
 
    logger_->debug("[ChatClient::sendMessage] {}", message.toStdString());
 
-   auto localEncMsg = msg;
-   if (!localEncMsg.encrypt(appSettings_->GetAuthKeys().second)) {
-      logger_->error("[ChatClient::sendMessage] failed to encrypt by local key");
-   }
-   chatDb_->add(localEncMsg);
-
-   if (!msg.encrypt(itPub->second)) {
-      logger_->error("[ChatClient::sendMessage] failed to encrypt message {}"
-         , msg.getId().toStdString());
+   if (!encryptByIESAndSaveMessageInDb(std::make_shared<Chat::MessageData>(messageData)))
+   {
+      return result;
    }
 
-   auto request = std::make_shared<Chat::SendMessageRequest>("", msg.toJsonString());
+   model_->insertContactsMessage(result);
+
+   // search active message session for given user
+   const auto userNoncesIterator = userNonces_.find(receiver);
+   Botan::SecureVector<uint8_t> nonce;
+   if (userNoncesIterator == userNonces_.end()) {
+      // generate random nonce
+      Botan::AutoSeeded_RNG rng;
+      nonce = rng.random_vec(messageData.defaultNonceSize());
+      userNonces_.emplace_hint(userNoncesIterator, receiver, nonce);
+   }
+   else {
+      // read nonce and increment
+      Botan::BigInt bigIntNonce;
+      bigIntNonce.binary_decode(userNoncesIterator->second);
+      bigIntNonce++;
+      nonce = Botan::BigInt::encode_locked(bigIntNonce);
+      userNoncesIterator->second = nonce;
+   }
+
+   std::unique_ptr<Encryption::AEAD_Encryption> enc = Encryption::AEAD_Encryption::create(logger_);
+   SecureBinaryData localPrivateKey(appSettings_->GetAuthKeys().first.data(), appSettings_->GetAuthKeys().first.size());
+   enc->setPrivateKey(localPrivateKey);
+
+   BinaryData remotePublicKey(itPub->second.data(), itPub->second.size());
+   enc->setPublicKey(remotePublicKey);
+
+   enc->setNonce(nonce);
+   messageData.setNonce(nonce);
+
+   enc->setData(messageData.messageData().toStdString());
+   enc->setAssociatedData(messageData.jsonAssociatedData());
+   
+   Botan::SecureVector<uint8_t> encodedData;
+
+   try {
+      enc->finish(encodedData);
+   }
+   catch (std::exception & e) {
+      logger_->error("[ChatClient::{}] Can't encode data {}", __func__, e.what());
+      return result;
+   }
+
+   messageData.setMessageData(QString::fromLatin1(QByteArray(reinterpret_cast<const char*>(encodedData.data()), int(encodedData.size())).toBase64()));
+   messageData.setEncryptionType(Chat::MessageData::EncryptionType::AEAD);
+
+   auto request = std::make_shared<Chat::SendMessageRequest>("", messageData.toJsonString());
    sendRequest(request);
+
    return result;
 }
 
@@ -553,6 +827,7 @@ std::shared_ptr<Chat::MessageData> ChatClient::sendRoomOwnMessage(const QString&
 //      logger_->error("[ChatClient::sendRoomOwnMessage] failed to encrypt by local key");
 //   }
    chatDb_->add(msg);
+   model_->insertRoomMessage(result);
 
 //   if (!msg.encrypt(itPub->second)) {
 //      logger_->error("[ChatClient::sendMessage] failed to encrypt message {}"
@@ -569,14 +844,11 @@ void ChatClient::retrieveUserMessages(const QString &userId)
    auto messages = chatDb_->getUserMessages(QString::fromStdString(currentUserId_), userId);
    if (!messages.empty()) {
       for (auto &msg : messages) {
-         if (msg->getState() & (int)Chat::MessageData::State::Encrypted) {
-            if (!msg->decrypt(ownPrivKey_)) {
-               logger_->error("Failed to decrypt msg from DB {}", msg->getId().toStdString());
-               msg->setFlag(Chat::MessageData::State::Invalid);
-            }
+         if (msg->encryptionType() == Chat::MessageData::EncryptionType::IES) {
+            decryptIESMessage(msg);
          }
+         model_->insertContactsMessage(msg);
       }
-      emit MessagesUpdate(messages, true);
    }
 }
 
@@ -585,14 +857,11 @@ void ChatClient::retrieveRoomMessages(const QString& roomId)
    auto messages = chatDb_->getRoomMessages(roomId);
    if (!messages.empty()) {
       for (auto &msg : messages) {
-         if (msg->getState() & (int)Chat::MessageData::State::Encrypted) {
-            if (!msg->decrypt(ownPrivKey_)) {
-               logger_->error("Failed to decrypt msg from DB {}", msg->getId().toStdString());
-               msg->setFlag(Chat::MessageData::State::Invalid);
-            }
+         if (msg->encryptionType() == Chat::MessageData::EncryptionType::IES) {
+            decryptIESMessage(msg);
          }
+         model_->insertRoomMessage(msg);
       }
-      emit RoomMessagesUpdate(messages, true);
    }
 }
 
@@ -601,17 +870,11 @@ bool ChatClient::getContacts(ContactUserDataList &contactList)
    return chatDb_->getContacts(contactList);
 }
 
-
 bool ChatClient::addOrUpdateContact(const QString &userId, ContactUserData::Status status, const QString &userName)
 {
    ContactUserData contact;
-   QString newUserName = userName;
-   if (newUserName.isEmpty())
-   {
-      newUserName = userId;
-   }
    contact.setUserId(userId);
-   contact.setUserName(newUserName);
+   contact.setUserName(userName);
    contact.setStatus(status);
 
    if (chatDb_->isContactExist(userId))
@@ -630,21 +893,43 @@ bool ChatClient::removeContact(const QString &userId)
 void ChatClient::sendFriendRequest(const QString &friendUserId)
 {
    // TODO
+
+   if (model_->findContactItem(friendUserId.toStdString())) {
+      return;
+   }
+
+   auto record = std::make_shared<Chat::ContactRecordData>(QString::fromStdString(model_->currentUser()), friendUserId, Chat::ContactStatus::Outgoing, autheid::PublicKey());
+   model_->insertContactObject(record);
    auto request = std::make_shared<Chat::ContactActionRequestDirect>("", currentUserId_, friendUserId.toStdString(), Chat::ContactsAction::Request, appSettings_->GetAuthKeys().second);
    sendRequest(request);
 }
 
 void ChatClient::acceptFriendRequest(const QString &friendUserId)
 {
+   auto contact = model_->findContactItem(friendUserId.toStdString());
+   if (!contact) {
+      return;
+   }
+   contact->setStatus(Chat::ContactStatus::Accepted);
+   ContactUserData::Status status = contactStatusToDBStatus(contact->getContactStatus());
+   addOrUpdateContact(contact->getContactId(), status, contact->getContactId());
+   model_->notifyContactChanged(contact);
+   retrieveUserMessages(contact->getContactId());
    auto requestDirect = std::make_shared<Chat::ContactActionRequestDirect>("", currentUserId_, friendUserId.toStdString(), Chat::ContactsAction::Accept, appSettings_->GetAuthKeys().second);
    sendRequest(requestDirect);
    autheid::PublicKey publicKey = pubKeys_[friendUserId];
    auto requestRemote = std::make_shared<Chat::ContactActionRequestServer>("", currentUserId_, friendUserId.toStdString(), Chat::ContactsActionServer::AddContactRecord, Chat::ContactStatus::Accepted, publicKey);
    sendRequest(requestRemote);
 }
-   
+
 void ChatClient::declineFriendRequest(const QString &friendUserId)
 {
+   auto contact = model_->findContactItem(friendUserId.toStdString());
+   if (!contact) {
+      return;
+   }
+   contact->setStatus(Chat::ContactStatus::Rejected);
+   model_->notifyContactChanged(contact);
    auto request = std::make_shared<Chat::ContactActionRequestDirect>("", currentUserId_, friendUserId.toStdString(), Chat::ContactsAction::Reject, appSettings_->GetAuthKeys().second);
    sendRequest(request);
    autheid::PublicKey publicKey = pubKeys_[friendUserId];
@@ -653,7 +938,7 @@ void ChatClient::declineFriendRequest(const QString &friendUserId)
 
 void ChatClient::sendUpdateMessageState(const std::shared_ptr<Chat::MessageData>& message)
 {
-   auto request = std::make_shared<Chat::MessageChangeStatusRequest>(currentUserId_, message->getId().toStdString(), message->getState());
+   auto request = std::make_shared<Chat::MessageChangeStatusRequest>(currentUserId_, message->id().toStdString(), message->state());
    sendRequest(request);
 }
 
@@ -666,4 +951,196 @@ void ChatClient::sendSearchUsersRequest(const QString &userIdPattern)
 QString ChatClient::deriveKey(const QString &email) const
 {
    return QString::fromStdString(hasher_->deriveKey(email.toStdString()));
+}
+
+void ChatClient::clearSearch()
+{
+   model_->clearSearch();
+}
+
+bool ChatClient::isFriend(const QString &userId)
+{
+   return chatDb_->isContactExist(userId);
+}
+
+QString ChatClient::getUserId()
+{
+   return QString::fromStdString(currentUserId_);
+}
+
+void ChatClient::onActionAddToContacts(const QString& userId)
+{
+
+   if (model_->findContactItem(userId.toStdString())) {
+      return;
+   }
+
+   qDebug() << __func__ << " " << userId;
+
+   auto record = std::make_shared<Chat::ContactRecordData>(QString::fromStdString(model_->currentUser()), userId, Chat::ContactStatus::Outgoing, autheid::PublicKey());
+   model_->insertContactObject(record);
+   auto requestD = std::make_shared<Chat::ContactActionRequestDirect>("", currentUserId_, userId.toStdString(), Chat::ContactsAction::Request, appSettings_->GetAuthKeys().second);
+   sendRequest(requestD);
+   auto requestS = std::make_shared<Chat::ContactActionRequestServer>("", currentUserId_, userId.toStdString(), Chat::ContactsActionServer::AddContactRecord, Chat::ContactStatus::Outgoing, autheid::PublicKey());
+   sendRequest(requestS);
+}
+
+void ChatClient::onActionRemoveFromContacts(std::shared_ptr<Chat::ContactRecordData> crecord)
+{
+   qDebug() << __func__ << " " << QString::fromStdString(crecord->toJsonString());
+}
+
+void ChatClient::onActionAcceptContactRequest(std::shared_ptr<Chat::ContactRecordData> crecord)
+{
+   qDebug() << __func__ << " " << QString::fromStdString(crecord->toJsonString());
+
+   crecord->setStatus(Chat::ContactStatus::Accepted);
+
+   ContactUserData::Status status = contactStatusToDBStatus(crecord->getContactStatus());
+   addOrUpdateContact(crecord->getContactId(), status, crecord->getDisplayName());
+   model_->notifyContactChanged(crecord);
+   retrieveUserMessages(crecord->getContactId());
+
+   auto request = std::make_shared<Chat::ContactActionRequestDirect>("", crecord->getContactForId().toStdString()
+                                                                     , crecord->getContactId().toStdString()
+                                                                     , Chat::ContactsAction::Accept, appSettings_->GetAuthKeys().second);
+   sendRequest(request);
+   auto requestS = std::make_shared<Chat::ContactActionRequestServer>("", currentUserId_, crecord->getContactId().toStdString(), Chat::ContactsActionServer::UpdateContactRecord, Chat::ContactStatus::Accepted, crecord->getContactPublicKey());
+   sendRequest(requestS);
+
+   emit ContactRequestAccepted(crecord->getContactId());
+}
+
+void ChatClient::onActionRejectContactRequest(std::shared_ptr<Chat::ContactRecordData> crecord)
+{
+   qDebug() << __func__ << " " << QString::fromStdString(crecord->toJsonString());
+   crecord->setStatus(Chat::ContactStatus::Rejected);
+
+   ContactUserData::Status status = contactStatusToDBStatus(crecord->getContactStatus());
+
+   addOrUpdateContact(crecord->getContactId(), status, crecord->getDisplayName());
+   model_->notifyContactChanged(crecord);
+
+   auto request = std::make_shared<Chat::ContactActionRequestDirect>("", crecord->getContactForId().toStdString()
+                                                                     , crecord->getContactId().toStdString()
+                                                                     , Chat::ContactsAction::Reject, appSettings_->GetAuthKeys().second);
+   sendRequest(request);
+   auto requestS = std::make_shared<Chat::ContactActionRequestServer>("", currentUserId_, crecord->getContactId().toStdString(), Chat::ContactsActionServer::UpdateContactRecord, Chat::ContactStatus::Rejected, autheid::PublicKey());
+   sendRequest(requestS);
+}
+
+bool ChatClient::onActionIsFriend(const QString& userId)
+{
+   return isFriend(userId);
+}
+
+void ChatClient::retrySendQueuedMessages(const std::string userId)
+{
+   // Run over enqueued messages if any, and try to send them all now.
+   std::queue<QString>& messages = enqueued_messages_[QString::fromStdString(userId)];
+
+   while (!messages.empty()) {
+      sendOwnMessage(messages.front(), QString::fromStdString(userId));
+      messages.pop();
+   }
+}
+
+void ChatClient::eraseQueuedMessages(const std::string userId)
+{
+   enqueued_messages_.erase(QString::fromStdString(userId));
+}
+
+void ChatClient::onActionSearchUsers(const std::string &text)
+{
+   QString pattern = QString::fromStdString(text);
+
+
+
+   QRegularExpressionMatch match = rx_email.match(pattern);
+   if (match.hasMatch()) {
+      pattern = deriveKey(pattern);
+   } else if (static_cast<int>(UserHasher::KeyLength) < pattern.length()
+              || pattern.length() < 3) {
+      //Initially max key is 12 symbols
+      //and search must be triggerred if pattern have length >= 3
+      return;
+   }
+   sendSearchUsersRequest(pattern);
+}
+
+void ChatClient::onActionResetSearch()
+{
+   model_->clearSearch();
+}
+
+bool ChatClient::encryptByIESAndSaveMessageInDb(const std::shared_ptr<Chat::MessageData>& message)
+{
+   BinaryData localPublicKey(appSettings_->GetAuthKeys().second.data(), appSettings_->GetAuthKeys().second.size());
+   std::unique_ptr<Encryption::IES_Encryption> enc = Encryption::IES_Encryption::create(logger_);
+   enc->setPublicKey(localPublicKey);
+   enc->setData(message->messageData().toStdString());
+
+   try {
+      Botan::SecureVector<uint8_t> encodedData;
+      enc->finish(encodedData);
+
+      Chat::MessageData encMessageData(message->senderId(), message->receiverId(), message->id(), message->dateTime(),
+         QString::fromLatin1(QByteArray(reinterpret_cast<const char*>(encodedData.data()), int(encodedData.size())).toBase64()), message->state());
+      encMessageData.setEncryptionType(Chat::MessageData::EncryptionType::IES);
+      encMessageData.setNonce(message->nonce());
+      chatDb_->add(encMessageData);
+   }
+   catch (std::exception & e) {
+      logger_->error("[ChatClient::{}] Failed to encrypt msg by ies {}", __func__, e.what());
+      return false;
+   }
+
+   return true;
+}
+
+bool ChatClient::decryptIESMessage(std::shared_ptr<Chat::MessageData>& message)
+{
+   std::unique_ptr<Encryption::IES_Decryption> dec = Encryption::IES_Decryption::create(logger_);
+   SecureBinaryData localPrivateKey(appSettings_->GetAuthKeys().first.data(), appSettings_->GetAuthKeys().first.size());
+   dec->setPrivateKey(localPrivateKey);
+   dec->setData(QByteArray::fromBase64(message->messageData().toUtf8()).toStdString());
+
+   try {
+      Botan::SecureVector<uint8_t> decodedData;
+      dec->finish(decodedData);
+
+      message->setMessageData(QString::fromUtf8((char*)decodedData.data(), (int)decodedData.size()));
+      message->setEncryptionType(Chat::MessageData::EncryptionType::Unencrypted);
+      return true;
+   }
+   catch (std::exception & e) {
+      logger_->error("Failed to decrypt msg from DB {}", message->id().toStdString());
+      message->setFlag(Chat::MessageData::State::Invalid);
+      return false;
+   }
+}
+
+void ChatClient::onMessageRead(std::shared_ptr<Chat::MessageData> message)
+{
+   if (message->senderId().toStdString() == model_->currentUser()) {
+      return;
+   }
+
+   message->setFlag(Chat::MessageData::State::Read);
+   chatDb_->updateMessageStatus(message->id(), message->state());
+   model_->notifyMessageChanged(message);
+   sendUpdateMessageState(message);
+}
+
+void ChatClient::onRoomMessageRead(std::shared_ptr<Chat::MessageData> message)
+{
+   message->setFlag(Chat::MessageData::State::Read);
+   chatDb_->updateMessageStatus(message->id(), message->state());
+   model_->notifyMessageChanged(message);
+}
+
+void ChatClient::onContactUpdatedByInput(std::shared_ptr<Chat::ContactRecordData> crecord)
+{
+   ContactUserData::Status status = contactStatusToDBStatus(crecord->getContactStatus());
+   addOrUpdateContact(crecord->getContactId(), status, crecord->getDisplayName());
 }
