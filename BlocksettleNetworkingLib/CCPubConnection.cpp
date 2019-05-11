@@ -39,7 +39,8 @@ bool CCPubConnection::LoadCCDefinitionsFromPub()
 
 bool CCPubConnection::SubmitRequestToPB(const std::string &name, const std::string& data)
 {
-   const auto connection = connectionManager_->CreateZMQBIP15XDataConnection();
+   const auto connection = connectionManager_->CreateZMQBIP15XDataConnection(
+      true, true, true);
    connection->setCBs(cbApproveConn_);
 
    cmdPuB_ = std::make_shared<RequestReplyCommand>(name, connection, logger_);

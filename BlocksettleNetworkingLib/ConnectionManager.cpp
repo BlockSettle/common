@@ -120,7 +120,8 @@ std::shared_ptr<ZmqSecuredDataConnection> ConnectionManager::CreateSecuredDataCo
 }
 
 std::shared_ptr<ZmqBIP15XServerConnection>
-   ConnectionManager::CreateZMQBIP15XChatServerConnection(bool ephemeral
+   ConnectionManager::CreateZMQBIP15XChatServerConnection(const bool& ephemeral
+      , const bool& overrideBIP150AuthMode, const bool& newBIP150AuthMode
       , const std::string& ownKeyFileDir
       , const std::string& ownKeyFileName) const
 {
@@ -131,16 +132,21 @@ std::shared_ptr<ZmqBIP15XServerConnection>
 
    return std::make_shared<ZmqBIP15XServerConnection>(logger_, zmqContext_
       , READ_UINT64_LE(bdID.getPtr()), cbTrustedClients, ephemeral
+      , overrideBIP150AuthMode
+      , newBIP150AuthMode // Ignored if override = false
       , ownKeyFileDir, ownKeyFileName, false);
 }
 
 std::shared_ptr<ZmqBIP15XDataConnection>
-   ConnectionManager::CreateZMQBIP15XDataConnection(bool ephemeral
+   ConnectionManager::CreateZMQBIP15XDataConnection(const bool& ephemeral
+   , const bool& overrideBIP150AuthMode, const bool& newBIP150AuthMode
    , const std::string& ownKeyFileDir, const std::string& ownKeyFileName
    , bool makeClientCookie, bool readServerCookie
    , const std::string& cookieName) const
 {
    auto connection = std::make_shared<ZmqBIP15XDataConnection>(logger_
+      , overrideBIP150AuthMode
+      , newBIP150AuthMode // Ignored if override = false
       , ephemeral
       , ownKeyFileDir
       , ownKeyFileName

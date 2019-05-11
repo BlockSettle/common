@@ -16,6 +16,7 @@ public:
    ~ArmoryObject() noexcept override = default;
 
    void setupConnection(const ArmorySettings &settings
+      , const bool& overrideBIP150AuthMode, const bool& newBIP150AuthMode
       , const BIP151Cb &bip150PromptUserCb = [](const BinaryData&, const std::string&) { return true; });
 
    std::string registerWallet(std::shared_ptr<AsyncClient::BtcWallet> &, const std::string &walletId

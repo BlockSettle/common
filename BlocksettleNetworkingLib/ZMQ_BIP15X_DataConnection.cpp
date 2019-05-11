@@ -26,7 +26,8 @@ namespace {
 //         The path to the key cookie to read or write. (const std::string)
 // OUTPUT: None
 ZmqBIP15XDataConnection::ZmqBIP15XDataConnection(
-   const shared_ptr<spdlog::logger>& logger, const bool ephemeralPeers
+   const shared_ptr<spdlog::logger>& logger, const bool& overrideBIP150AuthMode
+   , const bool& newBIP150AuthMode, const bool& ephemeralPeers
    , const std::string& ownKeyFileDir, const std::string& ownKeyFileName
    , const bool monitored, const bool makeClientCookie
    , const bool readServerCookie, const std::string& cookieNamePath)
@@ -57,6 +58,10 @@ ZmqBIP15XDataConnection::ZmqBIP15XDataConnection(
          "supplied. Connection is incomplete.");
    }
 
+   if (overrideBIP150AuthMode) {
+      bip150AuthMode_ = newBIP150AuthMode;
+   }
+
    outKeyTimePoint_ = chrono::steady_clock::now();
 
    currentReadMessage_.reset();
@@ -76,7 +81,7 @@ ZmqBIP15XDataConnection::ZmqBIP15XDataConnection(
    // BIP 151 connection setup. Technically should be per-socket or something
    // similar but data connections will only connect to one machine at a time.
    auto lbds = getAuthPeerLambda();
-   bip151Connection_ = make_shared<BIP151Connection>(lbds);
+   bip151Connection_ = make_shared<BIP151Connection>(lbds, bip150AuthMode_);
    if (makeClientIDCookie_) {
       genBIPIDCookie();
    }

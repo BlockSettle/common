@@ -53,6 +53,8 @@ public:
       , const uint64_t& id
       , const std::function<std::vector<std::string>()>& trustedClients
       , const bool& ephemeralPeers
+      , const bool& overrideBIP150AuthMode
+      , const bool& newBIP150AuthMode = false
       , const std::string& ownKeyFileDir = ""
       , const std::string& ownKeyFileName = ""
       , const bool& makeServerCookie = false
@@ -61,6 +63,8 @@ public:
    ZmqBIP15XServerConnection(const std::shared_ptr<spdlog::logger>& logger
       , const std::shared_ptr<ZmqContext>& context
       , const std::function<std::vector<std::string>()>& cbTrustedClients
+      , const bool& overrideBIP150AuthMode
+      , const bool& newBIP150AuthMode = false
       , const bool& makeServerCookie = false
       , const bool& readClientCookie = false
       , const std::string& cookiePath = "");
@@ -117,6 +121,7 @@ private:
    const bool useClientIDCookie_;
    const bool makeServerIDCookie_;
    const std::string bipIDCookiePath_;
+   bool bip150AuthMode_ = ::publicRequester;
 
    std::unordered_map<std::string, std::chrono::steady_clock::time_point>  lastHeartbeats_;
    std::atomic_bool        hbThreadRunning_;

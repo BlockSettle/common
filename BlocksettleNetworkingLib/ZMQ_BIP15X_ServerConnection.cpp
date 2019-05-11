@@ -32,6 +32,8 @@ void ZmqBIP15XPerConnData::reset()
 //         ZMQ context. (const std::shared_ptr<ZmqContext>&)
 //         Per-connection ID. (const uint64_t&)
 //         Callback for getting a list of trusted clients. (function<vector<string>()>)
+//         A flag indicating if the global BIP 150 auth mode is overridden. (const bool)
+//         A flag indicating the desired BIP 150 auth mode if global is overridden. (const bool)
 //         Ephemeral peer usage. Not recommended. (const bool&)
 //         The directory containing the file with the non-ephemeral key. (const std::string)
 //         The file with the non-ephemeral key. (const std::string)
@@ -44,9 +46,11 @@ ZmqBIP15XServerConnection::ZmqBIP15XServerConnection(
    , const std::shared_ptr<ZmqContext>& context
    , const uint64_t& id
    , const std::function<std::vector<std::string>()>& cbTrustedClients
-   , const bool& ephemeralPeers, const std::string& ownKeyFileDir
-   , const std::string& ownKeyFileName, const bool& makeServerCookie
-   , const bool& readClientCookie, const std::string& cookiePath)
+   , const bool& ephemeralPeers
+   , const bool& overrideBIP150AuthMode, const bool& newBIP150AuthMode
+   , const std::string& ownKeyFileDir, const std::string& ownKeyFileName
+   , const bool& makeServerCookie, const bool& readClientCookie
+   , const std::string& cookiePath)
    : ZmqServerConnection(logger, context), id_(id)
    , useClientIDCookie_(readClientCookie)
    , makeServerIDCookie_(makeServerCookie)
@@ -74,6 +78,10 @@ ZmqBIP15XServerConnection::ZmqBIP15XServerConnection(
          "supplied. Connection is incomplete.");
    }
 
+   if (overrideBIP150AuthMode) {
+      bip150AuthMode_ = newBIP150AuthMode;
+   }
+
    // In general, load the client key from a special Armory wallet file.
    if (!ephemeralPeers) {
        authPeers_ = make_shared<AuthorizedPeers>(ownKeyFileDir, ownKeyFileName);
@@ -95,6 +103,8 @@ ZmqBIP15XServerConnection::ZmqBIP15XServerConnection(
 // INPUT:  Logger object. (const shared_ptr<spdlog::logger>&)
 //         ZMQ context. (const std::shared_ptr<ZmqContext>&)
 //         Callback for getting a list of trusted clients. (function<vector<string>()>)
+//         A flag indicating if the global BIP 150 auth mode is overridden. (const bool)
+//         A flag indicating the desired BIP 150 auth mode if global is overridden. (const bool)
 //         A flag indicating if the connection will make a key cookie. (bool)
 //         A flag indicating if the connection will read a key cookie. (bool)
 //         The path to the key cookie to read or write. (const std::string)
@@ -103,6 +113,7 @@ ZmqBIP15XServerConnection::ZmqBIP15XServerConnection(
    const std::shared_ptr<spdlog::logger>& logger
    , const std::shared_ptr<ZmqContext>& context
    , const std::function<std::vector<std::string>()> &cbTrustedClients
+   , const bool& overrideBIP150AuthMode, const bool& newBIP150AuthMode
    , const bool& makeServerCookie, const bool& readClientCookie
    , const std::string& cookiePath)
    : ZmqServerConnection(logger, context)
@@ -122,6 +133,10 @@ ZmqBIP15XServerConnection::ZmqBIP15XServerConnection(
    if (readClientCookie && bipIDCookiePath_.empty()) {
       throw std::runtime_error("ID cookie reading requested but no name " \
          "supplied. Connection is incomplete.");
+   }
+
+   if (overrideBIP150AuthMode) {
+      bip150AuthMode_ = newBIP150AuthMode;
    }
 
    authPeers_ = make_shared<AuthorizedPeers>();
@@ -884,7 +899,8 @@ void ZmqBIP15XServerConnection::setBIP151Connection(const string& clientID)
       {
          std::unique_lock<std::mutex> lock(clientsMtx_);
          socketConnMap_[clientID] = make_unique<ZmqBIP15XPerConnData>();
-         socketConnMap_[clientID]->encData_ = make_unique<BIP151Connection>(lbds);
+         socketConnMap_[clientID]->encData_ = make_unique<BIP151Connection>(lbds
+            , bip150AuthMode_);
          socketConnMap_[clientID]->outKeyTimePoint_ = chrono::steady_clock::now();
       }
       notifyListenerOnNewConnection(clientID);

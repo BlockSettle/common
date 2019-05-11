@@ -1194,9 +1194,10 @@ void RemoteSigner::RecreateConnection()
       absCookiePath = SystemFilePaths::appDataLocation() + "/" + "signerServerID";
    }
 
+   // BIP 150 auth mode will not be overridden.
    connection_ = connectionManager_->CreateZMQBIP15XDataConnection(
-      ephemeralDataConnKeys_, ownKeyFileDir_, ownKeyFileName_, makeClientCookie
-      , readServerCookie, absCookiePath);
+      ephemeralDataConnKeys_, false, false, ownKeyFileDir_, ownKeyFileName_
+      , makeClientCookie, readServerCookie, absCookiePath);
    connection_->setCBs(cbNewKey_);
    connection_->setLocalHeartbeatInterval();
 

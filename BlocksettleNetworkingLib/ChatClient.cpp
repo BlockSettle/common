@@ -117,7 +117,8 @@ std::string ChatClient::loginToServer(const std::string& email, const std::strin
    currentUserId_ = hasher_->deriveKey(email);
    currentJwt_ = jwt;
 
-   connection_ = connectionManager_->CreateZMQBIP15XDataConnection();
+   connection_ = connectionManager_->CreateZMQBIP15XDataConnection(true, true
+      , true);
    connection_->setCBs(cb);
 
    if (!connection_->openConnection(appSettings_->get<std::string>(ApplicationSettings::chatServerHost)
@@ -264,7 +265,7 @@ void ChatClient::OnContactsActionResponseDirect(const Chat::ContactsActionRespon
             model_->insertContactObject(contact, true);
             addOrUpdateContact(contactId, ContactUserData::Status::Incoming);
             auto requestS = std::make_shared<Chat::ContactActionRequestServer>("", currentUserId_, contactId.toStdString(), Chat::ContactsActionServer::AddContactRecord, Chat::ContactStatus::Incoming, pk);
-            sendRequest(requestS);            
+            sendRequest(requestS);
             emit NewContactRequest(contactId);
          }
 
@@ -616,7 +617,7 @@ void ChatClient::OnMessages(const Chat::MessagesResponse &response)
             model_->insertContactsMessage(msg);
          }
          break;
-         
+
          default:
          break;
       }
@@ -778,7 +779,7 @@ std::shared_ptr<Chat::MessageData> ChatClient::sendOwnMessage(
 
    enc->setData(messageData.messageData().toStdString());
    enc->setAssociatedData(messageData.jsonAssociatedData());
-   
+
    Botan::SecureVector<uint8_t> encodedData;
 
    try {

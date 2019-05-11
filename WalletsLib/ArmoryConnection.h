@@ -137,6 +137,7 @@ public:
 protected:
    void setupConnection(NetworkType, const std::string &host, const std::string &port
       , const std::string &dataDir, const BinaryData &serverKey
+      , const bool& overrideBIP150AuthMode, const bool& newBIP150AuthMode
       , const StringCb &cbError, const BIP151Cb &cbBIP151);
 
 private:

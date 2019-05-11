@@ -30,8 +30,10 @@ void ArmoryConnection::stopServiceThreads()
    regThreadRunning_ = false;
 }
 
-void ArmoryConnection::setupConnection(NetworkType netType, const std::string &host
-   , const std::string &port, const std::string &dataDir, const BinaryData &serverKey
+void ArmoryConnection::setupConnection(NetworkType netType
+   , const std::string &host, const std::string &port
+   , const std::string &dataDir, const BinaryData &serverKey
+   , const bool& overrideBIP150AuthMode, const bool& newBIP150AuthMode
    , const StringCb &cbError, const BIP151Cb &cbBIP151)
 {
    // Add BIP 150 server keys
@@ -71,7 +73,8 @@ void ArmoryConnection::setupConnection(NetworkType netType, const std::string &h
       logger_->debug("[ArmoryConnection::setupConnection] completed");
    };
 
-   const auto &connectRoutine = [this, registerRoutine, cbBIP151, host, port, dataDir] {
+   const auto &connectRoutine = [this, registerRoutine, cbBIP151, host, port
+      , dataDir, overrideBIP150AuthMode, newBIP150AuthMode] {
       if (connThreadRunning_) {
          return;
       }
@@ -93,14 +96,17 @@ void ArmoryConnection::setupConnection(NetworkType netType, const std::string &h
             break;
          }
          cbRemote_ = std::make_shared<ArmoryCallback>(this, logger_);
-         logger_->debug("[ArmoryConnection::setupConnection] connecting to Armory {}:{}"
-                        , host, port);
+         logger_->debug("[ArmoryConnection::setupConnection] connecting to "
+            "Armory {}:{}", host, port);
 
          // Get Armory BDV (gateway to the remote ArmoryDB instance). Must set
          // up BIP 150 keys before connecting. BIP 150/151 is transparent to us
          // otherwise. If it fails, the connection will fail.
          bdv_ = AsyncClient::BlockDataViewer::getNewBDV(host, port
-            , dataDir, true // enable ephemeralPeers, because we manage armory keys ourself
+            , dataDir
+            , true // enable ephemeralPeers, because we manage armory keys ourselves
+            , overrideBIP150AuthMode
+            , newBIP150AuthMode
             , cbRemote_);
 
          if (!bdv_) {

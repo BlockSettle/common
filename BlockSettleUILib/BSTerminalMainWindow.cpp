@@ -197,7 +197,8 @@ void BSTerminalMainWindow::GetNetworkSettingsFromPuB(const std::function<void()>
       return;
    }
 
-   const auto connection = connectionManager_->CreateZMQBIP15XDataConnection();
+   const auto connection = connectionManager_->CreateZMQBIP15XDataConnection(
+      true, true, true);
    connection->setCBs(cbApprovePuB_);
 
    Blocksettle::Communication::RequestPacket reqPkt;
@@ -850,9 +851,13 @@ void BSTerminalMainWindow::initArmory()
 
 void BSTerminalMainWindow::connectArmory()
 {
+   // We'll connect to the Armory node with 1-way BIP 150 authentication
+   // ("public mode"). Override the terminal setting and force 1-way auth for
+   // the connection.
    ArmorySettings currentArmorySettings = armoryServersProvider_->getArmorySettings();
    armoryServersProvider_->setConnectedArmorySettings(currentArmorySettings);
-   armory_->setupConnection(currentArmorySettings, [this](const BinaryData& srvPubKey, const std::string& srvIPPort) {
+   armory_->setupConnection(currentArmorySettings, true, true
+      , [this](const BinaryData& srvPubKey, const std::string& srvIPPort) {
       auto promiseObj = std::make_shared<std::promise<bool>>();
       std::future<bool> futureObj = promiseObj->get_future();
       QMetaObject::invokeMethod(this, [this, srvPubKey, srvIPPort, promiseObj] {

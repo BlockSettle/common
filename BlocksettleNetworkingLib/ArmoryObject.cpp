@@ -108,14 +108,16 @@ bool ArmoryObject::startLocalArmoryProcess(const ArmorySettings &settings)
    return false;
 }
 
-void ArmoryObject::setupConnection(const ArmorySettings &settings, const BIP151Cb &bip150PromptUserCb)
+void ArmoryObject::setupConnection(const ArmorySettings &settings
+   , const bool& overrideBIP150AuthMode, const bool& newBIP150AuthMode
+   , const BIP151Cb &bip150PromptUserCb)
 {
    emit prepareConnection(settings);
 
    if (settings.runLocally) {
       if (!startLocalArmoryProcess(settings)) {
          logger_->error("[{}] failed to start Armory from {}", __func__
-                        , settings.armoryExecutablePath.toStdString());
+            , settings.armoryExecutablePath.toStdString());
          setState(State::Offline);
          return;
       }
@@ -131,8 +133,10 @@ void ArmoryObject::setupConnection(const ArmorySettings &settings, const BIP151C
       emit connectionError(QString::fromStdString(errDesc));
    };
 
-   ArmoryConnection::setupConnection(settings.netType, settings.armoryDBIp.toStdString()
-      , std::to_string(settings.armoryDBPort), settings.dataDir.toStdString(), serverBIP15xKey
+   ArmoryConnection::setupConnection(settings.netType
+      , settings.armoryDBIp.toStdString(), std::to_string(settings.armoryDBPort)
+      , settings.dataDir.toStdString(), serverBIP15xKey
+      , overrideBIP150AuthMode, newBIP150AuthMode
       , cbError, bip150PromptUserCb);
 }
 
