@@ -167,7 +167,7 @@ vector<shared_ptr<AssetEntry>>
       if (privkey == nullptr)
          throw AssetUnavailableException();
       auto& privkeyData =
-         ddc->getDecryptedPrivateKey(privkey);
+         ddc->getDecryptedPrivateData(privkey);
 
       auto id_int = assetSingle->getIndex() + 1;
       auto& account_id = assetSingle->getAccountID();
@@ -270,7 +270,7 @@ vector<shared_ptr<AssetEntry>>
       if (privkey == nullptr)
          throw AssetUnavailableException();
       auto& privkeyData =
-         ddc->getDecryptedPrivateKey(privkey);
+         ddc->getDecryptedPrivateData(privkey);
 
       auto& account_id = rootAsset_single->getAccountID();
       return computeNextPrivateEntry(

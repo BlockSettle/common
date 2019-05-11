@@ -690,8 +690,8 @@ void AddressAccount::make_new(
    //asset account lambda
    auto createNewAccount = [&decrData, this](
       shared_ptr<AccountType_BIP32> accBip32,
-      unsigned node_id, unique_ptr<Cipher> cipher_copy)
-         ->shared_ptr<AssetAccount>
+      unsigned node_id, unique_ptr<Cipher> cipher_copy)->
+         shared_ptr<AssetAccount>
    {
       auto&& account_id = WRITE_UINT32_BE(node_id);
       auto&& full_account_id = ID_ + account_id;
