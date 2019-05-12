@@ -50,7 +50,8 @@ message Packet
 message KeyPair
 {
    string id = 1;
-   bytes key = 2;
+   // In hex format
+   string key = 2;
 }
 
 enum Setting {
