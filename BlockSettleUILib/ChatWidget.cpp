@@ -244,6 +244,10 @@ ChatWidget::ChatWidget(QWidget *parent)
 {
    ui_->setupUi(this);
 
+   #ifndef Q_OS_WIN
+      ui_->timeLabel->setMinimumSize(QSize(110, 0));
+   #endif
+
    //Init UI and other stuff
    ui_->stackedWidget->setCurrentIndex(1); //Basically stackedWidget should be removed
 

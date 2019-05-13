@@ -19,8 +19,14 @@ ChatMessagesTextEdit::ChatMessagesTextEdit(QWidget* parent)
    tableFormat.setCellSpacing(0);
 
    QVector <QTextLength> col_widths;
-   col_widths << QTextLength (QTextLength::FixedLength, 110);
-   col_widths << QTextLength (QTextLength::FixedLength, 34);
+   
+   #ifdef Q_OS_WIN
+      col_widths << QTextLength (QTextLength::FixedLength, 101);
+   #else
+      col_widths << QTextLength (QTextLength::FixedLength, 110);
+   #endif
+   
+   col_widths << QTextLength (QTextLength::FixedLength, 20);
    col_widths << QTextLength (QTextLength::FixedLength, 90);
    col_widths << QTextLength (QTextLength::VariableLength, 50);
    tableFormat.setColumnWidthConstraints (col_widths);
