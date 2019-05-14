@@ -149,6 +149,7 @@ void ChatClientUserView::setActiveChatLabel(QLabel *label)
 
 void ChatClientUserView::setCurrentUserChat(const QString &userId)
 {
+   return;
    // find all indexes
    QModelIndexList indexes = model()->match(model()->index(0,0),
                                             Qt::DisplayRole,
