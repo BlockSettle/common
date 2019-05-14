@@ -92,7 +92,7 @@ void ArmoryConnection::setupConnection(NetworkType netType
       bool connected = false;
       do {
          if (needsBreakConnectionLoop_.load()) {
-            setState(State::Canceled);
+            setState(State::Cancelled);
             break;
          }
          cbRemote_ = std::make_shared<ArmoryCallback>(this, logger_);
@@ -732,7 +732,7 @@ void ArmoryCallback::disconnected()
 {
    logger_->debug("[{}]", __func__);
    connection_->regThreadRunning_ = false;
-   if (connection_->state() != ArmoryConnection::State::Canceled) {
+   if (connection_->state() != ArmoryConnection::State::Cancelled) {
       connection_->setState(ArmoryConnection::State::Offline);
    }
 }
