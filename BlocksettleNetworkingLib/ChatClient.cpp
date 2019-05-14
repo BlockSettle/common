@@ -111,8 +111,8 @@ void ChatClient::OnLoginReturned(const Chat::LoginResponse &response)
       readDatabase();
       auto request1 = std::make_shared<Chat::MessagesRequest>("", currentUserId_, currentUserId_);
       sendRequest(request1);
-      auto request2 = std::make_shared<Chat::ContactsListRequest>("", currentUserId_);
-      sendRequest(request2);
+//      auto request2 = std::make_shared<Chat::ContactsListRequest>("", currentUserId_);
+//      sendRequest(request2);
    }
    else {
       loggedIn_ = false;
