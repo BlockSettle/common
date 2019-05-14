@@ -406,11 +406,8 @@ private:
 		}
 
       std::unique_lock<std::mutex> lock(condVarMutex_);
-		if (flag_ > 0)
-		{
-			--flag_;
-			return;
-		}
+      if (flag_ > 0)
+         return;
 
 		condVar_.wait(lock);
    }
@@ -482,9 +479,8 @@ public:
 		{
          std::unique_lock<std::mutex> lock(condVarMutex_);
 			++flag_;
-		}
-
-		condVar_.notify_one();
+   		condVar_.notify_all();
+      }
    }
 
    void terminate(std::exception_ptr exceptptr = nullptr)
