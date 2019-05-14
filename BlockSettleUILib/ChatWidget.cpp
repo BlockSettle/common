@@ -673,7 +673,6 @@ void ChatWidget::onNewMessagePresent(const bool isNewMessagePresented, std::shar
 
 void ChatWidget::selectGlobalRoom()
 {
-   return;
    // find all indexes
    QModelIndexList indexes = ui_->treeViewUsers->model()->match(ui_->treeViewUsers->model()->index(0,0),
                                                                Qt::DisplayRole,
