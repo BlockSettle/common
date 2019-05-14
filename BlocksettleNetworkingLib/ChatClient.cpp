@@ -243,6 +243,13 @@ void ChatClient::OnContactsActionResponseDirect(const Chat::ContactsActionRespon
          //addOrUpdateContact(QString::fromStdString(response.senderId()), QStringLiteral(""), true);
       }
       break;
+      case Chat::ContactsAction::Remove: {
+         autheid::PublicKey pk = response.getSenderPublicKey();
+         auto requestS = std::make_shared<Chat::ContactActionRequestServer>("", currentUserId_,response.senderId(), Chat::ContactsActionServer::RemoveContactRecord, Chat::ContactStatus::Incoming, pk);
+         sendRequest(requestS);
+      }
+         break;
+
    }
    logger_->debug("[ChatClient::OnContactsActionResponseDirect]: Incoming contact action from {}: {}",
                   response.senderId(),
@@ -262,6 +269,11 @@ void ChatClient::OnContactsActionResponseServer(const Chat::ContactsActionRespon
       case Chat::ContactsActionServer::RemoveContactRecord:
          actionString = "ContactsActionServer::RemoveContactRecord";
          //removeContact(QString::fromStdString(response.userId()));
+         if (response.getActionResult() == Chat::ContactsActionServerResult::Success) {
+            model_->removeContactNode(response.contactId());
+            chatDb_->removeContact(QString::fromStdString(response.contactId()));
+            //TODO: Remove pub key
+         }
          retrySendQueuedMessages(response.contactId());
       break;
       case Chat::ContactsActionServer::UpdateContactRecord:
@@ -947,6 +959,8 @@ void ChatClient::onActionAddToContacts(const QString& userId)
 void ChatClient::onActionRemoveFromContacts(std::shared_ptr<Chat::ContactRecordData> crecord)
 {
    qDebug() << __func__ << " " << QString::fromStdString(crecord->toJsonString());
+   auto requestS = std::make_shared<Chat::ContactActionRequestServer>("", currentUserId_, crecord->getContactId().toStdString(), Chat::ContactsActionServer::RemoveContactRecord, Chat::ContactStatus::Rejected, autheid::PublicKey());
+   sendRequest(requestS);
 }
 
 void ChatClient::onActionAcceptContactRequest(std::shared_ptr<Chat::ContactRecordData> crecord)
