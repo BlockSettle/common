@@ -14,14 +14,14 @@
 
 #include "ChatClientTree/TreeObjects.h"
 #include "ChatHandleInterfaces.h"
+#include "ZMQ_BIP15X_DataConnection.h"
+
 namespace spdlog {
    class logger;
 }
 namespace Chat {
    class Request;
 }
-
-
 class ConnectionManager;
 class ZmqBIP15XDataConnection;
 class ApplicationSettings;
@@ -35,6 +35,7 @@ class ChatClient : public QObject
              , public ChatItemActionsHandler
              , public ChatSearchActionsHandler
              , public ChatMessageReadHandler
+             , public ModelChangesHandler
 {
    Q_OBJECT
 
@@ -51,7 +52,8 @@ public:
 
    std::shared_ptr<ChatClientDataModel> getDataModel();
 
-   std::string loginToServer(const std::string& email, const std::string& jwt);
+   std::string loginToServer(const std::string& email, const std::string& jwt
+      , const ZmqBIP15XDataConnection::cbNewKey &);
    void logout(bool send = true);
 
    void OnHeartbeatPong(const Chat::HeartbeatPongResponse &) override;
@@ -87,9 +89,9 @@ public:
    // Called when we asked for a public key of peer, and got result.
    void OnSendOwnPublicKey(const Chat::SendOwnPublicKeyResponse &response) override;
 
-   bool getContacts(ContactUserDataList &contactList);
+   bool getContacts(ContactRecordDataList &contactList);
    bool addOrUpdateContact(const QString &userId,
-                           ContactUserData::Status status,
+                           Chat::ContactStatus status,
                            const QString &userName = QStringLiteral(""));
    bool removeContact(const QString &userId);
    void sendFriendRequest(const QString &friendUserId);
@@ -100,6 +102,8 @@ public:
    QString deriveKey(const QString& email) const;
    void clearSearch();
    bool isFriend(const QString &userId);
+   bool encryptByIESAndSaveMessageInDb(const std::shared_ptr<Chat::MessageData>& message);
+   bool decryptIESMessage(std::shared_ptr<Chat::MessageData>& message);
    QString getUserId();
 
 private:
@@ -125,6 +129,8 @@ signals:
    void MessageStatusUpdated(const QString& messageId, const QString& chatId, int newStatus);
    void RoomsAdd(const std::vector<std::shared_ptr<Chat::RoomData>>& rooms);
    void SearchUserListReceived(const std::vector<std::shared_ptr<Chat::UserData>>& users);
+   void NewContactRequest(const QString &userId);
+   void ContactRequestAccepted(const QString &userId);
 
    void ForceLogoutSignal();
 public slots:
@@ -168,6 +174,7 @@ public:
    void onActionRemoveFromContacts(std::shared_ptr<Chat::ContactRecordData> crecord) override;
    void onActionAcceptContactRequest(std::shared_ptr<Chat::ContactRecordData> crecord) override;
    void onActionRejectContactRequest(std::shared_ptr<Chat::ContactRecordData> crecord) override;
+   bool onActionIsFriend(const QString& userId) override;
 
    // ChatSearchActionsHandler interface
 public:
@@ -178,6 +185,9 @@ public:
 public:
    void onMessageRead(std::shared_ptr<Chat::MessageData> message) override;
    void onRoomMessageRead(std::shared_ptr<Chat::MessageData> message) override;
-};
 
+   // ModelChangesHandler interface
+public:
+   void onContactUpdatedByInput(std::shared_ptr<Chat::ContactRecordData> crecord) override;
+};
 #endif   // CHAT_CLIENT_H

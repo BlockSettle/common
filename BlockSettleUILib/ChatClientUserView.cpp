@@ -147,6 +147,26 @@ void ChatClientUserView::setActiveChatLabel(QLabel *label)
    label_ = label;
 }
 
+void ChatClientUserView::setCurrentUserChat(const QString &userId)
+{
+   // find all indexes
+   QModelIndexList indexes = model()->match(model()->index(0,0),
+                                            Qt::DisplayRole,
+                                            QLatin1String("*"),
+                                            -1,
+                                            Qt::MatchWildcard|Qt::MatchRecursive);
+      
+   // set required chat
+   for (auto index : indexes) {
+      if (index.data(ChatClientDataModel::Role::ItemTypeRole).value<TreeItem::NodeType>() == TreeItem::NodeType::ContactsElement) {
+         if (index.data(ChatClientDataModel::Role::ContactIdRole).toString() == userId) {
+            setCurrentIndex(index);
+            break;
+         }
+      }
+   }
+}
+
 void ChatClientUserView::onCustomContextMenu(const QPoint & point)
 {
    if (!contextMenu_) {
@@ -261,11 +281,13 @@ void ChatClientUserView::dataChanged(const QModelIndex &topLeft, const QModelInd
             auto mnode = static_cast<TreeMessageNode*>(item);
             notifyMessageChanged(mnode->getMessage());
          }
+         break;
          case TreeItem::NodeType::RoomsElement:
          case TreeItem::NodeType::ContactsElement:{
             auto node = static_cast<CategoryElement*>(item);
             notifyElementUpdated(node);
          }
+         break;
          default:
             break;
       }

@@ -1,6 +1,10 @@
 #include "ChatClientUsersViewItemDelegate.h"
 #include "ChatClientDataModel.h"
 #include <QPainter>
+#include <QLineEdit>
+
+static const int kDotSize = 8;
+static const QString kDotPathname = QLatin1String(":/ICON_DOT");
 
 using NodeType = TreeItem::NodeType;
 using Role = ChatClientDataModel::Role;
@@ -71,6 +75,17 @@ void ChatClientUsersViewItemDelegate::paintRoomsElement(QPainter *painter, const
    bool newMessage = index.data(Role::ChatNewMessageRole).toBool();
    itemOption.text = index.data(Role::RoomTitleRole).toString();
    QStyledItemDelegate::paint(painter, itemOption, index);
+
+   // draw dot
+   if (newMessage) {
+      QFontMetrics fm(itemOption.font, painter->device());
+      auto textRect = fm.boundingRect(itemOption.rect, 0, itemOption.text);
+      const QPixmap pixmap(kDotPathname);
+      const QRect r(itemOption.rect.left() + textRect.width() + kDotSize,
+                    itemOption.rect.top() + itemOption.rect.height() / 2 - kDotSize / 2 + 1,
+                    kDotSize, kDotSize);
+      painter->drawPixmap(r, pixmap, pixmap.rect());
+   }
 }
 
 void ChatClientUsersViewItemDelegate::paintContactsElement(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const
@@ -84,7 +99,7 @@ void ChatClientUsersViewItemDelegate::paintContactsElement(QPainter *painter, co
    ContactStatus contactStatus = index.data(Role::ContactStatusRole).value<ContactStatus>();
    OnlineStatus onlineStatus = index.data(Role::ContactOnlineStatusRole).value<OnlineStatus>();
    bool newMessage = index.data(Role::ChatNewMessageRole).toBool();
-   itemOption.text = index.data(Role::ContactIdRole).toString();   
+   itemOption.text = index.data(Role::ContactTitleRole).toString();
 
    switch (contactStatus) {
       case ContactStatus::Accepted:
@@ -114,12 +129,12 @@ void ChatClientUsersViewItemDelegate::paintContactsElement(QPainter *painter, co
 
    // draw dot
    if (newMessage) {
-      auto text = index.data(Role::ContactIdRole).toString();
       QFontMetrics fm(itemOption.font, painter->device());
-      auto textRect = fm.boundingRect(itemOption.rect, 0, text);
-      auto textWidth = textRect.width();
-      const QPixmap pixmap(QLatin1String(":/ICON_DOT"));
-      const QRect r(itemOption.rect.left() + textWidth + pixmap.width(), itemOption.rect.top() + pixmap.height() - 1, pixmap.width(), pixmap.height());
+      auto textRect = fm.boundingRect(itemOption.rect, 0, itemOption.text);
+      const QPixmap pixmap(kDotPathname);
+      const QRect r(itemOption.rect.left() + textRect.width() + kDotSize,
+                    itemOption.rect.top() + itemOption.rect.height() / 2 - kDotSize / 2 + 1,
+                    kDotSize, kDotSize);
       painter->drawPixmap(r, pixmap, pixmap.rect());
    }
 }
@@ -143,4 +158,11 @@ void ChatClientUsersViewItemDelegate::paintUserElement(QPainter *painter, const 
    }
    itemOption.text = index.data(Role::UserIdRole).toString();
    QStyledItemDelegate::paint(painter, itemOption, index);
+}
+
+QWidget *ChatClientUsersViewItemDelegate::createEditor(QWidget *parent, const QStyleOptionViewItem &option, const QModelIndex &index) const
+{
+   QWidget * editor = QStyledItemDelegate::createEditor(parent, option, index);
+   editor->setProperty("contact_editor", true);
+   return editor;
 }

@@ -24,6 +24,7 @@ public:
    virtual void onActionRemoveFromContacts(std::shared_ptr<Chat::ContactRecordData> crecord) = 0;
    virtual void onActionAcceptContactRequest(std::shared_ptr<Chat::ContactRecordData> crecord) = 0;
    virtual void onActionRejectContactRequest(std::shared_ptr<Chat::ContactRecordData> crecord) = 0;
+   virtual bool onActionIsFriend(const QString& userId) = 0;
 };
 
 class ChatSearchActionsHandler {
@@ -44,7 +45,13 @@ class NewMessageMonitor {
 public:
 
    virtual  ~NewMessageMonitor() = default;
-   virtual void onNewMessagePresent(const bool isNewMessagePresented, const CategoryElement *element) = 0;
+   virtual void onNewMessagePresent(const bool isNewMessagePresented, std::shared_ptr<Chat::MessageData> message) = 0;
+};
+class ModelChangesHandler {
+public:
+
+   virtual  ~ModelChangesHandler() = default;
+   virtual void onContactUpdatedByInput(std::shared_ptr<Chat::ContactRecordData> crecord) = 0;
 };
 
 

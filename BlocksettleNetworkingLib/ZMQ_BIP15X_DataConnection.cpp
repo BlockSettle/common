@@ -1,32 +1,47 @@
-#include <chrono>
-#include <QStandardPaths>
+#include "ZMQ_BIP15X_DataConnection.h"
 
+#include <chrono>
 #include "FastLock.h"
 #include "MessageHolder.h"
 #include "EncryptionUtils.h"
 #include "SystemFileUtils.h"
-#include "ZMQ_BIP15X_DataConnection.h"
 #include "BIP150_151.h"
+#include "ZMQ_BIP15X_ServerConnection.h"
 
 using namespace std;
 
-#define HEARTBEAT_PACKET_SIZE 23
+namespace {
+   const int HEARTBEAT_PACKET_SIZE = 23;
+} // namespace
 
 // The constructor to use.
 //
 // INPUT:  Logger object. (const shared_ptr<spdlog::logger>&)
 //         Ephemeral peer usage. Not recommended. (const bool&)
+//         The directory containing the file with the non-ephemeral key. (const std::string)
+//         The file with the non-ephemeral key. (const std::string)
 //         A flag for a monitored socket. (const bool&)
+//         A flag indicating if the connection will make a key cookie. (bool)
+//         A flag indicating if the connection will read a key cookie. (bool)
+//         The path to the key cookie to read or write. (const std::string)
 // OUTPUT: None
 ZmqBIP15XDataConnection::ZmqBIP15XDataConnection(
    const shared_ptr<spdlog::logger>& logger, const bool ephemeralPeers
+   , const std::string& ownKeyFileDir, const std::string& ownKeyFileName
    , const bool monitored, const bool makeClientCookie
    , const bool readServerCookie, const std::string& cookieNamePath)
    : ZmqDataConnection(logger, monitored)
    , bipIDCookiePath_(cookieNamePath)
    , useServerIDCookie_(readServerCookie)
    , makeClientIDCookie_(makeClientCookie)
+   , lastHeartbeatReply_(std::chrono::steady_clock::now())
+   , heartbeatInterval_(ZmqBIP15XServerConnection::getDefaultHeartbeatInterval())
 {
+   if (!ephemeralPeers && (ownKeyFileDir.empty() || ownKeyFileName.empty())) {
+      throw std::runtime_error("Client requested static ID key but no key " \
+         "wallet file is specified.");
+   }
+
    if (makeClientIDCookie_ && useServerIDCookie_) {
       throw std::runtime_error("Cannot read client ID cookie and create ID " \
          "cookie at the same time. Connection is incomplete.");
@@ -43,15 +58,13 @@ ZmqBIP15XDataConnection::ZmqBIP15XDataConnection(
    }
 
    outKeyTimePoint_ = chrono::steady_clock::now();
+
    currentReadMessage_.reset();
-   string datadir =
-      QStandardPaths::writableLocation(QStandardPaths::AppDataLocation).toStdString();
-   string filename(CLIENT_AUTH_PEER_FILENAME);
 
    // In general, load the server key from a special Armory wallet file.
    if (!ephemeralPeers) {
       authPeers_ = make_shared<AuthorizedPeers>(
-         datadir, filename);
+         ownKeyFileDir, ownKeyFileName);
    }
    else {
       authPeers_ = make_shared<AuthorizedPeers>();
@@ -69,6 +82,7 @@ ZmqBIP15XDataConnection::ZmqBIP15XDataConnection(
    }
 
    const auto &heartbeatProc = [this] {
+      auto lastHeartbeat = std::chrono::steady_clock::now();
       while (hbThreadRunning_) {
          {
             std::unique_lock<std::mutex> lock(hbMutex_);
@@ -81,16 +95,14 @@ ZmqBIP15XDataConnection::ZmqBIP15XDataConnection(
             continue;
          }
          const auto curTime = std::chrono::steady_clock::now();
-         const auto diff =
-            std::chrono::duration_cast<std::chrono::milliseconds>(
-            curTime - lastHeartbeat_);
-         if (diff.count() > heartbeatInterval_) {
+         const auto diff = curTime - lastHeartbeat;
+         if (diff > heartbeatInterval_) {
+            lastHeartbeat = curTime;
             triggerHeartbeat();
          }
       }
    };
    hbThreadRunning_ = true;
-   lastHeartbeat_ = std::chrono::steady_clock::now();
    hbThread_ = std::thread(heartbeatProc);
 }
 
@@ -207,13 +219,14 @@ void ZmqBIP15XDataConnection::rekey()
 // ***Please use this function for sending all data from inside this class.***
 //
 // INPUT:  The data to send. (const string&)
-//         Flag for encryption usage. True by default. (const bool&)
 // OUTPUT: None
 // RETURN: True if success, false if failure.
 bool ZmqBIP15XDataConnection::sendPacket(const string& data)
 {
+   if (fatalError_) {
+      return false;
+   }
    int result = -1;
-   const auto rightNow = chrono::steady_clock::now();
 
    {
       FastLock locker(lockSocket_);
@@ -228,7 +241,6 @@ bool ZmqBIP15XDataConnection::sendPacket(const string& data)
       return false;
    }
 
-   lastHeartbeat_ = rightNow; // Reset the heartbeat timer, as data was sent.
    return true;
 }
 
@@ -243,6 +255,10 @@ bool ZmqBIP15XDataConnection::sendPacket(const string& data)
 // RETURN: True if success, false if failure.
 bool ZmqBIP15XDataConnection::send(const string& data)
 {
+   if (fatalError_) {
+      return false;
+   }
+
    bool retVal = false;
 
    // If we need to rekey, do it before encrypting the data.
@@ -316,14 +332,37 @@ void ZmqBIP15XDataConnection::triggerHeartbeat()
 
    ZmqBIP15XSerializedMessage msg;
    BinaryData emptyPayload;
-   msg.construct(emptyPayload.getDataVector(), connPtr, ZMQ_MSGTYPE_HEARTBEAT
-      , msgID_);
-   auto& packet = msg.getNextPacket();
+   msg.construct(emptyPayload.getDataVector(), connPtr, ZMQ_MSGTYPE_HEARTBEAT, msgID_);
 
    // An error message is already logged elsewhere if the send fails.
-   if (!sendPacket(packet.toBinStr())) {  // sendPacket already sets the timestamp
-      notifyOnDisconnected();
+   if (!sendPacket(msg.getNextPacket().toBinStr())) {  // sendPacket already sets the timestamp
+      notifyOnError(DataConnectionListener::UndefinedSocketError);
+      return;
    }
+
+   // Old servers don't send heartbeats.
+   // TODO: Remove this check when all servers are updated.
+   if (!serverSendsHeartbeat_) {
+      return;
+   }
+
+   auto lastHeartbeatDiff = std::chrono::steady_clock::now() - lastHeartbeatReply_.load();
+   if (lastHeartbeatDiff > heartbeatInterval_ * 2) {
+      notifyOnError(DataConnectionListener::HeartbeatWaitFailed);
+   }
+}
+
+void ZmqBIP15XDataConnection::notifyOnError(DataConnectionListener::DataConnectionError errorCode)
+{
+   // Notify about error only once
+   if (fatalError_) {
+      return;
+   }
+
+   fatalError_ = true;
+   // Do not send anything when connection fails, client will need to restart connection
+   closeConnection();
+   DataConnection::notifyOnError(errorCode);
 }
 
 // Kick off the BIP 151 handshake. This is the first function to call once the
@@ -438,6 +477,13 @@ void ZmqBIP15XDataConnection::ProcessIncomingData(BinaryData& payload)
       return;
    }
 
+   if (currentReadMessage_.message_.getType() == ZMQ_MSGTYPE_HEARTBEAT) {
+      lastHeartbeatReply_ = std::chrono::steady_clock::now();
+      currentReadMessage_.reset();
+      serverSendsHeartbeat_ = true;
+      return;
+   }
+
    // If we're still handshaking, take the next step. (No fragments allowed.)
    if (currentReadMessage_.message_.getType() > ZMQ_MSGTYPE_AEAD_THRESHOLD) {
       if (!processAEADHandshake(currentReadMessage_.message_)) {
@@ -542,6 +588,11 @@ bool ZmqBIP15XDataConnection::processAEADHandshake(
       sendPacket(packet.toBinStr());
    };
 
+   //compute server name
+   stringstream ss;
+   ss << hostAddr_ << ":" << hostPort_;
+   const auto srvId = ss.str();
+
    // Read the message, get the type, and process as needed. Code mostly copied
    // from Armory.
    auto msgbdr = msgObj.getSingleBinaryMessage();
@@ -571,15 +622,15 @@ bool ZmqBIP15XDataConnection::processAEADHandshake(
          }
       }
 
-      //compute server name
-      stringstream ss;
-      ss << hostAddr_ << ":" << hostPort_;
-
       // If we don't have the key already, we may ask the the user if they wish
       // to continue. (Remote signer only.)
-      if (!bip151Connection_->havePublicKey(msgbdr, ss.str())) {
+      if (!bip151Connection_->havePublicKey(msgbdr, srvId)) {
          //we don't have this key, call user prompt lambda
-         verifyNewIDKey(msgbdr, ss.str());
+         if (verifyNewIDKey(msgbdr, srvId)) {
+            // Add the key. Old keys aren't deleted automatically. Do it to be safe.
+            authPeers_->eraseName(srvId);
+            authPeers_->addPeer(msgbdr.copy(), std::vector<std::string>{ srvId });
+         }
       }
       else {
          //set server key promise
@@ -757,6 +808,8 @@ bool ZmqBIP15XDataConnection::processAEADHandshake(
       if (cbCompleted_) {
          cbCompleted_();
       }
+      logger_->info("[processHandshake] BIP 150 handshake with server complete "
+         "- connection to {} is ready and fully secured", srvId);
 
       break;
    }
@@ -785,6 +838,15 @@ void ZmqBIP15XDataConnection::setCBs(const cbNewKey& inNewKeyCB) {
    if (inNewKeyCB) {
       cbNewKey_ = inNewKeyCB;
    }
+   else {
+      cbNewKey_ = [this](const std::string &, const std::string, const std::string&
+         , const std::shared_ptr<std::promise<bool>> &prom) {
+         logger_->error("[ZmqBIP15XDataConnection] no new key callback was set - auto-accepting connections");
+         if (prom) {
+            prom->set_value(true);
+         }
+      };
+   }
 }
 
 // Add an authorized peer's BIP 150 identity key manually.
@@ -805,6 +867,11 @@ void ZmqBIP15XDataConnection::addAuthPeer(const BinaryData& inKey
    authPeers_->addPeer(inKey, vector<string>{ keyName });
 }
 
+void ZmqBIP15XDataConnection::setLocalHeartbeatInterval()
+{
+   heartbeatInterval_ = ZmqBIP15XServerConnection::getLocalHeartbeatInterval();
+}
+
 // If the user is presented with a new remote server ID key it doesn't already
 // know about, verify the key. A promise will also be used in case any functions
 // are waiting on verification results.
@@ -813,7 +880,7 @@ void ZmqBIP15XDataConnection::addAuthPeer(const BinaryData& inKey
 //         The server IP address (or host name) and port. (const string)
 // OUTPUT: N/A
 // RETURN: N/A
-void ZmqBIP15XDataConnection::verifyNewIDKey(const BinaryDataRef& newKey
+bool ZmqBIP15XDataConnection::verifyNewIDKey(const BinaryDataRef& newKey
    , const string& srvAddrPort)
 {
    if (useServerIDCookie_) {
@@ -825,46 +892,42 @@ void ZmqBIP15XDataConnection::verifyNewIDKey(const BinaryDataRef& newKey
          serverPubkeySignalled_ = true;
       }
       notifyOnError(DataConnectionListener::HandshakeFailed);
-      return;
+      return false;
    }
 
-   // Check to see if we've already verified the key. If not, fire the
-   // callback allowing the user to verify the new key.
-   auto authPeerNameMap = authPeers_->getPeerNameMap();
-   auto authPeerNameSearch = authPeerNameMap.find(srvAddrPort);
-   if (authPeerNameSearch == authPeerNameMap.end()) {
-      logger_->info("[{}] New key ({}) for server [{}] arrived.", __func__
-         , newKey.toHexStr(), srvAddrPort);
+   logger_->debug("[{}] New key ({}) for server [{}] arrived.", __func__
+      , newKey.toHexStr(), srvAddrPort);
 
-      if (!cbNewKey_) {
-         logger_->error("[{}] no server key callback is set - aborting handshake", __func__);
-         notifyOnError(DataConnectionListener::HandshakeFailed);
-         return;
-      }
-
-      // Ask the user if they wish to accept the new identity key.
-      BinaryData oldKey; // there shouldn't be any old key, at least in authPeerNameSearch
-      cbNewKey_(oldKey.toHexStr(), newKey.toHexStr(), serverPubkeyProm_);
-      serverPubkeySignalled_ = true;
-
-      //have we seen the server's pubkey?
-      if (serverPubkeyProm_ != nullptr) {
-         //if so, wait on the promise
-         auto fut = serverPubkeyProm_->get_future();
-         fut.wait();
-         serverPubkeyProm_.reset();
-         serverPubkeySignalled_ = false;
-      }
-
-      // Add the key. Old keys aren't deleted automatically. Do it to be safe.
-      vector<string> keyName;
-      keyName.push_back(srvAddrPort);
-      authPeers_->eraseName(srvAddrPort);
-      authPeers_->addPeer(newKey.copy(), keyName);
-      logger_->info("[{}] Server at {} has had its identity key (0x{}) "
-         "replaced with (0x{}). Connection accepted.", __func__, srvAddrPort
-         , oldKey.toHexStr(), newKey.toHexStr());
+   if (!cbNewKey_) {
+      logger_->error("[{}] no server key callback is set - aborting handshake", __func__);
+      notifyOnError(DataConnectionListener::HandshakeFailed);
+      return false;
    }
+
+   // Ask the user if they wish to accept the new identity key.
+   // There shouldn't be any old key, at least in authPeerNameSearch
+   cbNewKey_({}, newKey.toHexStr(), srvAddrPort, serverPubkeyProm_);
+   serverPubkeySignalled_ = true;
+   bool cbResult = false;
+
+   //have we seen the server's pubkey?
+   if (serverPubkeyProm_ != nullptr) {
+      //if so, wait on the promise
+      auto fut = serverPubkeyProm_->get_future();
+      cbResult = fut.get();
+      serverPubkeyProm_.reset();
+      serverPubkeySignalled_ = false;
+   }
+
+   if (!cbResult) {
+      logger_->info("[{}] User refused new server {} identity key {} - connection refused"
+         , __func__, srvAddrPort, newKey.toHexStr());
+      return false;
+   }
+
+   logger_->info("[{}] Server at {} has new identity key {}. Connection accepted."
+      , __func__, srvAddrPort, newKey.toHexStr());
+   return true;
 }
 
 // Get the signer's identity public key. Intended for use with local signers.

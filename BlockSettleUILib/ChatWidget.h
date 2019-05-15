@@ -8,6 +8,7 @@
 
 #include "ChatHandleInterfaces.h"
 #include "CommonTypes.h"
+#include "ZMQ_BIP15X_DataConnection.h"
 
 #include <memory>
 
@@ -52,14 +53,15 @@ public:
            , const std::shared_ptr<ApplicationSettings> &appSettings
            , const std::shared_ptr<spdlog::logger>& logger);
 
-   std::string login(const std::string& email, const std::string& jwt);
+   std::string login(const std::string& email, const std::string& jwt
+      , const ZmqBIP15XDataConnection::cbNewKey &);
    void logout();
    bool hasUnreadMessages();
    void switchToChat(const QString& chatId);
 
 public slots:
    void onLoggedOut();
-   void onNewChatMessageTrayNotificationClicked(const QString &chatId);
+   void onNewChatMessageTrayNotificationClicked(const QString &userId);
 
 private slots:
    void onSendButtonClicked();
@@ -74,6 +76,8 @@ private slots:
    void onSearchUserListReceived(const std::vector<std::shared_ptr<Chat::UserData>>& users);
    void onSearchUserTextEdited(const QString& text);
    void onConnectedToServer();
+   void selectGlobalRoom();
+   void onContactRequestAccepted(const QString &userId);
 
    void OnOTCRequestCreated();
    void DisplayOTCRequest(const bs::network::Side::Type& side, const bs::network::OTCRangeID& range);
@@ -130,7 +134,7 @@ public:
 
    // NewMessageMonitor interface
 public:
-   void onNewMessagePresent(const bool isNewMessagePresented, const CategoryElement *element) override;
+   void onNewMessagePresent(const bool isNewMessagePresented, std::shared_ptr<Chat::MessageData> message) override;
 };
 
 

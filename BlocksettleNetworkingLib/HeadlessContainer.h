@@ -117,8 +117,6 @@ protected:
    std::map<bs::signer::RequestId, std::function<void(const std::vector<std::pair<bs::Address, std::string>> &)>> cbNewAddrsMap_;
 };
 
-bool KillHeadlessProcess();
-
 
 class RemoteSigner : public HeadlessContainer
 {
@@ -130,6 +128,8 @@ public:
       , const std::shared_ptr<ApplicationSettings>& appSettings
       , OpMode opMode = OpMode::Remote
       , const bool ephemeralDataConnKeys = true
+      , const std::string& ownKeyFileDir = ""
+      , const std::string& ownKeyFileName = ""
       , const ZmqBIP15XDataConnection::cbNewKey& inNewKeyCB = nullptr);
    ~RemoteSigner() noexcept override = default;
 
@@ -152,7 +152,7 @@ protected slots:
    void onAuthenticated();
    void onConnected();
    void onDisconnected();
-   void onConnError(const QString &err);
+   void onConnError(ConnectionError error, const QString &details);
    void onPacketReceived(Blocksettle::Communication::headless::RequestPacket);
 
 private:
@@ -169,14 +169,17 @@ protected:
    const QString                              port_;
    const NetworkType                          netType_;
    const bool                                 ephemeralDataConnKeys_;
+   const std::string                          ownKeyFileDir_;
+   const std::string                          ownKeyFileName_;
    std::shared_ptr<ZmqBIP15XDataConnection>   connection_;
    std::shared_ptr<ApplicationSettings>       appSettings_;
-   const ZmqBIP15XDataConnection::cbNewKey cbNewKey_;
+   const ZmqBIP15XDataConnection::cbNewKey    cbNewKey_;
 
 private:
    std::shared_ptr<ConnectionManager> connectionManager_;
    mutable std::mutex   mutex_;
    bool headlessConnFinished_ = false;
+   bool isRestartScheduled_{false};
 };
 
 class LocalSigner : public RemoteSigner
@@ -189,16 +192,17 @@ public:
       , const std::shared_ptr<ApplicationSettings>& appSettings
       , SignContainer::OpMode mode = OpMode::Local
       , const bool ephemeralDataConnKeys = false
+      , const std::string& ownKeyFileDir = ""
+      , const std::string& ownKeyFileName = ""
       , double asSpendLimit = 0
       , const ZmqBIP15XDataConnection::cbNewKey& inNewKeyCB = nullptr);
-   ~LocalSigner() noexcept override = default;
+   ~LocalSigner() noexcept override;
 
    bool Start() override;
    bool Stop() override;
 
 protected:
    virtual QStringList args() const;
-   virtual QString pidFileName() const;
 
 private:
    const QString  homeDir_;
@@ -231,7 +235,7 @@ signals:
    void authFailed();
    void connected();
    void disconnected();
-   void error(const QString &err);
+   void error(HeadlessContainer::ConnectionError error, const QString &details);
    void PacketReceived(Blocksettle::Communication::headless::RequestPacket);
 
 private:

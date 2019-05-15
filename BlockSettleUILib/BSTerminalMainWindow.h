@@ -12,6 +12,7 @@
 #include "CelerClient.h"
 #include "QWalletInfo.h"
 #include "SignContainer.h"
+#include "ZMQ_BIP15X_DataConnection.h"
 
 namespace Ui {
     class BSTerminalMainWindow;
@@ -106,7 +107,7 @@ private slots:
    void onPasswordRequested(const bs::hd::WalletInfo &walletInfo, std::string prompt);
    void showInfo(const QString &title, const QString &text);
    void showError(const QString &title, const QString &text);
-   void onSignerConnError(const QString &);
+   void onSignerConnError(SignContainer::ConnectionError error, const QString &details);
 
    void CompleteUIOnlineView();
    void CompleteDBConnection();
@@ -220,7 +221,6 @@ private:
    bool isUserLoggedIn() const;
    bool isArmoryConnected() const;
 
-   void loginWithCeler(const std::string& username, const std::string& password);
    void loginToCeler(const std::string& username, const std::string& password);
 
    bool goOnlineArmory() const;
@@ -233,6 +233,11 @@ private:
    bool armoryKeyDialogShown_ = false;
    bool armoryBDVRegistered_ = false;
    bool walletsSynched_ = false;
+
+   ZmqBIP15XDataConnection::cbNewKey   cbApprovePuB_ = nullptr;
+   ZmqBIP15XDataConnection::cbNewKey   cbApproveChat_ = nullptr;
+
+   SignContainer::ConnectionError lastSignerError_{SignContainer::NoError};
 };
 
 #endif // __BS_TERMINAL_MAIN_WINDOW_H__
