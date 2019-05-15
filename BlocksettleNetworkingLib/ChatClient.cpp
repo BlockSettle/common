@@ -89,8 +89,11 @@ std::string ChatClient::loginToServer(const std::string& email, const std::strin
    currentUserId_ = hasher_->deriveKey(email);
    currentJwt_ = jwt;
 
-   connection_ = connectionManager_->CreateZMQBIP15XDataConnection(true, true
-      , true);
+   const bool ephemeralConn = true;
+   const bool overrideBIP150Mode = true;
+   const bool use1WayAuth = true;
+   connection_ = connectionManager_->CreateZMQBIP15XDataConnection(ephemeralConn
+      , overrideBIP150Mode, use1WayAuth);
    connection_->setCBs(cb);
 
    if (!connection_->openConnection(

@@ -197,8 +197,11 @@ void BSTerminalMainWindow::GetNetworkSettingsFromPuB(const std::function<void()>
       return;
    }
 
+   const bool ephemeralConn = true;
+   const bool overrideBIP150Mode = true;
+   const bool use1WayAuth = true;
    const auto connection = connectionManager_->CreateZMQBIP15XDataConnection(
-      true, true, true);
+      ephemeralConn, overrideBIP150Mode, use1WayAuth);
    connection->setCBs(cbApprovePuB_);
 
    Blocksettle::Communication::RequestPacket reqPkt;
@@ -863,9 +866,12 @@ void BSTerminalMainWindow::connectArmory()
    // We'll connect to the Armory node with 1-way BIP 150 authentication
    // ("public mode"). Override the terminal setting and force 1-way auth for
    // the connection.
+   const bool overrideBIP150Mode = true;
+   const bool use1WayAuth = true;
+
    ArmorySettings currentArmorySettings = armoryServersProvider_->getArmorySettings();
    armoryServersProvider_->setConnectedArmorySettings(currentArmorySettings);
-   armory_->setupConnection(currentArmorySettings, true, true
+   armory_->setupConnection(currentArmorySettings, overrideBIP150Mode, use1WayAuth
       , [this](const BinaryData& srvPubKey, const std::string& srvIPPort) {
       auto promiseObj = std::make_shared<std::promise<bool>>();
       std::future<bool> futureObj = promiseObj->get_future();

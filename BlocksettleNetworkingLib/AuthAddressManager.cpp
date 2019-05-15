@@ -751,8 +751,11 @@ bool AuthAddressManager::SendGetBSAddressListRequest()
 
 bool AuthAddressManager::SubmitRequestToPB(const std::string& name, const std::string& data)
 {
+   const bool ephemeralConn = true;
+   const bool overrideBIP150Mode = true;
+   const bool use1WayAuth = true;
    const auto connection = connectionManager_->CreateZMQBIP15XDataConnection(
-      true, true, true);
+      ephemeralConn, overrideBIP150Mode, use1WayAuth);
    connection->setCBs(cbApproveConn_);
 
    auto command = std::make_shared<RequestReplyCommand>(name, connection, logger_);

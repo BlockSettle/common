@@ -1168,9 +1168,11 @@ void RemoteSigner::RecreateConnection()
    }
 
    // BIP 150 auth mode will not be overridden.
+   const bool overrideBIP150Mode = false;
+   const bool dummyFlag = false;
    connection_ = connectionManager_->CreateZMQBIP15XDataConnection(
-      ephemeralDataConnKeys_, false, false, ownKeyFileDir_, ownKeyFileName_
-      , makeClientCookie, readServerCookie, absCookiePath);
+      ephemeralDataConnKeys_, overrideBIP150Mode, dummyFlag, ownKeyFileDir_
+      , ownKeyFileName_, makeClientCookie, readServerCookie, absCookiePath);
    connection_->setCBs(cbNewKey_);
    connection_->setLocalHeartbeatInterval();
 
