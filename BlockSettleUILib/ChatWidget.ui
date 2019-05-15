@@ -403,6 +403,12 @@
                        <height>0</height>
                       </size>
                      </property>
+                     <property name="minimumSizeLinux" stdset="0">
+                      <size>
+                       <width>110</width>
+                       <height>0</height>
+                      </size>
+                     </property>
                      <property name="text">
                       <string>Time</string>
                      </property>

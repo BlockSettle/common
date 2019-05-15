@@ -245,7 +245,7 @@ ChatWidget::ChatWidget(QWidget *parent)
    ui_->setupUi(this);
 
 #ifndef Q_OS_WIN
-   ui_->timeLabel->setMinimumSize(QSize(110, 0));
+   ui_->timeLabel->setMinimumSize(ui_->timeLabel->property("minimumSizeLinux").toSize());
 #endif
 
    ui_->textEditMessages->setColumnsWidth(ui_->timeLabel->minimumWidth(),
