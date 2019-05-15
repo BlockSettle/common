@@ -147,6 +147,26 @@ void ChatClientUserView::setActiveChatLabel(QLabel *label)
    label_ = label;
 }
 
+void ChatClientUserView::setCurrentUserChat(const QString &userId)
+{
+   // find all indexes
+   QModelIndexList indexes = model()->match(model()->index(0,0),
+                                            Qt::DisplayRole,
+                                            QLatin1String("*"),
+                                            -1,
+                                            Qt::MatchWildcard|Qt::MatchRecursive);
+      
+   // set required chat
+   for (auto index : indexes) {
+      if (index.data(ChatClientDataModel::Role::ItemTypeRole).value<TreeItem::NodeType>() == TreeItem::NodeType::ContactsElement) {
+         if (index.data(ChatClientDataModel::Role::ContactIdRole).toString() == userId) {
+            setCurrentIndex(index);
+            break;
+         }
+      }
+   }
+}
+
 void ChatClientUserView::onCustomContextMenu(const QPoint & point)
 {
    if (!contextMenu_) {
@@ -279,6 +299,8 @@ void LoggerWatcher::onElementSelected(CategoryElement *element)
 #if 0
    qDebug() << "Item selected:\n" << QString::fromStdString(element->getDataObject()->toJsonString());
 #endif
+   // clear dot of unread message
+   element->setNewItemsFlag(false);
 }
 
 void LoggerWatcher::onElementUpdated(CategoryElement *element)

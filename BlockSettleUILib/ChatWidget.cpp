@@ -38,13 +38,13 @@ constexpr int kShowEmptyFoundUserListTimeoutMs = 3000;
 
 bool IsOTCChatRoom(const QString& chatRoom)
 {
-   static const QString targetRoomName = QLatin1String("otc_chat");
+   static const QString targetRoomName = Chat::OTCRoomKey;
    return chatRoom == targetRoomName;
 }
 
 bool IsGlobalChatRoom(const QString& chatRoom)
 {
-   static const QString targetRoomName = QLatin1String("global_chat");
+   static const QString targetRoomName = Chat::GlobalRoomKey;
    return chatRoom == targetRoomName;
 }
 
@@ -92,6 +92,9 @@ public:
       chat_->ui_->labelUserName->setText(QLatin1String("offline"));
 
       chat_->SetLoggedOutOTCState();
+
+      // hide tab icon for unread messages
+      NotificationCenter::notify(bs::ui::NotifyType::UpdateUnreadMessage, {});
    }
 
    std::string login(const std::string& email, const std::string& jwt
@@ -132,8 +135,6 @@ public:
       chat_->ui_->labelUserName->setText(chat_->client_->getUserId());
 
       chat_->SetOTCLoggedInState();
-
-      selectFirstRoom();
    }
 
    void onStateExit() override {
@@ -233,25 +234,6 @@ public:
    }
 
    void onUsersDeleted(const std::vector<std::string> &/*users*/)  override {}
-
-   void selectFirstRoom()
-   {
-      onRoomClicked(QLatin1String("global_chat"));
-
-      QModelIndexList indexes = chat_->ui_->treeViewUsers->model()->match(chat_->ui_->treeViewUsers->model()->index(0,0),
-                                                                Qt::DisplayRole,
-                                                                QLatin1String("*"),
-                                                                -1,
-                                                                Qt::MatchWildcard|Qt::MatchRecursive);
-      
-      // highlight first room
-      for (auto index : indexes) {
-         if (index.data(ChatClientDataModel::Role::ItemTypeRole).value<TreeItem::NodeType>() == TreeItem::NodeType::RoomsElement) {
-            chat_->ui_->treeViewUsers->selectionModel()->select(index, QItemSelectionModel::ClearAndSelect);
-            break;
-         }
-      }
-   }
 };
 
 ChatWidget::ChatWidget(QWidget *parent)
@@ -303,6 +285,10 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
    connect(client_.get(), &ChatClient::LoggedOut, this, &ChatWidget::onLoggedOut);
    connect(client_.get(), &ChatClient::SearchUserListReceived, this, &ChatWidget::onSearchUserListReceived);
    connect(client_.get(), &ChatClient::ConnectedToServer, this, &ChatWidget::onConnectedToServer);
+   connect(client_.get(), &ChatClient::ContactRequestAccepted, this, &ChatWidget::onContactRequestAccepted);
+   connect(client_.get(), &ChatClient::NewContactRequest, this, [=] (const QString &userId) {
+            NotificationCenter::notify(bs::ui::NotifyType::FriendRequest, {userId});
+   });
    connect(ui_->input_textEdit, &BSChatInput::sendMessage, this, &ChatWidget::onSendButtonClicked);
    connect(ui_->chatSearchLineEdit, &ChatSearchLineEdit::textEdited, this, &ChatWidget::onSearchUserTextEdited);
 
@@ -478,9 +464,9 @@ void ChatWidget::onLoggedOut()
    emit LogOut();
 }
 
-void ChatWidget::onNewChatMessageTrayNotificationClicked(const QString &chatId)
+void ChatWidget::onNewChatMessageTrayNotificationClicked(const QString &userId)
 {
-   switchToChat(chatId);
+   ui_->treeViewUsers->setCurrentUserChat(userId);
 }
 
 void ChatWidget::onSearchUserTextEdited(const QString& text)
@@ -504,6 +490,12 @@ void ChatWidget::onSearchUserTextEdited(const QString& text)
 void ChatWidget::onConnectedToServer()
 {
    changeState(State::LoggedIn);
+   connect(ui_->treeViewUsers->model(), &QAbstractItemModel::dataChanged, this, &ChatWidget::selectGlobalRoom);
+}
+
+void ChatWidget::onContactRequestAccepted(const QString &userId)
+{
+   ui_->treeViewUsers->setCurrentUserChat(userId);
 }
 
 bool ChatWidget::eventFilter(QObject *obj, QEvent *event)
@@ -513,6 +505,11 @@ bool ChatWidget::eventFilter(QObject *obj, QEvent *event)
 
       if (!popup_->rect().contains(pos))
          setPopupVisible(false);
+   }
+
+   if (event->type() == QEvent::WindowActivate) {
+      // hide tab icon on window activate event
+      NotificationCenter::notify(bs::ui::NotifyType::UpdateUnreadMessage, {});
    }
 
    return QWidget::eventFilter(obj, event);
@@ -650,29 +647,47 @@ void ChatWidget::OTCSwitchToGlobalRoom()
    ui_->stackedWidgetOTC->setCurrentIndex(static_cast<int>(OTCPages::OTCGeneralRoomShieldPage));
 }
 
-void ChatWidget::onNewMessagePresent(const bool isNewMessagePresented, const CategoryElement *element)
+void ChatWidget::onNewMessagePresent(const bool isNewMessagePresented, std::shared_ptr<Chat::MessageData> message)
 {
    qDebug() << "New Message: " << (isNewMessagePresented?"TRUE":"FALSE");
 
-   // show notification about new message in tray icon
+   // show notification of new message in tray icon
    if (isNewMessagePresented) {
-      auto data = element->getDataObject();
 
-      if (data->getType() == Chat::DataObject::Type::ContactRecordData) {
-         auto contact = std::dynamic_pointer_cast<Chat::ContactRecordData>(data);
+      // don't show notification for global chat
+      if (message && !IsGlobalChatRoom(message->receiverId())) {
 
-         // don't show notification for global chat
-         if (contact && contact->getContactId() != QLatin1String("global_chat")) {
-            if ( contact->getContactId() != currentChat_ ){
-               const bool isInCurrentChat = false;
-               const bool hasUnreadMessages = true;
+         auto messageText = message->messageData();
+         const int maxMessageLength = 20;
 
-               NotificationCenter::notify(bs::ui::NotifyType::UpdateUnreadMessage, 
-                                         {contact->getContactId(), 
-                                          tr("New message"), 
-                                          QVariant(isInCurrentChat), 
-                                          QVariant(hasUnreadMessages)});
-            }
+         if (messageText.length() > maxMessageLength) {
+            messageText = messageText.mid(0, maxMessageLength) + QLatin1String("...");
+         }
+
+         NotificationCenter::notify(bs::ui::NotifyType::UpdateUnreadMessage,
+                                   {message->senderId(),
+                                    messageText});
+      }
+   }
+}
+
+void ChatWidget::selectGlobalRoom()
+{
+   // find all indexes
+   QModelIndexList indexes = ui_->treeViewUsers->model()->match(ui_->treeViewUsers->model()->index(0,0),
+                                                               Qt::DisplayRole,
+                                                               QLatin1String("*"),
+                                                               -1,
+                                                               Qt::MatchWildcard|Qt::MatchRecursive);
+      
+   // select Global room
+   for (auto index : indexes) {
+      if (index.data(ChatClientDataModel::Role::ItemTypeRole).value<TreeItem::NodeType>() == TreeItem::NodeType::RoomsElement) {
+         if (index.data(ChatClientDataModel::Role::RoomIdRole).toString() == Chat::GlobalRoomKey) {
+            onRoomClicked(Chat::GlobalRoomKey);
+            ui_->treeViewUsers->selectionModel()->select(index, QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
+            disconnect(ui_->treeViewUsers->model(), &QAbstractItemModel::dataChanged, this, &ChatWidget::selectGlobalRoom);
+            break;
          }
       }
    }

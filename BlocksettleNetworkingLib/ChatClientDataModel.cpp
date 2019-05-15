@@ -127,6 +127,8 @@ bool ChatClientDataModel::insertMessageNode(TreeMessageNode * messageNode)
 
 bool ChatClientDataModel::insertRoomMessage(std::shared_ptr<Chat::MessageData> message)
 {
+   lastMessage_ = message;
+
    auto item = new TreeMessageNode(TreeItem::NodeType::RoomsElement, message);
 
    bool res = insertMessageNode(item);
@@ -140,6 +142,8 @@ bool ChatClientDataModel::insertRoomMessage(std::shared_ptr<Chat::MessageData> m
 
 bool ChatClientDataModel::insertContactsMessage(std::shared_ptr<Chat::MessageData> message)
 {
+   lastMessage_ = message;
+
    auto item = new TreeMessageNode(TreeItem::NodeType::ContactsElement, message);
 
    bool res = insertMessageNode(item);
@@ -495,7 +499,7 @@ void ChatClientDataModel::beginChatInsertRows(const TreeItem::NodeType &type)
 
    const QModelIndex index = createIndex(item->selfIndex(), 0, item);
    const int first = item->getChildren().empty() ? 0 : item->getChildren().back()->selfIndex();
-   const int last = first + 1;
+   const int last = first;
 
    beginInsertRows(index, first, last);
 }
@@ -517,7 +521,7 @@ void ChatClientDataModel::updateNewMessagesFlag()
    newMesagesFlag_ = flag;
 
    if (newMessageMonitor_) {
-      newMessageMonitor_->onNewMessagePresent(newMesagesFlag_, elem);
+      newMessageMonitor_->onNewMessagePresent(newMesagesFlag_, lastMessage_);
    }
 }
 

@@ -49,6 +49,20 @@ public:
    };
    using PasswordType = SecureBinaryData;
 
+   enum ConnectionError
+   {
+      NoError,
+      UnknownError,
+      SocketFailed,
+      HostNotFound,
+      HandshakeFailed,
+      SerializationFailed,
+      HeartbeatWaitFailed,
+      InvalidProtocol,
+      NetworkTypeMismatch,
+   };
+   Q_ENUM(ConnectionError)
+
    SignContainer(const std::shared_ptr<spdlog::logger> &, OpMode opMode);
    ~SignContainer() noexcept = default;
 
@@ -110,7 +124,7 @@ signals:
    void connected();
    void disconnected();
    void authenticated();
-   void connectionError(const QString &err);
+   void connectionError(ConnectionError error, const QString &details);
    void ready();
    void Error(bs::signer::RequestId id, std::string error);
    void TXSigned(bs::signer::RequestId id, BinaryData signedTX, std::string error, bool cancelledByUser);
@@ -142,6 +156,8 @@ std::shared_ptr<SignContainer> CreateSigner(const std::shared_ptr<spdlog::logger
    , NetworkType netType
    , const std::shared_ptr<ConnectionManager> & connectionManager
    , const bool& ephemeralDataConnKeys
+   , const std::string& ownKeyFileDir
+   , const std::string& ownKeyFileName
    , const ZmqBIP15XDataConnection::cbNewKey& inNewKeyCB = nullptr);
 
 bool SignerConnectionExists(const QString &host, const QString &port);
