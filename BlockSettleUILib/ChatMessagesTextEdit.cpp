@@ -67,7 +67,7 @@ QString ChatMessagesTextEdit::data(const int &row, const Column &column)
             return ownSender;
          }
          
-         if (contactItem->getDisplayName().length() > 0) {
+         if (contactItem->hasDisplayName()) {
             if (isGroupRoom_) {
                return toHtmlUsername(contactItem->getDisplayName(), sender);
             }
