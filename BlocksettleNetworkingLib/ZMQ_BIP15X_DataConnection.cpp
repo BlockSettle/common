@@ -17,9 +17,11 @@ namespace {
 // The constructor to use.
 //
 // INPUT:  Logger object. (const shared_ptr<spdlog::logger>&)
+//         A flag indicating if the global BIP 150 auth mode is overridden. (const bool)
+//         A flag indicating the desired BIP 150 auth mode if global is overridden. (const bool)
 //         Ephemeral peer usage. Not recommended. (const bool&)
-//         The directory containing the file with the non-ephemeral key. (const std::string)
-//         The file with the non-ephemeral key. (const std::string)
+//         The directory containing the file with the non-ephemeral ID key. (const std::string)
+//         The file with the non-ephemeral ID key. (const std::string)
 //         A flag for a monitored socket. (const bool&)
 //         A flag indicating if the connection will make a key cookie. (bool)
 //         A flag indicating if the connection will read a key cookie. (bool)
@@ -644,7 +646,7 @@ bool ZmqBIP15XDataConnection::processAEADHandshake(
             serverPubkeySignalled_ = true;
          }
          else {
-            logger_->warn("[processHandshake] server public key was already set");
+            logger_->warn("[processhandshake (Data)] server public key was already set");
          }
       }
 
@@ -655,7 +657,7 @@ bool ZmqBIP15XDataConnection::processAEADHandshake(
    {
       if (bip151Connection_->processEncinit(msgbdr.getPtr(), msgbdr.getSize()
          , false) != 0) {
-         logger_->error("[processHandshake] BIP 150/151 handshake process "
+         logger_->error("[processhandshake (Data)] BIP 150/151 handshake process "
             "failed - AEAD_ENCINIT not processed");
          return false;
       }
@@ -664,7 +666,7 @@ bool ZmqBIP15XDataConnection::processAEADHandshake(
       BinaryData encackPayload(BIP151PUBKEYSIZE);
       if (bip151Connection_->getEncackData(encackPayload.getPtr()
          , BIP151PUBKEYSIZE) != 0) {
-         logger_->error("[processHandshake] BIP 150/151 handshake process "
+         logger_->error("[processhandshake (Data)] BIP 150/151 handshake process "
             "failed - AEAD_ENCACK data not obtained");
          return false;
       }
@@ -675,7 +677,7 @@ bool ZmqBIP15XDataConnection::processAEADHandshake(
       BinaryData encinitPayload(ENCINITMSGSIZE);
       if (bip151Connection_->getEncinitData(encinitPayload.getPtr()
          , ENCINITMSGSIZE, BIP151SymCiphers::CHACHA20POLY1305_OPENSSH) != 0) {
-         logger_->error("[processHandshake] BIP 150/151 handshake process "
+         logger_->error("[processhandshake (Data)] BIP 150/151 handshake process "
             "failed - AEAD_ENCINIT data not obtained");
          return false;
       }
@@ -689,7 +691,7 @@ bool ZmqBIP15XDataConnection::processAEADHandshake(
    {
       if (bip151Connection_->processEncack(msgbdr.getPtr(), msgbdr.getSize()
          , true) == -1) {
-         logger_->error("[processHandshake] BIP 150/151 handshake process "
+         logger_->error("[processhandshake (Data)] BIP 150/151 handshake process "
             "failed - AEAD_ENCACK not processed");
          return false;
       }
@@ -705,7 +707,7 @@ bool ZmqBIP15XDataConnection::processAEADHandshake(
             serverPubkeySignalled_ = false;
          }
          else {
-            logger_->error("[processHandshake] BIP 150/151 handshake process "
+            logger_->error("[processhandshake (Data)] BIP 150/151 handshake process "
                "failed - AEAD_ENCACK - Server public key not verified");
             return false;
          }
@@ -720,7 +722,7 @@ bool ZmqBIP15XDataConnection::processAEADHandshake(
          authchallengeBuf.getPtr(), authchallengeBuf.getSize(), ss.str()
          , true //true: auth challenge step #1 of 6
          , false) != 0) { //false: have not processed an auth propose yet
-         logger_->error("[processHandshake] BIP 150/151 handshake process "
+         logger_->error("[processhandshake (Data)] BIP 150/151 handshake process "
             "failed - AUTH_CHALLENGE data not obtained");
          return false;
       }
@@ -734,7 +736,7 @@ bool ZmqBIP15XDataConnection::processAEADHandshake(
    {
       // Rekey requests before auth are invalid.
       if (bip151Connection_->getBIP150State() != BIP150State::SUCCESS) {
-         logger_->error("[processHandshake] BIP 150/151 handshake process "
+         logger_->error("[processhandshake (Data)] BIP 150/151 handshake process "
             "failed - Not ready to rekey");
          return false;
       }
@@ -742,7 +744,7 @@ bool ZmqBIP15XDataConnection::processAEADHandshake(
       // If connection is already setup, we only accept rekey enack messages.
       if (bip151Connection_->processEncack(msgbdr.getPtr(), msgbdr.getSize()
          , false) == -1) {
-         logger_->error("[processHandshake] BIP 150/151 handshake process "
+         logger_->error("[processhandshake (Data)] BIP 150/151 handshake process "
             "failed - AEAD_REKEY not processed");
          return false;
       }
@@ -756,7 +758,7 @@ bool ZmqBIP15XDataConnection::processAEADHandshake(
       if (bip151Connection_->processAuthreply(msgbdr.getPtr(), msgbdr.getSize()
          , true //true: step #2 out of 6
          , false) != 0) { //false: haven't seen an auth challenge yet
-         logger_->error("[processHandshake] BIP 150/151 handshake process "
+         logger_->error("[processhandshake (Data)] BIP 150/151 handshake process "
             "failed - AUTH_REPLY not processed");
          return false;
       }
@@ -765,7 +767,7 @@ bool ZmqBIP15XDataConnection::processAEADHandshake(
       if (bip151Connection_->getAuthproposeData(
          authproposeBuf.getPtr(),
          authproposeBuf.getSize()) != 0) {
-         logger_->error("[processHandshake] BIP 150/151 handshake process "
+         logger_->error("[processhandshake (Data)] BIP 150/151 handshake process "
             "failed - AUTH_PROPOSE data not obtained");
          return false;
       }
@@ -783,7 +785,7 @@ bool ZmqBIP15XDataConnection::processAEADHandshake(
 
       if (challengeResult == -1) {
          //auth fail, kill connection
-         logger_->error("[processHandshake] BIP 150/151 handshake process "
+         logger_->error("[processhandshake (Data)] BIP 150/151 handshake process "
             "failed - AUTH_CHALLENGE not processed");
          return false;
       }
@@ -799,7 +801,7 @@ bool ZmqBIP15XDataConnection::processAEADHandshake(
 
       if (validReply != 0) {
          //auth setup failure, kill connection
-         logger_->error("[processHandshake] BIP 150/151 handshake process "
+         logger_->error("[processhandshake (Data)] BIP 150/151 handshake process "
             "failed - AUTH_REPLY data not obtained");
          return false;
       }
@@ -813,14 +815,14 @@ bool ZmqBIP15XDataConnection::processAEADHandshake(
       if (cbCompleted_) {
          cbCompleted_();
       }
-      logger_->info("[processHandshake] BIP 150 handshake with server complete "
+      logger_->info("[processhandshake (Data)] BIP 150 handshake with server complete "
          "- connection to {} is ready and fully secured", srvId);
 
       break;
    }
 
    default:
-      logger_->error("[processHandshake] Unknown message type.");
+      logger_->error("[processhandshake (Data)] Unknown message type.");
       return false;
    }
 

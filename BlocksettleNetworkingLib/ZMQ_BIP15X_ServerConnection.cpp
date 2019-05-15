@@ -28,11 +28,11 @@ void ZmqBIP15XPerConnData::reset()
 //         ZMQ context. (const std::shared_ptr<ZmqContext>&)
 //         Per-connection ID. (const uint64_t&)
 //         Callback for getting a list of trusted clients. (function<vector<string>()>)
+//         Ephemeral peer usage. Not recommended. (const bool&)
 //         A flag indicating if the global BIP 150 auth mode is overridden. (const bool)
 //         A flag indicating the desired BIP 150 auth mode if global is overridden. (const bool)
-//         Ephemeral peer usage. Not recommended. (const bool&)
-//         The directory containing the file with the non-ephemeral key. (const std::string)
-//         The file with the non-ephemeral key. (const std::string)
+//         The directory containing the file with the non-ephemeral ID key. (const std::string)
+//         The file with the non-ephemeral ID key. (const std::string)
 //         A flag indicating if the connection will make a key cookie. (bool)
 //         A flag indicating if the connection will read a key cookie. (bool)
 //         The path to the key cookie to read or write. (const std::string)
@@ -101,6 +101,8 @@ ZmqBIP15XServerConnection::ZmqBIP15XServerConnection(
 //         Callback for getting a list of trusted clients. (function<vector<string>()>)
 //         A flag indicating if the global BIP 150 auth mode is overridden. (const bool)
 //         A flag indicating the desired BIP 150 auth mode if global is overridden. (const bool)
+//         The directory containing the file with the non-ephemeral ID key. (const std::string)
+//         The file with the non-ephemeral ID key. (const std::string)
 //         A flag indicating if the connection will make a key cookie. (bool)
 //         A flag indicating if the connection will read a key cookie. (bool)
 //         The path to the key cookie to read or write. (const std::string)
@@ -667,7 +669,7 @@ bool ZmqBIP15XServerConnection::processAEADHandshake(
          if (!writeToClient(ZMQ_MSGTYPE_AEAD_PRESENT_PUBKEY,
             connection->encData_->getOwnPubKey(), false))
          {
-            logger_->error("[processHandshake] ZMG_MSGTYPE_AEAD_SETUP: "
+            logger_->error("[processhandshake (Server)] ZMG_MSGTYPE_AEAD_SETUP: "
                "Response 1 not sent");
          }
 
@@ -678,7 +680,7 @@ bool ZmqBIP15XServerConnection::processAEADHandshake(
             , BIP151SymCiphers::CHACHA20POLY1305_OPENSSH) != 0)
          {
             //failed to init handshake, kill connection
-            logger_->error("[processHandshake] BIP 150/151 handshake process "
+            logger_->error("[processhandshake (Server)] BIP 150/151 handshake process "
                "failed - AEAD_ENCINIT data not obtained");
             return false;
          }
@@ -686,7 +688,7 @@ bool ZmqBIP15XServerConnection::processAEADHandshake(
          if (!writeToClient(ZMQ_MSGTYPE_AEAD_ENCINIT, encinitData.getRef()
             , false))
          {
-            logger_->error("[processHandshake] ZMG_MSGTYPE_AEAD_SETUP: "
+            logger_->error("[processhandshake (Server)] ZMG_MSGTYPE_AEAD_SETUP: "
                "Response 2 not sent");
          }
          break;
@@ -699,7 +701,7 @@ bool ZmqBIP15XServerConnection::processAEADHandshake(
             , dataBdr.getSize(), true) != 0)
          {
             //failed to init handshake, kill connection
-            logger_->error("[processHandshake] BIP 150/151 handshake process "
+            logger_->error("[processhandshake (Server)] BIP 150/151 handshake process "
                "failed - AEAD_ENCACK not processed");
             return false;
          }
@@ -714,7 +716,7 @@ bool ZmqBIP15XServerConnection::processAEADHandshake(
             BIP150State::SUCCESS)
          {
             //can't rekey before auth, kill connection
-            logger_->error("[processHandshake] BIP 150/151 handshake process "
+            logger_->error("[processhandshake (Server)] BIP 150/151 handshake process "
                "failed - Not yet able to process a rekey");
             return false;
          }
@@ -724,7 +726,7 @@ bool ZmqBIP15XServerConnection::processAEADHandshake(
             , dataBdr.getSize(), false) != 0)
          {
             //failed to init handshake, kill connection
-            logger_->error("[processHandshake] BIP 150/151 handshake process "
+            logger_->error("[processhandshake (Server)] BIP 150/151 handshake process "
                "failed - AEAD_ENCACK not processed");
             return false;
          }
@@ -740,7 +742,7 @@ bool ZmqBIP15XServerConnection::processAEADHandshake(
             , dataBdr.getSize(), false) != 0)
          {
             //failed to init handshake, kill connection
-            logger_->error("[processHandshake] BIP 150/151 handshake process "
+            logger_->error("[processhandshake (Server)] BIP 150/151 handshake process "
                "failed - AEAD_ENCINIT processing failed");
             return false;
          }
@@ -751,7 +753,7 @@ bool ZmqBIP15XServerConnection::processAEADHandshake(
             , BIP151PUBKEYSIZE) != 0)
          {
             //failed to init handshake, kill connection
-            logger_->error("[processHandshake] BIP 150/151 handshake process "
+            logger_->error("[processhandshake (Server)] BIP 150/151 handshake process "
                "failed - AUTH_ENCACK data not obtained");
             return false;
          }
@@ -759,7 +761,7 @@ bool ZmqBIP15XServerConnection::processAEADHandshake(
          if (!writeToClient(ZMQ_MSGTYPE_AEAD_ENCACK, encackData.getRef()
             , false))
          {
-            logger_->error("[processHandshake] BIP 150/151 handshake process "
+            logger_->error("[processhandshake (Server)] BIP 150/151 handshake process "
                "failed - AEAD_ENCACK not sent");
          }
 
@@ -777,7 +779,7 @@ bool ZmqBIP15XServerConnection::processAEADHandshake(
          if (challengeResult == -1)
          {
             //auth fail, kill connection
-            logger_->error("[processHandshake] BIP 150/151 handshake process "
+            logger_->error("[processhandshake (Server)] BIP 150/151 handshake process "
                "failed - AUTH_CHALLENGE processing failed");
             return false;
          }
@@ -793,7 +795,7 @@ bool ZmqBIP15XServerConnection::processAEADHandshake(
             , goodChallenge) == -1)
          {
             //auth setup failure, kill connection
-            logger_->error("[processHandshake] BIP 150/151 handshake process "
+            logger_->error("[processhandshake (Server)] BIP 150/151 handshake process "
                "failed - AUTH_REPLY data not obtained");
             return false;
          }
@@ -801,7 +803,7 @@ bool ZmqBIP15XServerConnection::processAEADHandshake(
          if (!writeToClient(ZMQ_MSGTYPE_AUTH_REPLY, authreplyBuf.getRef()
             , true))
          {
-            logger_->error("[processHandshake] BIP 150/151 handshake process "
+            logger_->error("[processhandshake (Server)] BIP 150/151 handshake process "
                "failed - AUTH_REPLY not sent");
             return false;
          }
@@ -819,7 +821,7 @@ bool ZmqBIP15XServerConnection::processAEADHandshake(
          if (proposeResult == -1)
          {
             //auth setup failure, kill connection
-            logger_->error("[processHandshake] BIP 150/151 handshake process "
+            logger_->error("[processhandshake (Server)] BIP 150/151 handshake process "
                "failed - AUTH_PROPOSE processing failed");
             return false;
          }
@@ -841,7 +843,7 @@ bool ZmqBIP15XServerConnection::processAEADHandshake(
             , goodPropose) == -1)
          {
             //auth setup failure, kill connection
-            logger_->error("[processHandshake] BIP 150/151 handshake process "
+            logger_->error("[processhandshake (Server)] BIP 150/151 handshake process "
                "failed - AUTH_CHALLENGE data not obtained");
             return false;
          }
@@ -849,7 +851,7 @@ bool ZmqBIP15XServerConnection::processAEADHandshake(
          if (!writeToClient(ZMQ_MSGTYPE_AUTH_CHALLENGE
             , authchallengeBuf.getRef(), true))
          {
-            logger_->error("[processHandshake] BIP 150/151 handshake process "
+            logger_->error("[processhandshake (Server)] BIP 150/151 handshake process "
                "failed - AUTH_CHALLENGE not sent");
          }
 
@@ -869,7 +871,7 @@ bool ZmqBIP15XServerConnection::processAEADHandshake(
          //rekey after succesful BIP150 handshake
          connection->encData_->bip150HandshakeRekey();
          connection->bip150HandshakeCompleted_ = true;
-         logger_->info("[processHandshake] BIP 150 handshake with client "
+         logger_->info("[processhandshake (Server)] BIP 150 handshake with client "
             "complete - connection with {} is ready and fully secured"
             , BinaryData(clientID).toHexStr());
 
@@ -877,7 +879,7 @@ bool ZmqBIP15XServerConnection::processAEADHandshake(
       }
 
       default:
-         logger_->error("[processHandshake] Unknown message type.");
+         logger_->error("[processhandshake (Server)] Unknown message type.");
          return false;
       }
 
