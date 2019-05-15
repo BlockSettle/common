@@ -60,6 +60,7 @@ public:
    void switchToChat(const QString& chatId, bool isGroupRoom = false);
    void setHandler(std::shared_ptr<ChatItemActionsHandler> handler);
    void setMessageReadHandler(std::shared_ptr<ChatMessageReadHandler> handler);
+   void setColumnsWidth(const int &time, const int &icon, const int &user, const int &message);
 
    
 signals:
