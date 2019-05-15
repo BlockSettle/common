@@ -862,7 +862,7 @@ void ZmqBIP15XServerConnection::setBIP151Connection(const string& clientID)
          catch (const std::exception &e) {
             logger_->error("[{}] Trusted client key {} [{} bytes] for {} is not "
                "accepted: {}", __func__, inKey.toHexStr(), inKey.getSize()
-               , clientID, e.what());
+               , BinaryData(clientID).toHexStr(), e.what());
             return;
          }
       }
