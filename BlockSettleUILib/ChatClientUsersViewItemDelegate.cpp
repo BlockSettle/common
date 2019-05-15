@@ -71,11 +71,6 @@ void ChatClientUsersViewItemDelegate::paintRoomsElement(QPainter *painter, const
       return QStyledItemDelegate::paint(painter, itemOption, index);
    }
 
-   // additional fix to set message was read if current room is selected
-   if (option.state.testFlag(QStyle::State_Selected) && index.data(Role::ChatNewMessageRole).toBool()) {
-      index.data(Role::ChatNewMessageRole) = false;
-   }
-
    itemOption.palette.setColor(QPalette::Text, itemStyle_.colorRoom());
    bool newMessage = index.data(Role::ChatNewMessageRole).toBool();
    itemOption.text = index.data(Role::RoomTitleRole).toString();
