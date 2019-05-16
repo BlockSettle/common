@@ -946,11 +946,11 @@ std::shared_ptr<ZmqBIP15XPerConnData> ZmqBIP15XServerConnection::setBIP151Connec
       std::string keyHex = b.substr(colonIndex + 1);
 
       try {
-         BinaryData inKey = READHEX(keyHex);
+         const BinaryData inKey = READHEX(keyHex);
          authPeers_->addPeer(inKey, vector<string>{ clientID });
       }
       catch (const std::exception &e) {
-         BinaryData cID(clientID);
+         const BinaryData cID(clientID);
          logger_->error("[{}] Trusted identity key for client {} is not "
             "accepted: {}", __func__, cID.toHexStr(), e.what());
             return nullptr;
