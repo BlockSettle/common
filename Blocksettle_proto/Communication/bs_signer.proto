@@ -94,6 +94,14 @@ message Settings
    bool startup_bip150_ctx = 14;
 }
 
+// Keep in sync with bs::signer::BindStatus
+enum BindStatus
+{
+   BindInactive = 0;
+   BindSucceed = 1;
+   BindFailed = 2;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 message ReadyEvent
@@ -321,5 +329,5 @@ message HeadlessPubKeyResponse
 // Would be sent from headless process to the GUI when some status changes
 message UpdateStatus
 {
-   bool headless_bind_failed = 1;
+   BindStatus signer_bind_status = 1;
 }
