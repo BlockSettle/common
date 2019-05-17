@@ -48,6 +48,7 @@ public:
    void notifyMessageChanged(std::shared_ptr<Chat::MessageData> message);
    void notifyContactChanged(std::shared_ptr<Chat::ContactRecordData> contact);
    void setNewMessageMonitor(NewMessageMonitor* monitor);
+   void sortContacts();
 
    // QAbstractItemModel interface
 public:

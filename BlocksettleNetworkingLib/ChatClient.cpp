@@ -197,6 +197,7 @@ void ChatClient::OnContactsActionResponseDirect(const Chat::ContactsActionRespon
             data->setStatus(Chat::ContactStatus::Accepted);
             contactNode->setOnlineStatus(ChatContactElement::OnlineStatus::Online);
             model_->notifyContactChanged(data);
+            model_->sortContacts();
          }
          addOrUpdateContact(senderId, Chat::ContactStatus::Accepted);
          auto requestS =
@@ -571,6 +572,7 @@ void ChatClient::OnUsersList(const Chat::UsersListResponse &response)
 
    });
 
+   model_->sortContacts();
 }
 
 void ChatClient::OnMessages(const Chat::MessagesResponse &response)
@@ -1103,6 +1105,7 @@ void ChatClient::onActionAcceptContactRequest(std::shared_ptr<Chat::ContactRecor
    addOrUpdateContact(crecord->getContactId(),
                       crecord->getContactStatus(), crecord->getDisplayName());
    model_->notifyContactChanged(crecord);
+   model_->sortContacts();
    retrieveUserMessages(crecord->getContactId());
 
    auto request =

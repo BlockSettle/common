@@ -238,6 +238,61 @@ void ChatClientDataModel::setNewMessageMonitor(NewMessageMonitor *monitor)
    newMessageMonitor_ = monitor;
 }
 
+
+void ChatClientDataModel::sortContacts()
+{
+   auto allContactsRecords = getAllContacts();
+   std::vector<ChatContactElement*> allContactsElements;
+   std::vector<ChatContactElement*> sortedContactsElements; 
+
+   // save all contacts rows and remove them from tree view
+   for (auto contact : allContactsRecords) {
+      if (contact) {
+         auto contactNode = findContactNode(contact->getContactId().toStdString());
+         if (contactNode) {
+            allContactsElements.push_back(contactNode);
+            removeContactNode(contact->getContactId().toStdString());
+         }         
+      }
+   }   
+
+   // place online contacts to the top of the list
+   for (auto contact : allContactsElements) {
+      const bool isOnline = contact->getOnlineStatus() == ChatContactElement::OnlineStatus::Online;
+      const bool isOutgoing = contact->getContactData()->getContactStatus() == Chat::ContactStatus::Outgoing;
+
+      if (isOnline && !isOutgoing) {
+         sortedContactsElements.push_back(contact);
+      }
+   }
+
+   // place offline contacts to the middle of the list
+   for (auto contact : allContactsElements) {
+      const bool isOffline = contact->getOnlineStatus() == ChatContactElement::OnlineStatus::Offline;
+      const bool isOutgoing = contact->getContactData()->getContactStatus() == Chat::ContactStatus::Outgoing;
+
+      if (isOffline && !isOutgoing) {
+         sortedContactsElements.push_back(contact);
+      }
+   }
+   
+   // place incoming/outgoing contacts to the bottom of the list
+   for (auto contact : allContactsElements) {
+      const bool isIncoming = contact->getContactData()->getContactStatus() == Chat::ContactStatus::Incoming;
+      const bool isOutgoing = contact->getContactData()->getContactStatus() == Chat::ContactStatus::Outgoing;
+
+      if (isIncoming || isOutgoing) {
+         sortedContactsElements.push_back(contact);
+      }
+   }
+
+   // insert sorted contacts rows to tree view
+   for (auto contact : sortedContactsElements) {
+      const bool isOnline = contact->getOnlineStatus() == ChatContactElement::OnlineStatus::Online;
+      insertContactObject(contact->getContactData(), isOnline);
+   }
+}
+
 QModelIndex ChatClientDataModel::index(int row, int column, const QModelIndex &parent) const
 {
    if (!hasIndex(row, column, parent)){
