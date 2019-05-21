@@ -9,10 +9,21 @@
 namespace bs {
    namespace network {
 
-      enum class SideType {
-         Undefined,
-         Buy,
-         Sell
+      struct ChatOTCSide {
+         enum Type {
+            Undefined,
+            Buy,
+            Sell
+         };
+
+         static const char *toString(Type side) {
+            switch (side) {
+               case Buy:   return QT_TR_NOOP("BUY");
+               case Sell:  return QT_TR_NOOP("SELL");
+               default:    return "unknown";
+            }
+         }
+
       };
 
       struct OTCPriceRange
@@ -89,7 +100,7 @@ namespace bs {
 
       struct OTCRequest
       {
-         SideType        side;
+         ChatOTCSide::Type        side;
          OTCRangeID::Type  amountRange;
 
          // XXX
