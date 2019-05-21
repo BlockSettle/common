@@ -8,7 +8,7 @@
 #include <QWidget>
 
 #include "ChatHandleInterfaces.h"
-#include "ChatCommonTypes.h"
+#include "CommonTypes.h"
 #include "ZMQ_BIP15X_DataConnection.h"
 
 #include <memory>
