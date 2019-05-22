@@ -13,6 +13,7 @@
 #include "autheid_utils.h"
 #include "UserHasher.h"
 #include "ChatClientDataModel.h"
+#include "ChatClientProxyModel.h"
 #include <QRegularExpression>
 
 #include "Encryption/AEAD_Encryption.h"
@@ -120,7 +121,8 @@ ChatClient::ChatClient(const std::shared_ptr<ConnectionManager>& connectionManag
 
    hasher_ = std::make_shared<UserHasher>();
    model_ = std::make_shared<ChatClientDataModel>();
-   model_->setModelChangesHandler(this);
+   model_->setModelChangesHandler(this);   
+   proxyModel_ = std::make_shared<ChatClientProxyModel>();
 
    heartbeatTimer_.setInterval(30 * 1000);
    heartbeatTimer_.setSingleShot(false);
@@ -136,6 +138,11 @@ ChatClient::~ChatClient() noexcept
 std::shared_ptr<ChatClientDataModel> ChatClient::getDataModel()
 {
    return model_;
+}
+
+std::shared_ptr<ChatClientProxyModel> ChatClient::getProxyModel()
+{
+   return proxyModel_;
 }
 
 std::string ChatClient::loginToServer(const std::string& email, const std::string& jwt

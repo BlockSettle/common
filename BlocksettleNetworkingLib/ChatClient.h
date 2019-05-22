@@ -26,6 +26,7 @@ namespace Chat {
 
 class ApplicationSettings;
 class ChatClientDataModel;
+class ChatClientProxyModel;
 class ConnectionManager;
 class UserHasher;
 class ZmqBIP15XDataConnection;
@@ -52,6 +53,7 @@ public:
    ChatClient& operator = (ChatClient&&) = delete;
 
    std::shared_ptr<ChatClientDataModel> getDataModel();
+   std::shared_ptr<ChatClientProxyModel> getProxyModel();
 
    std::string loginToServer(const std::string& email, const std::string& jwt
       , const ZmqBIP15XDataConnection::cbNewKey &);
@@ -259,6 +261,7 @@ private:
 
    autheid::PrivateKey  ownPrivKey_;
    std::shared_ptr<ChatClientDataModel> model_;
+   std::shared_ptr<ChatClientProxyModel> proxyModel_;
 
    // ChatItemActionsHandler interface
 public:

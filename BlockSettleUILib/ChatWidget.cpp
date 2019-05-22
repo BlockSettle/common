@@ -4,6 +4,7 @@
 #include "ApplicationSettings.h"
 #include "ChatClient.h"
 #include "ChatClientDataModel.h"
+#include "ChatClientProxyModel.h"
 #include "ChatSearchPopup.h"
 #include "NotificationCenter.h"
 #include "OTCRequestViewModel.h"
@@ -277,10 +278,17 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
 {
    logger_ = logger;
    client_ = std::make_shared<ChatClient>(connectionManager, appSettings, logger);
+   
    auto model = client_->getDataModel();
    model->setNewMessageMonitor(this);
-   ui_->treeViewUsers->setModel(model.get());
-//   ui_->treeViewUsers->expandAll();
+   //ui_->treeViewUsers->setModel(model.get());
+   
+   auto proxyModel = client_->getProxyModel();
+   proxyModel->setSourceModel(model.get());
+   ui_->treeViewUsers->setModel(proxyModel.get());
+   ui_->treeViewUsers->setSortingEnabled(true);
+
+   //ui_->treeViewUsers->expandAll();
    ui_->treeViewUsers->addWatcher(ui_->textEditMessages);
    ui_->treeViewUsers->addWatcher(this);
    ui_->treeViewUsers->setHandler(client_);
