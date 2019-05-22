@@ -283,10 +283,12 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
    model->setNewMessageMonitor(this);
    //ui_->treeViewUsers->setModel(model.get());
    
-   auto proxyModel = client_->getProxyModel();
+   auto proxyModel = new ChatClientProxyModel(ui_->treeViewUsers);
    proxyModel->setSourceModel(model.get());
-   ui_->treeViewUsers->setModel(proxyModel.get());
+   ui_->treeViewUsers->setModel(proxyModel);
+   ui_->treeViewUsers->setProxyModel(proxyModel);
    ui_->treeViewUsers->setSortingEnabled(true);
+   ui_->treeViewUsers->sortByColumn(0, Qt::DescendingOrder);
 
    //ui_->treeViewUsers->expandAll();
    ui_->treeViewUsers->addWatcher(ui_->textEditMessages);

@@ -2,6 +2,7 @@
 #include "ChatClientTree/TreeObjects.h"
 #include "ChatClientUsersViewItemDelegate.h"
 #include "ChatClientDataModel.h"
+#include "ChatClientProxyModel.h"
 
 #include <QMenu>
 
@@ -27,6 +28,10 @@ public:
    QAction* execMenu(const QPoint & point)
    {
       currentIndex_ = view_->indexAt(point);
+   
+      if (view_->getProxyModel() && currentIndex_.isValid()) {
+         currentIndex_ = view_->getProxyModel()->mapToSource(currentIndex_);
+      }
 
       clear();
       currentContact_.reset();
@@ -250,10 +255,27 @@ void ChatClientUserView::setHandler(std::shared_ptr<ChatItemActionsHandler> hand
    handler_ = handler;
 }
 
+void ChatClientUserView::setProxyModel(ChatClientProxyModel *proxyModel)
+{
+   proxyModel_ = proxyModel;
+}
+
+ChatClientProxyModel *ChatClientUserView::getProxyModel()
+{
+   return proxyModel_;
+}
+
 void ChatClientUserView::currentChanged(const QModelIndex &current, const QModelIndex &previous)
 {
    QTreeView::currentChanged(current, previous);
-   TreeItem* item = static_cast<TreeItem*>(current.internalPointer());
+
+   auto sourceCurrent = current;
+   
+   if (proxyModel_ && current.isValid()) {
+      sourceCurrent = proxyModel_->mapToSource(current);
+   }
+
+   TreeItem* item = static_cast<TreeItem*>(sourceCurrent.internalPointer());
    if (!watchers_.empty() && item) {
       switch (item->getType()) {
          case ChatUIDefinitions::ChatTreeNodeType::RoomsElement:
@@ -274,8 +296,15 @@ void ChatClientUserView::currentChanged(const QModelIndex &current, const QModel
 void ChatClientUserView::dataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight, const QVector<int> &roles)
 {
    QTreeView::dataChanged(topLeft, bottomRight, roles);
+
    if (topLeft == bottomRight) {
-      TreeItem* item = static_cast<TreeItem*>(topLeft.internalPointer());
+      auto sourceTopLeft = topLeft;
+
+      if (proxyModel_ && topLeft.isValid()) {
+         sourceTopLeft = proxyModel_->mapToSource(topLeft);
+      }
+
+      TreeItem* item = static_cast<TreeItem*>(sourceTopLeft.internalPointer());
       switch (item->getType()) {
          case ChatUIDefinitions::ChatTreeNodeType::MessageDataNode: {
             auto mnode = static_cast<TreeMessageNode*>(item);

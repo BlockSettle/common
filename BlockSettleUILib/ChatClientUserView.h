@@ -13,30 +13,34 @@ namespace Chat {
 
 class ChatUsersContextMenu;
 class ChatUsersViewItemStyle;
+class ChatClientProxyModel;
 class ChatClientUserView : public QTreeView
 {
    Q_OBJECT
 public:
-   ChatClientUserView(QWidget * parent = nullptr);
-   void addWatcher(ViewItemWatcher* watcher);
-   void setActiveChatLabel(QLabel * label);
+   ChatClientUserView(QWidget *parent = nullptr);
+   void addWatcher(ViewItemWatcher *watcher);
+   void setActiveChatLabel(QLabel *label);
    void setHandler(std::shared_ptr<ChatItemActionsHandler> handler);
    void setCurrentUserChat(const QString &userId);
+   void setProxyModel(ChatClientProxyModel *proxyModel);   
+   ChatClientProxyModel *getProxyModel();
 
 public slots:
    void onCustomContextMenu(const QPoint &);
 private slots:
    void onClicked(const QModelIndex &);
 private:
-   void updateDependUI(CategoryElement * element);
+   void updateDependUI(CategoryElement *element);
    void notifyCurrentChanged(CategoryElement *element);
    void notifyMessageChanged(std::shared_ptr<Chat::MessageData> message);
    void notifyElementUpdated(CategoryElement *element);
 private:
    std::list<ViewItemWatcher* > watchers_;
    std::shared_ptr<ChatItemActionsHandler> handler_;
-   QLabel * label_;
-   ChatUsersContextMenu* contextMenu_;
+   ChatClientProxyModel *proxyModel_;
+   QLabel *label_;
+   ChatUsersContextMenu *contextMenu_;
 
 
    // QAbstractItemView interface

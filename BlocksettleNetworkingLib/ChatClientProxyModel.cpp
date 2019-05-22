@@ -1,6 +1,5 @@
 #include "ChatClientProxyModel.h"
 #include "ChatClientDataModel.h"
-#include <QDebug>
 
 using NodeType = ChatUIDefinitions::ChatTreeNodeType;
 using Role = ChatClientDataModel::Role;
@@ -15,7 +14,8 @@ ChatClientProxyModel::ChatClientProxyModel(QObject *parent)
 bool ChatClientProxyModel::lessThan(const QModelIndex &left, const QModelIndex &right) const
 {
    // don't sort room chats
-   if (left.data(Role::ItemTypeRole).value<NodeType>() == NodeType::RoomsElement) {
+   if (left.data(Role::ItemTypeRole).value<NodeType>() == NodeType::RoomsElement &&
+       right.data(Role::ItemTypeRole).value<NodeType>() == NodeType::RoomsElement) {
       return true;
    }
 
