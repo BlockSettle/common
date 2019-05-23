@@ -12,7 +12,7 @@ class BotanSettings(Configurator):
         Configurator.__init__(self, settings)
         self._version = '2.10.0'
         self._package_name = 'botan'
-        self._script_revision = '1'
+        self._script_revision = '2'
         self._enableSqlite = enableSqlite
         self._enablePKCS11 = enablePKCS11
 
