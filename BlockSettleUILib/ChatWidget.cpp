@@ -278,13 +278,13 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
 {
    logger_ = logger;
    client_ = std::make_shared<ChatClient>(connectionManager, appSettings, logger);
-   
-   auto model = client_->getDataModel();
-   model->setNewMessageMonitor(this);
-   //ui_->treeViewUsers->setModel(model.get());
+
+   auto dataModel = new ChatClientDataModel();
+   dataModel->setNewMessageMonitor(this);
+   client_->setDataModel(dataModel);
    
    auto proxyModel = new ChatClientProxyModel(ui_->treeViewUsers);
-   proxyModel->setSourceModel(model.get());
+   proxyModel->setSourceModel(dataModel);
    ui_->treeViewUsers->setModel(proxyModel);
    ui_->treeViewUsers->setProxyModel(proxyModel);
    ui_->treeViewUsers->setSortingEnabled(true);

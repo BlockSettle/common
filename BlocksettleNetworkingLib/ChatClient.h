@@ -51,7 +51,8 @@ public:
    ChatClient(ChatClient&&) = delete;
    ChatClient& operator = (ChatClient&&) = delete;
 
-   std::shared_ptr<ChatClientDataModel> getDataModel();
+   void setDataModel(ChatClientDataModel *model);
+   ChatClientDataModel *getDataModel();
 
    std::string loginToServer(const std::string& email, const std::string& jwt
       , const ZmqBIP15XDataConnection::cbNewKey &);
@@ -258,7 +259,7 @@ private:
    std::atomic_bool  loggedIn_{ false };
 
    autheid::PrivateKey  ownPrivKey_;
-   std::shared_ptr<ChatClientDataModel> model_;
+   ChatClientDataModel *model_;
 
    // ChatItemActionsHandler interface
 public:
