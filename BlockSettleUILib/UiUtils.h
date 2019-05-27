@@ -81,9 +81,6 @@ namespace UiUtils
    QString displayPriceXBT(double price);
    QString displayPriceCC(double price);
 
-
-
-
    int GetPricePrecisionForAssetType(const bs::network::Asset::Type& assetType);
 
    // return only number, product string is not included
