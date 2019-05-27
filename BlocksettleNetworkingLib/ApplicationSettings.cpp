@@ -555,7 +555,7 @@ int ApplicationSettings::GetArmoryRemotePort(NetworkType networkType) const
 
 QString ApplicationSettings::localSignerDefaultName()
 {
-   return QLatin1String("Local GUI Signer Mode");
+   return tr("Local GUI Signer Mode");
 }
 
 int ApplicationSettings::GetDefaultArmoryLocalPort(NetworkType networkType)
