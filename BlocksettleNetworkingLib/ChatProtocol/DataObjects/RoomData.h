@@ -27,7 +27,7 @@ namespace Chat {
                bool sendUserUpdates = true,
                bool displayUserList = true,
                bool displayTrayNotification = true,
-               bool isTradingAvailable = false);
+               bool isTradingAvailable = true);
 
       QString getId();
       QString getOwnerId();
