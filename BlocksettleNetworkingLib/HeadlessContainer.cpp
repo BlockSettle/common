@@ -24,7 +24,8 @@ namespace {
    constexpr int kStartTimeout = 5000;
 
    // When remote signer will try to reconnect
-   constexpr auto kRemoteReconnectPeriod = std::chrono::seconds(10);
+   constexpr auto kLocalReconnectPeriod = std::chrono::seconds(10);
+   constexpr auto kRemoteReconnectPeriod = std::chrono::milliseconds(100);
 
 } // namespace
 
@@ -195,14 +196,25 @@ void HeadlessListener::OnDataReceived(const std::string& data)
 
 void HeadlessListener::OnConnected()
 {
+   if (isConnected_) {
+      logger_->error("already connected");
+      return;
+   }
+
+   isConnected_ = true;
    logger_->debug("[HeadlessListener] Connected");
    emit connected();
 }
 
 void HeadlessListener::OnDisconnected()
 {
+   if (!isConnected_) {
+      return;
+   }
+
    logger_->debug("[HeadlessListener] Disconnected");
    isReady_ = false;
+   isConnected_ = false;
    emit disconnected();
 }
 
@@ -225,17 +237,15 @@ void HeadlessListener::OnError(DataConnectionListener::DataConnectionError error
          emit error(HeadlessContainer::SerializationFailed, tr("serialization failed"));
          break;
       case HeartbeatWaitFailed:
-         emit error(HeadlessContainer::HeartbeatWaitFailed, tr("Connection lost"));
+         emit error(HeadlessContainer::HeartbeatWaitFailed, tr("connection lost"));
+         break;
+      case ConnectionTimeout:
+         emit error(HeadlessContainer::ConnectionTimeout, tr("connection timeout"));
          break;
       default:
          emit error(HeadlessContainer::UnknownError, tr("unknown error"));
          break;
    }
-
-   // Need to disconnect connection because otherwise it will continue send error responses over and over
-   QMetaObject::invokeMethod(this, [this] {
-      connection_->closeConnection();
-   });
 }
 
 bs::signer::RequestId HeadlessListener::Send(headless::RequestPacket packet, bool updateId)
@@ -1104,29 +1114,25 @@ bool RemoteSigner::Stop()
 
 bool RemoteSigner::Connect()
 {
-   QtConcurrent::run(this, &RemoteSigner::ConnectHelper);
-   headlessConnFinished_ = true;
-   return true;
-}
-
-void RemoteSigner::ConnectHelper()
-{
    if (!connection_) {
       logger_->error("[{}] connection not created", __func__);
-      emit disconnected();
-      return;
+      return false;
    }
-   if (!connection_->isActive()) {
-      if (connection_->openConnection(host_.toStdString(), port_.toStdString()
-         , listener_.get())) {
-         emit connected();
-      }
-      else {
-         logger_->error("[HeadlessContainer] Failed to open connection to "
-            "headless container");
-         return;
-      }
+
+   if (connection_->isActive()) {
+      return true;
    }
+
+   bool result = connection_->openConnection(host_.toStdString(), port_.toStdString(), listener_.get());
+   if (!result) {
+      logger_->error("[HeadlessContainer] Failed to open connection to "
+         "headless container");
+      return false;
+   }
+
+   emit connected();
+   headlessConnFinished_ = true;
+   return true;
 }
 
 bool RemoteSigner::Disconnect()
@@ -1134,10 +1140,6 @@ bool RemoteSigner::Disconnect()
    if (!connection_) {
       return true;
    }
-/*   headless::RequestPacket packet;
-   packet.set_type(headless::DisconnectionRequestType);
-   packet.set_data("");    // This code produces crashes on terminal shutdown
-   Send(packet);*/         // and its purpose is obscure to me
 
    return connection_->closeConnection();
 }
@@ -1199,7 +1201,8 @@ void RemoteSigner::ScheduleRestart()
    }
 
    isRestartScheduled_ = true;
-   QTimer::singleShot(kRemoteReconnectPeriod, this, [this] {
+   auto timeout = isLocal() ? kLocalReconnectPeriod : kRemoteReconnectPeriod;
+   QTimer::singleShot(timeout, this, [this] {
       isRestartScheduled_ = false;
       RecreateConnection();
       Start();
@@ -1238,11 +1241,11 @@ void RemoteSigner::onDisconnected()
    woWallets_.clear();
 
    // signRequests_ will be empty after that
-//   std::set<bs::signer::RequestId> tmpReqs = std::move(signRequests_);
+   std::set<bs::signer::RequestId> tmpReqs = std::move(signRequests_);
 
-//   for (const auto &id : tmpReqs) {
-//      emit TXSigned(id, {}, "signer disconnected", false);
-//   }
+   for (const auto &id : tmpReqs) {
+      emit TXSigned(id, {}, bs::error::ErrorCode::TxCanceled, "Signer disconnected");
+   }
 
    emit disconnected();
 
@@ -1350,83 +1353,80 @@ bs::signer::RequestId RemoteSigner::signTXRequest(const bs::core::wallet::TXSign
 
 bs::signer::RequestId RemoteSigner::signOffline(const bs::core::wallet::TXSignRequest &txSignReq)
 {
-   // Offline signing deprecated???
-   return  0;
+   if (!txSignReq.isValid()) {
+      logger_->error("[HeadlessContainer] Invalid TXSignRequest");
+      return 0;
+   }
 
-//   if (!txSignReq.isValid()) {
-//      logger_->error("[HeadlessContainer] Invalid TXSignRequest");
-//      return 0;
-//   }
+   Blocksettle::Storage::Signer::TXRequest request;
+   request.set_walletid(txSignReq.walletId);
 
-//   Blocksettle::Storage::Signer::TXRequest request;
-//   request.set_walletid(txSignReq.walletId);
+   for (const auto &utxo : txSignReq.inputs) {
+      auto input = request.add_inputs();
+      input->set_utxo(utxo.serialize().toBinStr());
+      const auto addr = bs::Address::fromUTXO(utxo);
+      input->mutable_address()->set_address(addr.display());
+   }
 
-//   for (const auto &utxo : txSignReq.inputs) {
-//      auto input = request.add_inputs();
-//      input->set_utxo(utxo.serialize().toBinStr());
-//      const auto addr = bs::Address::fromUTXO(utxo);
-//      input->mutable_address()->set_address(addr.display());
-//   }
+   for (const auto &recip : txSignReq.recipients) {
+      request.add_recipients(recip->getSerializedScript().toBinStr());
+   }
 
-//   for (const auto &recip : txSignReq.recipients) {
-//      request.add_recipients(recip->getSerializedScript().toBinStr());
-//   }
+   if (txSignReq.fee) {
+      request.set_fee(txSignReq.fee);
+   }
+   if (txSignReq.RBF) {
+      request.set_rbf(true);
+   }
 
-//   if (txSignReq.fee) {
-//      request.set_fee(txSignReq.fee);
-//   }
-//   if (txSignReq.RBF) {
-//      request.set_rbf(true);
-//   }
+   if (txSignReq.change.value) {
+      auto change = request.mutable_change();
+      change->mutable_address()->set_address(txSignReq.change.address.display());
+      change->mutable_address()->set_index(txSignReq.change.index);
+      change->set_value(txSignReq.change.value);
+   }
 
-//   if (txSignReq.change.value) {
-//      auto change = request.mutable_change();
-//      change->mutable_address()->set_address(txSignReq.change.address.display());
-//      change->mutable_address()->set_index(txSignReq.change.index);
-//      change->set_value(txSignReq.change.value);
-//   }
+   if (!txSignReq.comment.empty()) {
+      request.set_comment(txSignReq.comment);
+   }
 
-//   if (!txSignReq.comment.empty()) {
-//      request.set_comment(txSignReq.comment);
-//   }
+   Blocksettle::Storage::Signer::File fileContainer;
+   auto container = fileContainer.add_payload();
+   container->set_type(Blocksettle::Storage::Signer::RequestFileType);
+   container->set_data(request.SerializeAsString());
 
-//   Blocksettle::Storage::Signer::File fileContainer;
-//   auto container = fileContainer.add_payload();
-//   container->set_type(Blocksettle::Storage::Signer::RequestFileType);
-//   container->set_data(request.SerializeAsString());
+   const auto timestamp = std::to_string(QDateTime::currentDateTime().toSecsSinceEpoch());
+   const auto targetDir = appSettings_->get<std::string>(ApplicationSettings::signerOfflineDir);
+   const std::string fileName = targetDir + "/" + txSignReq.walletId + "_" + timestamp + ".bin";
 
-//   const auto timestamp = std::to_string(QDateTime::currentDateTime().toSecsSinceEpoch());
-//   const auto targetDir = appSettings_->get<std::string>(ApplicationSettings::signerOfflineDir);
-//   const std::string fileName = targetDir + "/" + txSignReq.walletId + "_" + timestamp + ".bin";
+   const auto reqId = listener_->newRequestId();
+   QFile f(QString::fromStdString(fileName));
+   if (f.exists()) {
+      QMetaObject::invokeMethod(this, [this, reqId, fileName] {
+         emit TXSigned(reqId, {}, bs::error::ErrorCode::TxRequestFileExist, fileName);
+      });
+      return reqId;
+   }
+   if (!f.open(QIODevice::WriteOnly)) {
+      QMetaObject::invokeMethod(this, [this, reqId, fileName] {
+         emit TXSigned(reqId, {}, bs::error::ErrorCode::TxFailedToOpenRequestFile, fileName);
+      });
+      return reqId;
+   }
 
-//   const auto reqId = listener_->newRequestId();
-//   QFile f(QString::fromStdString(fileName));
-//   if (f.exists()) {
-//      QMetaObject::invokeMethod(this, [this, reqId, fileName] {
-//         emit TXSigned(reqId, {}, "request file " + fileName + " already exists", false);
-//      });
-//      return reqId;
-//   }
-//   if (!f.open(QIODevice::WriteOnly)) {
-//      QMetaObject::invokeMethod(this, [this, reqId, fileName] {
-//         emit TXSigned(reqId, {}, "failed to open " + fileName + " for writing", false);
-//      });
-//      return reqId;
-//   }
+   const auto data = QByteArray::fromStdString(fileContainer.SerializeAsString());
+   if (f.write(data) != data.size()) {
+      QMetaObject::invokeMethod(this, [this, reqId, fileName] {
+         emit TXSigned(reqId, {}, bs::error::ErrorCode::TxFailedToWriteRequestFile, fileName);
+      });
+      return reqId;
+   }
+   f.close();
 
-//   const auto data = QByteArray::fromStdString(fileContainer.SerializeAsString());
-//   if (f.write(data) != data.size()) {
-//      QMetaObject::invokeMethod(this, [this, reqId, fileName] {
-//         emit TXSigned(reqId, {}, "failed to write to " + fileName, false);
-//      });
-//      return reqId;
-//   }
-//   f.close();
-
-//   QMetaObject::invokeMethod(this, [this, reqId, fileName] {
-//      emit TXSigned(reqId, fileName, {}, false);
-//   });
-//   return reqId;
+   QMetaObject::invokeMethod(this, [this, reqId, fileName] {
+      emit TXSigned(reqId, fileName, bs::error::ErrorCode::NoError);
+   });
+   return reqId;
 }
 
 

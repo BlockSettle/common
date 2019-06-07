@@ -60,6 +60,7 @@ public:
       HeartbeatWaitFailed,
       InvalidProtocol,
       NetworkTypeMismatch,
+      ConnectionTimeout,
    };
    Q_ENUM(ConnectionError)
 
@@ -120,6 +121,8 @@ public:
    virtual void setTargetDir(const QString& targetDir) {}
    virtual QString targetDir() const { return QString(); }
 
+   bool isLocal() const { return mode_ == OpMode::Local || mode_ == OpMode::LocalInproc; }
+
 signals:
    void connected();
    void disconnected();
@@ -127,7 +130,7 @@ signals:
    void connectionError(ConnectionError error, const QString &details);
    void ready();
    void Error(bs::signer::RequestId id, std::string error);
-   void TXSigned(bs::signer::RequestId id, BinaryData signedTX, bs::error::ErrorCode result);
+   void TXSigned(bs::signer::RequestId id, BinaryData signedTX, bs::error::ErrorCode result, const std::string &errorReason = {});
 
    void PasswordRequested(bs::hd::WalletInfo walletInfo, std::string prompt);
 
