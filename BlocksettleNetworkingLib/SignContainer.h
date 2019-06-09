@@ -15,11 +15,43 @@
 #include "SignerUiDefs.h"
 #include "ZMQ_BIP15X_DataConnection.h"
 
+#include "headless.pb.h"
+
 namespace spdlog {
    class logger;
 }
 namespace bs {
    namespace sync {
+
+   struct SettlementInfo
+   {
+      // Details
+      QString productGroup;
+      QString security;
+      QString product;
+      QString side;
+      QString quantity;
+      QString price;
+      QString totalValue;
+
+      // Settlement details
+      QString payment;
+      QString genesisAddress;
+
+      // XBT Settlement details
+      QString requesterAuthAddress;
+      QString responderAuthAddress;
+      QString walllet;
+      QString transaction;
+
+      // Transaction details
+      QString transactionAmount;
+      QString networkFee;
+      QString totalSpent;
+
+      Blocksettle::Communication::headless::SettlementInfo toProtobufMessage();
+   };
+
       namespace hd {
          class Leaf;
          class Wallet;
@@ -81,11 +113,27 @@ public:
       , const bs::Address &authAddr, const std::string &settlementId
       , const PasswordType& password = {}) = 0;
 
+   virtual bs::signer::RequestId signSettlementTXRequest(const bs::core::wallet::TXSignRequest &
+      , const bs::sync::SettlementInfo &settlementInfo
+      , TXSignMode mode = TXSignMode::Full, const PasswordType& password = {}
+      , bool keepDuplicatedRecipients = false
+      , const std::function<void(bs::error::ErrorCode result, const BinaryData &signedTX)> &cb = nullptr) = 0;
+
+//   virtual bs::signer::RequestId signSettlementPartialTXRequest(const bs::core::wallet::TXSignRequest &
+//      , const bs::sync::SettlementInfo &settlementInfo
+//      , const PasswordType& password = {}
+//      , const std::function<void(bs::sync::WalletInfo)> &cb = nullptr) = 0;
+
+//   virtual bs::signer::RequestId signSettlementPayoutTXRequest(const bs::core::wallet::TXSignRequest &
+//      , const bs::sync::SettlementInfo &settlementInfo
+//      , const bs::Address &authAddr, const std::string &settlementId
+//      , const PasswordType& password = {}
+//      , const std::function<void(bs::sync::WalletInfo)> &cb = nullptr) = 0;
+
    virtual bs::signer::RequestId signMultiTXRequest(const bs::core::wallet::TXMultiSignRequest &) = 0;
 
-   virtual void SendPassword(const std::string &walletId, const PasswordType &password,
-      bool cancelledByUser) = 0;
    virtual bs::signer::RequestId CancelSignTx(const BinaryData &txId) = 0;
+   virtual void SendPassword(const std::string &walletId, bs::error::ErrorCode result, const PasswordType &password) = 0;
 
    virtual bs::signer::RequestId SetUserId(const BinaryData &) = 0;
    virtual bs::signer::RequestId createHDLeaf(const std::string &rootWalletId, const bs::hd::Path &

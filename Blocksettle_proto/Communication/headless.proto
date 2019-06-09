@@ -29,6 +29,8 @@ enum RequestType
    ExecCustomDialogRequestType = 21;
    // Sent from headless signer when wallet added, removed or changed somehow (request body is empty)
    WalletsListUpdatedType      = 22;
+
+   SignSettlementTXRequestType = 23;
 }
 
 message RequestPacket
@@ -97,17 +99,46 @@ message SignTXRequest
 
 message SignTXReply
 {
-   uint32 errorCode = 1;
-   oneof result {
-      bytes signedTX = 2;
-      string   errorString = 3;
-   }
-   Change   change = 4;
+   uint32         errorCode = 1;
+   bytes          signedTX = 2;
+   Change         change = 3;
 }
 
 message CancelSignTx
 {
    bytes txId = 1;
+}
+
+message SettlementInfo {
+   // Details
+   bytes productGroup         = 1;
+   bytes security             = 2;
+   bytes product              = 3;
+   bytes side                 = 4;
+   bytes quantity             = 5;
+   bytes price                = 6;
+   bytes totalValue           = 7;
+
+   // Settlement details
+   bytes payment              = 8;
+   bytes genesisAddress       = 9;
+
+   // XBT Settlement details
+   bytes requesterAuthAddress = 10;
+   bytes responderAuthAddress = 11;
+   bytes walllet              = 12;
+   bytes transaction          = 13;
+
+   // Transaction details
+   bytes transactionAmount    = 14;
+   bytes networkFee           = 15;
+   bytes totalSpent           = 16;
+}
+
+message SignSettlementTXRequest
+{
+   SignTXRequest signTXRequest     = 1;
+   SettlementInfo settlementInfo   = 2;
 }
 
 message SignPayoutTXRequest
@@ -130,9 +161,9 @@ message PasswordRequest
 
 message PasswordReply
 {
-   string   walletId = 1;
-   string   password = 2;
-   bool     cancelledByUser = 3;
+   uint32   errorCode = 1;
+   string   walletId = 2;
+   string   password = 3;
 }
 
 

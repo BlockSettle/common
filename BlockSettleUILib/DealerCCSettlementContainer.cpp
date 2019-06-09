@@ -123,7 +123,8 @@ bool DealerCCSettlementContainer::accept(const SecureBinaryData &password)
    txReq.inputs = utxoAdapter_->get(id());
    logger_->debug("[DealerCCSettlementContainer::accept] signing with wallet {}, {} inputs"
       , wallet_->name(), txReq.inputs.size());
-   //signId_ = signingContainer_->signPartialTXRequest(txReq, autoSign_, password);
+   // FIXME: Settlement containers will be reimplemented to use another function
+   // signId_ = signingContainer_->signPartialTXRequest(txReq, autoSign_, password);
    emit info(tr("Waiting for TX half signing..."));
    return true;
 }

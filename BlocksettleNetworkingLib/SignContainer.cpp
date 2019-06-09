@@ -22,3 +22,17 @@ bool SignerConnectionExists(const QString &host, const QString &port)
    sock.connectToHost(host, port.toUInt());
    return sock.waitForConnected(30);
 }
+
+Blocksettle::Communication::headless::SettlementInfo bs::sync::SettlementInfo::toProtobufMessage()
+{
+   Blocksettle::Communication::headless::SettlementInfo info;
+   info.set_productgroup(productGroup.toUtf8());
+   info.set_security(security.toUtf8());
+   info.set_product(product.toUtf8());
+   info.set_side(side.toUtf8());
+   info.set_quantity(quantity.toUtf8());
+   info.set_price(price.toUtf8());
+   info.set_totalvalue(totalValue.toUtf8());
+
+   return info;
+}

@@ -116,6 +116,7 @@ bool DealerXBTSettlementContainer::accept(const SecureBinaryData &password)
             const auto txReq = settlWallet_->createPayoutTXRequest(input
                , receivingAddress, transactionData_->feePerByte());
             const auto authAddr = bs::Address::fromPubKey(authKey_, AddressEntryType_P2WPKH);
+            // FIXME: Settlement containers will be reimplemented to use another function
 //            payoutSignId_ = signingContainer_->signPayoutTXRequest(txReq, authAddr, settlIdStr_
 //               , autoSign_, password);
          }

@@ -62,7 +62,7 @@ public:
    void setCallbacks(HeadlessContainerCallbacks *callbacks);
 
    void passwordReceived(const std::string &walletId
-      , const SecureBinaryData &password, bool cancelledByUser);
+      , bs::error::ErrorCode result, const SecureBinaryData &password);
    bs::error::ErrorCode activateAutoSign(const std::string &walletId, const SecureBinaryData &password);
    bs::error::ErrorCode deactivateAutoSign(const std::string &walletId = {}, bs::error::ErrorCode reason = bs::error::ErrorCode::NoError);
    //void addPendingAutoSignReq(const std::string &walletId);
@@ -80,15 +80,16 @@ protected:
    void OnPeerDisconnected(const std::string &ip) override;
 
 private:
-   using PasswordReceivedCb = std::function<void(const SecureBinaryData &password, bool cancelledByUser)>;
+   using PasswordReceivedCb = std::function<void(bs::error::ErrorCode result, const SecureBinaryData &password)>;
    using PasswordsReceivedCb = std::function<void(const std::unordered_map<std::string, SecureBinaryData> &)>;
    void passwordReceived(const std::string &clientId, const std::string &walletId
-      , const SecureBinaryData &password, bool cancelledByUser);
+      , bs::error::ErrorCode result, const SecureBinaryData &password);
 
    bool sendData(const std::string &data, const std::string &clientId = {});
    bool onRequestPacket(const std::string &clientId, Blocksettle::Communication::headless::RequestPacket packet);
+
    bool onSignTXRequest(const std::string &clientId, const Blocksettle::Communication::headless::RequestPacket &packet
-      , bool partial = false);
+      , Blocksettle::Communication::headless::RequestType requestType);
    bool onSignPayoutTXRequest(const std::string &clientId, const Blocksettle::Communication::headless::RequestPacket &packet);
    bool onSignMultiTXRequest(const std::string &clientId, const Blocksettle::Communication::headless::RequestPacket &packet);
    bool onPasswordReceived(const std::string &clientId, Blocksettle::Communication::headless::RequestPacket &packet);
@@ -130,7 +131,7 @@ private:
    bool RequestPassword(const std::string &clientId, const bs::core::wallet::TXSignRequest &, const std::string &prompt
       , const PasswordReceivedCb &cb);
 
-   bool CheckSpendLimit(uint64_t value, bool autoSign, const std::string &walletId);
+   bool CheckSpendLimit(uint64_t value, const std::string &walletId);
 
    bool isRequestAllowed(Blocksettle::Communication::headless::RequestType) const;
 
@@ -145,7 +146,7 @@ private:
    const bool                          watchingOnly_;
    std::unordered_set<std::string>     connectedClients_;
 
-   std::unordered_map<std::string, std::vector<PasswordReceivedCb>>  passwordCallbacks_;
+   std::unordered_map<std::string, std::vector<PasswordReceivedCb>>  passwordCallbacks_; // map<wallet_id, std::vector<PasswordReceivedCb>>
    std::unordered_map<std::string, SecureBinaryData>                 passwords_;
    //std::unordered_set<std::string>  autoSignPwdReqs_;
 

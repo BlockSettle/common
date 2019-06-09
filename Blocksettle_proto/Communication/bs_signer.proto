@@ -230,11 +230,11 @@ message SyncWalletResponse
 }
 
 
-message DecryptWalletRequest
+message DecryptWalletEvent
 {
-   string wallet_id = 1;
-   bytes  password = 2;
-   bool   cancelled_by_user = 3;
+   uint32   errorCode = 1;
+   string   wallet_id = 2;
+   string   password = 3;
 }
 
 message CreateWatchingOnlyResponse

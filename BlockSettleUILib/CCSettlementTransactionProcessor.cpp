@@ -29,8 +29,6 @@ CCSettlementTransactionProcessor::CCSettlementTransactionProcessor(
    , appSettings_(appSettings)
    , settlContainer_(settlContainer)
    , connectionManager_(connectionManager)
-   , sValid_(tr("<span style=\"color: #22C064;\">Verified</span>"))
-   , sInvalid_(tr("<span style=\"color: #CF292E;\">Invalid</span>"))
 {
   // connect(ui_->pushButtonCancel, &QPushButton::clicked, this, &CCSettlementTransactionProcessor::onCancel);
   // connect(ui_->pushButtonAccept, &QPushButton::clicked, this, &CCSettlementTransactionProcessor::onAccept);

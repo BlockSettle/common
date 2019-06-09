@@ -59,9 +59,6 @@ private:
    const std::shared_ptr<ApplicationSettings>   appSettings_;
    std::shared_ptr<ReqCCSettlementContainer>    settlContainer_;
    std::shared_ptr<ConnectionManager>           connectionManager_;
-
-   const QString  sValid_;
-   const QString  sInvalid_;
 };
 
 #endif // __CC_SETTLEMENT_TRANSACTION_PROCESSOR_H__

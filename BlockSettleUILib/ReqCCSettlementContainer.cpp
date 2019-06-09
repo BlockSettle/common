@@ -193,7 +193,8 @@ bool ReqCCSettlementContainer::createCCSignedTXdata(const SecureBinaryData &pass
       }
    }
 
-   //ccSignId_ = signingContainer_->signPartialTXRequest(ccTxData_, false, password);
+   // FIXME: Settlement containers will be reimplemented to use another function
+   // ccSignId_ = signingContainer_->signPartialTXRequest(ccTxData_, false, password);
    logger_->debug("[CCSettlementTransactionWidget::createCCSignedTXdata] {} recipients", ccTxData_.recipients.size());
    return (ccSignId_ > 0);
 }
