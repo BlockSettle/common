@@ -49,7 +49,7 @@ namespace bs {
       QString networkFee;
       QString totalSpent;
 
-      Blocksettle::Communication::headless::SettlementInfo toProtobufMessage();
+      Blocksettle::Communication::Internal::SettlementInfo toProtobufMessage();
    };
 
       namespace hd {

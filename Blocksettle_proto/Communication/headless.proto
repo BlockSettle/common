@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 package Blocksettle.Communication.headless;
-
+import "Blocksettle_Communication_Internal.proto";
 
 enum RequestType
 {
@@ -109,36 +109,10 @@ message CancelSignTx
    bytes txId = 1;
 }
 
-message SettlementInfo {
-   // Details
-   bytes productGroup         = 1;
-   bytes security             = 2;
-   bytes product              = 3;
-   bytes side                 = 4;
-   bytes quantity             = 5;
-   bytes price                = 6;
-   bytes totalValue           = 7;
-
-   // Settlement details
-   bytes payment              = 8;
-   bytes genesisAddress       = 9;
-
-   // XBT Settlement details
-   bytes requesterAuthAddress = 10;
-   bytes responderAuthAddress = 11;
-   bytes walllet              = 12;
-   bytes transaction          = 13;
-
-   // Transaction details
-   bytes transactionAmount    = 14;
-   bytes networkFee           = 15;
-   bytes totalSpent           = 16;
-}
-
 message SignSettlementTXRequest
 {
-   SignTXRequest signTXRequest     = 1;
-   SettlementInfo settlementInfo   = 2;
+   SignTXRequest signTXRequest                                       = 1;
+   Blocksettle.Communication.Internal.SettlementInfo settlementInfo   = 2;
 }
 
 message SignPayoutTXRequest

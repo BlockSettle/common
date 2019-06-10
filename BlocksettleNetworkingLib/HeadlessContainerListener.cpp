@@ -244,7 +244,7 @@ bool HeadlessContainerListener::onSignTXRequest(const std::string &clientId, con
    bool partial = reqType == headless::RequestType::SignPartialTXRequestType ? true : false;
 
    headless::SignTXRequest request;
-   headless::SettlementInfo settlementInfo;
+   Blocksettle::Communication::Internal::SettlementInfo settlementInfo;
 
    if (reqType == headless::RequestType::SignSettlementTXRequestType){
       headless::SignSettlementTXRequest settlementRequest;
@@ -398,7 +398,7 @@ bool HeadlessContainerListener::onSignPayoutTXRequest(const std::string &clientI
    const auto reqType = headless::SignPayoutTXRequestType;
 
    // FIXME - get settlement info in request
-   headless::SettlementInfo settlementInfo;
+   Blocksettle::Communication::Internal::SettlementInfo settlementInfo;
 
    headless::SignPayoutTXRequest request;
    if (!request.ParseFromString(packet.data())) {
@@ -582,7 +582,7 @@ void HeadlessContainerListener::passwordReceived(const std::string &walletId
 
 bool HeadlessContainerListener::RequestPasswordIfNeeded(const std::string &clientId
    , const bs::core::wallet::TXSignRequest &txReq
-   , headless::RequestType reqType, const headless::SettlementInfo &settlementInfo
+   , headless::RequestType reqType, const Blocksettle::Communication::Internal::SettlementInfo &settlementInfo
    , const std::string &prompt, const PasswordReceivedCb &cb)
 {
    const auto &wallet = walletsMgr_->getWalletById(txReq.walletId);
@@ -618,7 +618,7 @@ bool HeadlessContainerListener::RequestPasswordsIfNeeded(int reqId, const std::s
    , const std::string &prompt, const PasswordsReceivedCb &cb)
 {
    // FIXME - get settlement info in request
-   headless::SettlementInfo settlementInfo;
+   Blocksettle::Communication::Internal::SettlementInfo settlementInfo;
 
    TempPasswords tempPasswords;
    for (const auto &wallet : walletMap) {
@@ -663,7 +663,7 @@ bool HeadlessContainerListener::RequestPasswordsIfNeeded(int reqId, const std::s
 }
 
 bool HeadlessContainerListener::RequestPassword(const std::string &clientId, const bs::core::wallet::TXSignRequest &txReq
-   , headless::RequestType reqType, const headless::SettlementInfo &settlementInfo
+   , headless::RequestType reqType, const Blocksettle::Communication::Internal::SettlementInfo &settlementInfo
    , const std::string &prompt, const PasswordReceivedCb &cb)
 {
    if (cb) {

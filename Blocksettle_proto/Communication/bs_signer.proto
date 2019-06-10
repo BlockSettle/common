@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 package Blocksettle.Communication.signer;
-
+import "Blocksettle_Communication_Internal.proto";
 
 enum PacketType
 {
@@ -154,6 +154,12 @@ message SignTxEvent
 message SignTxCancelRequest
 {
    bytes  tx_hash = 1;
+}
+
+message SignSettlementTXRequest
+{
+   //SignTXRequest signTXRequest                                        = 1;
+   Blocksettle.Communication.Internal.SettlementInfo settlementInfo   = 2;
 }
 
 message XbtSpentEvent
