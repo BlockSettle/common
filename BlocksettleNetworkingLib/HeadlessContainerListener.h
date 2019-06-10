@@ -12,7 +12,7 @@
 #include "BSErrorCode.h"
 
 #include "headless.pb.h"
-#include "Blocksettle.Communication.Internal.pb.h"
+#include "Blocksettle_Communication_Internal.pb.h"
 
 namespace spdlog {
    class logger;
@@ -39,7 +39,7 @@ public:
    virtual void clientDisconn(const std::string &) = 0;
    virtual void requestPasswordForSigningTx(const bs::core::wallet::TXSignRequest &, const std::string &) = 0;
    virtual void requestPasswordForSigningSettlementTx(const bs::core::wallet::TXSignRequest &
-      , const Blocksettle::Communication::General::SettlementInfo &settlementInfo, const std::string &) = 0;
+      , const Blocksettle::Communication::Internal::SettlementInfo &settlementInfo, const std::string &) = 0;
    virtual void txSigned(const BinaryData &) = 0;
    virtual void cancelTxSign(const BinaryData &) = 0;
    virtual void xbtSpent(int64_t, bool) = 0;
