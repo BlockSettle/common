@@ -28,6 +28,7 @@ namespace bs {
    class Wallet;
 }
 class ServerConnection;
+class DispatchQueue;
 
 class HeadlessContainerCallbacks
 {
@@ -49,9 +50,9 @@ public:
 class HeadlessContainerListener : public ServerConnectionListener
 {
 public:
-   HeadlessContainerListener(const std::shared_ptr<ServerConnection> &conn
-      , const std::shared_ptr<spdlog::logger> &logger
+   HeadlessContainerListener(const std::shared_ptr<spdlog::logger> &logger
       , const std::shared_ptr<bs::core::WalletsManager> &
+      , const std::shared_ptr<DispatchQueue> &
       , const std::string &walletsPath
       , NetworkType netType
       , bool watchingOnly = false
@@ -70,6 +71,8 @@ public:
    bs::error::ErrorCode deactivateAutoSign(const std::string &walletId = {}, bs::error::ErrorCode reason = bs::error::ErrorCode::NoError);
    //void addPendingAutoSignReq(const std::string &walletId);
    void walletsListUpdated();
+
+   void resetConnection(ServerConnection *connection);
 
 protected:
    bool isAutoSignActive(const std::string &walletId) const;
@@ -141,9 +144,10 @@ private:
    bool isRequestAllowed(Blocksettle::Communication::headless::RequestType) const;
 
 private:
-   std::shared_ptr<ServerConnection>   connection_;
    std::shared_ptr<spdlog::logger>     logger_;
+   ServerConnection                    *connection_{};
    std::shared_ptr<bs::core::WalletsManager> walletsMgr_;
+   std::shared_ptr<DispatchQueue>      queue_;
    const std::string                   walletsPath_;
    const std::string                   backupPath_;
    const NetworkType                   netType_;

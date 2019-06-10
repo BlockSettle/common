@@ -4,6 +4,7 @@
 #include "ConnectionManager.h"
 #include "CoreHDWallet.h"
 #include "CoreWalletsManager.h"
+#include "DispatchQueue.h"
 #include "ServerConnection.h"
 #include "WalletEncryption.h"
 
@@ -11,21 +12,22 @@
 using namespace Blocksettle::Communication;
 using namespace bs::error;
 
-HeadlessContainerListener::HeadlessContainerListener(const std::shared_ptr<ServerConnection> &conn
-   , const std::shared_ptr<spdlog::logger> &logger
+HeadlessContainerListener::HeadlessContainerListener(const std::shared_ptr<spdlog::logger> &logger
    , const std::shared_ptr<bs::core::WalletsManager> &walletsMgr
+   , const std::shared_ptr<DispatchQueue> &queue
    , const std::string &walletsPath, NetworkType netType
    , bool wo, const bool &backupEnabled)
    : ServerConnectionListener()
-   , connection_(conn)
    , logger_(logger)
    , walletsMgr_(walletsMgr)
+   , queue_(queue)
    , walletsPath_(walletsPath)
    , backupPath_(walletsPath + "/../backup")
    , netType_(netType)
    , watchingOnly_(wo)
    , backupEnabled_(backupEnabled)
-{}
+{
+}
 
 void HeadlessContainerListener::setCallbacks(HeadlessContainerCallbacks *callbacks)
 {
@@ -34,9 +36,6 @@ void HeadlessContainerListener::setCallbacks(HeadlessContainerCallbacks *callbac
 
 HeadlessContainerListener::~HeadlessContainerListener() noexcept
 {
-   if (!connection_) {
-      return;
-   }
    disconnect();
 }
 
@@ -56,6 +55,10 @@ bool HeadlessContainerListener::disconnect(const std::string &clientId)
 
 bool HeadlessContainerListener::sendData(const std::string &data, const std::string &clientId)
 {
+   if (!connection_) {
+      return false;
+   }
+
    bool sentOk = false;
    if (clientId.empty()) {
       for (const auto &clientId : connectedClients_) {
@@ -83,47 +86,59 @@ static std::string toHex(const std::string &binData)
 void HeadlessContainerListener::OnClientConnected(const std::string &clientId)
 {
    logger_->debug("[HeadlessContainerListener] client {} connected", toHex(clientId));
-   connectedClients_.insert(clientId);
+
+   queue_->dispatch([this, clientId] {
+      connectedClients_.insert(clientId);
+   });
 }
 
 void HeadlessContainerListener::OnClientDisconnected(const std::string &clientId)
 {
    logger_->debug("[HeadlessContainerListener] client {} disconnected", toHex(clientId));
-   connectedClients_.erase(clientId);
 
-   if (callbacks_) {
-      callbacks_->clientDisconn(clientId);
-   }
+   queue_->dispatch([this, clientId] {
+      connectedClients_.erase(clientId);
+
+      if (callbacks_) {
+         callbacks_->clientDisconn(clientId);
+      }
+   });
 }
 
 void HeadlessContainerListener::OnDataFromClient(const std::string &clientId, const std::string &data)
 {
-   headless::RequestPacket packet;
-   if (!packet.ParseFromString(data)) {
-      logger_->error("[{}] failed to parse request packet", __func__);
-      return;
-   }
+   queue_->dispatch([this, clientId, data] {
+      headless::RequestPacket packet;
+      if (!packet.ParseFromString(data)) {
+         logger_->error("[{}] failed to parse request packet", __func__);
+         return;
+      }
 
-   if (!onRequestPacket(clientId, packet)) {
-      packet.set_data("");
-      sendData(packet.SerializeAsString(), clientId);
-   }
+      if (!onRequestPacket(clientId, packet)) {
+         packet.set_data("");
+         sendData(packet.SerializeAsString(), clientId);
+      }
+   });
 }
 
 void HeadlessContainerListener::OnPeerConnected(const std::string &ip)
 {
    logger_->debug("[{}] IP {} connected", __func__, ip);
-   if (callbacks_) {
-      callbacks_->peerConn(ip);
-   }
+   queue_->dispatch([this, ip] {
+      if (callbacks_) {
+         callbacks_->peerConn(ip);
+      }
+   });
 }
 
 void HeadlessContainerListener::OnPeerDisconnected(const std::string &ip)
 {
    logger_->debug("[{}] IP {} disconnected", __func__, ip);
-   if (callbacks_) {
-      callbacks_->peerDisconn(ip);
-   }
+   queue_->dispatch([this, ip] {
+      if (callbacks_) {
+         callbacks_->peerDisconn(ip);
+      }
+   });
 }
 
 bool HeadlessContainerListener::isRequestAllowed(Blocksettle::Communication::headless::RequestType reqType) const
@@ -149,6 +164,11 @@ bool HeadlessContainerListener::isRequestAllowed(Blocksettle::Communication::hea
 
 bool HeadlessContainerListener::onRequestPacket(const std::string &clientId, headless::RequestPacket packet)
 {
+   if (!connection_) {
+      logger_->error("[HeadlessContainerListener::{}] connection_ is not set");
+      return false;
+   }
+
    connection_->GetClientInfo(clientId);
    if (!isRequestAllowed(packet.type())) {
       logger_->info("[{}] request {} is not applicable at this state", __func__, (int)packet.type());
@@ -1171,6 +1191,11 @@ void HeadlessContainerListener::walletsListUpdated()
    headless::RequestPacket packet;
    packet.set_type(headless::WalletsListUpdatedType);
    sendData(packet.SerializeAsString());
+}
+
+void HeadlessContainerListener::resetConnection(ServerConnection *connection)
+{
+   connection_ = connection;
 }
 
 static headless::NetworkType mapFrom(NetworkType netType)
