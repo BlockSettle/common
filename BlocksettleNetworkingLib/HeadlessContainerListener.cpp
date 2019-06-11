@@ -146,8 +146,8 @@ bool HeadlessContainerListener::isRequestAllowed(Blocksettle::Communication::hea
    if (watchingOnly_) {
       switch (reqType) {
       case headless::CancelSignTxRequestType:
-      case headless::SignTXRequestType:
-      case headless::SignSettlementTXRequestType:
+      case headless::SignTxRequestType:
+      case headless::SignSettlementTxRequestType:
       case headless::SignPartialTXRequestType:
       case headless::SignPayoutTXRequestType:
       case headless::SignTXMultiRequestType:
@@ -190,10 +190,10 @@ bool HeadlessContainerListener::onRequestPacket(const std::string &clientId, hea
    case headless::CancelSignTxRequestType:
       return onCancelSignTx(clientId, packet);
 
-   case headless::SignTXRequestType:
-   case headless::SignSettlementTXRequestType:
+   case headless::SignTxRequestType:
+   case headless::SignSettlementTxRequestType:
    case headless::SignPartialTXRequestType:
-      return onSignTXRequest(clientId, packet, packet.type());
+      return onSignTxRequest(clientId, packet, packet.type());
 
    case headless::SignPayoutTXRequestType:
       return onSignPayoutTXRequest(clientId, packet);
@@ -258,19 +258,19 @@ bool HeadlessContainerListener::AuthResponse(const std::string &clientId, headle
    return sendData(packet.SerializeAsString(), clientId);
 }
 
-bool HeadlessContainerListener::onSignTXRequest(const std::string &clientId, const headless::RequestPacket &packet
+bool HeadlessContainerListener::onSignTxRequest(const std::string &clientId, const headless::RequestPacket &packet
    , headless::RequestType reqType)
 {
    bool partial = reqType == headless::RequestType::SignPartialTXRequestType ? true : false;
 
-   headless::SignTXRequest request;
+   headless::SignTxRequest request;
    Blocksettle::Communication::Internal::SettlementInfo settlementInfo;
 
-   if (reqType == headless::RequestType::SignSettlementTXRequestType){
-      headless::SignSettlementTXRequest settlementRequest;
+   if (reqType == headless::RequestType::SignSettlementTxRequestType){
+      headless::SignSettlementTxRequest settlementRequest;
 
       if (!settlementRequest.ParseFromString(packet.data())) {
-         logger_->error("[HeadlessContainerListener] failed to parse SignTXRequest");
+         logger_->error("[HeadlessContainerListener] failed to parse SignTxRequest");
          SignTXResponse(clientId, packet.id(), reqType, ErrorCode::FailedToParse);
          return false;
       }
@@ -280,7 +280,7 @@ bool HeadlessContainerListener::onSignTXRequest(const std::string &clientId, con
    }
    else {
       if (!request.ParseFromString(packet.data())) {
-         logger_->error("[HeadlessContainerListener] failed to parse SignTXRequest");
+         logger_->error("[HeadlessContainerListener] failed to parse SignTxRequest");
          SignTXResponse(clientId, packet.id(), reqType, ErrorCode::FailedToParse);
          return false;
       }
@@ -329,7 +329,7 @@ bool HeadlessContainerListener::onSignTXRequest(const std::string &clientId, con
    }
 
    if (!txSignReq.isValid()) {
-      logger_->error("[HeadlessContainerListener] invalid SignTXRequest");
+      logger_->error("[HeadlessContainerListener] invalid SignTxRequest");
       SignTXResponse(clientId, packet.id(), reqType, ErrorCode::TxInvalidRequest);
       return false;
    }
@@ -542,7 +542,7 @@ bool HeadlessContainerListener::onSignMultiTXRequest(const std::string &clientId
 void HeadlessContainerListener::SignTXResponse(const std::string &clientId, unsigned int id, headless::RequestType reqType
    , bs::error::ErrorCode errorCode, const BinaryData &tx)
 {
-   headless::SignTXReply response;
+   headless::SignTxReply response;
    response.set_errorcode(static_cast<uint32_t>(errorCode));
 
    if (!tx.isNull()) {
@@ -667,7 +667,7 @@ bool HeadlessContainerListener::RequestPasswordsIfNeeded(int reqId, const std::s
 
          bs::core::wallet::TXSignRequest txReq;
          txReq.walletId = rootWallet->walletId();
-         RequestPassword(clientId, txReq, headless::RequestType::SignTXRequestType, settlementInfo, prompt, cbWalletPass);
+         RequestPassword(clientId, txReq, headless::RequestType::SignTxRequestType, settlementInfo, prompt, cbWalletPass);
       }
       else {
          tempPasswords.passwords[walletId] = {};
@@ -695,10 +695,10 @@ bool HeadlessContainerListener::RequestPassword(const std::string &clientId, con
    }
 
    if (callbacks_) {
-      if (reqType == headless::RequestType::SignTXRequestType) {
+      if (reqType == headless::RequestType::SignTxRequestType) {
          callbacks_->requestPasswordForSigningTx(txReq, prompt);
       }
-      else if (reqType == headless::RequestType::SignSettlementTXRequestType) {
+      else if (reqType == headless::RequestType::SignSettlementTxRequestType) {
          callbacks_->requestPasswordForSigningSettlementTx(txReq, settlementInfo, prompt);
       }
       return true;

@@ -149,9 +149,9 @@ message SignTxCancelRequest
    bytes  tx_hash = 1;
 }
 
-message SignSettlementTXRequest
+message SignSettlementTxRequest
 {
-   //SignTXRequest signTXRequest                                        = 1;
+   SignTxRequest signTXRequest                                        = 1;
    Blocksettle.Communication.Internal.SettlementInfo settlementInfo   = 2;
 }
 

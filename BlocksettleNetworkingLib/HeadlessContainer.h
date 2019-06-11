@@ -46,7 +46,7 @@ public:
    HeadlessContainer(const std::shared_ptr<spdlog::logger> &, OpMode);
    ~HeadlessContainer() noexcept override = default;
 
-   Blocksettle::Communication::headless::SignTXRequest createSignTxRequest(const bs::core::wallet::TXSignRequest &
+   Blocksettle::Communication::headless::SignTxRequest createSignTxRequest(const bs::core::wallet::TXSignRequest &
       , const PasswordType& password = {}
       , bool keepDuplicatedRecipients = false);
 

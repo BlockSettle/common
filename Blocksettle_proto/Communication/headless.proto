@@ -7,7 +7,7 @@ enum RequestType
 {
    HeartbeatType               = 0;
    AuthenticationRequestType   = 1;
-   SignTXRequestType           = 2;
+   SignTxRequestType           = 2;
    SignPartialTXRequestType    = 3;
    SignPayoutTXRequestType     = 4;
    PasswordRequestType         = 5;
@@ -30,7 +30,7 @@ enum RequestType
    // Sent from headless signer when wallet added, removed or changed somehow (request body is empty)
    WalletsListUpdatedType      = 22;
 
-   SignSettlementTXRequestType = 23;
+   SignSettlementTxRequestType = 23;
 }
 
 message RequestPacket
@@ -83,7 +83,7 @@ message Change
    uint64   value = 3;
 }
 
-message SignTXRequest
+message SignTxRequest
 {
    string         walletId = 1;
    repeated bytes inputs = 2;
@@ -97,7 +97,7 @@ message SignTXRequest
    bool           keepDuplicatedRecipients = 11;
 }
 
-message SignTXReply
+message SignTxReply
 {
    uint32         errorCode = 1;
    bytes          signedTX = 2;
@@ -109,9 +109,9 @@ message CancelSignTx
    bytes txId = 1;
 }
 
-message SignSettlementTXRequest
+message SignSettlementTxRequest
 {
-   SignTXRequest signTXRequest                                       = 1;
+   SignTxRequest signTxRequest                                        = 1;
    Blocksettle.Communication.Internal.SettlementInfo settlementInfo   = 2;
 }
 

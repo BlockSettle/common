@@ -280,9 +280,9 @@ bs::signer::RequestId HeadlessContainer::Send(headless::RequestPacket packet, bo
 
 void HeadlessContainer::ProcessSignTXResponse(unsigned int id, const std::string &data)
 {
-   headless::SignTXReply response;
+   headless::SignTxReply response;
    if (!response.ParseFromString(data)) {
-      logger_->error("[HeadlessContainer] Failed to parse SignTXReply");
+      logger_->error("[HeadlessContainer] Failed to parse SignTxReply");
       emit TXSigned(id, {}, bs::error::ErrorCode::FailedToParse);
       return;
    }
@@ -291,7 +291,7 @@ void HeadlessContainer::ProcessSignTXResponse(unsigned int id, const std::string
 
 void HeadlessContainer::ProcessSettlementSignTXResponse(unsigned int id, const std::string &data)
 {
-   headless::SignTXReply response;
+   headless::SignTxReply response;
    if (!response.ParseFromString(data)) {
       logger_->error("[{}] Failed to parse reply", __func__);
       emit Error(id, "failed to parse");
@@ -427,10 +427,10 @@ void HeadlessContainer::ProcessAutoSignActEvent(unsigned int id, const std::stri
    emit AutoSignStateChanged(event.rootwalletid(), event.autosignactive());
 }
 
-headless::SignTXRequest HeadlessContainer::createSignTxRequest(const bs::core::wallet::TXSignRequest &txSignReq
+headless::SignTxRequest HeadlessContainer::createSignTxRequest(const bs::core::wallet::TXSignRequest &txSignReq
    , const SignContainer::PasswordType &password, bool keepDuplicatedRecipients)
 {
-   headless::SignTXRequest request;
+   headless::SignTxRequest request;
    request.set_walletid(txSignReq.walletId);
    request.set_keepduplicatedrecipients(keepDuplicatedRecipients);
 
@@ -480,12 +480,12 @@ bs::signer::RequestId HeadlessContainer::signTXRequest(const bs::core::wallet::T
       return 0;
    }
 
-   headless::SignTXRequest request = createSignTxRequest(txSignReq, password, keepDuplicatedRecipients);
+   headless::SignTxRequest request = createSignTxRequest(txSignReq, password, keepDuplicatedRecipients);
 
    headless::RequestPacket packet;
    switch (mode) {
    case TXSignMode::Full:
-      packet.set_type(headless::SignTXRequestType);
+      packet.set_type(headless::SignTxRequestType);
       break;
 
    case TXSignMode::Partial:
@@ -545,12 +545,12 @@ bs::signer::RequestId HeadlessContainer::signSettlementTXRequest(const bs::core:
       return 0;
    }
 
-   headless::SignTXRequest request = createSignTxRequest(txSignReq, password, keepDuplicatedRecipients);
+   headless::SignTxRequest request = createSignTxRequest(txSignReq, password, keepDuplicatedRecipients);
 
    headless::RequestPacket packet;
    switch (mode) {
    case TXSignMode::Full:
-      packet.set_type(headless::SignTXRequestType);
+      packet.set_type(headless::SignTxRequestType);
       break;
 
    case TXSignMode::Partial:
@@ -1320,14 +1320,14 @@ void RemoteSigner::onPacketReceived(headless::RequestPacket packet)
    case headless::HeartbeatType:
       break;
 
-   case headless::SignTXRequestType:
+   case headless::SignTxRequestType:
    case headless::SignPartialTXRequestType:
    case headless::SignPayoutTXRequestType:
    case headless::SignTXMultiRequestType:
       ProcessSignTXResponse(packet.id(), packet.data());
       break;
 
-   case headless::SignSettlementTXRequestType:
+   case headless::SignSettlementTxRequestType:
       ProcessSettlementSignTXResponse(packet.id(), packet.data());
       break;
 

@@ -83,7 +83,7 @@ bool DealerXBTSettlementContainer::accept(const SecureBinaryData &password)
 {
    if (weSell_) {
       try {
-         const auto txReq = transactionData_->getSignTXRequest();
+         const auto txReq = transactionData_->getSignTxRequest();
          // FIXME: Settlement containers will be reimplemented to use another function
 //         payinSignId_ = signingContainer_->signTXRequest(txReq, autoSign_
 //            , SignContainer::TXSignMode::Full, password);
