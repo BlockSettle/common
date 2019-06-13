@@ -612,6 +612,13 @@ void ChatClient::OnSendOwnPublicKey(const Chat::SendOwnPublicKeyResponse &respon
    contactPublicKeys_[peerId] = response.getSendingNodePublicKey();
    chatDb_->addKey(peerId, response.getSendingNodePublicKey());
 
+   const auto& fr = pending_friend_requests_.find(peerId);
+   if (fr != pending_friend_requests_.end()) {
+      sendFriendRequest(fr->first, fr->second);
+      pending_friend_requests_.erase(fr);
+      return;
+   }
+
    // Run over enqueued messages if any, and try to send them all now.
    messages_queue& messages = enqueued_messages_[QString::fromStdString(response.getSendingNodeId())];
    while (!messages.empty()) {
@@ -663,6 +670,104 @@ std::shared_ptr<Chat::MessageData> ChatClient::sendOwnMessage(
    logger_->debug("[ChatClient::sendOwnMessage] {}", message.toStdString());
 
    return sendMessageDataRequest(messageData, receiver);
+}
+
+std::shared_ptr<Chat::MessageData> ChatClient::encryptMessageToSendAEAD(const QString& receiver, BinaryData& rpk, std::shared_ptr<Chat::MessageData> messageData)
+{
+   const auto& chatSessionKeyDataPtr = chatSessionKeyPtr_->findSessionForUser(receiver.toStdString());
+   if (chatSessionKeyDataPtr == nullptr || !chatSessionKeyPtr_->isExchangeForUserSucceeded(receiver.toStdString())) {
+      enqueued_messages_[receiver].push(messageData);
+
+      chatSessionKeyPtr_->generateLocalKeysForUser(receiver.toStdString());
+
+      BinaryData remotePublicKey(rpk);
+      logger_->debug("[ChatClient::sendMessageDataRequest] USING PUBLIC KEY: {}", remotePublicKey.toHexStr());
+
+      try {
+         BinaryData encryptedLocalPublicKey = chatSessionKeyPtr_->iesEncryptLocalPublicKey(receiver.toStdString(), remotePublicKey);
+
+         std::string encryptedString = QString::fromLatin1(QByteArray(reinterpret_cast<const char*>(encryptedLocalPublicKey.getPtr()),
+               int(encryptedLocalPublicKey.getSize())).toBase64()).toStdString();
+
+         auto request = std::make_shared<Chat::SessionPublicKeyRequest>(
+            "",
+            currentUserId_,
+            receiver.toStdString(),
+            encryptedString);
+
+         sendRequest(request);
+         return messageData;
+      } catch (std::exception& e) {
+         logger_->error("[ChatClient::sendMessageDataRequest] Failed to encrypt msg by ies {}", e.what());
+         return messageData;
+      }
+   }
+
+   // search active message session for given user
+   const auto userNoncesIterator = userNonces_.find(receiver);
+   Botan::SecureVector<uint8_t> nonce;
+   if (userNoncesIterator == userNonces_.end()) {
+      // generate random nonce
+      Botan::AutoSeeded_RNG rng;
+      nonce = rng.random_vec(messageData->defaultNonceSize());
+      userNonces_.emplace_hint(userNoncesIterator, receiver, nonce);
+   }
+   else {
+      // read nonce and increment
+      Botan::BigInt bigIntNonce;
+      bigIntNonce.binary_decode(userNoncesIterator->second);
+      bigIntNonce++;
+      nonce = Botan::BigInt::encode_locked(bigIntNonce);
+      userNoncesIterator->second = nonce;
+   }
+
+   std::unique_ptr<Encryption::AEAD_Encryption> enc = Encryption::AEAD_Encryption::create(logger_);
+
+   enc->setPrivateKey(chatSessionKeyDataPtr->localPrivateKey());
+   enc->setPublicKey(chatSessionKeyDataPtr->remotePublicKey());
+
+   enc->setNonce(nonce);
+   messageData->setNonce(nonce);
+
+   enc->setData(messageData->messagePayload().toStdString());
+   enc->setAssociatedData(messageData->jsonAssociatedData());
+
+   Botan::SecureVector<uint8_t> encodedData;
+
+   try {
+      enc->finish(encodedData);
+   }
+   catch (std::exception & e) {
+      logger_->error("[ChatClient::sendMessageDataRequest] Can't encode data {}", e.what());
+      messageData->setFlag(Chat::MessageData::State::Invalid);
+      return messageData;
+   }
+
+   auto encryptedMessage = messageData->CreateEncryptedMessage(Chat::MessageData::EncryptionType::AEAD
+      , QString::fromLatin1(QByteArray(reinterpret_cast<const char*>(encodedData.data()), int(encodedData.size())).toBase64()));
+
+   return encryptedMessage;
+}
+
+std::shared_ptr<Chat::MessageData> ChatClient::encryptMessageToSendIES(BinaryData& encryptPublicKey, std::shared_ptr<Chat::MessageData> messageData)
+{
+   BinaryData publicKey(encryptPublicKey);
+   std::unique_ptr<Encryption::IES_Encryption> enc = Encryption::IES_Encryption::create(logger_);
+   enc->setPublicKey(publicKey);
+   enc->setData(messageData->messagePayload().toStdString());
+
+   Botan::SecureVector<uint8_t> encodedData;
+   try {
+      enc->finish(encodedData);
+   }
+   catch (std::exception & e) {
+      logger_->error("[ChatClient::{}] Failed to encrypt msg by ies {}", __func__, e.what());
+      messageData->setFlag(Chat::MessageData::State::Invalid);
+      return messageData;
+   }
+   auto encryptedMessage = messageData->CreateEncryptedMessage(Chat::MessageData::EncryptionType::IES
+   , QString::fromLatin1(QByteArray(reinterpret_cast<const char*>(encodedData.data()), int(encodedData.size())).toBase64()));
+   return encryptedMessage;
 }
 
 std::shared_ptr<Chat::MessageData> ChatClient::SubmitPrivateOTCRequest(const bs::network::OTCRequest& otcRequest
@@ -758,34 +863,7 @@ std::shared_ptr<Chat::MessageData> ChatClient::sendMessageDataRequest(const std:
       return messageData;
    }
 
-   const auto& chatSessionKeyDataPtr = chatSessionKeyPtr_->findSessionForUser(receiver.toStdString());
-   if (chatSessionKeyDataPtr == nullptr || !chatSessionKeyPtr_->isExchangeForUserSucceeded(receiver.toStdString())) {
-      enqueued_messages_[receiver].push(messageData);
-
-      chatSessionKeyPtr_->generateLocalKeysForUser(receiver.toStdString());
-
-      BinaryData remotePublicKey(contactPublicKeyIterator->second);
-      logger_->debug("[ChatClient::sendMessageDataRequest] USING PUBLIC KEY: {}", remotePublicKey.toHexStr());
-
-      try {
-         BinaryData encryptedLocalPublicKey = chatSessionKeyPtr_->iesEncryptLocalPublicKey(receiver.toStdString(), remotePublicKey);
-
-         std::string encryptedString = QString::fromLatin1(QByteArray(reinterpret_cast<const char*>(encryptedLocalPublicKey.getPtr()),
-               int(encryptedLocalPublicKey.getSize())).toBase64()).toStdString();
-
-         auto request = std::make_shared<Chat::SessionPublicKeyRequest>(
-            "",
-            currentUserId_,
-            receiver.toStdString(),
-            encryptedString);
-
-         sendRequest(request);
-         return messageData;
-      } catch (std::exception& e) {
-         logger_->error("[ChatClient::sendMessageDataRequest] Failed to encrypt msg by ies {}", e.what());
-         return messageData;
-      }
-   }
+   auto cNode = model_->findContactNode(receiver.toStdString());
 
    if (!encryptByIESAndSaveMessageInDb(messageData))
    {
@@ -796,51 +874,20 @@ std::shared_ptr<Chat::MessageData> ChatClient::sendMessageDataRequest(const std:
 
    model_->insertContactsMessage(messageData);
 
-   // search active message session for given user
-   const auto userNoncesIterator = userNonces_.find(receiver);
-   Botan::SecureVector<uint8_t> nonce;
-   if (userNoncesIterator == userNonces_.end()) {
-      // generate random nonce
-      Botan::AutoSeeded_RNG rng;
-      nonce = rng.random_vec(messageData->defaultNonceSize());
-      userNonces_.emplace_hint(userNoncesIterator, receiver, nonce);
+   switch (cNode->getOnlineStatus()) {
+      case ChatContactElement::OnlineStatus::Online: {
+         auto encMsg = encryptMessageToSendAEAD(receiver, contactPublicKeyIterator->second, messageData);
+         auto request = std::make_shared<Chat::SendMessageRequest>("", encMsg->toJsonString());
+         sendRequest(request);
+         break;
+      }
+      case ChatContactElement::OnlineStatus::Offline:
+         auto encMsg = encryptMessageToSendIES(contactPublicKeyIterator->second, messageData);
+         auto request = std::make_shared<Chat::SendMessageRequest>("", encMsg->toJsonString());
+         sendRequest(request);
+         break;
+
    }
-   else {
-      // read nonce and increment
-      Botan::BigInt bigIntNonce;
-      bigIntNonce.binary_decode(userNoncesIterator->second);
-      bigIntNonce++;
-      nonce = Botan::BigInt::encode_locked(bigIntNonce);
-      userNoncesIterator->second = nonce;
-   }
-
-   std::unique_ptr<Encryption::AEAD_Encryption> enc = Encryption::AEAD_Encryption::create(logger_);
-
-   enc->setPrivateKey(chatSessionKeyDataPtr->localPrivateKey());
-   enc->setPublicKey(chatSessionKeyDataPtr->remotePublicKey());
-
-   enc->setNonce(nonce);
-   messageData->setNonce(nonce);
-
-   enc->setData(messageData->messagePayload().toStdString());
-   enc->setAssociatedData(messageData->jsonAssociatedData());
-
-   Botan::SecureVector<uint8_t> encodedData;
-
-   try {
-      enc->finish(encodedData);
-   }
-   catch (std::exception & e) {
-      logger_->error("[ChatClient::sendMessageDataRequest] Can't encode data {}", e.what());
-      messageData->setFlag(Chat::MessageData::State::Invalid);
-      return messageData;
-   }
-
-   auto encryptedMessage = messageData->CreateEncryptedMessage(Chat::MessageData::EncryptionType::AEAD
-      , QString::fromLatin1(QByteArray(reinterpret_cast<const char*>(encodedData.data()), int(encodedData.size())).toBase64()));
-
-   auto request = std::make_shared<Chat::SendMessageRequest>("", encryptedMessage->toJsonString());
-   sendRequest(request);
 
    return messageData;
 }
@@ -941,11 +988,26 @@ bool ChatClient::removeContactFromDB(const QString &userId)
    return chatDb_->removeContact(userId);
 }
 
-void ChatClient::sendFriendRequest(const QString &friendUserId)
+void ChatClient::sendFriendRequest(const QString &friendUserId, std::shared_ptr<Chat::MessageData> message)
 {
    // TODO
 
    if (model_->findContactItem(friendUserId.toStdString())) {
+      return;
+   }
+
+   const auto &contactPublicKeyIterator = contactPublicKeys_.find(friendUserId);
+   if (contactPublicKeyIterator == contactPublicKeys_.end()) {
+      // Ask for public key from peer. Enqueue the message to be sent, once we receive the
+      // necessary public key.
+      pending_friend_requests_[friendUserId] = message;
+
+      // Send our key to the peer.
+      auto request = std::make_shared<Chat::AskForPublicKeyRequest>(
+         "", // clientId
+         currentUserId_,
+         friendUserId.toStdString());
+      sendRequest(request);
       return;
    }
 
@@ -955,7 +1017,9 @@ void ChatClient::sendFriendRequest(const QString &friendUserId)
             friendUserId,
             Chat::ContactStatus::Outgoing,
             BinaryData());
+
    model_->insertContactObject(record);
+
    auto request =
          std::make_shared<Chat::ContactActionRequestDirect>(
             "",

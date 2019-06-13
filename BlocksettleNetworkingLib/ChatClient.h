@@ -87,6 +87,9 @@ public:
 
    std::shared_ptr<Chat::MessageData> sendOwnMessage(
          const QString& message, const QString &receiver);
+   std::shared_ptr<Chat::MessageData> encryptMessageToSendAEAD(const QString &receiver, BinaryData& rpk, std::shared_ptr<Chat::MessageData> messageData);
+   std::shared_ptr<Chat::MessageData> encryptMessageToSendIES(BinaryData& rpk, std::shared_ptr<Chat::MessageData> messageData);
+
    std::shared_ptr<Chat::MessageData> SubmitPrivateOTCRequest(const bs::network::OTCRequest& otcRequest
                                                               , const QString &receiver);
    std::shared_ptr<Chat::MessageData> SubmitPrivateOTCResponse(const bs::network::OTCResponse& otcResponse
@@ -113,7 +116,7 @@ public:
                            const QString &userName = QStringLiteral(""));
    bool removeContactFromDB(const QString &userId);
 
-   void sendFriendRequest(const QString &friendUserId);
+   void sendFriendRequest(const QString &friendUserId, std::shared_ptr<Chat::MessageData> message = nullptr);
    void acceptFriendRequest(const QString &friendUserId);
    void rejectFriendRequest(const QString &friendUserId);
    void removeFriendOrRequest(const QString& userId);
@@ -195,6 +198,7 @@ private:
    // Queue of messages to be sent for each receiver, once we received the public key.
    using messages_queue = std::queue<std::shared_ptr<Chat::MessageData> >;
    std::map<QString, messages_queue>    enqueued_messages_;
+   std::map<QString, std::shared_ptr<Chat::MessageData>>    pending_friend_requests_;
 
    QTimer            heartbeatTimer_;
 
