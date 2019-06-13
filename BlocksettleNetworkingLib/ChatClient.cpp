@@ -829,7 +829,7 @@ std::shared_ptr<Chat::MessageData> ChatClient::sendMessageDataRequest(const std:
    if (!chatDb_->isContactExist(receiver)) {
       //make friend request before sending direct message.
       //Enqueue the message to be sent, once our friend request accepted.
-      enqueued_messages_[receiver].push(messageData);
+      //enqueued_messages_[receiver].push(messageData);
       sendFriendRequest(receiver);
       return messageData;
    } else {
