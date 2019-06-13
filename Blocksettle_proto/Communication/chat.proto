@@ -1,0 +1,198 @@
+syntax = "proto3";
+
+package Blocksettle.Communication.BlocksettleMarketData;
+
+
+message Request
+{
+	message Login
+	{
+	}
+
+	message Logout
+	{
+	}
+
+	message SendMessage
+	{
+	}
+
+	message Messages
+	{
+	}
+
+	message OnlineUsers
+	{
+	}
+
+	message AskForPublicKey
+	{
+	}
+
+	message SendOwnPublicKey
+	{
+	}
+
+	message ChangeMessageStatus
+	{
+	}
+
+	message ContactsActionDirect
+	{
+	}
+
+	message ContactsActionServer
+	{
+	}
+
+	message ChatroomsList
+	{
+	}
+
+	message SendRoomMessage
+	{
+	}
+
+	message ContactsList
+	{
+	}
+
+	message SearchUsers
+	{
+	}
+
+	message SessionPublicKey
+	{
+	}
+
+	message ReplySessionPublicKey
+	{
+	}
+
+	oneof data
+	{
+		Login login                                             = 1;
+		Logout logout                                           = 2;
+		SendMessage send_message                                = 3;
+		Messages messages                                       = 4;
+		OnlineUsers online_users                                = 5;
+		AskForPublicKey ask_for_public_key                      = 6;
+		SendOwnPublicKey send_own_public_key                    = 7;
+		ChangeMessageStatus change_message_status               = 8;
+		ContactsActionDirect contacts_action_direct             = 9;
+		ContactsActionServer contacts_action_server             = 10;
+		ChatroomsList chatrooms_list                            = 11;
+		SendRoomMessage send_room_message                       = 12;
+		ContactsList contacts_list                              = 13;
+		SearchUsers search_users                                = 14;
+		SessionPublicKey session_public_key                     = 15;
+		ReplySessionPublicKey reply_session_public_key          = 16;
+	}
+}
+
+message Response
+{
+	message Login
+	{
+	}
+
+	message Messages
+	{
+	}
+
+	message Success
+	{
+	}
+
+	message Error
+	{
+	}
+
+	message UsersList
+	{
+	}
+
+	message AskForPublicKey
+	{
+	}
+
+	message SendOwnPublicKey
+	{
+	}
+
+	message PendingMessage
+	{
+	}
+
+	message SendMessage
+	{
+	}
+
+	message ChangeMessageStatus
+	{
+	}
+
+	message ContactsActionDirect
+	{
+	}
+
+	message ContactsActionServer
+	{
+	}
+
+	message ChatroomsList
+	{
+	}
+
+	message RoomMessages
+	{
+	}
+
+	message ContactsList
+	{
+	}
+
+	message SearchUsers
+	{
+	}
+
+	message Logout
+	{
+	}
+
+	message SendSessionPublicKey
+	{
+	}
+
+	message SessionPublicKey
+	{
+	}
+
+	message ReplySessionPublicKey
+	{
+	}
+
+	oneof data
+	{
+		Login login                                             = 1;
+		Messages messages                                       = 2;
+		Success success                                         = 3;
+		Error error                                             = 4;
+		UsersList users_list                                    = 5;
+		AskForPublicKey ask_for_public_key                      = 6;
+		SendOwnPublicKey send_own_public_key                    = 7;
+		PendingMessage pending_message                          = 8;
+		SendMessage send_message                                = 9;
+		ChangeMessageStatus change_message_status               = 10;
+		ContactsActionDirect contacts_action_direct             = 11;
+		ContactsActionServer contacts_action_server             = 12;
+		ChatroomsList chatrooms_list                            = 13;
+		RoomMessages room_messages                              = 14;
+		ContactsList contacts_list                              = 15;
+		SearchUsers search_users                                = 16;
+		Logout logout                                           = 17;
+		SendSessionPublicKey send_session_public_key            = 18;
+		SessionPublicKey session_public_key                     = 19;
+		ReplySessionPublicKey reply_session_public_key          = 20;
+	}
+}
