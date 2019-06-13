@@ -570,7 +570,9 @@ void ChatClient::OnMessages(const Chat::MessagesResponse &response)
 
          case Chat::MessageData::EncryptionType::IES: {
             logger_->error("[ChatClient::{}] This could not happen! Failed to decrypt msg.", __func__);
-            model_->insertContactsMessage(msg);
+            chatDb_->add(msg);
+            auto decMsg = decryptIESMessage(msg);
+            model_->insertContactsMessage(decMsg);
          }
          break;
 
