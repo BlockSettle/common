@@ -60,8 +60,7 @@ public:
 
    bs::signer::RequestId signSettlementTXRequest(const bs::core::wallet::TXSignRequest &
       , const bs::sync::SettlementInfo &settlementInfo
-      , TXSignMode mode = TXSignMode::Full, const PasswordType& password = {}
-      , bool keepDuplicatedRecipients = false
+      , TXSignMode mode = TXSignMode::Full, bool keepDuplicatedRecipients = false
       , const std::function<void(bs::error::ErrorCode result, const BinaryData &signedTX)> &cb = nullptr) override;
 
    bs::signer::RequestId signMultiTXRequest(const bs::core::wallet::TXMultiSignRequest &) override;

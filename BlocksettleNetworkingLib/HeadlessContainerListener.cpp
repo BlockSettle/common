@@ -114,10 +114,7 @@ void HeadlessContainerListener::OnDataFromClient(const std::string &clientId, co
          return;
       }
 
-      if (!onRequestPacket(clientId, packet)) {
-         packet.set_data("");
-         sendData(packet.SerializeAsString(), clientId);
-      }
+      onRequestPacket(clientId, packet);
    });
 }
 
@@ -557,7 +554,7 @@ void HeadlessContainerListener::SignTXResponse(const std::string &clientId, unsi
    if (!sendData(packet.SerializeAsString(), clientId)) {
       logger_->error("[HeadlessContainerListener] failed to send response signTX packet");
    }
-   if (callbacks_) {
+   if (errorCode == bs::error::ErrorCode::NoError && callbacks_) {
       callbacks_->txSigned(tx);
    }
 }

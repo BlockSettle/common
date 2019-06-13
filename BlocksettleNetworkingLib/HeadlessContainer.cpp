@@ -224,7 +224,9 @@ void HeadlessContainer::ProcessSettlementSignTXResponse(unsigned int id, const s
       return;
    }
 
-   itCb->second(static_cast<bs::error::ErrorCode>(response.errorcode()), BinaryData(response.signedtx()));
+   if (itCb->second) {
+      itCb->second(static_cast<bs::error::ErrorCode>(response.errorcode()), BinaryData(response.signedtx()));
+   }
    cbSettlementSignTXMap_.erase(itCb);
 }
 
@@ -456,7 +458,7 @@ bs::signer::RequestId HeadlessContainer::signPayoutTXRequest(const bs::core::wal
 
 bs::signer::RequestId HeadlessContainer::signSettlementTXRequest(const bs::core::wallet::TXSignRequest &txSignReq
    , const bs::sync::SettlementInfo &settlementInfo, SignContainer::TXSignMode mode
-   , const SignContainer::PasswordType &password, bool keepDuplicatedRecipients
+   , bool keepDuplicatedRecipients
    , const std::function<void (bs::error::ErrorCode result, const BinaryData &signedTX)> &cb)
 {
    if (!txSignReq.isValid()) {
@@ -464,21 +466,17 @@ bs::signer::RequestId HeadlessContainer::signSettlementTXRequest(const bs::core:
       return 0;
    }
 
-   headless::SignTxRequest request = createSignTxRequest(txSignReq, password, keepDuplicatedRecipients);
+   headless::SignTxRequest signTxRequest = createSignTxRequest(txSignReq, {}, keepDuplicatedRecipients);
+
+   headless::SignSettlementTxRequest settlementRequest;
+   *(settlementRequest.mutable_signtxrequest()) = signTxRequest;
+   *(settlementRequest.mutable_settlementinfo()) = settlementInfo.toProtobufMessage();
 
    headless::RequestPacket packet;
-   switch (mode) {
-   case TXSignMode::Full:
-      packet.set_type(headless::SignTxRequestType);
-      break;
+   packet.set_type(headless::SignSettlementTxRequestType);
 
-   case TXSignMode::Partial:
-      packet.set_type(headless::SignPartialTXRequestType);
-      break;
 
-   default:    break;
-   }
-   packet.set_data(request.SerializeAsString());
+   packet.set_data(settlementRequest.SerializeAsString());
    const auto reqId = Send(packet);
    cbSettlementSignTXMap_[reqId] = cb;
    return reqId;

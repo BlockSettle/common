@@ -23,7 +23,7 @@ bool SignerConnectionExists(const QString &host, const QString &port)
    return sock.waitForConnected(30);
 }
 
-Blocksettle::Communication::Internal::SettlementInfo bs::sync::SettlementInfo::toProtobufMessage()
+Blocksettle::Communication::Internal::SettlementInfo bs::sync::SettlementInfo::toProtobufMessage() const
 {
    Blocksettle::Communication::Internal::SettlementInfo info;
    info.set_productgroup(productGroup.toUtf8());

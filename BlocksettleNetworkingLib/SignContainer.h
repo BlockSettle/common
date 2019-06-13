@@ -41,7 +41,7 @@ namespace bs {
       // XBT Settlement details
       QString requesterAuthAddress;
       QString responderAuthAddress;
-      QString walllet;
+      QString wallet;
       QString transaction;
 
       // Transaction details
@@ -49,7 +49,7 @@ namespace bs {
       QString networkFee;
       QString totalSpent;
 
-      Blocksettle::Communication::Internal::SettlementInfo toProtobufMessage();
+      Blocksettle::Communication::Internal::SettlementInfo toProtobufMessage() const;
    };
 
       namespace hd {
@@ -115,7 +115,7 @@ public:
 
    virtual bs::signer::RequestId signSettlementTXRequest(const bs::core::wallet::TXSignRequest &
       , const bs::sync::SettlementInfo &settlementInfo
-      , TXSignMode mode = TXSignMode::Full, const PasswordType& password = {}
+      , TXSignMode mode = TXSignMode::Full
       , bool keepDuplicatedRecipients = false
       , const std::function<void(bs::error::ErrorCode result, const BinaryData &signedTX)> &cb = nullptr) = 0;
 
