@@ -54,26 +54,26 @@ public:
    ChatDB(ChatDB&&) = delete;
    ChatDB& operator = (ChatDB&&) = delete;
 
-   bool add(const std::shared_ptr<Chat::Data_Message>&);
-   bool syncMessageId(const QString& localId, const QString& serverId);
-   bool updateMessageStatus(const QString& messageId, int ustatus);
+   bool add(const std::shared_ptr<Chat::Data>&);
+   bool syncMessageId(const std::string& localId, const std::string& serverId);
+   bool updateMessageStatus(const std::string& messageId, int ustatus);
 
    std::vector<std::shared_ptr<Chat::Data>> getUserMessages(const std::string &ownUserId, const std::string &userId);
    std::vector<std::shared_ptr<Chat::Data>> getRoomMessages(const std::string &roomId);
-   bool removeRoomMessages(const QString &roomId);
-   bool isRoomMessagesExist(const QString &userId);
+   bool removeRoomMessages(const std::string &roomId);
+   bool isRoomMessagesExist(const std::string &userId);
 
    /** Adds given username->publickey pair to DB.
     * \param[in] user Chat user name, currently a base64 encoded hash or PK.
     * \param[in] key Public key of the user.
     * \returns false of failure, otherwise true.
     */
-   bool addKey(const QString& user, const BinaryData& key);
+   bool addKey(const std::string& user, const BinaryData& key);
 
-   std::map<QString, BinaryData> loadKeys(bool* loaded = nullptr);
+   std::map<std::string, BinaryData> loadKeys(bool* loaded = nullptr);
 
    bool isContactExist(const std::string &userId);
-   bool addContact(Chat::Data_ContactRecord &contact);
+   bool addContact(Chat::Data &contact);
    bool removeContact(const std::string &userId);
    bool getContacts(ContactRecordDataList &contactList);
    bool updateContact(Chat::Data &contact);

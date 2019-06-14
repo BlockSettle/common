@@ -4,6 +4,14 @@ package Chat;
 
 import "google/protobuf/timestamp.proto";
 
+enum Command
+{
+	COMMAND_UNSPECIFIED = 0;
+	COMMAND_REPLACE = 1;
+	COMMAND_ADD = 2;
+	COMMAND_DELETE = 3;
+}
+
 enum ContactsAction
 {
 	CONTACTS_ACTION_UNSPECIFIED = 0;
@@ -12,6 +20,14 @@ enum ContactsAction
 	CONTACTS_ACTION_REQUEST = 3;
 	CONTACTS_ACTION_REMOVE = 4;
 }
+
+enum ContactsActionServer
+{
+	CONTACTS_ACTION_SERVER_UNSPECIFIED = 0;
+	CONTACTS_ACTION_SERVER_ADD = 1;
+	CONTACTS_ACTION_SERVER_REMOVE = 2;
+	CONTACTS_ACTION_SERVER_UPDATE = 3;
+};
 
 enum ContactStatus
 {
@@ -28,14 +44,6 @@ enum UserStatus
 	USER_STATUS_ONLINE = 1;
 	USER_STATUS_OFFLINE = 2;
 }
-
-enum ContactsActionServer
-{
-	CONTACTS_ACTION_SERVER_UNSPECIFIED = 0;
-	CONTACTS_ACTION_SERVER_ADD = 1;
-	CONTACTS_ACTION_SERVER_REMOVE = 2;
-	CONTACTS_ACTION_SERVER_UPDATE = 3;
-};
 
 enum OtcResult
 {
@@ -146,6 +154,8 @@ message Data
 
 		message OtcCloseTrading
 		{
+			// Do we need something with non-default value?
+			bool close = 1;
 		}
 
 		string id = 1;
@@ -191,10 +201,14 @@ message Request
 {
 	message Login
 	{
+		string auth_eid = 1;
+		string jwt = 2;
+		bytes pub_key = 3;
 	}
 
 	message Logout
 	{
+		string auth_eid = 1;
 	}
 
 	message SendMessage
@@ -203,6 +217,8 @@ message Request
 
 	message Messages
 	{
+		string sender_id = 1;
+		string receiver_id = 2;
 	}
 
 	message OnlineUsers
@@ -211,22 +227,38 @@ message Request
 
 	message AskForPublicKey
 	{
+      string asking_node_id = 1;
+      string peer_id = 2;
 	}
 
 	message SendOwnPublicKey
 	{
+      string receiving_node_id = 1;
+      string sending_node_id = 2;
+      bytes sending_node_pub_key = 3;
 	}
 
-	message ChangeMessageStatus
+	message MessageChangeStatus
 	{
+		string message_id = 1;
+		uint32 state = 2;
 	}
 
-	message ContactsActionDirect
+	message ModifyContactsDirect
 	{
+		string sender_id = 1;
+		string receiver_id = 2;
+		ContactsAction action = 3;
+		bytes sender_pub_key = 4;
 	}
 
-	message ContactsActionServer
+	message ModifyContactsServer
 	{
+		string sender_id = 1;
+		string contact_user_id = 2;
+		ContactsActionServer action = 3;
+		ContactStatus status = 4;
+		bytes contact_pub_key = 5;
 	}
 
 	message ChatroomsList
@@ -235,6 +267,8 @@ message Request
 
 	message SendRoomMessage
 	{
+		string room_id = 1;
+		Data message = 2;
 	}
 
 	message ContactsList
@@ -243,14 +277,22 @@ message Request
 
 	message SearchUsers
 	{
+		string sender_id = 1;
+		string search_id_pattern = 2;
 	}
 
 	message SessionPublicKey
 	{
+		string sender_id = 1;
+		string receiver_id = 2;
+		string sender_session_pub_key = 3;
 	}
 
 	message ReplySessionPublicKey
 	{
+		string sender_id = 1;
+		string receiver_id = 2;
+		bytes sender_session_pub_key = 3;
 	}
 
 	oneof data
@@ -262,9 +304,9 @@ message Request
 		OnlineUsers online_users                                = 5;
 		AskForPublicKey ask_for_public_key                      = 6;
 		SendOwnPublicKey send_own_public_key                    = 7;
-		ChangeMessageStatus change_message_status               = 8;
-		ContactsActionDirect contacts_action_direct             = 9;
-		ContactsActionServer contacts_action_server             = 10;
+		MessageChangeStatus message_change_status               = 8;
+		ModifyContactsDirect modify_contacts_direct             = 9;
+		ModifyContactsServer modify_contacts_server              = 10;
 		ChatroomsList chatrooms_list                            = 11;
 		SendRoomMessage send_room_message                       = 12;
 		ContactsList contacts_list                              = 13;
@@ -278,10 +320,12 @@ message Response
 {
 	message Login
 	{
+		bool success = 1;
 	}
 
 	message Messages
 	{
+		repeated Data messages = 1;
 	}
 
 	message Success
@@ -294,14 +338,21 @@ message Response
 
 	message UsersList
 	{
+		Command command = 1;
+		repeated Data users = 2;
 	}
 
 	message AskForPublicKey
 	{
+      string asking_node_id = 1;
+      string peer_id = 2;
 	}
 
 	message SendOwnPublicKey
 	{
+      string receiving_node_id = 1;
+      string sending_node_id = 2;
+      bytes sending_node_pub_key = 3;
 	}
 
 	message PendingMessage
@@ -310,34 +361,56 @@ message Response
 
 	message SendMessage
 	{
+		string client_message_id = 1;
+		string server_message_id = 2;
+		string receiver_id = 3;
+		bool accepted = 4;
 	}
 
-	message ChangeMessageStatus
+	message MessageChangeStatus
 	{
+		string message_id = 1;
+		string sender_id = 2;
+		string receiver_id = 3;
+		uint32 status = 4;
 	}
 
-	message ContactsActionDirect
+	message ModifyContactsDirect
 	{
+		string sender_id = 1;
+		string receiver_id = 2;
+      	ContactsAction action = 3;
+      	bytes sender_public_key = 4;
 	}
 
-	message ContactsActionServer
+	message ModifyContactsServer
 	{
+
+		string user_id = 1;
+      	string contact_id = 2;
+      	string message = 3;
+      	ContactsActionServer requested_action = 4;
+      	bool success = 5;
 	}
 
 	message ChatroomsList
 	{
+		repeated Data rooms = 1;
 	}
 
 	message RoomMessages
 	{
+		repeated Data messages = 1;
 	}
 
 	message ContactsList
 	{
+		repeated Data contacts = 1;
 	}
 
 	message SearchUsers
 	{
+		repeated Data users = 1;
 	}
 
 	message Logout
@@ -350,10 +423,16 @@ message Response
 
 	message SessionPublicKey
 	{
+    	string sender_id = 1;
+		string receiver_id = 2;
+		string sender_session_pub_key = 3;
 	}
 
 	message ReplySessionPublicKey
 	{
+		string sender_id = 1;
+		string receiver_id = 2;
+		bytes sender_session_pub_key = 3;
 	}
 
 	oneof data
@@ -367,9 +446,9 @@ message Response
 		SendOwnPublicKey send_own_public_key                    = 7;
 		PendingMessage pending_message                          = 8;
 		SendMessage send_message                                = 9;
-		ChangeMessageStatus change_message_status               = 10;
-		ContactsActionDirect contacts_action_direct             = 11;
-		ContactsActionServer contacts_action_server             = 12;
+		MessageChangeStatus message_change_status               = 10;
+		ModifyContactsDirect modify_contacts_direct             = 11;
+		ModifyContactsServer modify_contacts_server             = 12;
 		ChatroomsList chatrooms_list                            = 13;
 		RoomMessages room_messages                              = 14;
 		ContactsList contacts_list                              = 15;

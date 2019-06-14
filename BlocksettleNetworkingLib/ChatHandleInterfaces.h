@@ -6,7 +6,6 @@
 #include "chat.pb.h"
 
 namespace Chat {
-   class ContactRecordData;
    class MessageData;
 }
 

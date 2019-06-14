@@ -48,7 +48,7 @@ const QRegularExpression kRxEmail(QStringLiteral(R"(^[a-z0-9._-]+@([a-z0-9-]+\.)
 
 bool IsOTCChatRoom(const std::string& chatRoom)
 {
-   static const std::string targetRoomName = ChatUtils::OTCRoomKey;
+   static const std::string targetRoomName = ChatUtils::OtcRoomKey;
    return chatRoom == targetRoomName;
 }
 
@@ -141,7 +141,7 @@ public:
       chat_->ui_->input_textEdit->setEnabled(true);
       chat_->ui_->searchWidget->setLineEditEnabled(true);
       chat_->ui_->treeViewUsers->expandAll();
-      chat_->ui_->labelUserName->setText(chat_->client_->getUserId());
+      chat_->ui_->labelUserName->setText(QString::fromStdString(chat_->client_->getUserId()));
 
       chat_->SetOTCLoggedInState();
    }
@@ -590,7 +590,8 @@ void ChatWidget::onSendFriendRequest(const std::string &userId)
 
 void ChatWidget::onRemoveFriendRequest(const std::string &userId)
 {
-   client_->removeContactFromDB(userId);
+   // FIXME:
+   //client_->removeContactFromDB(userId);
    ui_->searchWidget->setListVisible(false);
 }
 
@@ -707,7 +708,7 @@ void ChatWidget::OnOTCRequestCreated()
 
    auto otcRequest = bs::network::OTCRequest{side, range};
 
-   if (currentChat_ == ChatUtils::OTCRoomKey) {
+   if (currentChat_ == ChatUtils::OtcRoomKey) {
       // XXXOTC
       // submit request to OTC room
    } else {
@@ -721,7 +722,7 @@ void ChatWidget::OnOTCRequestCreated()
 
 void ChatWidget::OnCreateResponse()
 {
-   if (currentChat_ == ChatUtils::OTCRoomKey) {
+   if (currentChat_ == ChatUtils::OtcRoomKey) {
       // XXXOTC
       // submit cancel to room
    } else {
@@ -734,7 +735,7 @@ void ChatWidget::OnCreateResponse()
 
 void ChatWidget::OnCancelCurrentTrading()
 {
-   if (currentChat_ == ChatUtils::OTCRoomKey) {
+   if (currentChat_ == ChatUtils::OtcRoomKey) {
       // XXXOTC
       // submit cancel to room
    } else {

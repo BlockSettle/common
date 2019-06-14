@@ -11,6 +11,8 @@ public:
    static google::protobuf::Timestamp convert(const QDateTime &value);
 
    static bool less(const google::protobuf::Timestamp &a, const google::protobuf::Timestamp &b);
+
+   static std::string toJson(const google::protobuf::Message &msg);
 };
 
 #endif

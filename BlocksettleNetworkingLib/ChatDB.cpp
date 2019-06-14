@@ -128,7 +128,7 @@ bool ChatDB::createMissingTables()
    return result;
 }
 
-bool ChatDB::isRoomMessagesExist(const QString &roomId)
+bool ChatDB::isRoomMessagesExist(const std::string &roomId)
 {
    // QSqlQuery qryAdd(QLatin1String("INSERT INTO messages(id, timestamp, sender, receiver, enctext, state, reference)"\
       // " VALUES(?, ?, ?, ?, ?, ?, ?);"), db_);
@@ -138,7 +138,7 @@ bool ChatDB::isRoomMessagesExist(const QString &roomId)
       logger_->error("[ChatDB::isContactExist] failed to prepare query: {}", query.lastError().text().toStdString());
       return false;
    }
-   query.bindValue(QString::fromStdString(":room_id"), roomId);
+   query.bindValue(QStringLiteral(":room_id"), QString::fromStdString(roomId));
    if (!query.exec()) {
       logger_->error("[ChatDB::isContactExist] failed to exec query: {}", query.lastError().text().toStdString());
       return false;
@@ -151,23 +151,25 @@ bool ChatDB::isRoomMessagesExist(const QString &roomId)
    return false;
 }
 
-bool ChatDB::add(const std::shared_ptr<Chat::Data_Message>& msg)
+bool ChatDB::add(const std::shared_ptr<Chat::Data>& msg)
 {
+   const auto &d = msg->message();
+
    QSqlQuery qryAdd(db_);
 
    qryAdd.prepare(QLatin1String("INSERT INTO messages(id, timestamp, sender, receiver, state, encryption, nonce, enctext, reference)"\
                                 " VALUES(:id, :tstamp, :sid, :rid, :state, :enctype, :nonce, :enctxt, :ref);"));
-   qryAdd.bindValue(QLatin1String(":id"), QString::fromStdString(msg->id()));
-   qryAdd.bindValue(QLatin1String(":tstamp"), ProtobufUtils::convert(msg->date_time()));
-   qryAdd.bindValue(QLatin1String(":sid"), QString::fromStdString(msg->sender_id()));
-   qryAdd.bindValue(QLatin1String(":rid"), QString::fromStdString(msg->receiver_id()));
-   qryAdd.bindValue(QLatin1String(":state"), msg->state());
-   qryAdd.bindValue(QLatin1String(":enctype"), static_cast<int>(msg->encryption()));
+   qryAdd.bindValue(QLatin1String(":id"), QString::fromStdString(d.id()));
+   qryAdd.bindValue(QLatin1String(":tstamp"), ProtobufUtils::convert(d.date_time()));
+   qryAdd.bindValue(QLatin1String(":sid"), QString::fromStdString(d.sender_id()));
+   qryAdd.bindValue(QLatin1String(":rid"), QString::fromStdString(d.receiver_id()));
+   qryAdd.bindValue(QLatin1String(":state"), d.state());
+   qryAdd.bindValue(QLatin1String(":enctype"), static_cast<int>(d.encryption()));
    qryAdd.bindValue(QLatin1String(":nonce"),
-                    QByteArray(reinterpret_cast<const char*>(msg->nonce().data()),
-                               static_cast<int>(msg->nonce().size()))
+                    QByteArray(reinterpret_cast<const char*>(d.nonce().data()),
+                               static_cast<int>(d.nonce().size()))
                     );
-   qryAdd.bindValue(QLatin1String(":enctxt"), QString::fromStdString(msg->message_payload()));
+   qryAdd.bindValue(QLatin1String(":enctxt"), QString::fromStdString(d.message_payload()));
    qryAdd.bindValue(QLatin1String(":ref"), QString());
 
 //   qryAdd.bindValue(0, msg.getId());
@@ -185,15 +187,15 @@ bool ChatDB::add(const std::shared_ptr<Chat::Data_Message>& msg)
    return true;
 }
 
-bool ChatDB::syncMessageId(const QString& localId, const QString& serverId)
+bool ChatDB::syncMessageId(const std::string& localId, const std::string& serverId)
 {
    const QString cmd = QLatin1String("UPDATE messages SET id = :server_mid, state = state | :set_flags WHERE (id = :local_mid);");
    QSqlQuery query(db_);
 
    query.prepare(cmd);
-   query.bindValue(QLatin1String(":server_mid"), serverId);
-   query.bindValue(QLatin1String(":local_mid"), localId);
-   query.bindValue(QLatin1String(":set_flags"), static_cast<int>(Chat::Data_Message_State_SENT));
+   query.bindValue(QStringLiteral(":server_mid"), QString::fromStdString(serverId));
+   query.bindValue(QStringLiteral(":local_mid"), QString::fromStdString(localId));
+   query.bindValue(QStringLiteral(":set_flags"), static_cast<int>(Chat::Data_Message_State_SENT));
 
    if (!query.exec()) {
       logger_->error("[ChatDB::syncMessageId] failed to synchronize local message id with server message id; Error: {}",
@@ -204,21 +206,21 @@ bool ChatDB::syncMessageId(const QString& localId, const QString& serverId)
    return true;
 }
 
-bool ChatDB::updateMessageStatus(const QString& messageId, int ustatus)
+bool ChatDB::updateMessageStatus(const std::string& messageId, int status)
 {
-   const QString cmd = QLatin1String("UPDATE messages SET"
+   const QString cmd = QStringLiteral("UPDATE messages SET"
                                      " state = :state"
                                      " WHERE (id = :mid);");
 
    QSqlQuery query(db_);
 
    query.prepare(cmd);
-   query.bindValue(QLatin1String(":mid"), messageId);
-   query.bindValue(QLatin1String(":state"), ustatus);
+   query.bindValue(QStringLiteral(":mid"), QString::fromStdString(messageId));
+   query.bindValue(QStringLiteral(":state"), status);
 
    if (!query.exec()) {
       logger_->error("[ChatDB::updateMessageStatus] failed to update message status with server message id: {}; Error: {}\nQuery: {}",
-                     messageId.toStdString(),
+                     messageId,
                      query.lastError().text().toStdString(),
                      query.executedQuery().toStdString()
                      );
@@ -308,14 +310,14 @@ std::vector<std::shared_ptr<Chat::Data>> ChatDB::getRoomMessages(const std::stri
    return records;
 }
 
-bool ChatDB::removeRoomMessages(const QString &roomId) {
+bool ChatDB::removeRoomMessages(const std::string &roomId) {
    if (!isRoomMessagesExist(roomId)) {
       return false;
    }
 
    QSqlQuery query(QLatin1String(
       "DELETE FROM messages WHERE receiver=:room_id;"), db_);
-   query.bindValue(0, roomId);
+   query.bindValue(0, QString::fromStdString(roomId));
 
    if (!query.exec()) {
       logger_->error("[ChatDB::removeContact] failed to delete contact.");
@@ -325,7 +327,7 @@ bool ChatDB::removeRoomMessages(const QString &roomId) {
    return true;
 }
 
-std::map<QString, BinaryData> ChatDB::loadKeys(bool* loaded)
+std::map<std::string, BinaryData> ChatDB::loadKeys(bool* loaded)
 {
    QSqlQuery query(db_);
    if (!query.prepare(QLatin1String("SELECT user_id, key FROM user_keys"))) {
@@ -343,7 +345,7 @@ std::map<QString, BinaryData> ChatDB::loadKeys(bool* loaded)
       return {};
    }
 
-   std::map<QString, BinaryData> keys_out;
+   std::map<std::string, BinaryData> keys_out;
 
    while (query.next()) {
       keys_out.emplace(query.value(0).toString()
@@ -355,11 +357,11 @@ std::map<QString, BinaryData> ChatDB::loadKeys(bool* loaded)
    return keys_out;
 }
 
-bool ChatDB::addKey(const QString& user, const BinaryData& key)
+bool ChatDB::addKey(const std::string& user, const BinaryData& key)
 {
    QSqlQuery qryAdd(QLatin1String(
       "INSERT INTO user_keys(user_id, key) VALUES(?, ?);"), db_);
-   qryAdd.bindValue(0, user);
+   qryAdd.bindValue(0, QString::fromStdString(user));
    qryAdd.bindValue(1, QString::fromStdString(key.toHexStr()));
 
    if (!qryAdd.exec()) {
@@ -390,18 +392,18 @@ bool ChatDB::isContactExist(const std::string &userId)
    return false;
 }
 
-bool ChatDB::addContact(Chat::Data_ContactRecord &contact)
+bool ChatDB::addContact(Chat::Data &contact)
 {
-   if (isContactExist(contact.user_id())) {
+   if (isContactExist(contact.contact_record().user_id())) {
       return true;
    }
 
    QSqlQuery query(db_);
    query.prepare(QLatin1String("INSERT INTO contacts(user_id, user_name, status) VALUES(:user_id, :user_name, :status)"));
 
-   query.bindValue(QLatin1String(":user_id"), QString::fromStdString(contact.user_id()));
-   query.bindValue(QLatin1String(":user_name"), QString::fromStdString(contact.display_name()));
-   query.bindValue(QLatin1String(":status"), static_cast<int>(contact.status()));
+   query.bindValue(QLatin1String(":user_id"), QString::fromStdString(contact.contact_record().user_id()));
+   query.bindValue(QLatin1String(":user_name"), QString::fromStdString(contact.contact_record().display_name()));
+   query.bindValue(QLatin1String(":status"), static_cast<int>(contact.contact_record().status()));
 
    if (!query.exec()) {
       logger_->error("[ChatDB::addContact] failed to insert new contact: {}", query.lastError().text().toStdString());

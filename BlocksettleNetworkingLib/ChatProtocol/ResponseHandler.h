@@ -4,8 +4,8 @@
 namespace Chat {
    class Response_AskForPublicKey;
    class Response_ChatroomsList;
-   class Response_ContactsActionDirect;
-   class Response_ContactsActionServer;
+   class Response_ModifyContactsDirect;
+   class Response_ModifyContactsServer;
    class Response_ContactsList;
    class Response_Login;
    class Response_Logout;
@@ -24,8 +24,8 @@ namespace Chat {
    {
    public:
       virtual ~ResponseHandler() = default;
-      virtual void OnUsersList(const UsersListResponse &) = 0;
-      virtual void OnMessages(const MessagesResponse &) = 0;
+      virtual void OnUsersList(const Response_UsersList &) = 0;
+      virtual void OnMessages(const Response_Messages &) = 0;
 
       // Received a call from a peer to send our public key.
       virtual void OnAskForPublicKey(const Response_AskForPublicKey &) = 0;
@@ -38,8 +38,8 @@ namespace Chat {
 
       virtual void OnSendMessageResponse(const Response_SendMessage&) = 0;
       virtual void OnMessageChangeStatusResponse(const Response_MessageChangeStatus&) = 0;
-      virtual void OnContactsActionResponseDirect(const Response_ContactsActionDirect&) = 0;
-      virtual void OnContactsActionResponseServer(const Response_ContactsActionServer&) = 0;
+      virtual void OnModifyContactsDirectResponse(const Response_ModifyContactsDirect&) = 0;
+      virtual void OnModifyContactsServerResponse(const Response_ModifyContactsServer&) = 0;
       virtual void OnContactsListResponse(const Response_ContactsList&) = 0;
 
       virtual void OnChatroomsList(const Response_ChatroomsList&) = 0;
