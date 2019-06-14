@@ -67,7 +67,7 @@ public:
 
 public slots:
    void onLoggedOut();
-   void onNewChatMessageTrayNotificationClicked(const std::string &userId);
+   void onNewChatMessageTrayNotificationClicked(const QString &userId);
 
 private slots:
    void onSendButtonClicked();
@@ -76,11 +76,11 @@ private slots:
    void onMessagesUpdated();
    void onLoginFailed();
    void onUsersDeleted(const std::vector<std::string> &);
-   void onSendFriendRequest(const std::string &userId);
-   void onRemoveFriendRequest(const std::string &userId);
+   void onSendFriendRequest(const QString &userId);
+   void onRemoveFriendRequest(const QString &userId);
    void onAddChatRooms(const std::vector<std::shared_ptr<Chat::Data> >& roomList);
    void onSearchUserListReceived(const std::vector<std::shared_ptr<Chat::Data>>& users, bool emailEntered);
-   void onSearchUserTextEdited(const std::string &text);
+   void onSearchUserTextEdited(const QString &text);
    void onConnectedToServer();
    void selectGlobalRoom();
    void onContactRequestAccepted(const std::string &userId);

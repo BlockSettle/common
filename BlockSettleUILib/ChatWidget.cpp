@@ -319,8 +319,8 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
    connect(client_.get(), &ChatClient::ConnectedToServer, this, &ChatWidget::onConnectedToServer);
    connect(client_.get(), &ChatClient::ContactRequestAccepted, this, &ChatWidget::onContactRequestAccepted);
    connect(client_.get(), &ChatClient::RoomsInserted, this, &ChatWidget::selectGlobalRoom);
-   connect(client_.get(), &ChatClient::NewContactRequest, this, [=] (const QString &userId) {
-            NotificationCenter::notify(bs::ui::NotifyType::FriendRequest, {userId});
+   connect(client_.get(), &ChatClient::NewContactRequest, this, [=] (const std::string &userId) {
+            NotificationCenter::notify(bs::ui::NotifyType::FriendRequest, {QString::fromStdString(userId)});
    });
    connect(ui_->input_textEdit, &BSChatInput::sendMessage, this, &ChatWidget::onSendButtonClicked);
    connect(ui_->input_textEdit, &BSChatInput::selectionChanged, this, &ChatWidget::onBSChatInputSelectionChanged);
@@ -383,7 +383,7 @@ void ChatWidget::onSearchUserListReceived(const std::vector<std::shared_ptr<Chat
                break;
             }
          }
-         userInfoList.emplace_back(userId, status);
+         userInfoList.emplace_back(QString::fromStdString(userId), status);
       }
    }
    client_->getUserSearchModel()->setUsers(userInfoList);
@@ -522,12 +522,12 @@ void ChatWidget::onLoggedOut()
    emit LogOut();
 }
 
-void ChatWidget::onNewChatMessageTrayNotificationClicked(const std::string &userId)
+void ChatWidget::onNewChatMessageTrayNotificationClicked(const QString &userId)
 {
-   ui_->treeViewUsers->setCurrentUserChat(userId);
+   ui_->treeViewUsers->setCurrentUserChat(userId.toStdString());
 }
 
-void ChatWidget::onSearchUserTextEdited(const std::string& /*text*/)
+void ChatWidget::onSearchUserTextEdited(const QString& /*text*/)
 {
    std::string userToAdd = ui_->searchWidget->searchText().toStdString();
    if (userToAdd.empty() || userToAdd.length() < 3) {
@@ -582,13 +582,13 @@ bool ChatWidget::eventFilter(QObject *sender, QEvent *event)
    return QWidget::eventFilter(sender, event);
 }
 
-void ChatWidget::onSendFriendRequest(const std::string &userId)
+void ChatWidget::onSendFriendRequest(const QString &userId)
 {
-   client_->sendFriendRequest(userId);
+   client_->sendFriendRequest(userId.toStdString());
    ui_->searchWidget->setListVisible(false);
 }
 
-void ChatWidget::onRemoveFriendRequest(const std::string &userId)
+void ChatWidget::onRemoveFriendRequest(const QString &userId)
 {
    // FIXME:
    //client_->removeContactFromDB(userId);

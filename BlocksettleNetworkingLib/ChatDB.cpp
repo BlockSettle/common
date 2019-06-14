@@ -348,7 +348,7 @@ std::map<std::string, BinaryData> ChatDB::loadKeys(bool* loaded)
    std::map<std::string, BinaryData> keys_out;
 
    while (query.next()) {
-      keys_out.emplace(query.value(0).toString()
+      keys_out.emplace(query.value(0).toString().toStdString()
          , BinaryData::CreateFromHex(query.value(1).toString().toStdString()));
    }
    if (loaded != nullptr) {
