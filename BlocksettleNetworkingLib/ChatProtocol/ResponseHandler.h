@@ -24,8 +24,8 @@ namespace Chat {
    {
    public:
       virtual ~ResponseHandler() = default;
-      virtual void OnUsersList(const Response_UsersList &) = 0;
-      virtual void OnMessages(const Response_Messages &) = 0;
+      virtual void OnUsersList(const UsersListResponse &) = 0;
+      virtual void OnMessages(const MessagesResponse &) = 0;
 
       // Received a call from a peer to send our public key.
       virtual void OnAskForPublicKey(const Response_AskForPublicKey &) = 0;
