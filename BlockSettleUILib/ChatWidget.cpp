@@ -934,7 +934,7 @@ void ChatWidget::DisplayOwnLiveOTC()
 
 void ChatWidget::DisplayOwnSubmittedOTC()
 {
-   // ui_->widgetPullOwnOTCRequest->DisplaySubmittedOTC(submittedOtc_);
+   ui_->widgetPullOwnOTCRequest->setRequestData(client_->getCurrentOTCRequest());
    ui_->stackedWidgetOTC->setCurrentIndex(static_cast<int>(OTCPages::OTCPullOwnOTCRequestPage));
 }
 
