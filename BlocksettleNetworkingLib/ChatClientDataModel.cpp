@@ -183,6 +183,21 @@ bool ChatClientDataModel::insertContactsMessage(std::shared_ptr<Chat::MessageDat
    return res;
 }
 
+bool ChatClientDataModel::insertContactsRequestMessage(std::shared_ptr<Chat::MessageData> message)
+{
+   lastMessage_ = message;
+
+   auto item = new TreeMessageNode(ChatUIDefinitions::ChatTreeNodeType::ContactsRequestElement, message);
+
+   bool res = insertMessageNode(item);
+
+   if (!res){
+      delete  item;
+   }
+
+   return res;
+}
+
 TreeItem *ChatClientDataModel::findChatNode(const std::string &chatId)
 {
    return root_->findChatNode(chatId);

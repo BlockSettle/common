@@ -1029,6 +1029,18 @@ void ChatClient::sendFriendRequest(const QString &friendUserId, std::shared_ptr<
             friendUserId.toStdString(),
             Chat::ContactsAction::Request,
             BinaryData(appSettings_->GetAuthKeys().second.data(), appSettings_->GetAuthKeys().second.size()));
+
+   if (!encryptByIESAndSaveMessageInDb(message))
+   {
+      logger_->error("[ChatClient::sendMessageDataRequest] failed to encrypt. discarding message");
+      message->setFlag(Chat::MessageData::State::Invalid);
+   }
+
+   model_->insertContactsRequestMessage(message);
+
+   auto encMsg = encryptMessageToSendIES(contactPublicKeyIterator->second, message);
+   request->setMessage(encMsg);
+
    sendRequest(request);
    addOrUpdateContact(friendUserId, Chat::ContactStatus::Outgoing);
 }
