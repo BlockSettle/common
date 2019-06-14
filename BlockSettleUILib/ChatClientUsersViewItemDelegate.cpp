@@ -2,6 +2,7 @@
 #include "ChatClientDataModel.h"
 #include <QPainter>
 #include <QLineEdit>
+#include "ChatProtocol/ChatUtils.h"
 
 static const int kDotSize = 8;
 static const QString kDotPathname = QLatin1String(":/ICON_DOT");
@@ -88,18 +89,20 @@ void ChatClientUsersViewItemDelegate::paintContactsElement(QPainter *painter, co
    itemOption.text = index.data(Role::ContactTitleRole).toString();
 
    switch (contactStatus) {
-      case ContactStatus::Accepted:
+      case ContactStatus::CONTACT_STATUS_ACCEPTED:
          //If accepted need to paint online status in the next switch
          break;
-      case ContactStatus::Incoming:
+      case ContactStatus::CONTACT_STATUS_INCOMING:
          itemOption.palette.setColor(QPalette::Text, itemStyle_.colorContactIncoming());
          return QStyledItemDelegate::paint(painter, itemOption, index);
-      case ContactStatus::Outgoing:
+      case ContactStatus::CONTACT_STATUS_OUTGOING:
          itemOption.palette.setColor(QPalette::Text, itemStyle_.colorContactOutgoing());
          return QStyledItemDelegate::paint(painter, itemOption, index);
-      case ContactStatus::Rejected:
+      case ContactStatus::CONTACT_STATUS_REJECTED:
          itemOption.palette.setColor(QPalette::Text, itemStyle_.colorContactRejected());
          return QStyledItemDelegate::paint(painter, itemOption, index);
+      default:
+         return;
    }
 
    switch (onlineStatus) {
@@ -135,11 +138,13 @@ void ChatClientUsersViewItemDelegate::paintUserElement(QPainter *painter, const 
    }
 
    switch (index.data(Role::UserOnlineStatusRole).value<Chat::UserStatus>()) {
-      case Chat::UserStatus::Online:
+      case Chat::USER_STATUS_ONLINE:
          itemOption.palette.setColor(QPalette::Text, itemStyle_.colorUserOnline());
          break;
-      case Chat::UserStatus::Offline:
+      case Chat::USER_STATUS_OFFLINE:
          itemOption.palette.setColor(QPalette::Text, itemStyle_.colorUserOffline());
+         break;
+      default:
          break;
    }
    itemOption.text = index.data(Role::UserIdRole).toString();
