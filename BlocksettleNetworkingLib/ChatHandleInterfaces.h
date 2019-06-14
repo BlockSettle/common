@@ -7,6 +7,8 @@
 namespace Chat {
    class ContactRecordData;
    class MessageData;
+   class OTCRequestData;
+   class OTCCloseTradingData;
 }
 
 class CategoryElement;
@@ -53,6 +55,15 @@ public:
 
    virtual  ~ModelChangesHandler() = default;
    virtual void onContactUpdatedByInput(std::shared_ptr<Chat::ContactRecordData> crecord) = 0;
+};
+
+class PublicOTCHandler {
+public:
+   virtual ~PublicOTCHandler() = default;
+   virtual void onPublicOTCRequestSubmited(std::shared_ptr<Chat::OTCRequestData>) = 0;
+   virtual void onPublicOTCRequestArrived(std::shared_ptr<Chat::OTCRequestData>) = 0;
+   virtual void onPublicOTCOwnClose(std::shared_ptr<Chat::OTCCloseTradingData>) = 0;
+   virtual void onPublicOTCRequestClosed(std::shared_ptr<Chat::OTCCloseTradingData>) = 0;
 };
 
 

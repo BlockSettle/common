@@ -12,6 +12,7 @@ public:
    std::shared_ptr<Chat::RoomData> getRoomData() const;
 
    bool isChildSupported(const TreeItem *item) const override;
+
 };
 
 class ChatContactElement : public CategoryElement {

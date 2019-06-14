@@ -55,6 +55,9 @@ public:
    std::shared_ptr<Chat::MessageData> SubmitPrivateUpdate(const bs::network::OTCUpdate& update
                                                           , const QString &receiver);
 
+   std::shared_ptr<Chat::MessageData> SubmitPublicOTCRequest(const bs::network::OTCRequest& otcRequest);
+   std::shared_ptr<Chat::MessageData> SubmitPublicClose(const QString& receiver);
+
    std::shared_ptr<Chat::MessageData> sendRoomOwnMessage(
          const QString& message, const QString &receiver);
 
@@ -73,6 +76,7 @@ private:
    void readDatabase();
 
    void addMessageState(const std::shared_ptr<Chat::MessageData>& message, Chat::MessageData::State state);
+   void onPublicOTCMessage(const std::shared_ptr<Chat::MessageData>& messageOTC);
 
 signals:
    void ConnectedToServer();
@@ -139,14 +143,21 @@ public:
 public:
    void onContactUpdatedByInput(std::shared_ptr<Chat::ContactRecordData> crecord) override;
 
+   void setPublicOTCHandler(PublicOTCHandler *publicOTCHandler);
+
+   std::shared_ptr<Chat::OTCRequestData> getCurrentOTCRequest() const;
+
 private:
    std::shared_ptr<ApplicationSettings>   appSettings_;
 
    std::shared_ptr<ChatClientDataModel>   model_;
    std::shared_ptr<UserSearchModel>       userSearchModel_;
    std::shared_ptr<ChatTreeModelWrapper>  proxyModel_;
+   std::shared_ptr<Chat::OTCRequestData> currentOTCRequest_;
 
    bool              emailEntered_{ false };
+
+   PublicOTCHandler* publicOTCHandler_;
 };
 
 #endif   // CHAT_CLIENT_H

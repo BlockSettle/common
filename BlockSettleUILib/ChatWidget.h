@@ -38,6 +38,7 @@ class CelerClient;
 class ChatWidget : public QWidget
                  , public ViewItemWatcher
                  , public NewMessageMonitor
+                 , public PublicOTCHandler
 {
    Q_OBJECT
 
@@ -109,8 +110,8 @@ private:
 
    void OTCSwitchToCommonRoom();
    void OTCSwitchToGlobalRoom();
-   void OTCSwitchToRoom(std::shared_ptr<Chat::RoomData>& room);
-   void OTCSwitchToContact(std::shared_ptr<Chat::ContactRecordData>& contact, bool onlineStatus);
+   void OTCSwitchToRoom(const std::shared_ptr<Chat::RoomData> &room);
+   void OTCSwitchToContact(const std::shared_ptr<Chat::ContactRecordData> &contact, bool onlineStatus);
    void OTCSwitchToResponse(std::shared_ptr<Chat::OTCResponseData>& response);
 
 
@@ -168,6 +169,23 @@ public:
    // NewMessageMonitor interface
 public:
    void onNewMessagesPresent(std::map<QString, std::shared_ptr<Chat::MessageData>> newMessages) override;
+
+   // PublicOTCHandler interface
+public:
+   void onPublicOTCRequestSubmited(std::shared_ptr<Chat::OTCRequestData>) override;
+   void onPublicOTCRequestArrived(std::shared_ptr<Chat::OTCRequestData>) override;
+   void onPublicOTCOwnClose(std::shared_ptr<Chat::OTCCloseTradingData>) override;
+   void onPublicOTCRequestClosed(std::shared_ptr<Chat::OTCCloseTradingData>) override;
 };
+
+
+
+
+
+
+
+
+
+
 
 #endif // CHAT_WIDGET_H

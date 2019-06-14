@@ -435,6 +435,7 @@ void BaseChatClient::OnRoomMessages(const Chat::RoomMessagesResponse& response)
 
    for (const auto &msgStr : response.getDataList()) {
       const auto msg = Chat::MessageData::fromJSON(msgStr);
+      msg->setMessageDirection(Chat::MessageData::MessageDirection::Received);
       msg->setFlag(Chat::MessageData::State::Acknowledged);
       /*chatDb_->add(*msg);
 
@@ -781,6 +782,26 @@ std::shared_ptr<Chat::MessageData> BaseChatClient::sendMessageDataRequest(const 
    sendRequest(request);
 
    return messageData;
+}
+
+std::shared_ptr<Chat::MessageData> BaseChatClient::sendRoomMessageDataRequest(const std::shared_ptr<Chat::MessageData> &message, const QString &receiver)
+{
+   if (!encryptByIESAndSaveMessageInDb(message))
+   {
+      logger_->error("[BaseChatClient::sendMessageDataRequest] failed to encrypt. discarding message");
+      message->setFlag(Chat::MessageData::State::Invalid);
+      return message;
+   }
+
+   message->setMessageDirection(Chat::MessageData::MessageDirection::Sent);
+   onRoomMessageReceived(message);
+
+   auto request = std::make_shared<Chat::SendRoomMessageRequest>(
+                     "",
+                     receiver.toStdString(),
+                     message->toJsonString());
+   sendRequest(request);
+   return message;
 }
 
 void BaseChatClient::retrySendQueuedMessages(const std::string userId)

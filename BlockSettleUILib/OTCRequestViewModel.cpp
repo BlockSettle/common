@@ -129,15 +129,15 @@ bool OTCRequestViewModel::RemoveOTCByID(const std::string& serverRequestId)
    //XXXOTC
    // XXX simple solution. Not sure at what number of OTC requests this will start to slow down UI
    // will move to internal pointers and maps a bit later
-   // for (int i=0; i < currentRequests_.size(); ++i) {
-   //    if (currentRequests_[i]->serverRequestId() == serverRequestId) {
-   //       beginRemoveRows(QModelIndex{}, i, i);
-   //       currentRequests_.erase(currentRequests_.begin() + i);
-   //       endRemoveRows();
+    for (int i=0; i < currentRequests_.size(); ++i) {
+       if (currentRequests_[i]->senderId().toStdString() == serverRequestId) {
+          beginRemoveRows(QModelIndex{}, i, i);
+          currentRequests_.erase(currentRequests_.begin() + i);
+          endRemoveRows();
 
-   //       return true;
-   //    }
-   // }
+          return true;
+       }
+    }
 
    return false;
 }

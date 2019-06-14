@@ -32,6 +32,7 @@ ChatClient::ChatClient(const std::shared_ptr<ConnectionManager>& connectionManag
 
    : BaseChatClient{connectionManager, logger, appSettings->get<QString>(ApplicationSettings::chatDbFile)}
    , appSettings_{appSettings}
+   , publicOTCHandler_(nullptr)
 {
    qRegisterMetaType<std::shared_ptr<Chat::MessageData>>();
    qRegisterMetaType<std::vector<std::shared_ptr<Chat::MessageData>>>();
@@ -121,6 +122,44 @@ void ChatClient::addMessageState(const std::shared_ptr<Chat::MessageData>& messa
    }
 }
 
+void ChatClient::onPublicOTCMessage(const std::shared_ptr<Chat::MessageData> &messageData)
+{
+   auto messagePayloadType = messageData->messageDataType();
+
+   switch (messagePayloadType) {
+   case Chat::MessageData::RawMessageDataType::OTCReqeust: {
+         auto request = std::dynamic_pointer_cast<Chat::OTCRequestData>(messageData);
+         if (messageData->messageDirectoin() == Chat::MessageData::MessageDirection::Sent) {
+            currentOTCRequest_ = request;
+            publicOTCHandler_->onPublicOTCRequestSubmited(request);
+         } else if (messageData->messageDirectoin() == Chat::MessageData::MessageDirection::Received){
+            publicOTCHandler_->onPublicOTCRequestArrived(request);
+         }
+      }
+      break;
+   case Chat::MessageData::RawMessageDataType::OTCResponse:
+      //response shouldn't be here
+      break;
+   case Chat::MessageData::RawMessageDataType::OTCUpdate:{
+      //TODO: Apply update to OTC
+      auto update = std::dynamic_pointer_cast<Chat::OTCUpdateData>(messageData);
+      }
+      break;
+   case Chat::MessageData::RawMessageDataType::OTCCloseTrading: {
+         auto request = std::dynamic_pointer_cast<Chat::OTCCloseTradingData>(messageData);
+         if (messageData->messageDirectoin() == Chat::MessageData::MessageDirection::Sent) {
+            currentOTCRequest_ = nullptr;
+            publicOTCHandler_->onPublicOTCOwnClose(request);
+         } else if (messageData->messageDirectoin() == Chat::MessageData::MessageDirection::Received){
+            publicOTCHandler_->onPublicOTCRequestClosed(request);
+         }
+      }
+      break;
+   default:
+      break;
+   }
+}
+
 std::shared_ptr<Chat::MessageData> ChatClient::sendOwnMessage(
       const QString &message, const QString &receiver)
 {
@@ -183,6 +222,29 @@ std::shared_ptr<Chat::MessageData> ChatClient::SubmitPrivateUpdate(const bs::net
    return sendMessageDataRequest(otcMessageData, receiver);
 }
 
+std::shared_ptr<Chat::MessageData> ChatClient::SubmitPublicOTCRequest(const bs::network::OTCRequest &otcRequest)
+{
+   auto otcMessageData = std::make_shared<Chat::OTCRequestData>(QString::fromStdString(currentUserId_), Chat::OTCRoomKey
+      , QString::fromStdString(CryptoPRNG::generateRandom(8).toHexStr())
+      , QDateTime::currentDateTimeUtc()
+      , otcRequest);
+
+   logger_->debug("[ChatClient::SubmitPublicOTCRequest] {}", otcMessageData->displayText().toStdString());
+
+   return sendRoomMessageDataRequest(otcMessageData, Chat::OTCRoomKey);
+}
+
+std::shared_ptr<Chat::MessageData> ChatClient::SubmitPublicClose(const QString &receiver)
+{
+   auto otcMessageData = std::make_shared<Chat::OTCCloseTradingData>(QString::fromStdString(currentUserId_), receiver
+      , QString::fromStdString(CryptoPRNG::generateRandom(8).toHexStr())
+      , QDateTime::currentDateTimeUtc());
+
+   logger_->debug("[ChatClient::SubmitPrivateCancel] to {}", receiver.toStdString());
+
+   return sendRoomMessageDataRequest(otcMessageData, Chat::OTCRoomKey);
+}
+
 std::shared_ptr<Chat::MessageData> ChatClient::sendRoomOwnMessage(const QString& message, const QString& receiver)
 {
    auto roomMessage = std::make_shared<Chat::MessageData>(QString::fromStdString(currentUserId_), receiver
@@ -190,41 +252,9 @@ std::shared_ptr<Chat::MessageData> ChatClient::sendRoomOwnMessage(const QString&
       , QDateTime::currentDateTimeUtc()
       , message);
 
-//   const auto &itPub = pubKeys_.find(receiver);
-//   if (itPub == pubKeys_.end()) {
-//      // Ask for public key from peer. Enqueue the message to be sent, once we receive the
-//      // necessary public key.
-//      enqueued_messages_[receiver].push(message);
-
-//      // Send our key to the peer.
-//      auto request = std::make_shared<Chat::AskForPublicKeyRequest>(
-//         "", // clientId
-//         currentUserId_,
-//         receiver.toStdString());
-//      sendRequest(request);
-//      return result;
-//   }
-
    logger_->debug("[ChatClient::sendRoomOwnMessage] {}", message.toStdString());
 
-//   auto localEncMsg = msg;
-//   if (!localEncMsg.encrypt(appSettings_->GetAuthKeys().second)) {
-//      logger_->error("[ChatClient::sendRoomOwnMessage] failed to encrypt by local key");
-//   }
-   chatDb_->add(roomMessage);
-   model_->insertRoomMessage(roomMessage);
-
-//   if (!msg.encrypt(itPub->second)) {
-//      logger_->error("[ChatClient::sendMessage] failed to encrypt message {}"
-//         , msg.getId().toStdString());
-//   }
-
-   auto request = std::make_shared<Chat::SendRoomMessageRequest>(
-                     "",
-                     receiver.toStdString(),
-                     roomMessage->toJsonString());
-   sendRequest(request);
-   return roomMessage;
+   return sendRoomMessageDataRequest(roomMessage, receiver);
 }
 
 void ChatClient::sendFriendRequest(const QString &friendUserId)
@@ -469,6 +499,16 @@ void ChatClient::onContactUpdatedByInput(std::shared_ptr<Chat::ContactRecordData
                       crecord->getDisplayName());
 }
 
+void ChatClient::setPublicOTCHandler(PublicOTCHandler *publicOTCHandler)
+{
+   publicOTCHandler_ = publicOTCHandler;
+}
+
+std::shared_ptr<Chat::OTCRequestData> ChatClient::getCurrentOTCRequest() const
+{
+   return currentOTCRequest_;
+}
+
 BinaryData ChatClient::getOwnAuthPublicKey() const
 {
    const auto publicKey = appSettings_->GetAuthKeys().second;
@@ -619,7 +659,14 @@ void ChatClient::onDMMessageReceived(const std::shared_ptr<Chat::MessageData>& m
 
 void ChatClient::onRoomMessageReceived(const std::shared_ptr<Chat::MessageData>& messageData)
 {
-   model_->insertRoomMessage(messageData);
+   auto messagePayloadType = messageData->messageDataType();
+
+   if ((messagePayloadType != Chat::MessageData::RawMessageDataType::TextMessage)
+       && !messageData->loadedFromHistory()) {
+      onPublicOTCMessage(messageData);
+   } else {
+      model_->insertRoomMessage(messageData);
+   }
 }
 
 void ChatClient::retrieveUserMessages(const QString &userId)

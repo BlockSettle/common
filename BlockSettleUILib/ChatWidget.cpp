@@ -308,6 +308,7 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
    ui_->textEditMessages->setMessageReadHandler(client_);
    ui_->textEditMessages->setClient(client_);
    ui_->input_textEdit->setAcceptRichText(false);
+   client_->setPublicOTCHandler(this);
 
    ui_->treeViewUsers->setActiveChatLabel(ui_->labelActiveChat);
    //ui_->chatSearchLineEdit->setActionsHandler(client_);
@@ -612,24 +613,22 @@ void ChatWidget::onElementSelected(CategoryElement *element)
    if (element) {
       switch (element->getType()) {
          case ChatUIDefinitions::ChatTreeNodeType::RoomsElement: {
-            //TODO: Change cast
-            auto room = std::dynamic_pointer_cast<Chat::RoomData>(element->getDataObject());
-            if (room) {
+            auto roomElement = dynamic_cast<ChatRoomElement*>(element);
+            if (roomElement && roomElement->getDataObject()) {
                setIsRoom(true);
-               currentChat_ = room->getId();
-               OTCSwitchToRoom(room);
+               currentChat_ = roomElement->getRoomData()->getId();
+               OTCSwitchToRoom(roomElement->getRoomData());
             }
          }
          break;
          case ChatUIDefinitions::ChatTreeNodeType::ContactsElement:{
-            //TODO: Change cast
-            auto contact = std::dynamic_pointer_cast<Chat::ContactRecordData>(element->getDataObject());
-            if (contact) {
+            ChatContactElement * contactElement = dynamic_cast<ChatContactElement*>(element);
+            if (contactElement && contactElement->getDataObject()) {
                setIsRoom(false);
-               currentChat_ = contact->getContactId();
-               ChatContactElement * cElement = dynamic_cast<ChatContactElement*>(element);
-               OTCSwitchToContact(contact, cElement->getOnlineStatus()
-                                  == ChatContactElement::OnlineStatus::Online);
+               currentChat_ = contactElement->getContactData()->getContactId();
+               OTCSwitchToContact(contactElement->getContactData(),
+                                  contactElement->getOnlineStatus() ==
+                                  ChatContactElement::OnlineStatus::Online);
             }
          }
          break;
@@ -708,6 +707,11 @@ void ChatWidget::OnOTCRequestCreated()
    if (currentChat_ == Chat::OTCRoomKey) {
       // XXXOTC
       // submit request to OTC room
+      if (!client_->SubmitPublicOTCRequest(otcRequest)) {
+         logger_->error("[ChatWidget::OnOTCRequestCreated] failed to submit"
+                        " OTC request to {}", currentChat_.toStdString());
+         return;
+      }
    } else {
       if (!client_->SubmitPrivateOTCRequest(otcRequest, currentChat_)) {
          logger_->error("[ChatWidget::OnOTCRequestCreated] failed to submit"
@@ -803,18 +807,19 @@ void ChatWidget::OTCSwitchToGlobalRoom()
    ui_->stackedWidgetOTC->setCurrentIndex(static_cast<int>(OTCPages::OTCGeneralRoomShieldPage));
 }
 
-void ChatWidget::OTCSwitchToRoom(std::shared_ptr<Chat::RoomData>& room)
+void ChatWidget::OTCSwitchToRoom(const std::shared_ptr<Chat::RoomData> &room)
 {
    if (room->isTradingAvailable()) {
-      ui_->stackedWidgetMessages->setCurrentIndex(1);
-      OTCSwitchToCommonRoom();
+         ui_->stackedWidgetMessages->setCurrentIndex(1);
+         OTCSwitchToCommonRoom();
+//      }
    } else {
       ui_->stackedWidgetMessages->setCurrentIndex(0);
       OTCSwitchToGlobalRoom();
    }
 }
 
-void ChatWidget::OTCSwitchToContact(std::shared_ptr<Chat::ContactRecordData>& contact,
+void ChatWidget::OTCSwitchToContact(const std::shared_ptr<Chat::ContactRecordData>& contact,
                                     bool onlineStatus)
 {
    ui_->stackedWidgetMessages->setCurrentIndex(0);
@@ -950,7 +955,7 @@ bool ChatWidget::IsOTCRequestSubmitted() const
 {
    // XXXPTC
    // return otcSubmitted_;
-   return false;
+   return client_->getCurrentOTCRequest() != nullptr;
 }
 
 bool ChatWidget::IsOTCRequestAccepted() const
@@ -1022,4 +1027,24 @@ void ChatWidget::onBSChatInputSelectionChanged()
 void ChatWidget::onChatMessagesSelectionChanged()
 {
    isChatMessagesSelected_ = true;
+}
+
+void ChatWidget::onPublicOTCRequestSubmited(std::shared_ptr<Chat::OTCRequestData> request)
+{
+   otcRequestViewModel_->AddLiveOTCRequest(request);
+}
+
+void ChatWidget::onPublicOTCRequestArrived(std::shared_ptr<Chat::OTCRequestData> request)
+{
+   otcRequestViewModel_->AddLiveOTCRequest(request);
+}
+
+void ChatWidget::onPublicOTCOwnClose(std::shared_ptr<Chat::OTCCloseTradingData> request)
+{
+   otcRequestViewModel_->RemoveOTCByID(request->senderId().toStdString());
+}
+
+void ChatWidget::onPublicOTCRequestClosed(std::shared_ptr<Chat::OTCCloseTradingData> request)
+{
+   otcRequestViewModel_->RemoveOTCByID(request->senderId().toStdString());
 }
