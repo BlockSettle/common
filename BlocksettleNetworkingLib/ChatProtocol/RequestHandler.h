@@ -16,7 +16,6 @@ namespace Chat {
    class ContactActionRequestServer;
    class ContactsListRequest;
    class ChatroomsListRequest;
-   class PendingMessagesResponse;
    class SendRoomMessageRequest;
    class SearchUsersRequest;
    class SessionPublicKeyRequest;

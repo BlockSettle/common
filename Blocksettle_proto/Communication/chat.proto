@@ -297,22 +297,22 @@ message Request
 
 	oneof data
 	{
-		Login login                                             = 1;
-		Logout logout                                           = 2;
-		SendMessage send_message                                = 3;
-		Messages messages                                       = 4;
-		OnlineUsers online_users                                = 5;
-		AskForPublicKey ask_for_public_key                      = 6;
-		SendOwnPublicKey send_own_public_key                    = 7;
-		MessageChangeStatus message_change_status               = 8;
-		ModifyContactsDirect modify_contacts_direct             = 9;
-		ModifyContactsServer modify_contacts_server              = 10;
-		ChatroomsList chatrooms_list                            = 11;
-		SendRoomMessage send_room_message                       = 12;
-		ContactsList contacts_list                              = 13;
-		SearchUsers search_users                                = 14;
-		SessionPublicKey session_public_key                     = 15;
-		ReplySessionPublicKey reply_session_public_key          = 16;
+		Login login                                             = 10;
+		Logout logout                                           = 11;
+		SendMessage send_message                                = 12;
+		Messages messages                                       = 13;
+		OnlineUsers online_users                                = 14;
+		AskForPublicKey ask_for_public_key                      = 15;
+		SendOwnPublicKey send_own_public_key                    = 16;
+		MessageChangeStatus message_change_status               = 17;
+		ModifyContactsDirect modify_contacts_direct             = 18;
+		ModifyContactsServer modify_contacts_server             = 19;
+		ChatroomsList chatrooms_list                            = 20;
+		SendRoomMessage send_room_message                       = 21;
+		ContactsList contacts_list                              = 22;
+		SearchUsers search_users                                = 23;
+		SessionPublicKey session_public_key                     = 24;
+		ReplySessionPublicKey reply_session_public_key          = 25;
 	}
 }
 
@@ -435,27 +435,29 @@ message Response
 		bytes sender_session_pub_key = 3;
 	}
 
+	string id = 1;
+
 	oneof data
 	{
-		Login login                                             = 1;
-		Messages messages                                       = 2;
-		Success success                                         = 3;
-		Error error                                             = 4;
-		UsersList users_list                                    = 5;
-		AskForPublicKey ask_for_public_key                      = 6;
-		SendOwnPublicKey send_own_public_key                    = 7;
-		PendingMessage pending_message                          = 8;
-		SendMessage send_message                                = 9;
-		MessageChangeStatus message_change_status               = 10;
-		ModifyContactsDirect modify_contacts_direct             = 11;
-		ModifyContactsServer modify_contacts_server             = 12;
-		ChatroomsList chatrooms_list                            = 13;
-		RoomMessages room_messages                              = 14;
-		ContactsList contacts_list                              = 15;
-		SearchUsers search_users                                = 16;
-		Logout logout                                           = 17;
-		SendSessionPublicKey send_session_public_key            = 18;
-		SessionPublicKey session_public_key                     = 19;
-		ReplySessionPublicKey reply_session_public_key          = 20;
+		Login login                                             = 10;
+		Messages messages                                       = 11;
+		Success success                                         = 12;
+		Error error                                             = 13;
+		UsersList users_list                                    = 14;
+		AskForPublicKey ask_for_public_key                      = 15;
+		SendOwnPublicKey send_own_public_key                    = 16;
+		PendingMessage pending_message                          = 17;
+		SendMessage send_message                                = 18;
+		MessageChangeStatus message_change_status               = 19;
+		ModifyContactsDirect modify_contacts_direct             = 20;
+		ModifyContactsServer modify_contacts_server             = 21;
+		ChatroomsList chatrooms_list                            = 22;
+		RoomMessages room_messages                              = 23;
+		ContactsList contacts_list                              = 24;
+		SearchUsers search_users                                = 25;
+		Logout logout                                           = 26;
+		SendSessionPublicKey send_session_public_key            = 27;
+		SessionPublicKey session_public_key                     = 28;
+		ReplySessionPublicKey reply_session_public_key          = 29;
 	}
 }
