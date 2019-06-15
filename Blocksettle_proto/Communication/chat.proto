@@ -93,9 +93,9 @@ message Data
 		string title = 3;
 		string key = 4;
 		bool is_private = 5;
-		bool disable_send_user_updates = 6;
-		bool disable_display_user_list = 7;
-		bool disable_display_tray_notification = 8;
+		bool send_user_updates = 6;
+		bool display_user_list = 7;
+		bool display_tray_notification = 8;
 		bool is_trading_available = 9;
 	}
 

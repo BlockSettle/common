@@ -594,7 +594,7 @@ void ChatClientDataModel::updateNewMessagesFlag()
                   if (roomElement) {
                      auto roomData = roomElement->getRoomData();
                      if (roomData) {
-                        displayTrayNotification = !roomData->disable_display_tray_notification();
+                        displayTrayNotification = roomData->display_tray_notification();
                      }
                   }
                }
