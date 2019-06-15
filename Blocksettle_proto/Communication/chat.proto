@@ -2,8 +2,6 @@ syntax = "proto3";
 
 package Chat;
 
-import "google/protobuf/timestamp.proto";
-
 enum Command
 {
 	COMMAND_UNSPECIFIED = 0;
@@ -159,7 +157,7 @@ message Data
 		}
 
 		string id = 1;
-		google.protobuf.Timestamp date_time = 2;
+		int64 timestamp_ms = 2;
 		string sender_id = 3;
 		string receiver_id = 4;
 		uint32 state = 5;

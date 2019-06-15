@@ -160,7 +160,7 @@ bool ChatDB::add(const std::shared_ptr<Chat::Data>& msg)
    qryAdd.prepare(QLatin1String("INSERT INTO messages(id, timestamp, sender, receiver, state, encryption, nonce, enctext, reference)"\
                                 " VALUES(:id, :tstamp, :sid, :rid, :state, :enctype, :nonce, :enctxt, :ref);"));
    qryAdd.bindValue(QLatin1String(":id"), QString::fromStdString(d.id()));
-   qryAdd.bindValue(QLatin1String(":tstamp"), ProtobufUtils::convert(d.date_time()));
+   qryAdd.bindValue(QLatin1String(":tstamp"), qint64(d.timestamp_ms()));
    qryAdd.bindValue(QLatin1String(":sid"), QString::fromStdString(d.sender_id()));
    qryAdd.bindValue(QLatin1String(":rid"), QString::fromStdString(d.receiver_id()));
    qryAdd.bindValue(QLatin1String(":state"), d.state());
@@ -261,7 +261,7 @@ std::vector<std::shared_ptr<Chat::Data>> ChatDB::getUserMessages(const std::stri
       msg->mutable_message()->set_receiver_id(receiverId);
       msg->mutable_message()->set_state(state);
       msg->mutable_message()->set_encryption(encryption);
-      *msg->mutable_message()->mutable_date_time() = ProtobufUtils::convert(timestamp);
+      msg->mutable_message()->set_timestamp_ms(timestamp.toMSecsSinceEpoch());
       msg->mutable_message()->set_message_payload(messageData);
       msg->mutable_message()->set_nonce(std::string(nonce.begin(), nonce.end()));
       msg->mutable_message()->set_loaded_from_history(true);
@@ -271,7 +271,7 @@ std::vector<std::shared_ptr<Chat::Data>> ChatDB::getUserMessages(const std::stri
    }
    std::sort(records.begin(), records.end(), [](const std::shared_ptr<Chat::Data> &a
       , const std::shared_ptr<Chat::Data> &b) {
-      return ProtobufUtils::less(a->message().date_time(), b->message().date_time());
+      return a->message().timestamp_ms(), b->message().timestamp_ms();
    });
    return records;
 }
@@ -297,7 +297,7 @@ std::vector<std::shared_ptr<Chat::Data>> ChatDB::getRoomMessages(const std::stri
       msg->mutable_message()->set_sender_id(query.value(0).toString().toStdString());
       msg->mutable_message()->set_receiver_id(query.value(1).toString().toStdString());
       msg->mutable_message()->set_id(query.value(2).toString().toStdString());
-      *msg->mutable_message()->mutable_date_time() = ProtobufUtils::convert(query.value(3).toDateTime());
+      msg->mutable_message()->set_timestamp_ms(query.value(3).toDateTime().toMSecsSinceEpoch());
       msg->mutable_message()->set_message_payload(query.value(4).toString().toStdString());
       msg->mutable_message()->set_state(query.value(5).toInt());
       msg->mutable_message()->set_loaded_from_history(true);
@@ -305,7 +305,7 @@ std::vector<std::shared_ptr<Chat::Data>> ChatDB::getRoomMessages(const std::stri
    }
    std::sort(records.begin(), records.end(), [](const std::shared_ptr<Chat::Data> &a
       , const std::shared_ptr<Chat::Data> &b) {
-      return (ProtobufUtils::less(a->message().date_time(), b->message().date_time()));
+      return a->message().timestamp_ms() < b->message().timestamp_ms();
    });
    return records;
 }

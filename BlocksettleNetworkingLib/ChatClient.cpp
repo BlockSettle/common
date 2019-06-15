@@ -622,7 +622,7 @@ void ChatClient::initMessage(Chat::Data *msg, const std::string &receiver)
    d->set_sender_id(currentUserId_);
    d->set_receiver_id(receiver);
    d->set_id(CryptoPRNG::generateRandom(8).toHexStr());
-   *d->mutable_date_time() = ProtobufUtils::convert(QDateTime::currentDateTimeUtc());
+   d->set_timestamp_ms(QDateTime::currentDateTimeUtc().toMSecsSinceEpoch());
 }
 
 void ChatClient::onContactListLoaded(const std::vector<std::shared_ptr<Chat::Data>>& remoteContacts)
