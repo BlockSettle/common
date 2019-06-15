@@ -270,6 +270,8 @@ message Request
 
 	message ContactsList
 	{
+		// FIXME: not secure
+		string auth_eid = 1;
 	}
 
 	message SearchUsers
@@ -384,7 +386,6 @@ message Response
 
 	message ModifyContactsServer
 	{
-
 		string user_id = 1;
       	string contact_id = 2;
       	string message = 3;
