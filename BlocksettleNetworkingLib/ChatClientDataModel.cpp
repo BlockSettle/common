@@ -522,7 +522,7 @@ QVariant ChatClientDataModel::chatNewMessageData(const TreeItem *item, int role)
 Qt::ItemFlags ChatClientDataModel::flags(const QModelIndex &index) const
 {
    if (!index.isValid()) {
-      return 0;
+      return Qt::NoItemFlags;
    }
 
    Qt::ItemFlags current_flags = QAbstractItemModel::flags(index);
@@ -541,6 +541,7 @@ Qt::ItemFlags ChatClientDataModel::flags(const QModelIndex &index) const
             current_flags.setFlag(Qt::ItemIsEditable);
          }
          //no break needed
+         [[clang::fallthrough]];
       case ChatUIDefinitions::ChatTreeNodeType::RoomsElement:
       case ChatUIDefinitions::ChatTreeNodeType::SearchElement:
       case ChatUIDefinitions::ChatTreeNodeType::AllUsersElement:
