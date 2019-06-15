@@ -86,7 +86,7 @@ void BaseChatClient::OnConnected()
 
    Chat::Request request;
    auto d = request.mutable_login();
-   d->set_auth_eid(currentUserId_);
+   d->set_auth_id(currentUserId_);
    d->set_jwt(currentJwt_);
    d->set_pub_key(getOwnAuthPublicKey().toBinStr());
    sendRequest(request);
@@ -129,7 +129,7 @@ void BaseChatClient::LogoutFromServer()
 
    Chat::Request request;
    auto d = request.mutable_logout();
-   d->set_auth_eid(currentUserId_);
+   d->set_auth_id(currentUserId_);
    sendRequest(request);
 
    emit CleanupConnection();

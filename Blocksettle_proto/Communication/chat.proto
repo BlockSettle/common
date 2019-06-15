@@ -426,7 +426,7 @@ message Response
 	{
     	string sender_id = 1;
 		string receiver_id = 2;
-		string sender_session_pub_key = 3;
+		bytes sender_session_pub_key = 3;
 	}
 
 	message ReplySessionPublicKey
