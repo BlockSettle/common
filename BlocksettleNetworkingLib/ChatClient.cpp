@@ -159,8 +159,8 @@ std::shared_ptr<Chat::Data> ChatClient::SubmitPrivateCancel(const std::string &r
    initMessage(otcMessageData.get(), receiver);
 
    auto d = otcMessageData->mutable_message();
-   auto otc = d->mutable_close_trading();
-   otc->set_close(true);
+   // Just to select required message type
+   d->mutable_close_trading();
 
    logger_->debug("[ChatClient::SubmitPrivateCancel] to {}", receiver);
 

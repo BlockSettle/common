@@ -21,6 +21,8 @@ public:
 
    static const char*GlobalRoomKey;
    static const char* OtcRoomKey;
+
+   static Chat::ResponseType responseType(const Chat::Response *response);
 };
 
 Q_DECLARE_METATYPE(std::shared_ptr<Chat::Data>)

@@ -1,5 +1,5 @@
-#ifndef ResponseHandler_h__
-#define ResponseHandler_h__
+#ifndef RESPONSE_HANDLER_H
+#define RESPONSE_HANDLER_H
 
 namespace Chat {
    class Response_AskForPublicKey;
@@ -52,4 +52,4 @@ namespace Chat {
    };
 }
 
-#endif // ResponseHandler_h__
+#endif // RESPONSE_HANDLER_H
