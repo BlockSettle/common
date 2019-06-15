@@ -219,6 +219,7 @@ message Request
 
 	message OnlineUsers
 	{
+		string auth_eid = 1;
 	}
 
 	message AskForPublicKey
