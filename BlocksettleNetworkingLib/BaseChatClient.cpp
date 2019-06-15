@@ -52,31 +52,59 @@ void BaseChatClient::OnDataReceived(const std::string& data)
    }
    // Process on main thread because otherwise ChatDB could crash
    QMetaObject::invokeMethod(this, [this, response] {
-      if (response->has_users_list()) {
+      switch (response->data_case()) {
+      case Chat::Response::kUsersList:
          OnUsersList(response->users_list());
-         return;
-      }
-
-      if (response->has_messages()) {
+         break;
+      case Chat::Response::kMessages:
          OnMessages(response->messages());
-      }
-
-      if (response->has_login()) {
+         break;
+      case Chat::Response::kAskForPublicKey:
+         OnAskForPublicKey(response->ask_for_public_key());
+         break;
+      case Chat::Response::kSendOwnPublicKey:
+         OnSendOwnPublicKey(response->send_own_public_key());
+         break;
+      case Chat::Response::kLogin:
          OnLoginReturned(response->login());
-         return;
-      }
-
-      if (response->has_logout()) {
+         break;
+      case Chat::Response::kLogout:
          OnLogoutResponse(response->logout());
-         return;
-      }
-
-      if (response->has_send_message()) {
+         break;
+      case Chat::Response::kSendMessage:
          OnSendMessageResponse(response->send_message());
-         return;
+         break;
+      case Chat::Response::kMessageChangeStatus:
+         OnMessageChangeStatusResponse(response->message_change_status());
+         break;
+      case Chat::Response::kModifyContactsDirect:
+         OnModifyContactsDirectResponse(response->modify_contacts_direct());
+         break;
+      case Chat::Response::kModifyContactsServer:
+         OnModifyContactsServerResponse(response->modify_contacts_server());
+         break;
+      case Chat::Response::kContactsList:
+         OnContactsListResponse(response->contacts_list());
+         break;
+      case Chat::Response::kChatroomsList:
+         OnChatroomsList(response->chatrooms_list());
+         break;
+      case Chat::Response::kRoomMessages:
+         OnRoomMessages(response->room_messages());
+         break;
+      case Chat::Response::kSearchUsers:
+         OnSearchUsersResponse(response->search_users());
+         break;
+      case Chat::Response::kSessionPublicKey:
+         OnSessionPublicKeyResponse(response->session_public_key());
+         break;
+      case Chat::Response::kReplySessionPublicKey:
+         OnReplySessionPublicKeyResponse(response->reply_session_public_key());
+         break;
+      case Chat::Response::DATA_NOT_SET:
+         logger_->error("Invalid empty or unknown response detected");
+         break;
       }
-
-      logger_->error("unexpected response: {}", ProtobufUtils::toJson(*response));
    });
 }
 

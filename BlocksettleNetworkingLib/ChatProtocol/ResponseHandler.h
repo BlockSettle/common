@@ -24,6 +24,7 @@ namespace Chat {
    {
    public:
       virtual ~ResponseHandler() = default;
+
       virtual void OnUsersList(const Response_UsersList &) = 0;
       virtual void OnMessages(const Response_Messages &) = 0;
 
