@@ -454,28 +454,3 @@ message Response
         ReplySessionPublicKey reply_session_public_key          = 18;
     }
 }
-
-// Keep in sync with Response.data!
-// TODO: Remove this enum and use Chat::Response::DataCase from c++ directly
-enum ResponseType
-{
-    ResponseUnknow = 0;
-    ResponseLogin = 1;
-    ResponseMessages = 2;
-    ResponseUsersList = 5;
-    ResponseAskForPublicKey = 6;
-    ResponseSendOwnPublicKey = 7;
-    ResponsePendingMessage = 8;
-    ResponseSendMessage = 9;
-    ResponseMessageChangeStatus = 10;
-    ResponseModifyContactsDirect = 11;
-    ResponseModifyContactsServer = 12;
-    ResponseChatroomsList = 13;
-    ResponseRoomMessages = 14;
-    ResponseContactsList = 15;
-    ResponseSearchUsers = 16;
-    ResponseLogout = 17;
-    ResponseSendSessionPublicKey = 18;
-    ResponseSessionPublicKey = 19;
-    ResponseReplySessionPublicKey = 20;
-}

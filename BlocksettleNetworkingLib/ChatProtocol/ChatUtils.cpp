@@ -37,12 +37,3 @@ size_t ChatUtils::defaultNonceSize()
 {
    return 24;
 }
-
-Chat::ResponseType ChatUtils::responseType(const Chat::Response *response)
-{
-   if (!response) {
-      return Chat::ResponseUnknow;
-   }
-
-   return Chat::ResponseType(response->data_case());
-}

@@ -19,10 +19,8 @@ public:
 
    static size_t defaultNonceSize();
 
-   static const char*GlobalRoomKey;
-   static const char* OtcRoomKey;
-
-   static Chat::ResponseType responseType(const Chat::Response *response);
+   static const char *GlobalRoomKey;
+   static const char *OtcRoomKey;
 };
 
 Q_DECLARE_METATYPE(std::shared_ptr<Chat::Data>)
