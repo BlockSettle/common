@@ -147,12 +147,11 @@ QImage ChatMessagesTextEdit::statusImage(const int &row)
    }
 
 
-   std::shared_ptr<Chat::Data_Message> message =
-          std::dynamic_pointer_cast<Chat::Data_Message>(messages_[currentChatId_][row]);
-   if (message->sender_id() != ownUserId_){
+   std::shared_ptr<Chat::Data> message = messages_[currentChatId_][row];
+   if (message->message().sender_id() != ownUserId_){
       return QImage();
    }
-   int state = message->state();
+   int state = message->message().state();
 
    QImage statusImage = statusImageOffline_;
 

@@ -639,7 +639,7 @@ void ChatWidget::onElementSelected(CategoryElement *element)
          // XXXOTC
          // case ChatUIDefinitions::ChatTreeNodeType::OTCSentResponsesElement:{
          //    ui_->stackedWidgetMessages->setCurrentIndex(0);
-         //    auto response = std::dynamic_pointer_cast<Chat::Data_OtcResponse>(element->getDataObject());
+         //    auto response = element->getDataObject();
          //    if (response) {
          //       setIsRoom(false);
          //       currentChat_ = QString::fromStdString(response->serverResponseId());
@@ -648,7 +648,7 @@ void ChatWidget::onElementSelected(CategoryElement *element)
          // break;
          // case ChatUIDefinitions::ChatTreeNodeType::OTCReceivedResponsesElement:{
          //    ui_->stackedWidgetMessages->setCurrentIndex(0);
-         //    auto response = std::dynamic_pointer_cast<Chat::Data_OtcResponse>(element->getDataObject());
+         //    auto response = element->getDataObject();
          //    if (response) {
          //       setIsRoom(false);
          //       currentChat_ = QString::fromStdString(response->serverResponseId());

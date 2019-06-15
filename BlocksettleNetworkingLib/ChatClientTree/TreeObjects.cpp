@@ -17,14 +17,14 @@ bool ChatRoomElement::isChildSupported(const TreeItem *item) const
       }
       if (root) {
          std::string user = root->currentUser();
-         auto room = std::dynamic_pointer_cast<Chat::Data_Room>(getDataObject());
-         if (room){
+         auto room = getDataObject();
+         if (room && room->has_room()) {
             auto mNode = dynamic_cast<const TreeMessageNode*>(item);
             if (mNode){
 //             bool forCurrentUser = (mNode->getMessage()->getSenderId().toStdString() == user
 //                             || mNode->getMessage()->getReceiverId().toStdString() == user);
                bool forThisElement =    /*mNode->getMessage()->getSenderId() == room->getId()
-                                     || */mNode->getMessage()->message().receiver_id() == room->id();
+                                     || */mNode->getMessage()->message().receiver_id() == room->room().id();
 
                byData = forThisElement;
             }
@@ -88,8 +88,7 @@ bool ChatContactElement::isChildSupported(const TreeItem *item) const
 
          // XXXOTC
          // case Chat::Data::Type::OTCRequestData: {
-         //    auto otcRequest = std::dynamic_pointer_cast<Chat::Data_OtcRequest>(data);
-         //    if (otcRequest) {
+         //    if (data->message().has_request()) {
          //       bool forCurrentUser = (otcRequest->senderId() == user
          //                              || otcRequest->receiverId() == user);
 
@@ -101,8 +100,7 @@ bool ChatContactElement::isChildSupported(const TreeItem *item) const
          // }
          // break;
          // case Chat::Data::Type::OTCResponseData: {
-         //    auto otcResponse = std::dynamic_pointer_cast<Chat::Data_OtcResponse>(data);
-         //    if (otcResponse) {
+         //    if (data->message().has_response()) {
          //       bool forCurrentUser = (otcResponse->responderId() == user
          //                              || otcResponse->requestorId() == user);
 
@@ -114,8 +112,7 @@ bool ChatContactElement::isChildSupported(const TreeItem *item) const
          // }
          // break;
          // case Chat::Data::Type::OTCUpdateData: {
-         //    auto otcUpdate = dynamic_cast<const Chat::Data_OtcUpdate*>(item);
-         //    if (otcUpdate && isOTCResponsePresented()) {
+         //    if (data->message().has_update() && isOTCResponsePresented()) {
          //       bool forThisElement = getActiveOtcResponse()->serverResponseId() ==
          //                             otcUpdate->serverResponseId();
          //       byData = forThisElement;
