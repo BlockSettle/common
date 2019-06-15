@@ -2,6 +2,7 @@
 #include "ChatClientTree/TreeObjects.h"
 #include "ChatClientUsersViewItemDelegate.h"
 #include "ChatClientDataModel.h"
+#include "BSMessageBox.h"
 
 #include <QMenu>
 #include <QAbstractProxyModel>
@@ -36,7 +37,8 @@ public:
       //ItemType type = static_cast<ItemType>(currentIndex_.data(Role::ItemTypeRole).toInt());
       TreeItem * item = static_cast<TreeItem*>(currentIndex_.internalPointer());
 
-      if (item && item->getType() == ChatUIDefinitions::ChatTreeNodeType::ContactsElement) {
+      if (item && (item->getType() == ChatUIDefinitions::ChatTreeNodeType::ContactsElement
+                || item->getType() == ChatUIDefinitions::ChatTreeNodeType::ContactsRequestElement)) {
          auto citem = static_cast<ChatContactElement*>(item);
          currentContact_ = citem->getContactData();
          prepareContactMenu();
@@ -69,6 +71,15 @@ private slots:
       if (!handler_){
          return;
       }
+
+      BSMessageBox confirmRemoveContact(BSMessageBox::question, tr("Remove contact")
+         , tr("Remove %1 as a contact?").arg(currentContact_->hasDisplayName() ? currentContact_->getDisplayName() : currentContact_->getContactId())
+         , tr("Are you sure you wish to remove this contact?"), view_->parentWidget());
+
+      if (confirmRemoveContact.exec() != QDialog::Accepted) {
+         return;
+      }
+
       handler_->onActionRemoveFromContacts(currentContact_);
    }
 
@@ -106,8 +117,9 @@ private slots:
             addAction(tr("Decline friend request"), this, &ChatUsersContextMenu::onDeclineFriendRequest);
             break;
          case Chat::ContactStatus::Outgoing:
-            addAction(tr("This request is not accepted"));
-            addAction(tr("Remove from contacts"), this, &ChatUsersContextMenu::onRemoveFromContacts);
+         case Chat::ContactStatus::Rejected:
+            //addAction(tr("This request is not accepted"));
+            addAction(tr("Remove this request"), this, &ChatUsersContextMenu::onRemoveFromContacts);
             break;
          default:
             break;
