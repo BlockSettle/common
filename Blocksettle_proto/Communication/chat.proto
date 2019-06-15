@@ -197,14 +197,14 @@ message Request
 {
 	message Login
 	{
-		string auth_eid = 1;
+		string auth_id = 1;
 		string jwt = 2;
 		bytes pub_key = 3;
 	}
 
 	message Logout
 	{
-		string auth_eid = 1;
+		string auth_id = 1;
 	}
 
 	message SendMessage
@@ -219,7 +219,7 @@ message Request
 
 	message OnlineUsers
 	{
-		string auth_eid = 1;
+		string auth_id = 1;
 	}
 
 	message AskForPublicKey
@@ -272,7 +272,7 @@ message Request
 	message ContactsList
 	{
 		// FIXME: not secure
-		string auth_eid = 1;
+		string auth_id = 1;
 	}
 
 	message SearchUsers
@@ -320,7 +320,7 @@ message Response
 {
 	message Login
 	{
-		string auth_eid = 1;
+		string auth_id = 1;
 		bool success = 2;
 	}
 
