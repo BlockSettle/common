@@ -142,7 +142,7 @@ QString ChatMessagesTextEdit::dataMessage(const int &row, const ChatMessagesText
 QImage ChatMessagesTextEdit::statusImage(const int &row)
 {
    auto data = messages_[currentChatId_][row];
-   if (data->has_message()) {
+   if (!data->has_message()) {
       return statusImageConnecting_;
    }
 
