@@ -271,7 +271,7 @@ std::vector<std::shared_ptr<Chat::Data>> ChatDB::getUserMessages(const std::stri
    }
    std::sort(records.begin(), records.end(), [](const std::shared_ptr<Chat::Data> &a
       , const std::shared_ptr<Chat::Data> &b) {
-      return a->message().timestamp_ms(), b->message().timestamp_ms();
+      return a->message().timestamp_ms() < b->message().timestamp_ms();
    });
    return records;
 }
