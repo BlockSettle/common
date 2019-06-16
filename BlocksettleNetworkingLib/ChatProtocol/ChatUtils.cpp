@@ -22,7 +22,7 @@ bool ChatUtils::messageFlagRead(const Chat::Data_Message &msg, Chat::Data_Messag
 
 void ChatUtils::messageFlagSet(Chat::Data_Message *msg, Chat::Data_Message_State state)
 {
-   msg->set_state(uint32_t(state));
+   msg->set_state(msg->state() | uint32_t(state));
 }
 
 void ChatUtils::registerTypes()
