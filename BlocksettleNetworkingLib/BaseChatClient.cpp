@@ -481,7 +481,7 @@ void BaseChatClient::OnContactsListResponse(const Chat::Response_ContactsList & 
 {
    std::vector<std::shared_ptr<Chat::Data>> newList;
    for (const auto& contact : response.contacts()) {
-      if (!contact.has_message()) {
+      if (!contact.has_contact_record()) {
          logger_->error("[BaseChatClient::{}] invalid response detected", __func__);
          continue;
       }
@@ -557,15 +557,11 @@ void BaseChatClient::OnSearchUsersResponse(const Chat::Response_SearchUsers & re
 void BaseChatClient::OnUsersList(const Chat::Response_UsersList& response)
 {
    std::vector<std::string> usersList;
-   for (const auto& user : response.users()) {
-      if (!user.has_user()) {
-         logger_->error("[BaseChatClient::{}] invalid response detected", __func__);
-         continue;
-      }
-      usersList.push_back(user.user().user_id());
+   for (auto& user : response.users()) {
+      usersList.push_back(user);
 
       // if status changed clear session keys for contact
-      chatSessionKeyPtr_->clearSessionForUser(user.user().user_id());
+      chatSessionKeyPtr_->clearSessionForUser(user);
    }
 
    onUserListChanged(response.command(), usersList);
