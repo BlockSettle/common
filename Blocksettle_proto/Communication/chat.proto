@@ -332,7 +332,7 @@ message Response
     message UsersList
     {
         Command command = 1;
-        repeated Data users = 2;
+        repeated string users = 2;
     }
 
     message AskForPublicKey
