@@ -209,6 +209,7 @@ message Request
 
     message SendMessage
     {
+        Data message = 1;
     }
 
     message Messages
