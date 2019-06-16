@@ -467,7 +467,7 @@ void ChatClient::onUserListChanged(Chat::Command command, const std::vector<std:
    for (const auto& user : userList) {
       auto contact = model_->findContactNode(user);
       if (contact) {
-         ChatContactElement::OnlineStatus status = ChatContactElement::OnlineStatus::Offline;
+         auto status = ChatContactElement::OnlineStatus::Offline;
          switch (command) {
             case Chat::COMMAND_REPLACE:
                status = ChatContactElement::OnlineStatus::Online;

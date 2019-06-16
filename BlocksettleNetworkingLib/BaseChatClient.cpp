@@ -50,6 +50,9 @@ void BaseChatClient::OnDataReceived(const std::string& data)
       logger_->error("[BaseChatClient::OnDataReceived] failed to parse message:\n{}", data);
       return;
    }
+
+   logger_->debug("[BaseChatClient::{}] recv: \n{}", __func__, ProtobufUtils::toJson(*response));
+
    // Process on main thread because otherwise ChatDB could crash
    QMetaObject::invokeMethod(this, [this, response] {
       switch (response->data_case()) {
@@ -202,7 +205,7 @@ void BaseChatClient::setSavedKeys(std::map<std::string, BinaryData>&& loadedKeys
 
 bool BaseChatClient::sendRequest(const Chat::Request& request)
 {
-   logger_->debug("[BaseChatClient::{}] {}", __func__, ProtobufUtils::toJson(request));
+   logger_->debug("[BaseChatClient::{}] send: \n{}", __func__, ProtobufUtils::toJson(request));
 
    if (!connection_->isActive()) {
       logger_->error("[BaseChatClient::sendRequest] Connection is not alive!");
@@ -511,9 +514,6 @@ void BaseChatClient::OnChatroomsList(const Chat::Response_ChatroomsList &respons
 
 void BaseChatClient::OnRoomMessages(const Chat::Response_RoomMessages& response)
 {
-   logger_->debug("[BaseChatClient::OnRoomMessages] Received chatroom messages from server (receiver id is chatroom): {}"
-                  , ProtobufUtils::toJson(response));
-
    for (const auto &msg : response.messages()) {
       if (!msg.has_message()) {
          logger_->error("[BaseChatClient::{}] invalid response detected", __func__);
@@ -569,9 +569,6 @@ void BaseChatClient::OnUsersList(const Chat::Response_UsersList& response)
 
 void BaseChatClient::OnMessages(const Chat::Response_Messages &response)
 {
-   logger_->debug("[BaseChatClient::OnMessages] Received messages from server: {}"
-                  , ProtobufUtils::toJson(response));
-
    std::vector<std::shared_ptr<Chat::Data>> messages;
    for (const auto &msg : response.messages()) {
       auto msgCopy = std::make_shared<Chat::Data>(msg);
@@ -664,9 +661,6 @@ void BaseChatClient::OnAskForPublicKey(const Chat::Response_AskForPublicKey &res
 
 void BaseChatClient::OnSendOwnPublicKey(const Chat::Response_SendOwnPublicKey &response)
 {
-   logger_->debug("[BaseChatClient::OnSendOwnPublicKey] Received public key of peer from server: {}"
-      , ProtobufUtils::toJson(response));
-
    // Make sure we are the node for which a public key was expected, if not, ignore this call.
    if (currentUserId_ != response.receiving_node_id()) {
       return;
