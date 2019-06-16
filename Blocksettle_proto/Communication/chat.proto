@@ -252,7 +252,7 @@ message Request
     message ModifyContactsServer
     {
         string sender_id = 1;
-        string contact_user_id = 2;
+        string contact_id = 2;
         ContactsActionServer action = 3;
         ContactStatus status = 4;
         bytes contact_pub_key = 5;

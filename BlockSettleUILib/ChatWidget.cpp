@@ -590,8 +590,7 @@ void ChatWidget::onSendFriendRequest(const QString &userId)
 
 void ChatWidget::onRemoveFriendRequest(const QString &userId)
 {
-   // FIXME:
-   //client_->removeContactFromDB(userId);
+   client_->removeContact(userId.toStdString());
    ui_->searchWidget->setListVisible(false);
 }
 

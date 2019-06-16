@@ -252,29 +252,31 @@ void ChatClient::sendFriendRequest(const std::string &friendUserId)
 
 void ChatClient::acceptFriendRequest(const std::string &friendUserId)
 {
-   auto holdContact = model_->findContactItem(friendUserId);
+   auto contact = model_->findContactItem(friendUserId);
 
-   if (!holdContact) {
+   if (!contact) {
       return;
    }
 
-   // FIXME:
-   //model_->notifyContactChanged(contact);
-   //retrieveUserMessages(contact->getContactId());
+   contact->mutable_contact_record()->set_status(Chat::CONTACT_STATUS_ACCEPTED);
+   addOrUpdateContact(contact->contact_record().contact_id()
+      , contact->contact_record().status(), contact->contact_record().contact_id());
+
+   model_->notifyContactChanged(contact);
+   retrieveUserMessages(contact->contact_record().contact_id());
 
    sendAcceptFriendRequestToServer(friendUserId);
 }
 
 void ChatClient::declineFriendRequest(const std::string &friendUserId)
 {
-   auto holdContact = model_->findContactItem(friendUserId);
-   if (!holdContact) {
+   auto contact = model_->findContactItem(friendUserId);
+   if (!contact) {
       return;
    }
 
-   // FIXME:
-   //contact->setContactStatus(Chat::ContactStatus::Rejected);
-   //model_->notifyContactChanged(contact);
+   contact->mutable_contact_record()->set_status(Chat::CONTACT_STATUS_REJECTED);
+   model_->notifyContactChanged(contact);
 
    sendDeclientFriendRequestToServer(friendUserId);
 }
@@ -349,33 +351,34 @@ void ChatClient::onActionAcceptContactRequest(std::shared_ptr<Chat::Data> crecor
 void ChatClient::onActionRejectContactRequest(std::shared_ptr<Chat::Data> crecord)
 {
    //qDebug() << __func__ << " " << QString::fromStdString(crecord->toJsonString());
-   return declineFriendRequest(crecord->contact_record().contact_id());
 
-   // FIXME:
-#if 0
-   crecord->setContactStatus(Chat::ContactStatus::Rejected);
+   crecord->mutable_contact_record()->set_status(Chat::CONTACT_STATUS_REJECTED);
 
+   addOrUpdateContact(crecord->contact_record().contact_id()
+      , crecord->contact_record().status(), crecord->contact_record().display_name());
 
    model_->notifyContactChanged(crecord);
 
-   auto request =
-         std::make_shared<Chat::ContactActionRequestDirect>(
-            "",
-            crecord->getUserId().toStdString(),
-            crecord->getContactId().toStdString(),
-            Chat::ContactsAction::Reject,
-            BinaryData(appSettings_->GetAuthKeys().second.data(), appSettings_->GetAuthKeys().second.size()));
-   sendRequest(request);
-   auto requestS =
-         std::make_shared<Chat::ContactActionRequestServer>(
-            "",
-            currentUserId_,
-            crecord->getContactId().toStdString(),
-            Chat::ContactsActionServer::UpdateContactRecord,
-            Chat::ContactStatus::Rejected,
-            BinaryData());
-   sendRequest(requestS);
-#endif
+   {
+      Chat::Request request;
+      auto d = request.mutable_modify_contacts_direct();
+      d->set_sender_id(crecord->contact_record().user_id());
+      d->set_receiver_id(crecord->contact_record().contact_id());
+      d->set_action(Chat::CONTACTS_ACTION_REJECT);
+      const auto &pubKey = appSettings_->GetAuthKeys().second;
+      d->set_sender_pub_key(pubKey.data(), pubKey.size());
+      sendRequest(request);
+   }
+
+   {
+      Chat::Request request;
+      auto d = request.mutable_modify_contacts_server();
+      d->set_sender_id(currentUserId_);
+      d->set_contact_id(crecord->contact_record().contact_id());
+      d->set_action(Chat::CONTACTS_ACTION_SERVER_UPDATE);
+      d->set_status(Chat::CONTACT_STATUS_REJECTED);
+      sendRequest(request);
+   }
 }
 
 bool ChatClient::onActionIsFriend(const std::string& userId)
@@ -561,7 +564,7 @@ void ChatClient::onFriendRequest(const std::string& userId, const std::string& c
       Chat::Request requestS;
       auto d2 = requestS.mutable_modify_contacts_server();
       d2->set_sender_id(currentUserId_);
-      d2->set_contact_user_id(contactId);
+      d2->set_contact_id(contactId);
       d2->set_action(Chat::CONTACTS_ACTION_SERVER_ADD);
       d2->set_contact_pub_key(pk.toBinStr());
       sendRequest(requestS);
