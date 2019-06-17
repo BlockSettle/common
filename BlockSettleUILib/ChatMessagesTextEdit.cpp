@@ -49,7 +49,9 @@ QString ChatMessagesTextEdit::data(const int &row, const Column &column)
    }
 
    const auto &message = messages_[currentChatId_][row];
-   if (message->has_message()) {
+   // PK: Not sure if otc_case check is needed here, but before protobuf switch exact type checked here
+   // (message might optionally have OTC details)
+   if (message->has_message() && message->message().otc_case() == Chat::Data_Message::OTC_NOT_SET) {
       return dataMessage(row, column);
    }
 
@@ -96,24 +98,23 @@ QString ChatMessagesTextEdit::dataMessage(const int &row, const ChatMessagesText
       }
       case Column::Status:{
          if (message.sender_id() != ownUserId_){
-            if (!(message.state() & static_cast<int>(Chat::Data_Message_State_READ))){
+            if (!ChatUtils::messageFlagRead(message, Chat::Data_Message_State_READ)) {
                emit MessageRead(data);
             }
             return QString();
 
          }
-         int state = message.state();
          QString status = QLatin1String("Sending");
 
-         if (state & static_cast<int>(Chat::Data_Message_State_SENT)){
+         if (ChatUtils::messageFlagRead(message, Chat::Data_Message_State_SENT)) {
             status = QLatin1String("Sent");
          }
 
-         if (state & static_cast<int>(Chat::Data_Message_State_ACKNOWLEDGED)){
+         if (ChatUtils::messageFlagRead(message, Chat::Data_Message_State_ACKNOWLEDGED)) {
             status = QLatin1String("Delivered");
          }
 
-         if (state & static_cast<int>(Chat::Data_Message_State_READ)){
+         if (ChatUtils::messageFlagRead(message, Chat::Data_Message_State_READ)) {
             status = QLatin1String("Read");
          }
          return status;
@@ -123,7 +124,7 @@ QString ChatMessagesTextEdit::dataMessage(const int &row, const ChatMessagesText
          QString text = QLatin1String("[%1] %2");
          text = text.arg(QString::fromStdString(message.id()));
 
-         if (message.state() & static_cast<int>(Chat::Data_Message_State_INVALID)) {
+         if (ChatUtils::messageFlagRead(message, Chat::Data_Message_State_INVALID)) {
             return toHtmlInvalid(text.arg(QLatin1String("INVALID MESSAGE!")));
          } else if (message.encryption() == Chat::Data_Message_Encryption_IES) {
             return toHtmlInvalid(text.arg(QLatin1String("IES ENCRYPTED!")));
@@ -151,11 +152,10 @@ QImage ChatMessagesTextEdit::statusImage(const int &row)
    if (message->message().sender_id() != ownUserId_){
       return QImage();
    }
-   int state = message->message().state();
 
    QImage statusImage = statusImageOffline_;
 
-   if (state & static_cast<int>(Chat::Data_Message_State_SENT)){
+   if (ChatUtils::messageFlagRead(data->message(), Chat::Data_Message_State_SENT)) {
 
       if (isGroupRoom_) {
          statusImage = statusImageRead_;
@@ -165,11 +165,11 @@ QImage ChatMessagesTextEdit::statusImage(const int &row)
 
    }
 
-   if (state & static_cast<int>(Chat::Data_Message_State_ACKNOWLEDGED)){
+   if (ChatUtils::messageFlagRead(data->message(), Chat::Data_Message_State_ACKNOWLEDGED)) {
       statusImage = statusImageOnline_;
    }
 
-   if (state & static_cast<int>(Chat::Data_Message_State_READ)){
+   if (ChatUtils::messageFlagRead(data->message(), Chat::Data_Message_State_READ)) {
       statusImage = statusImageRead_;
    }
 
@@ -452,7 +452,7 @@ void ChatMessagesTextEdit::onMessageIdUpdate(const std::string& oldId, const std
 {
    std::shared_ptr<Chat::Data> message = findMessage(chatId, oldId);
 
-   if (message && message->has_message()) {
+   if (message) {
       message->mutable_message()->set_id(newId);
       ChatUtils::messageFlagSet(message->mutable_message(), Chat::Data_Message_State_SENT);
       notifyMessageChanged(message);
@@ -463,7 +463,7 @@ void ChatMessagesTextEdit::onMessageStatusChanged(const std::string& messageId, 
 {
    std::shared_ptr<Chat::Data> message = findMessage(chatId, messageId);
 
-   if (message && message->has_message()){
+   if (message){
       message->mutable_message()->set_state(newStatus);
       notifyMessageChanged(message);
    }
@@ -536,7 +536,8 @@ void ChatMessagesTextEdit::onMessagesUpdate(const std::vector<std::shared_ptr<Ch
       for (const auto& data : messages) {
          if (data->has_message()){
             if (messageReadHandler_
-                && !(data->message().state() & int(Chat::Data_Message_State_READ)) ){
+                && !ChatUtils::messageFlagRead(data->message(), Chat::Data_Message_State_READ))
+            {
                messageReadHandler_->onMessageRead(data);
             }
          }
@@ -553,7 +554,8 @@ void ChatMessagesTextEdit::onRoomMessagesUpdate(const std::vector<std::shared_pt
       for (const auto& data : messages) {
          if (data->has_message()){
             if (messageReadHandler_
-                && !(data->message().state() & int(Chat::Data_Message_State_READ)) ){
+                && !(ChatUtils::messageFlagRead(data->message(), Chat::Data_Message_State_READ)))
+            {
                messageReadHandler_->onMessageRead(data);
             }
          }

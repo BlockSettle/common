@@ -371,10 +371,8 @@ void BaseChatClient::OnModifyContactsDirectResponse(const Chat::Response_ModifyC
 {
    const std::string &senderId = response.sender_id();
 
-   std::string actionString = "<unknown>";
    switch (response.action()) {
       case Chat::CONTACTS_ACTION_ACCEPT: {
-         actionString = "ContactsAction::Accept";
          const auto pubKey = BinaryData(response.sender_public_key());
 
          contactPublicKeys_[senderId] = pubKey;
@@ -398,8 +396,6 @@ void BaseChatClient::OnModifyContactsDirectResponse(const Chat::Response_ModifyC
       }
 
       case Chat::CONTACTS_ACTION_REJECT: {
-         actionString = "ContactsAction::Reject";
-
          addOrUpdateContact(response.sender_id(), Chat::CONTACT_STATUS_REJECTED);
 
          onContactRejected(response.sender_id());
@@ -418,7 +414,6 @@ void BaseChatClient::OnModifyContactsDirectResponse(const Chat::Response_ModifyC
       }
 
       case Chat::CONTACTS_ACTION_REQUEST: {
-         actionString = "ContactsAction::Request";
          const std::string &userId = response.receiver_id();
          const std::string &contactId = response.sender_id();
          BinaryData pk(response.sender_public_key());
@@ -433,13 +428,13 @@ void BaseChatClient::OnModifyContactsDirectResponse(const Chat::Response_ModifyC
       case Chat::CONTACTS_ACTION_REMOVE: {
          BinaryData pk(response.sender_public_key());
 
-         Chat::Request requestS;
-         auto d = requestS.mutable_modify_contacts_server();
+         Chat::Request request;
+         auto d = request.mutable_modify_contacts_server();
          d->set_sender_id(currentUserId_);
          d->set_contact_id(senderId);
          d->set_action(Chat::CONTACTS_ACTION_SERVER_REMOVE);
          d->set_contact_pub_key(response.sender_public_key());
-         sendRequest(requestS);
+         sendRequest(request);
          break;
       }
 
@@ -448,21 +443,17 @@ void BaseChatClient::OnModifyContactsDirectResponse(const Chat::Response_ModifyC
    }
 
    logger_->debug("[BaseChatClient::OnContactsActionResponseDirect]: Incoming contact action from {}: {}"
-                  , response.sender_id(), actionString);
+                  , response.sender_id(), Chat::ContactsAction_Name(response.action()));
 }
 
 void BaseChatClient::OnModifyContactsServerResponse(const Chat::Response_ModifyContactsServer & response)
 {
-   std::string actionString = "<unknown>";
-
    switch (response.requested_action()) {
       case Chat::CONTACTS_ACTION_SERVER_ADD:
-         actionString = "ContactsActionServer::AddContactRecord";
          //addOrUpdateContact(QString::fromStdString(response.userId()));
          retrySendQueuedMessages(response.contact_id());
       break;
       case Chat::CONTACTS_ACTION_SERVER_REMOVE:
-         actionString = "ContactsActionServer::RemoveContactRecord";
          //removeContact(QString::fromStdString(response.userId()));
          if (response.success()) {
             onContactRemove(response.contact_id());
@@ -472,7 +463,6 @@ void BaseChatClient::OnModifyContactsServerResponse(const Chat::Response_ModifyC
          eraseQueuedMessages(response.contact_id());
       break;
       case Chat::CONTACTS_ACTION_SERVER_UPDATE:
-         actionString = "ContactsActionServer::UpdateContactRecord";
          //addOrUpdateContact(QString::fromStdString(response.userId()), QStringLiteral(""), true);
       break;
       default:
@@ -691,6 +681,7 @@ bool BaseChatClient::removeContact(const std::string &userId)
 
 void BaseChatClient::OnSessionPublicKeyResponse(const Chat::Response_SessionPublicKey& response)
 {
+   // Do not use base64 after protobuf switch and send binary data as-is
    if (!decodeAndUpdateIncomingSessionPublicKey(response.sender_id(), response.sender_session_pub_key())) {
       logger_->error("[BaseChatClient::OnSessionPublicKeyResponse] Failed updating remote public key!");
       return;
@@ -708,7 +699,6 @@ void BaseChatClient::OnSessionPublicKeyResponse(const Chat::Response_SessionPubl
 
    try {
       BinaryData encryptedLocalPublicKey = chatSessionKeyPtr_->iesEncryptLocalPublicKey(response.sender_id(), remotePublicKey);
-
 
       Chat::Request request;
       auto d = request.mutable_reply_session_public_key();

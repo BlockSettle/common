@@ -33,18 +33,18 @@ OTCNegotiationRequestWidget::~OTCNegotiationRequestWidget() noexcept = default;
 
 void OTCNegotiationRequestWidget::DisplayResponse(const std::shared_ptr<Chat::Data>& initialResponse)
 {
-   assert(initialResponse->has_message() && initialResponse->message().has_response());
+   assert(initialResponse->has_message() && initialResponse->message().has_otc_response());
 
-   if (initialResponse->message().response().side() == Chat::OTC_SIDE_SELL) {
+   if (initialResponse->message().otc_response().side() == Chat::OTC_SIDE_SELL) {
       ui_->labelSide->setText(tr("Sell"));
-   } else if (initialResponse->message().response().side() == Chat::OTC_SIDE_BUY) {
+   } else if (initialResponse->message().otc_response().side() == Chat::OTC_SIDE_BUY) {
       ui_->labelSide->setText(tr("Buy"));
    } else {
       ui_->labelSide->setText(tr("Undefined"));
    }
 
-   const auto &priceRange = initialResponse->message().response().price();
-   const auto &amountRange = initialResponse->message().response().quantity();
+   const auto &priceRange = initialResponse->message().otc_response().price();
+   const auto &amountRange = initialResponse->message().otc_response().quantity();
 
    ui_->spinBoxOffer->setMinimum(priceRange.lower());
    ui_->spinBoxOffer->setMaximum(priceRange.upper());
@@ -59,7 +59,7 @@ void OTCNegotiationRequestWidget::DisplayResponse(const std::shared_ptr<Chat::Da
 
 void OTCNegotiationRequestWidget::SetResponseData(const std::shared_ptr<Chat::Data>& initialResponse)
 {
-   assert(initialResponse->has_message() && initialResponse->message().has_response());
+   assert(initialResponse->has_message() && initialResponse->message().has_otc_response());
 
    DisplayResponse(initialResponse);
    initialUpdate_ = true;
@@ -69,13 +69,13 @@ void OTCNegotiationRequestWidget::SetResponseData(const std::shared_ptr<Chat::Da
 void OTCNegotiationRequestWidget::SetUpdateData(const std::shared_ptr<Chat::Data>& update
                                                 , const std::shared_ptr<Chat::Data>& initialResponse)
 {
-   assert(initialResponse->has_message() && initialResponse->message().has_response());
-   assert(update->has_message() && update->message().has_update());
+   assert(initialResponse->has_message() && initialResponse->message().has_otc_response());
+   assert(update->has_message() && update->message().has_otc_update());
 
    DisplayResponse(initialResponse);
    initialUpdate_ = false;
-   ui_->spinBoxOffer->setValue(update->message().update().price());
-   ui_->spinBoxQuantity->setValue(update->message().update().amount());
+   ui_->spinBoxOffer->setValue(update->message().otc_update().price());
+   ui_->spinBoxQuantity->setValue(update->message().otc_update().amount());
    ui_->pushButtonAccept->setText(tr("Accept"));
    changed_ = false;
 }

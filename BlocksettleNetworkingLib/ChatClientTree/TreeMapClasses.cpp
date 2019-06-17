@@ -95,15 +95,13 @@ TreeItem* RootItem::findChatNode(const std::string &chatId)
             auto data = static_cast<CategoryElement*>(cchild)->getDataObject();
 
             if (data->has_room()) {
-               auto room = data->mutable_room();
-               if (room->id() == chatId){
+               if (data->room().id() == chatId) {
                   return cchild;
                }
             }
 
             if (data->has_contact_record()) {
-               auto contact = data->mutable_contact_record();
-               if (contact->contact_id() == chatId){
+               if (data->contact_record().contact_id() == chatId){
                   return cchild;
                }
             }
@@ -138,8 +136,7 @@ bool RootItem::removeContactNode(const std::string &contactId)
          for (auto cchild : child->getChildren()){
             auto data = static_cast<CategoryElement*>(cchild)->getDataObject();
             if (data->has_contact_record()) {
-               auto contact = data->mutable_contact_record();
-               if (contact->contact_id() == contactId) {
+               if (data->contact_record().contact_id() == contactId) {
                   child->removeChild(cchild);
                   return true;
                }
@@ -157,8 +154,7 @@ bool RootItem::removeContactRequestNode(const std::string &contactId)
          for (auto cchild : child->getChildren()){
             auto data = static_cast<CategoryElement*>(cchild)->getDataObject();
             if (data->has_contact_record()) {
-               auto contact = data->mutable_contact_record();
-               if (contact->contact_id() == contactId) {
+               if (data->contact_record().contact_id() == contactId) {
                   child->removeChild(cchild);
                   return true;
                }

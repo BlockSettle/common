@@ -100,7 +100,7 @@ void ChatClientUsersViewItemDelegate::paintContactsElement(QPainter *painter, co
    bool newMessage = index.data(Role::ChatNewMessageRole).toBool();
    itemOption.text = index.data(Role::ContactTitleRole).toString();
 
-   if (itemOption.state & QStyle::State_Selected && contactStatus != Chat::CONTACT_STATUS_ACCEPTED) {
+   if ((itemOption.state & QStyle::State_Selected) && contactStatus != Chat::CONTACT_STATUS_ACCEPTED) {
       painter->save();
       painter->fillRect(itemOption.rect, itemStyle_.colorHighlightBackground());
       painter->restore();

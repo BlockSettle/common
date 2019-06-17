@@ -2,7 +2,6 @@
 
 #include <set>
 #include <spdlog/spdlog.h>
-#include <QDateTime>
 #include <QtSql/QSqlQuery>
 #include <QtSql/QSqlError>
 #include <QVariant>
@@ -249,7 +248,7 @@ std::vector<std::shared_ptr<Chat::Data>> ChatDB::getUserMessages(const std::stri
       std::string id = query.value(QStringLiteral("id")).toString().toStdString();
       std::string senderId = query.value(QStringLiteral("sender")).toString().toStdString();
       std::string receiverId = query.value(QStringLiteral("receiver")).toString().toStdString();
-      QDateTime timestamp = query.value(QStringLiteral("timestamp")).toDateTime();
+      qint64 timestamp = query.value(QStringLiteral("timestamp")).toLongLong();
       std::string messageData = query.value(QStringLiteral("enctext")).toString().toStdString();
       int state = query.value(QStringLiteral("state")).toInt();
       QByteArray nonce = query.value(QStringLiteral("nonce")).toByteArray();
@@ -261,7 +260,7 @@ std::vector<std::shared_ptr<Chat::Data>> ChatDB::getUserMessages(const std::stri
       msg->mutable_message()->set_receiver_id(receiverId);
       msg->mutable_message()->set_state(state);
       msg->mutable_message()->set_encryption(encryption);
-      msg->mutable_message()->set_timestamp_ms(timestamp.toMSecsSinceEpoch());
+      msg->mutable_message()->set_timestamp_ms(timestamp);
       msg->mutable_message()->set_message(messageData);
       msg->mutable_message()->set_nonce(std::string(nonce.begin(), nonce.end()));
       msg->mutable_message()->set_loaded_from_history(true);
@@ -296,7 +295,7 @@ std::vector<std::shared_ptr<Chat::Data>> ChatDB::getRoomMessages(const std::stri
       msg->mutable_message()->set_sender_id(query.value(0).toString().toStdString());
       msg->mutable_message()->set_receiver_id(query.value(1).toString().toStdString());
       msg->mutable_message()->set_id(query.value(2).toString().toStdString());
-      msg->mutable_message()->set_timestamp_ms(query.value(3).toDateTime().toMSecsSinceEpoch());
+      msg->mutable_message()->set_timestamp_ms(query.value(3).toLongLong());
       msg->mutable_message()->set_message(query.value(4).toString().toStdString());
       msg->mutable_message()->set_state(query.value(5).toInt());
       msg->mutable_message()->set_loaded_from_history(true);

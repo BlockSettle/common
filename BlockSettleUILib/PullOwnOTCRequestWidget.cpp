@@ -23,10 +23,10 @@ void PullOwnOTCRequestWidget::OnPullPressed()
 void PullOwnOTCRequestWidget::setRequestData(const std::shared_ptr<Chat::Data>& otc)
 {
    assert(otc->has_message());
-   assert(otc->message().has_request());
+   assert(otc->message().has_otc_request());
 
-   ui_->labelSide->setText(ChatUtils::toString(otc->message().request().side()));
-   ui_->labelRange->setText(ChatUtils::toString(otc->message().request().range_type()));
+   ui_->labelSide->setText(ChatUtils::toString(otc->message().otc_request().side()));
+   ui_->labelRange->setText(ChatUtils::toString(otc->message().otc_request().range_type()));
 
    ui_->pushButtonPull->setEnabled(true);
 }

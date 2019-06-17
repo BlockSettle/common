@@ -38,6 +38,10 @@ bool ChatRoomElement::isChildSupported(const TreeItem *item) const
 
 Chat::Data_ContactRecord *ChatContactElement::getContactData() const
 {
+   if (getDataObject()->has_contact_record()) {
+      return nullptr;
+   }
+
    return getDataObject()->mutable_contact_record();
 }
 
@@ -178,10 +182,7 @@ void ChatContactCompleteElement::onChildAdded(TreeItem* item)
          auto msg = messageNode->getMessage();
          auto messageDirection = msg->direction();
 
-         bool isOtc = msg->message().has_request()
-               || msg->message().has_response()
-               || msg->message().has_update()
-               || msg->message().has_close_trading();
+         bool isOtc = msg->message().otc_case() != Chat::Data_Message::OTC_NOT_SET;
          if (messageDirection != Chat::Data_Direction_NOT_SET && isOtc && !msg->message().loaded_from_history()) {
             processOTCMessage(msg);
          }
@@ -193,22 +194,22 @@ void ChatContactCompleteElement::processOTCMessage(const std::shared_ptr<Chat::D
 {
    assert(messageData->has_message());
 
-   if (messageData->message().has_request()) {
+   if (messageData->message().has_otc_request()) {
       otcRequest_ = messageData;
       return;
    }
 
-   if (messageData->message().has_response()) {
+   if (messageData->message().has_otc_response()) {
       otcResponse_ = messageData;
       return;
    }
 
-   if (messageData->message().has_update()) {
+   if (messageData->message().has_otc_update()) {
       otcLastUpdate_ = messageData;
       return;
    }
 
-   if (messageData->message().has_close_trading()) {
+   if (messageData->message().has_otc_close_trading()) {
       cleanupTrading();
       return;
    }

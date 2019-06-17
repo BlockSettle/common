@@ -20,7 +20,7 @@ CreateOTCResponseWidget::~CreateOTCResponseWidget() = default;
 void CreateOTCResponseWidget::SetRequestToRespond(const std::shared_ptr<Chat::Data>& otcRequest)
 {
    assert(otcRequest->has_message());
-   assert(otcRequest->message().has_request());
+   assert(otcRequest->message().has_otc_request());
 
    ui_->pushButtonSubmit->setVisible(true);
    ui_->pushButtonPull->setText(tr("Reject"));
@@ -32,23 +32,23 @@ void CreateOTCResponseWidget::InitUIFromRequest(const std::shared_ptr<Chat::Data
 {
    ui_->widgetPriceRange->setEnabled(true);
 
-   SetSide(bs::network::ChatOTCSide::Type(otcRequest->message().request().side()));
-   SetRange(bs::network::OTCRangeID::Type(otcRequest->message().request().range_type()));
+   SetSide(bs::network::ChatOTCSide::Type(otcRequest->message().otc_request().side()));
+   SetRange(bs::network::OTCRangeID::Type(otcRequest->message().otc_request().range_type()));
 }
 
 void CreateOTCResponseWidget::SetSubmittedResponse(const std::shared_ptr<Chat::Data>& otcResponse, const std::shared_ptr<Chat::Data>& otcRequest)
 {
-   assert(otcRequest->has_message() && otcRequest->message().has_request());
-   assert(otcResponse->has_message() && otcResponse->message().has_response());
+   assert(otcRequest->has_message() && otcRequest->message().has_otc_request());
+   assert(otcResponse->has_message() && otcResponse->message().has_otc_response());
 
    InitUIFromRequest(otcRequest);
 
-   ui_->widgetPriceRange->SetLowerValue(otcResponse->message().response().price().lower());
-   ui_->widgetPriceRange->SetUpperValue(otcResponse->message().response().price().upper());
+   ui_->widgetPriceRange->SetLowerValue(otcResponse->message().otc_response().price().lower());
+   ui_->widgetPriceRange->SetUpperValue(otcResponse->message().otc_response().price().upper());
    ui_->widgetPriceRange->setEnabled(false);
 
-   ui_->widgetAmountRange->SetLowerValue(otcResponse->message().response().quantity().lower());
-   ui_->widgetAmountRange->SetUpperValue(otcResponse->message().response().quantity().upper());
+   ui_->widgetAmountRange->SetLowerValue(otcResponse->message().otc_response().quantity().lower());
+   ui_->widgetAmountRange->SetUpperValue(otcResponse->message().otc_response().quantity().upper());
    ui_->widgetAmountRange->setEnabled(false);
 
    ui_->pushButtonSubmit->setVisible(false);

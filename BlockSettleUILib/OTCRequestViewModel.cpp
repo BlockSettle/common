@@ -85,7 +85,7 @@ QVariant OTCRequestViewModel::headerData(int section, Qt::Orientation orientatio
 
 QVariant OTCRequestViewModel::getRowData(const int column, const std::shared_ptr<Chat::Data>& otc) const
 {
-   assert(otc->message().has_request());
+   assert(otc->message().has_otc_request());
 
    switch(column) {
    case ColumnSecurity:
@@ -98,10 +98,10 @@ QVariant OTCRequestViewModel::getRowData(const int column, const std::shared_ptr
       return QLatin1String("XBT");
 
    case ColumnSide:
-      return ChatUtils::toString(otc->message().request().side());
+      return ChatUtils::toString(otc->message().otc_request().side());
 
    case ColumnQuantity:
-      return ChatUtils::toString(otc->message().request().range_type());
+      return ChatUtils::toString(otc->message().otc_request().range_type());
 
    case ColumnDuration:
       {
@@ -121,7 +121,7 @@ QVariant OTCRequestViewModel::getRowData(const int column, const std::shared_ptr
 
 void OTCRequestViewModel::AddLiveOTCRequest(const std::shared_ptr<Chat::Data>& otc)
 {
-   assert(otc->message().has_request());
+   assert(otc->message().has_otc_request());
 
    beginInsertRows(QModelIndex{}, currentRequests_.size(), currentRequests_.size());
 

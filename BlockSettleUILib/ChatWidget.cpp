@@ -883,7 +883,7 @@ void ChatWidget::OTCSwitchToContact(std::shared_ptr<Chat::Data>& contact,
 void ChatWidget::OTCSwitchToResponse(std::shared_ptr<Chat::Data> &response)
 {
    assert(response->has_message());
-   assert(response->message().has_response());
+   assert(response->message().has_otc_response());
 
    ui_->stackedWidgetMessages->setCurrentIndex(0);
 }
@@ -986,7 +986,8 @@ void ChatWidget::onNewMessagesPresent(std::map<std::string, std::shared_ptr<Chat
          const int maxMessageLength = 20;
 
          auto messageTitle = message->message().sender_id();
-         auto messageText = message->message().message();
+         auto messageText = (message->message().encryption() == Chat::Data_Message_Encryption_UNENCRYPTED) ?
+               message->message().message() : "";
 
          if (!userName.empty()) {
             messageTitle = userName;
