@@ -325,8 +325,8 @@ bool BaseChatClient::decodeAndUpdateIncomingSessionPublicKey(const std::string& 
    try {
       dec->finish(decodedData);
    }
-   catch (std::exception&) {
-      logger_->error("[BaseChatClient::{}] Failed to decrypt public key by ies.", __func__);
+   catch (const std::exception &e) {
+      logger_->error("[BaseChatClient::{}] Failed to decrypt public key by ies: {}", __func__, e.what());
       return false;
    }
 
@@ -597,27 +597,10 @@ void BaseChatClient::OnMessages(const Chat::Response_Messages &response)
                BinaryData remotePublicKey(chatSessionKeyDataPtr->remotePublicKey());
                SecureBinaryData localPrivateKey(chatSessionKeyDataPtr->localPrivateKey());
 
-               std::unique_ptr<Encryption::AEAD_Decryption> dec = Encryption::AEAD_Decryption::create(logger_);
-               dec->setPrivateKey(localPrivateKey);
-               dec->setPublicKey(remotePublicKey);
-               const auto &nonce = msg.message().nonce();
-               dec->setNonce(Botan::SecureVector<uint8_t>(nonce.begin(), nonce.end()));
-
-               // FIXME:
-               //dec->setData(msg.message().);
-               //dec->setAssociatedData(msg->jsonAssociatedData());
-
-               try {
-                  Botan::SecureVector<uint8_t> decodedData;
-                  dec->finish(decodedData);
-
-                  // create new instance of decrypted message
-                  // FIXME:
-                  //msg = msg->CreateDecryptedMessage(QString::fromUtf8((char*)decodedData.data(),(int)decodedData.size()));
-               }
-               catch (std::exception & e) {
-                  logger_->error("[BaseChatClient::OnMessages] Failed to decrypt aead msg {}", e.what());
-                  ChatUtils::messageFlagSet(msgCopy->mutable_message(), Chat::Data_Message_State_INVALID);
+               msgCopy = ChatUtils::decryptMessageAead(logger_, msgCopy->message(), remotePublicKey, localPrivateKey);
+               if (!msgCopy) {
+                  logger_->error("decrypt message failed");
+                  continue;
                }
             }
 
@@ -851,35 +834,20 @@ std::shared_ptr<Chat::Data> BaseChatClient::sendMessageDataRequest(const std::sh
       userNoncesIterator->second = nonce;
    }
 
-   std::unique_ptr<Encryption::AEAD_Encryption> enc = Encryption::AEAD_Encryption::create(logger_);
+   auto msgEncrypted = ChatUtils::encryptMessageAead(logger_, messageData->message()
+      , chatSessionKeyDataPtr->remotePublicKey(), chatSessionKeyDataPtr->localPrivateKey()
+      , BinaryData(nonce.data(), nonce.size()));
 
-   enc->setPrivateKey(chatSessionKeyDataPtr->localPrivateKey());
-   enc->setPublicKey(chatSessionKeyDataPtr->remotePublicKey());
-
-   enc->setNonce(nonce);
-   messageData->mutable_message()->set_nonce(nonce.data(), nonce.size());
-
-   enc->setData(messageData->message().message_payload());
-   // FIXME:
-   //enc->setAssociatedData(messageData->jsonAssociatedData());
-
-   Botan::SecureVector<uint8_t> encodedData;
-
-   try {
-      enc->finish(encodedData);
-   }
-   catch (std::exception & e) {
-      logger_->error("[BaseChatClient::sendMessageDataRequest] Can't encode data {}", e.what());
+   if (!msgEncrypted) {
+      logger_->error("[BaseChatClient::{}] can't encode data", __func__);
       ChatUtils::messageFlagSet(messageData->mutable_message(), Chat::Data_Message_State_INVALID);
       return messageData;
    }
 
-   // FIXME:
-//   auto encryptedMessage = messageData->CreateEncryptedMessage(Chat::MessageData::EncryptionType::AEAD
-//      , QString::fromLatin1(QByteArray(reinterpret_cast<const char*>(encodedData.data()), int(encodedData.size())).toBase64()));
-
-//   auto request = std::make_shared<Chat::SendMessageRequest>("", encryptedMessage->toJsonString());
-//   sendRequest(request);
+   Chat::Request request;
+   auto d = request.mutable_send_message();
+   *d->mutable_message() = std::move(*msgEncrypted);
+   sendRequest(request);
 
    return messageData;
 }
@@ -902,22 +870,16 @@ void BaseChatClient::eraseQueuedMessages(const std::string userId)
 
 bool BaseChatClient::encryptByIESAndSaveMessageInDb(const std::shared_ptr<Chat::Data>& message)
 {
-   BinaryData localPublicKey(getOwnAuthPublicKey());
-   std::unique_ptr<Encryption::IES_Encryption> enc = Encryption::IES_Encryption::create(logger_);
-   enc->setPublicKey(localPublicKey);
-   enc->setData(message->message().message_payload());
+   auto msgEncrypted = ChatUtils::encryptMessageIes(logger_, message->message(), getOwnAuthPublicKey());
 
-   try {
-      Botan::SecureVector<uint8_t> encodedData;
-      enc->finish(encodedData);
-
-      // FIXME:
-      //auto encryptedMessage = message->CreateEncryptedMessage(Chat::MessageData::EncryptionType::IES
-      //                                                        , QString::fromLatin1(QByteArray(reinterpret_cast<const char*>(encodedData.data()), int(encodedData.size())).toBase64()));
-      //chatDb_->add(encryptedMessage);
+   if (!msgEncrypted) {
+      logger_->error("[BaseChatClient::{}] failed to encrypt msg by ies", __func__);
+      return false;
    }
-   catch (std::exception & e) {
-      logger_->error("[BaseChatClient::encryptByIESAndSaveMessageInDb] Failed to encrypt msg by ies {}", e.what());
+
+   bool result = chatDb_->add(msgEncrypted);
+   if (!result) {
+      logger_->error("[BaseChatClient::{}] message store failed", __func__);
       return false;
    }
 
@@ -926,22 +888,12 @@ bool BaseChatClient::encryptByIESAndSaveMessageInDb(const std::shared_ptr<Chat::
 
 std::shared_ptr<Chat::Data> BaseChatClient::decryptIESMessage(const std::shared_ptr<Chat::Data>& message)
 {
-   std::unique_ptr<Encryption::IES_Decryption> dec = Encryption::IES_Decryption::create(logger_);
-   SecureBinaryData localPrivateKey(getOwnAuthPrivateKey());
-   dec->setPrivateKey(localPrivateKey);
-   dec->setData(message->message().message_payload());
-
-   try {
-      Botan::SecureVector<uint8_t> decodedData;
-      dec->finish(decodedData);
-
-      // FIXME:
-      //return message->CreateDecryptedMessage(QString::fromUtf8((char*)decodedData.data(), (int)decodedData.size()));
-      return message;
-   }
-   catch (std::exception &) {
-      logger_->error("[BaseChatClient::decryptIESMessage] Failed to decrypt msg from DB {}", message->message().id());
+   auto msgDecrypted = ChatUtils::decryptMessageIes(logger_, message->message(), getOwnAuthPrivateKey());
+   if (!msgDecrypted) {
+      logger_->error("[BaseChatClient::{}] Failed to decrypt msg from DB {}", __func__, message->message().id());
       ChatUtils::messageFlagSet(message->mutable_message(), Chat::Data_Message_State_INVALID);
       return message;
    }
+
+   return msgDecrypted;
 }

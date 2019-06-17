@@ -169,7 +169,7 @@ bool ChatDB::add(const std::shared_ptr<Chat::Data>& msg)
                     QByteArray(reinterpret_cast<const char*>(d.nonce().data()),
                                static_cast<int>(d.nonce().size()))
                     );
-   qryAdd.bindValue(QLatin1String(":enctxt"), QString::fromStdString(d.message_payload()));
+   qryAdd.bindValue(QLatin1String(":enctxt"), QString::fromStdString(d.message()));
    qryAdd.bindValue(QLatin1String(":ref"), QString());
 
 //   qryAdd.bindValue(0, msg.getId());
@@ -262,12 +262,11 @@ std::vector<std::shared_ptr<Chat::Data>> ChatDB::getUserMessages(const std::stri
       msg->mutable_message()->set_state(state);
       msg->mutable_message()->set_encryption(encryption);
       msg->mutable_message()->set_timestamp_ms(timestamp.toMSecsSinceEpoch());
-      msg->mutable_message()->set_message_payload(messageData);
+      msg->mutable_message()->set_message(messageData);
       msg->mutable_message()->set_nonce(std::string(nonce.begin(), nonce.end()));
       msg->mutable_message()->set_loaded_from_history(true);
 
-      // FIXME
-      //records.push_back(ChatUtils::createEncryptedMessage(encryption, messageData.toStdString()));
+      records.push_back(msg);
    }
    std::sort(records.begin(), records.end(), [](const std::shared_ptr<Chat::Data> &a
       , const std::shared_ptr<Chat::Data> &b) {
@@ -298,7 +297,7 @@ std::vector<std::shared_ptr<Chat::Data>> ChatDB::getRoomMessages(const std::stri
       msg->mutable_message()->set_receiver_id(query.value(1).toString().toStdString());
       msg->mutable_message()->set_id(query.value(2).toString().toStdString());
       msg->mutable_message()->set_timestamp_ms(query.value(3).toDateTime().toMSecsSinceEpoch());
-      msg->mutable_message()->set_message_payload(query.value(4).toString().toStdString());
+      msg->mutable_message()->set_message(query.value(4).toString().toStdString());
       msg->mutable_message()->set_state(query.value(5).toInt());
       msg->mutable_message()->set_loaded_from_history(true);
       records.push_back(msg);

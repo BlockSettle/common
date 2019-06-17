@@ -161,12 +161,12 @@ message Data
         uint32 state = 5;
         Encryption encryption = 6;
         bytes nonce = 7;
-        string message_payload = 8;
 
-        // FIXME: remove this internal field (security problem)
-        bool loaded_from_history = 9;
+        // Plaintext or base64 encoded encrypted data
+        string message = 8;
 
-        string message_text = 10;
+        // FIXME: remove this internal field, should not be in the proto file
+        bool loaded_from_history = 15;
 
         oneof otc
         {

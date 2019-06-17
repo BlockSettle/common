@@ -986,7 +986,7 @@ void ChatWidget::onNewMessagesPresent(std::map<std::string, std::shared_ptr<Chat
          const int maxMessageLength = 20;
 
          auto messageTitle = message->message().sender_id();
-         auto messageText = message->message().message_text();
+         auto messageText = message->message().message();
 
          if (!userName.empty()) {
             messageTitle = userName;

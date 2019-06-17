@@ -111,7 +111,7 @@ std::shared_ptr<Chat::Data> ChatClient::sendOwnMessage(
    initMessage(messageData.get(), receiver);
 
    auto d = messageData->mutable_message();
-   d->set_message_text(message);
+   d->set_message(message);
 
    logger_->debug("[ChatClient::sendOwnMessage] {}", message);
 
@@ -188,7 +188,7 @@ std::shared_ptr<Chat::Data> ChatClient::sendRoomOwnMessage(const std::string& me
    initMessage(roomMessage.get(), receiver);
 
    auto d = roomMessage->mutable_message();
-   d->set_message_text(message);
+   d->set_message(message);
 
 //   const auto &itPub = pubKeys_.find(receiver);
 //   if (itPub == pubKeys_.end()) {
