@@ -69,8 +69,8 @@ void ChatClientUsersViewItemDelegate::paintRoomsElement(QPainter *painter, const
    }
 
    itemOption.palette.setColor(QPalette::Text, itemStyle_.colorRoom());
-   bool newMessage = index.data(Role::ChatNewMessageRole).toBool();
-   bool isGlobalRoom = index.data(ChatClientDataModel::Role::RoomIdRole).toString() == Chat::GlobalRoomKey;
+   const bool newMessage = index.data(Role::ChatNewMessageRole).toBool();
+   const bool isGlobalRoom = (index.data(ChatClientDataModel::Role::RoomIdRole).toString() == Chat::GlobalRoomKey);
    itemOption.text = index.data(Role::RoomTitleRole).toString();
    QStyledItemDelegate::paint(painter, itemOption, index);
 
