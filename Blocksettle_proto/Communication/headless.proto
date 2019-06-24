@@ -5,7 +5,7 @@ import "Blocksettle_Communication_Internal.proto";
 
 enum RequestType
 {
-   HeartbeatType               = 0;
+   InvalidRequestType          = 0;
    AuthenticationRequestType   = 1;
    SignTxRequestType           = 2;
    SignPartialTXRequestType    = 3;

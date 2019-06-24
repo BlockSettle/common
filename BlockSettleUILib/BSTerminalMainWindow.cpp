@@ -501,8 +501,6 @@ std::shared_ptr<SignContainer> BSTerminalMainWindow::createSigner()
 std::shared_ptr<SignContainer> BSTerminalMainWindow::createRemoteSigner()
 {
    SignerHost signerHost = signersProvider_->getCurrentSigner();
-   const auto keyFileDir = SystemFilePaths::appDataLocation();
-   const auto keyFileName = "client.peers";
    QString resultPort = QString::number(signerHost.port);
    NetworkType netType = applicationSettings_->get<NetworkType>(ApplicationSettings::netType);
 
@@ -541,7 +539,8 @@ std::shared_ptr<SignContainer> BSTerminalMainWindow::createRemoteSigner()
    QString resultHost = signerHost.address;
    const auto remoteSigner = std::make_shared<RemoteSigner>(logMgr_->logger()
       , resultHost, resultPort, netType, connectionManager_, applicationSettings_
-      , SignContainer::OpMode::Remote, false, keyFileDir, keyFileName, ourNewKeyCB);
+      , SignContainer::OpMode::Remote, false
+      , signersProvider_->remoteSignerKeysDir(), signersProvider_->remoteSignerKeysFile(), ourNewKeyCB);
 
    ZmqBIP15XPeers peers;
    for (const auto &signer : signersProvider_->signers()) {
@@ -810,6 +809,28 @@ void BSTerminalMainWindow::CompleteDBConnection()
 void BSTerminalMainWindow::onReactivate()
 {
    show();
+}
+
+void BSTerminalMainWindow::raiseWindow()
+{
+   if (isMinimized()) {
+      showNormal();
+   } else if (isHidden()) {
+      show();
+   }
+   raise();
+   activateWindow();
+   setFocus();
+#ifdef Q_OS_WIN
+   auto hwnd = reinterpret_cast<HWND>(winId());
+   auto flags = static_cast<UINT>(SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
+   ::SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, flags);
+   ::SetForegroundWindow(hwnd);
+   ::SetActiveWindow(hwnd);
+   ::ShowWindow(hwnd, SW_SHOWNORMAL);
+   ::SetFocus(hwnd);
+   ::SetWindowPos(hwnd, HWND_NOTOPMOST, 0, 0, 0, 0, flags);
+#endif // Q_OS_WIN
 }
 
 void BSTerminalMainWindow::UpdateMainWindowAppearence()
