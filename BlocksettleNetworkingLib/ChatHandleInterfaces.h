@@ -56,5 +56,15 @@ public:
    virtual void onContactUpdatedByInput(std::shared_ptr<Chat::Data> crecord) = 0;
 };
 
+class PublicOTCHandler {
+public:
+   virtual ~PublicOTCHandler() = default;
+
+   virtual void onPublicOTCRequestSubmited(std::shared_ptr<Chat::Data_Message_OtcRequest>) = 0;
+   virtual void onPublicOTCRequestArrived(std::shared_ptr<Chat::Data_Message_OtcRequest>) = 0;
+   virtual void onPublicOTCOwnClose(std::shared_ptr<Chat::Data_Message_OtcCloseTrading>) = 0;
+   virtual void onPublicOTCRequestClosed(std::shared_ptr<Chat::Data_Message_OtcCloseTrading>) = 0;
+};
+
 
 #endif // CHATHANDLEINTERFACES_H

@@ -664,3 +664,19 @@ void ChatClient::onSearchResult(const std::vector<std::shared_ptr<Chat::Data>>& 
    emit SearchUserListReceived(userList, emailEntered_);
    emailEntered_ = false;
 }
+
+void ChatClient::onPublicOTCRequestSubmited(std::shared_ptr<Chat::Data_Message_OtcRequest>)
+{
+}
+
+void ChatClient::onPublicOTCRequestArrived(std::shared_ptr<Chat::Data_Message_OtcRequest>)
+{
+}
+
+void ChatClient::onPublicOTCOwnClose(std::shared_ptr<Chat::Data_Message_OtcCloseTrading>)
+{
+}
+
+void ChatClient::onPublicOTCRequestClosed(std::shared_ptr<Chat::Data_Message_OtcCloseTrading>)
+{
+}
