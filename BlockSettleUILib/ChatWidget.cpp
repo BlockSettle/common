@@ -1089,3 +1089,19 @@ void ChatWidget::showOldMessagesNotification()
       NotificationCenter::notify(bs::ui::NotifyType::UpdateUnreadMessage, notifyMsg);
    }
 }
+
+void ChatWidget::onPublicOTCRequestSubmited(std::shared_ptr<Chat::Data_Message_OtcRequest>)
+{
+}
+
+void ChatWidget::onPublicOTCRequestArrived(std::shared_ptr<Chat::Data_Message_OtcRequest>)
+{
+}
+
+void ChatWidget::onPublicOTCOwnClose(std::shared_ptr<Chat::Data_Message_OtcCloseTrading>)
+{
+}
+
+void ChatWidget::onPublicOTCRequestClosed(std::shared_ptr<Chat::Data_Message_OtcCloseTrading>)
+{
+}

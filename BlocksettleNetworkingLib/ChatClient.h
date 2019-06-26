@@ -28,7 +28,6 @@ class ChatClient : public BaseChatClient
       , public ChatSearchActionsHandler
       , public ChatMessageReadHandler
       , public ModelChangesHandler
-      , public PublicOTCHandler
 {
    Q_OBJECT
 
@@ -153,12 +152,5 @@ private:
    std::shared_ptr<ChatTreeModelWrapper>  proxyModel_;
 
    bool              emailEntered_{ false };
-
-   // PublicOTCHandler interface
-public:
-   void onPublicOTCRequestSubmited(std::shared_ptr<Chat::Data_Message_OtcRequest>) override;
-   void onPublicOTCRequestArrived(std::shared_ptr<Chat::Data_Message_OtcRequest>) override;
-   void onPublicOTCOwnClose(std::shared_ptr<Chat::Data_Message_OtcCloseTrading>) override;
-   void onPublicOTCRequestClosed(std::shared_ptr<Chat::Data_Message_OtcCloseTrading>) override;
 };
 #endif   // CHAT_CLIENT_H
