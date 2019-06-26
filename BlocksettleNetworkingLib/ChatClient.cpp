@@ -30,7 +30,7 @@ ChatClient::ChatClient(const std::shared_ptr<ConnectionManager>& connectionManag
                   , const std::shared_ptr<spdlog::logger>& logger)
 
    : BaseChatClient{connectionManager, logger, appSettings->get<QString>(ApplicationSettings::chatDbFile)}
-   , appSettings_{appSettings}
+   , appSettings_{appSettings}, publicOTCHandler_(nullptr)
 {
    ChatUtils::registerTypes();
 
@@ -614,6 +614,11 @@ void ChatClient::loadRoomMessagesFromDB(const std::string& roomId)
          model_->insertRoomMessage(msg);
       }
    }
+}
+
+void ChatClient::setPublicOTCHandler(PublicOTCHandler *publicOTCHandler)
+{
+   publicOTCHandler_ = publicOTCHandler;
 }
 
 void ChatClient::initMessage(Chat::Data *msg, const std::string &receiver)

@@ -72,6 +72,8 @@ public:
    void retrieveUserMessages(const std::string &userId);
    void loadRoomMessagesFromDB(const std::string& roomId);
 
+   void setPublicOTCHandler(PublicOTCHandler * publicOTCHandler);
+
 private:
    void initMessage(Chat::Data *msg, const std::string& receiver);
 
@@ -147,6 +149,7 @@ public:
 private:
    std::shared_ptr<ApplicationSettings>   appSettings_;
 
+   PublicOTCHandler * publicOTCHandler_;
    std::shared_ptr<ChatClientDataModel>   model_;
    std::shared_ptr<UserSearchModel>       userSearchModel_;
    std::shared_ptr<ChatTreeModelWrapper>  proxyModel_;
