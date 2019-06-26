@@ -146,6 +146,8 @@ protected:
 
    std::shared_ptr<Chat::Data> sendMessageDataRequest(const std::shared_ptr<Chat::Data>& message
                                                       , const std::string &receiver, bool isFromQueue = false);
+   std::shared_ptr<Chat::Data> sendRoomMessageDataRequest(const std::shared_ptr<Chat::Data>& message
+                                                      , const std::string &receiver);
 
    bool sendRequest(const Chat::Request& request);
 

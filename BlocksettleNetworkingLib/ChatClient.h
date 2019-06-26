@@ -73,6 +73,7 @@ public:
    void loadRoomMessagesFromDB(const std::string& roomId);
 
    void setPublicOTCHandler(PublicOTCHandler * publicOTCHandler);
+   void onPublicOTCMessage(std::shared_ptr<Chat::Data>);
 
 private:
    void initMessage(Chat::Data *msg, const std::string& receiver);
@@ -155,5 +156,6 @@ private:
    std::shared_ptr<ChatTreeModelWrapper>  proxyModel_;
 
    bool              emailEntered_{ false };
+   std::shared_ptr<Chat::Data_Message_OtcRequest> currentOTCRequest_;
 };
 #endif   // CHAT_CLIENT_H

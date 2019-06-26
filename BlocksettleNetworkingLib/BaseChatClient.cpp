@@ -504,6 +504,7 @@ void BaseChatClient::OnRoomMessages(const Chat::Response_RoomMessages& response)
       }
 
       auto msgCopy = std::make_shared<Chat::Data>(msg);
+      msgCopy->set_direction(Chat::Data_Direction::Data_Direction_RECEIVED);
       ChatUtils::messageFlagSet(msgCopy->mutable_message(), Chat::Data_Message_State_ACKNOWLEDGED);
 
       /*chatDb_->add(*msg);
@@ -803,6 +804,22 @@ std::shared_ptr<Chat::Data> BaseChatClient::sendMessageDataRequest(const std::sh
    }
 
    return messageData;
+}
+
+std::shared_ptr<Chat::Data> BaseChatClient::sendRoomMessageDataRequest(const std::shared_ptr<Chat::Data> &message, const std::string &receiver)
+{
+   message->set_direction(Chat::Data_Direction::Data_Direction_SENT);
+
+   onRoomMessageReceived(message);
+
+   Chat::Request request;
+   auto r = request.mutable_send_room_message();
+   r->set_room_id(receiver);
+   *r->mutable_message() = *message;
+   sendRequest(request);
+
+   return message;
+
 }
 
 void BaseChatClient::retrySendQueuedMessages(const std::string userId)

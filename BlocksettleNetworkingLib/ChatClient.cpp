@@ -30,7 +30,9 @@ ChatClient::ChatClient(const std::shared_ptr<ConnectionManager>& connectionManag
                   , const std::shared_ptr<spdlog::logger>& logger)
 
    : BaseChatClient{connectionManager, logger, appSettings->get<QString>(ApplicationSettings::chatDbFile)}
-   , appSettings_{appSettings}, publicOTCHandler_(nullptr)
+   , appSettings_{appSettings}
+   , publicOTCHandler_(nullptr)
+   , currentOTCRequest_(nullptr)
 {
    ChatUtils::registerTypes();
 
@@ -196,42 +198,9 @@ std::shared_ptr<Chat::Data> ChatClient::sendRoomOwnMessage(const std::string& me
    auto d = roomMessage->mutable_message();
    d->set_message(message);
 
-//   const auto &itPub = pubKeys_.find(receiver);
-//   if (itPub == pubKeys_.end()) {
-//      // Ask for public key from peer. Enqueue the message to be sent, once we receive the
-//      // necessary public key.
-//      enqueued_messages_[receiver].push(message);
-
-//      // Send our key to the peer.
-//      auto request = std::make_shared<Chat::AskForPublicKeyRequest>(
-//         "", // clientId
-//         currentUserId_,
-//         receiver.toStdString());
-//      sendRequest(request);
-//      return result;
-//   }
-
    logger_->debug("[ChatClient::sendRoomOwnMessage] {}", message);
 
-//   auto localEncMsg = msg;
-//   if (!localEncMsg.encrypt(appSettings_->GetAuthKeys().second)) {
-//      logger_->error("[ChatClient::sendRoomOwnMessage] failed to encrypt by local key");
-//   }
-   chatDb_->add(roomMessage);
-   model_->insertRoomMessage(roomMessage);
-
-//   if (!msg.encrypt(itPub->second)) {
-//      logger_->error("[ChatClient::sendMessage] failed to encrypt message {}"
-//         , msg.getId().toStdString());
-//   }
-
-   Chat::Request request;
-   auto r = request.mutable_send_room_message();
-   r->set_room_id(receiver);
-   *r->mutable_message() = *roomMessage;
-   sendRequest(request);
-
-   return roomMessage;
+   return sendRoomMessageDataRequest(roomMessage, receiver);
 }
 
 void ChatClient::sendFriendRequest(const std::string &friendUserId)
@@ -584,7 +553,15 @@ void ChatClient::onDMMessageReceived(const std::shared_ptr<Chat::Data>& messageD
 
 void ChatClient::onRoomMessageReceived(const std::shared_ptr<Chat::Data>& messageData)
 {
-   model_->insertRoomMessage(messageData);
+   if (messageData->message().has_otc_request()
+      || messageData->message().has_otc_update()
+      || messageData->message().has_otc_response()
+      || messageData->message().has_otc_close_trading()) {
+      onPublicOTCMessage(messageData);
+   } else {
+      model_->insertRoomMessage(messageData);
+   }
+
 }
 
 void ChatClient::retrieveUserMessages(const std::string &userId)
@@ -619,6 +596,46 @@ void ChatClient::loadRoomMessagesFromDB(const std::string& roomId)
 void ChatClient::setPublicOTCHandler(PublicOTCHandler *publicOTCHandler)
 {
    publicOTCHandler_ = publicOTCHandler;
+}
+
+void ChatClient::onPublicOTCMessage(std::shared_ptr<Chat::Data> otcMessage)
+{
+   assert(otcMessage->has_message());
+
+   if (!publicOTCHandler_) {
+      return;
+   }
+
+   if (otcMessage->message().has_otc_request()) {
+      auto request = std::make_shared<Chat::Data_Message_OtcRequest>(otcMessage->message().otc_request());
+      if (otcMessage->direction() == Chat::Data_Direction::Data_Direction_SENT) {
+         assert(currentOTCRequest_ == nullptr);
+
+         //Maybe should be moved into otc handler
+         currentOTCRequest_ = request;
+
+         publicOTCHandler_->onPublicOTCRequestSubmited(request);
+      } else if (otcMessage->direction() == Chat::Data_Direction::Data_Direction_RECEIVED) {
+         publicOTCHandler_->onPublicOTCRequestArrived(request);
+      }
+
+   } else if (otcMessage->message().has_otc_update()) {
+
+   } else if (otcMessage->message().has_otc_close_trading()) {
+      auto request = std::make_shared<Chat::Data_Message_OtcCloseTrading>(otcMessage->message().otc_close_trading());
+      if (otcMessage->direction() == Chat::Data_Direction::Data_Direction_SENT) {
+         assert(currentOTCRequest_ != nullptr);
+
+         //Maybe should be moved into otc handler
+         currentOTCRequest_ = nullptr;
+
+         publicOTCHandler_->onPublicOTCOwnClose(request);
+      } else if (otcMessage->direction() == Chat::Data_Direction::Data_Direction_RECEIVED) {
+         publicOTCHandler_->onPublicOTCRequestClosed(request);
+      }
+   }
+
+   assert(false);
 }
 
 void ChatClient::initMessage(Chat::Data *msg, const std::string &receiver)
