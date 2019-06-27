@@ -26,7 +26,6 @@ enum PacketType
    SetLimitsType = 14;
    PasswordReceivedType = 15;
    RequestCloseType = 16;
-   ReconnectTerminalType = 17;
    ReloadWalletsType = 18;
 
    // Execute QML dialog by it's name
@@ -50,7 +49,11 @@ enum PacketType
    UpdateStatusType = 26;
 
    ImportWoWalletType = 27;
+
    SignSettlementTxRequestType = 28;
+
+   // Sent from headless signer when unknown terminal is trying to connect
+   TerminalHandshakeFailedType = 29;
 }
 
 message Packet
@@ -280,14 +283,6 @@ message SetLimitsRequest
    uint32 password_keep_in_mem = 5;
 }
 
-
-message ReconnectRequest
-{
-   bool   online = 1;
-   string listen_address = 2;
-   string listen_port = 3;
-}
-
 message ReloadWalletsRequest
 {
    string path = 1;
@@ -358,4 +353,9 @@ message ImportWoWalletRequest
 {
    string filename = 1;
    bytes  content = 2;
+}
+
+message TerminalHandshakeFailed
+{
+   string peerAddress = 1;
 }
