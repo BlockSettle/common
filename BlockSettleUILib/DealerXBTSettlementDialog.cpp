@@ -209,6 +209,8 @@ void DealerXBTSettlementDialog::onAccepted()
    setHintText(tr("Waiting for transactions signing..."));
 
    widgetWalletKeys()->setEnabled(false);
+
+   // FIXME: this widget needs to be reimplemented to move signing to signer
    //settlContainer_->accept(widgetWalletKeys()->key());
 
    validateGUI();

@@ -169,6 +169,7 @@ void CCSettlementTransactionWidget::onAccept()
 
    ui_->pushButtonCancel->setEnabled(false);
 
+   // FIXME: this widget needs to be reimplemented to move signing to signer
    //settlContainer_->accept(ui_->widgetSubmitKeys->key());
 }
 

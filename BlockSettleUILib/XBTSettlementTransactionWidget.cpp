@@ -209,6 +209,8 @@ void XBTSettlementTransactionWidget::populateXBTDetails()
 
 void XBTSettlementTransactionWidget::onAccept()
 {
+   // FIXME: this widget needs to be reimplemented to move signing to signer
+
 //   SecureBinaryData authKey = (settlContainer_->weSell() && !settlContainer_->isSellFromPrimary() && settlContainer_->payinReceived())
 //      ? ui_->widgetSubmitKeysAuth->key() : ui_->widgetSubmitKeys->key();
 //   settlContainer_->accept(authKey);

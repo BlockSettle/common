@@ -107,6 +107,7 @@ void DealerCCSettlementDialog::onGenAddressVerified(bool addressVerified)
 
 void DealerCCSettlementDialog::onAccepted()
 {
+   // FIXME: this widget needs to be reimplemented to move signing to signer
 //   if (settlContainer_->accept(widgetWalletKeys()->key())) {
 //      ui_->pushButtonAccept->setEnabled(false);
 //   }
