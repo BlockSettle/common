@@ -209,15 +209,15 @@ void XBTSettlementTransactionWidget::populateXBTDetails()
 
 void XBTSettlementTransactionWidget::onAccept()
 {
-   SecureBinaryData authKey = (settlContainer_->weSell() && !settlContainer_->isSellFromPrimary() && settlContainer_->payinReceived())
-      ? ui_->widgetSubmitKeysAuth->key() : ui_->widgetSubmitKeys->key();
-   settlContainer_->accept(authKey);
+//   SecureBinaryData authKey = (settlContainer_->weSell() && !settlContainer_->isSellFromPrimary() && settlContainer_->payinReceived())
+//      ? ui_->widgetSubmitKeysAuth->key() : ui_->widgetSubmitKeys->key();
+//   settlContainer_->accept(authKey);
 
-   if (!settlContainer_->payinReceived() && !settlContainer_->weSell()) {
-      ui_->pushButtonCancel->setEnabled(false);
-   }
-   ui_->labelHintPassword->clear();
-   ui_->pushButtonAccept->setEnabled(false);
+//   if (!settlContainer_->payinReceived() && !settlContainer_->weSell()) {
+//      ui_->pushButtonCancel->setEnabled(false);
+//   }
+//   ui_->labelHintPassword->clear();
+//   ui_->pushButtonAccept->setEnabled(false);
 }
 
 void XBTSettlementTransactionWidget::onStop()

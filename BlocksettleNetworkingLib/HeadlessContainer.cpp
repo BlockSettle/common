@@ -217,8 +217,8 @@ void HeadlessContainer::ProcessSettlementSignTXResponse(unsigned int id, const s
       emit Error(id, "failed to parse");
       return;
    }
-   const auto itCb = cbSettlementSignTXMap_.find(id);
-   if (itCb == cbSettlementSignTXMap_.end()) {
+   const auto itCb = cbSettlementSignTxMap_.find(id);
+   if (itCb == cbSettlementSignTxMap_.end()) {
       emit Error(id, "no callback found for id " + std::to_string(id));
       return;
    }
@@ -226,7 +226,7 @@ void HeadlessContainer::ProcessSettlementSignTXResponse(unsigned int id, const s
    if (itCb->second) {
       itCb->second(static_cast<bs::error::ErrorCode>(response.errorcode()), BinaryData(response.signedtx()));
    }
-   cbSettlementSignTXMap_.erase(itCb);
+   cbSettlementSignTxMap_.erase(itCb);
 }
 
 void HeadlessContainer::ProcessPasswordRequest(const std::string &data)
@@ -473,10 +473,63 @@ bs::signer::RequestId HeadlessContainer::signSettlementTXRequest(const bs::core:
    headless::RequestPacket packet;
    packet.set_type(headless::SignSettlementTxRequestType);
 
-
    packet.set_data(settlementRequest.SerializeAsString());
    const auto reqId = Send(packet);
-   cbSettlementSignTXMap_[reqId] = cb;
+   cbSettlementSignTxMap_[reqId] = cb;
+   return reqId;
+}
+
+bs::signer::RequestId HeadlessContainer::signSettlementPartialTXRequest(const bs::core::wallet::TXSignRequest &txSignReq
+   , const bs::sync::SettlementInfo &settlementInfo
+   , const std::function<void (bs::error::ErrorCode, const BinaryData &)> &cb)
+{
+   if (!txSignReq.isValid()) {
+      logger_->error("[HeadlessContainer] Invalid TXSignRequest");
+      return 0;
+   }
+
+   headless::SignTxRequest signTxRequest = createSignTxRequest(txSignReq, {});
+
+   headless::SignSettlementTxRequest settlementRequest;
+   *(settlementRequest.mutable_signtxrequest()) = signTxRequest;
+   *(settlementRequest.mutable_settlementinfo()) = settlementInfo.toProtobufMessage();
+
+   headless::RequestPacket packet;
+   packet.set_type(headless::SignSettlementPartialTxRequestType);
+   packet.set_data(settlementRequest.SerializeAsString());
+
+   const auto reqId = Send(packet);
+   cbSettlementSignTxMap_[reqId] = cb;
+   return reqId;
+}
+
+bs::signer::RequestId HeadlessContainer::signSettlementPayoutTXRequest(const bs::core::wallet::TXSignRequest &txSignReq
+   , const bs::sync::SettlementInfo &settlementInfo, const bs::Address &authAddr, const std::string &settlementId
+   , const std::function<void (bs::error::ErrorCode, const BinaryData &)> &cb)
+{
+   if ((txSignReq.inputs.size() != 1) || (txSignReq.recipients.size() != 1) || settlementId.empty()) {
+      logger_->error("[HeadlessContainer] Invalid PayoutTXSignRequest");
+      return 0;
+   }
+   headless::SignPayoutTXRequest request;
+   request.set_input(txSignReq.inputs[0].serialize().toBinStr());
+   request.set_recipient(txSignReq.recipients[0]->getSerializedScript().toBinStr());
+   request.set_authaddress(authAddr.display());
+   request.set_settlementid(settlementId);
+//   if (autoSign) {
+//      request.set_applyautosignrules(autoSign);
+//   }
+
+   headless::SignSettlementPayoutTxRequest settlementRequest;
+   *(settlementRequest.mutable_signpayouttxrequest()) = request;
+   *(settlementRequest.mutable_settlementinfo()) = settlementInfo.toProtobufMessage();
+
+   headless::RequestPacket packet;
+   packet.set_type(headless::SignPayoutTXRequestType);
+   packet.set_data(request.SerializeAsString());
+
+   const auto reqId = Send(packet);
+   cbSettlementSignTxMap_[reqId] = cb;
    return reqId;
 }
 

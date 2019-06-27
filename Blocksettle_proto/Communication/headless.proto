@@ -31,6 +31,8 @@ enum RequestType
    WalletsListUpdatedType      = 22;
 
    SignSettlementTxRequestType = 23;
+   SignSettlementPartialTxRequestType = 24;
+   SignSettlementPayoutTxRequestType = 25;
 }
 
 message RequestPacket
@@ -112,6 +114,12 @@ message CancelSignTx
 message SignSettlementTxRequest
 {
    SignTxRequest signTxRequest                                        = 1;
+   Blocksettle.Communication.Internal.SettlementInfo settlementInfo   = 2;
+}
+
+message SignSettlementPayoutTxRequest
+{
+   SignPayoutTXRequest signPayoutTXRequest                            = 1;
    Blocksettle.Communication.Internal.SettlementInfo settlementInfo   = 2;
 }
 

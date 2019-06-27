@@ -169,7 +169,7 @@ void CCSettlementTransactionWidget::onAccept()
 
    ui_->pushButtonCancel->setEnabled(false);
 
-   settlContainer_->accept(ui_->widgetSubmitKeys->key());
+   //settlContainer_->accept(ui_->widgetSubmitKeys->key());
 }
 
 void CCSettlementTransactionWidget::updateAcceptButton()

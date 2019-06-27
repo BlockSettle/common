@@ -182,6 +182,7 @@ bool HeadlessContainerListener::onRequestPacket(const std::string &clientId, hea
    case headless::SignTxRequestType:
    case headless::SignSettlementTxRequestType:
    case headless::SignPartialTXRequestType:
+   case headless::SignSettlementPartialTxRequestType:
       return onSignTxRequest(clientId, packet, packet.type());
 
    case headless::SignPayoutTXRequestType:
@@ -250,7 +251,8 @@ bool HeadlessContainerListener::AuthResponse(const std::string &clientId, headle
 bool HeadlessContainerListener::onSignTxRequest(const std::string &clientId, const headless::RequestPacket &packet
    , headless::RequestType reqType)
 {
-   bool partial = reqType == headless::RequestType::SignPartialTXRequestType ? true : false;
+   bool partial = (reqType == headless::RequestType::SignPartialTXRequestType)
+          || (reqType == headless::RequestType::SignSettlementPartialTxRequestType);
 
    headless::SignTxRequest request;
    Blocksettle::Communication::Internal::SettlementInfo settlementInfo;

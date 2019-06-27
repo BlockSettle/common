@@ -209,7 +209,7 @@ void DealerXBTSettlementDialog::onAccepted()
    setHintText(tr("Waiting for transactions signing..."));
 
    widgetWalletKeys()->setEnabled(false);
-   settlContainer_->accept(widgetWalletKeys()->key());
+   //settlContainer_->accept(widgetWalletKeys()->key());
 
    validateGUI();
 }

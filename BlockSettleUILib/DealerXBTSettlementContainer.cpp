@@ -79,7 +79,7 @@ DealerXBTSettlementContainer::DealerXBTSettlementContainer(const std::shared_ptr
    // connect(signingContainer_.get(), &SignContainer::TXSigned, this, &DealerXBTSettlementContainer::onTXSigned);
 }
 
-bool DealerXBTSettlementContainer::accept(const SecureBinaryData &password)
+bool DealerXBTSettlementContainer::startSigning()
 {
    if (weSell_) {
       try {
@@ -111,7 +111,7 @@ bool DealerXBTSettlementContainer::accept(const SecureBinaryData &password)
          return false;
       }
 
-      const auto &cbSettlInput = [this, receivingAddress, password](UTXO input) {
+      const auto &cbSettlInput = [this, receivingAddress](UTXO input) {
          try {
             const auto txReq = settlWallet_->createPayoutTXRequest(input
                , receivingAddress, transactionData_->feePerByte());

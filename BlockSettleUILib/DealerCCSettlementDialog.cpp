@@ -107,7 +107,7 @@ void DealerCCSettlementDialog::onGenAddressVerified(bool addressVerified)
 
 void DealerCCSettlementDialog::onAccepted()
 {
-   if (settlContainer_->accept(widgetWalletKeys()->key())) {
-      ui_->pushButtonAccept->setEnabled(false);
-   }
+//   if (settlContainer_->accept(widgetWalletKeys()->key())) {
+//      ui_->pushButtonAccept->setEnabled(false);
+//   }
 }
