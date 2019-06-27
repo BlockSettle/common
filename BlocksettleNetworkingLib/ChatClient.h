@@ -56,6 +56,14 @@ public:
    std::shared_ptr<Chat::Data> SubmitPrivateUpdate(const bs::network::OTCUpdate& update
                                                    , const std::string &receiver);
 
+   std::shared_ptr<Chat::Data> SubmitPublicOTCRequest(const bs::network::OTCRequest& otcRequest
+                                                       , const std::string &receiver);
+
+   std::shared_ptr<Chat::Data> SubmitPublicOTCClose(const bs::network::OTCRequest& otcRequest
+                                                       , const std::string &receiver);
+
+
+
    std::shared_ptr<Chat::Data> sendRoomOwnMessage(
          const std::string& message, const std::string &receiver);
 

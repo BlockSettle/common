@@ -190,6 +190,34 @@ std::shared_ptr<Chat::Data> ChatClient::SubmitPrivateUpdate(const bs::network::O
    return sendMessageDataRequest(otcMessageData, receiver);
 }
 
+std::shared_ptr<Chat::Data> ChatClient::SubmitPublicOTCRequest(const bs::network::OTCRequest &otcRequest, const std::string &receiver)
+{
+   logger_->debug("[ChatClient::SubmitPublicOTCRequest]");
+
+   auto otcMessageData = std::make_shared<Chat::Data>();
+   initMessage(otcMessageData.get(), receiver);
+
+   auto d = otcMessageData->mutable_message();
+   auto otc = d->mutable_otc_request();
+   otc->set_side(Chat::OtcSide::OTC_SIDE_BUY);
+   otc->set_range_type(Chat::OtcRangeType::OTC_RANGE_1_5);
+
+   return sendRoomMessageDataRequest(otcMessageData, receiver);
+}
+
+std::shared_ptr<Chat::Data> ChatClient::SubmitPublicOTCClose(const bs::network::OTCRequest &otcRequest, const std::string &receiver)
+{
+   logger_->debug("[ChatClient::SubmitPublicOTCClose]");
+
+   auto otcMessageData = std::make_shared<Chat::Data>();
+   initMessage(otcMessageData.get(), receiver);
+
+   auto d = otcMessageData->mutable_message();
+   d->mutable_otc_close_trading();
+
+   return sendRoomMessageDataRequest(otcMessageData, receiver);
+}
+
 std::shared_ptr<Chat::Data> ChatClient::sendRoomOwnMessage(const std::string& message, const std::string& receiver)
 {
    auto roomMessage = std::make_shared<Chat::Data>();
