@@ -144,6 +144,8 @@ public:
 public:
    void onContactUpdatedByInput(std::shared_ptr<Chat::Data> crecord) override;
 
+   void OnConfirmReplacePublicKey(const Chat::Response_ConfirmReplacePublicKey& response) override;
+
 private:
    std::shared_ptr<ApplicationSettings>   appSettings_;
 

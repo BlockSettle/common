@@ -406,6 +406,12 @@ void ChatClient::onContactUpdatedByInput(std::shared_ptr<Chat::Data> crecord)
                       crecord->contact_record().display_name());
 }
 
+void ChatClient::OnConfirmReplacePublicKey(const Chat::Response_ConfirmReplacePublicKey &response)
+{
+   // FIXME: Prompt user about changed keys and remove this
+   uploadNewPublicKeyToServer(true);
+}
+
 BinaryData ChatClient::getOwnAuthPublicKey() const
 {
    const auto publicKey = appSettings_->GetAuthKeys().second;
