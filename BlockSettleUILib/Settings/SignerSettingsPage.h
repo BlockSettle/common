@@ -30,7 +30,9 @@ public:
              , std::shared_ptr<SignContainer> signContainer) override;
 
 private slots:
-   void runModeChanged(int index);
+   // TODO: comboBoxRunMode obsoleted, local signer just added as first item to comboBoxRemoteSigner
+   // cleanup code if it's not required anymore
+   //void runModeChanged(int index);
    void onAsSpendLimitChanged(double);
    void onManageSignerKeys();
 
@@ -38,7 +40,7 @@ signals:
    void signersChanged();
 
 private:
-   void onModeChanged(SignContainer::OpMode mode);
+   //void onModeChanged(SignContainer::OpMode mode);
    void showHost(bool);
    void showPort(bool);
    void showZmqPubKey(bool);

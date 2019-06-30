@@ -21,7 +21,7 @@ SignerSettingsPage::SignerSettingsPage(QWidget* parent)
    ui_->widgetTwoWayAuth->hide();
    ui_->checkBoxTwoWayAuth->hide();
 
-   connect(ui_->comboBoxRunMode, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &SignerSettingsPage::runModeChanged);
+   //connect(ui_->comboBoxRunMode, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &SignerSettingsPage::runModeChanged);
    connect(ui_->spinBoxAsSpendLimit, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &SignerSettingsPage::onAsSpendLimitChanged);
    connect(ui_->pushButtonManageSignerKeys, &QPushButton::clicked, this, &SignerSettingsPage::onManageSignerKeys);
 
@@ -45,61 +45,72 @@ SignerSettingsPage::SignerSettingsPage(QWidget* parent)
          file.write(ui_->labelTerminalKey->text().toLatin1());
       }
    });
+
+   connect(signersProvider_.get(), &SignersProvider::dataChanged, this, &SignerSettingsPage::display);
+
+
+   ui_->comboBoxRunMode->hide();
+   ui_->labelMode->hide();
+   showPort(false);
 }
 
 SignerSettingsPage::~SignerSettingsPage() = default;
 
-void SignerSettingsPage::runModeChanged(int index)
-{
-   onModeChanged(static_cast<SignContainer::OpMode>(index + 1));
-}
+//void SignerSettingsPage::runModeChanged(int index)
+//{
+//   onModeChanged(static_cast<SignContainer::OpMode>(index + 1));
+//}
 
-void SignerSettingsPage::onModeChanged(SignContainer::OpMode mode)
-{
-   switch (mode) {
-   case SignContainer::OpMode::Local:
-      showHost(false);
-      showPort(true);
-      ui_->spinBoxPort->setValue(appSettings_->get<int>(ApplicationSettings::localSignerPort));
-      showLimits(true);
-      showSignerKeySettings(false);
-      ui_->spinBoxAsSpendLimit->setValue(appSettings_->get<double>(ApplicationSettings::autoSignSpendLimit));
-      break;
+//void SignerSettingsPage::onModeChanged(SignContainer::OpMode mode)
+//{
+//   switch (mode) {
+//   case SignContainer::OpMode::Local:
+//      showHost(false);
+//      showPort(true);
+//      ui_->spinBoxPort->setValue(appSettings_->get<int>(ApplicationSettings::localSignerPort));
+//      showLimits(true);
+//      showSignerKeySettings(false);
+//      ui_->spinBoxAsSpendLimit->setValue(appSettings_->get<double>(ApplicationSettings::autoSignSpendLimit));
+//      break;
 
-   case SignContainer::OpMode::Remote: {
-      showHost(true);
-      if (ui_->comboBoxRemoteSigner->count() == 0) {
-         appSettings_->reset(ApplicationSettings::remoteSigners, true);
-         signersModel_->update();
-      }
-      int signerIndex = appSettings_->get<int>(ApplicationSettings::signerIndex);
-      if (ui_->comboBoxRemoteSigner->count() == 0) {
-         signerIndex = -1;
-      } else if (signerIndex < 0 || signerIndex >= ui_->comboBoxRemoteSigner->count()) {
-         signerIndex = 0;
-      }
-      ui_->comboBoxRemoteSigner->setCurrentIndex(signerIndex);
-      showPort(false);
-      ui_->spinBoxPort->setValue(appSettings_->get<int>(ApplicationSettings::localSignerPort));
-      showLimits(false);
-      showSignerKeySettings(true);
-      ui_->labelTerminalKey->setText(QString::fromStdString(signersProvider_->remoteSignerOwnKey().toHexStr()));
-      break;
-   }
+//   case SignContainer::OpMode::Remote: {
+//      showHost(true);
+//      if (ui_->comboBoxRemoteSigner->count() == 0) {
+//         appSettings_->reset(ApplicationSettings::remoteSigners, true);
+//         signersModel_->update();
+//      }
+//      int signerIndex = appSettings_->get<int>(ApplicationSettings::signerIndex);
+//      if (ui_->comboBoxRemoteSigner->count() == 0) {
+//         signerIndex = -1;
+//      } else if (signerIndex < 0 || signerIndex >= ui_->comboBoxRemoteSigner->count()) {
+//         signerIndex = 0;
+//      }
+//      ui_->comboBoxRemoteSigner->setCurrentIndex(signerIndex);
+//      showPort(false);
+//      ui_->spinBoxPort->setValue(appSettings_->get<int>(ApplicationSettings::localSignerPort));
+//      showLimits(signersProvider_->indexOfCurrent() == 0);
+//      showSignerKeySettings(true);
+//      ui_->labelTerminalKey->setText(QString::fromStdString(signersProvider_->remoteSignerOwnKey().toHexStr()));
+//      break;
+//   }
 
-   default:    break;
-   }
-}
+//   default:    break;
+//   }
+//}
 
 void SignerSettingsPage::display()
 {
    const auto modeIndex = reset_
          ? appSettings_->get<int>(ApplicationSettings::signerRunMode)
          : ui_->comboBoxRunMode->currentIndex() + 1;
-   SignContainer::OpMode opMode = static_cast<SignContainer::OpMode>(modeIndex);
-   onModeChanged(opMode);
-   ui_->comboBoxRunMode->setCurrentIndex(modeIndex - 1);
+   //SignContainer::OpMode opMode = static_cast<SignContainer::OpMode>(modeIndex);
+   //onModeChanged(opMode);
+   //ui_->comboBoxRunMode->setCurrentIndex(modeIndex - 1);
    ui_->checkBoxTwoWayAuth->setChecked(appSettings_->get<bool>(ApplicationSettings::twoWaySignerAuth));
+   ui_->comboBoxRemoteSigner->setCurrentIndex(signersProvider_->indexOfCurrent());
+
+   showLimits(signersProvider_->indexOfCurrent() == 0);
+   ui_->labelTerminalKey->setText(QString::fromStdString(signersProvider_->remoteSignerOwnKey().toHexStr()));
 }
 
 void SignerSettingsPage::reset()
@@ -117,9 +128,9 @@ void SignerSettingsPage::reset()
 
 void SignerSettingsPage::showHost(bool show)
 {
-   ui_->labelHost->setVisible(show);
-   ui_->labelHost_2->setVisible(show);
-   ui_->comboBoxRemoteSigner->setVisible(show);
+   ui_->labelHost->setVisible(true);
+   ui_->labelHost_2->setVisible(true);
+   ui_->comboBoxRemoteSigner->setVisible(true);
 }
 
 void SignerSettingsPage::showPort(bool show)
@@ -130,9 +141,9 @@ void SignerSettingsPage::showPort(bool show)
 
 void SignerSettingsPage::showLimits(bool show)
 {
-   ui_->groupBoxAutoSign->setVisible(show);
-   ui_->labelAsSpendLimit->setVisible(show);
-   ui_->spinBoxAsSpendLimit->setVisible(show);
+   ui_->groupBoxAutoSign->setEnabled(show);
+   ui_->labelAsSpendLimit->setEnabled(show);
+   ui_->spinBoxAsSpendLimit->setEnabled(show);
    onAsSpendLimitChanged(ui_->spinBoxAsSpendLimit->value());
 }
 
@@ -181,21 +192,22 @@ void SignerSettingsPage::onManageSignerKeys()
 
 void SignerSettingsPage::apply()
 {
-   appSettings_->set(ApplicationSettings::signerRunMode, ui_->comboBoxRunMode->currentIndex() + 1);
+   //appSettings_->set(ApplicationSettings::signerRunMode, ui_->comboBoxRunMode->currentIndex() + 1);
    appSettings_->set(ApplicationSettings::twoWaySignerAuth, ui_->checkBoxTwoWayAuth->isChecked());
+   signersProvider_->setupSigner(ui_->comboBoxRemoteSigner->currentIndex());
 
-   switch (static_cast<SignContainer::OpMode>(ui_->comboBoxRunMode->currentIndex() + 1)) {
-   case SignContainer::OpMode::Local:
-      appSettings_->set(ApplicationSettings::localSignerPort, ui_->spinBoxPort->value());
-      appSettings_->set(ApplicationSettings::autoSignSpendLimit, ui_->spinBoxAsSpendLimit->value());
-      break;
+//   switch (static_cast<SignContainer::OpMode>(ui_->comboBoxRunMode->currentIndex() + 1)) {
+//   case SignContainer::OpMode::Local:
+//      appSettings_->set(ApplicationSettings::localSignerPort, ui_->spinBoxPort->value());
+//      appSettings_->set(ApplicationSettings::autoSignSpendLimit, ui_->spinBoxAsSpendLimit->value());
+//      break;
 
-   case SignContainer::OpMode::Remote:
-      signersProvider_->setupSigner(ui_->comboBoxRemoteSigner->currentIndex());
-      break;
+//   case SignContainer::OpMode::Remote:
+//      signersProvider_->setupSigner(ui_->comboBoxRemoteSigner->currentIndex());
+//      break;
 
-   default:    break;
-   }
+//   default:    break;
+//   }
 }
 
 void SignerSettingsPage::initSettings()

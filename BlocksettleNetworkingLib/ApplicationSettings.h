@@ -79,7 +79,7 @@ public:
       celerUsername,
       localSignerPort,
       signerIndex,
-      signerRunMode,
+      signerRunMode,  // TODO: remove if is not required anymore
       signerOfflineDir,
       autoSignSpendLimit,
       launchToTray,
