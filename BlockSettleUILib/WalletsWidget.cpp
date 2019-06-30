@@ -28,7 +28,6 @@
 #include "Wallets/SyncWalletsManager.h"
 #include "TreeViewWithEnterKey.h"
 #include "NewWalletSeedConfirmDialog.h"
-#include "ManageEncryption/WalletDeleteDialog.h"
 #include "ManageEncryption/RootWalletPropertiesDialog.h"
 
 #include "SignerUiDefs.h"

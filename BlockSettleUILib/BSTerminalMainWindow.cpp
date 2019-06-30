@@ -36,7 +36,6 @@
 #include "DialogManager.h"
 #include "HeadlessContainer.h"
 #include "LoginWindow.h"
-#include "ManageEncryption/EnterWalletPassword.h"
 #include "MarketDataProvider.h"
 #include "MDAgreementDialog.h"
 #include "NewAddressDialog.h"
