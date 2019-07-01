@@ -61,7 +61,6 @@ void SignersProvider::switchToLocalFullGUI(const QString &host, const QString &p
       }
    }
 
-   appSettings_->set(ApplicationSettings::signerRunMode, int(SignContainer::OpMode::Remote));
    setupSigner(localIndex, true);
 }
 
@@ -111,6 +110,11 @@ int SignersProvider::indexOfIpPort(const std::string &srvIPPort) const
       }
    }
    return -1;
+}
+
+bool SignersProvider::currentSignerIsLocal()
+{
+   return indexOfCurrent() == 0;
 }
 
 bool SignersProvider::add(const SignerHost &signer)

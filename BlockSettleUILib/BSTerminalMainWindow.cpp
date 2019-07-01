@@ -485,23 +485,11 @@ void BSTerminalMainWindow::InitAuthManager()
 
 std::shared_ptr<SignContainer> BSTerminalMainWindow::createSigner()
 {  
-   auto runMode = static_cast<SignContainer::OpMode>(applicationSettings_->get<int>(ApplicationSettings::signerRunMode));
-
-   if (signersProvider_->indexOfCurrent() == 0) {
-      // local signer has port == 0
-      runMode = SignContainer::OpMode::Local;
+   if (signersProvider_->currentSignerIsLocal()) {
+      return createLocalSigner();
    }
    else {
-      runMode = SignContainer::OpMode::Remote;
-   }
-
-   switch (runMode) {
-      case SignContainer::OpMode::Remote:
-         return createRemoteSigner();
-      case SignContainer::OpMode::Local:
-         return createLocalSigner();
-      default:
-         return nullptr;
+      return createRemoteSigner();
    }
 }
 
