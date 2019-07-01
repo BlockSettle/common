@@ -260,7 +260,6 @@ bool HeadlessContainerListener::AuthResponse(const std::string &clientId, headle
 {
    headless::AuthenticationReply response;
    response.set_authticket("");  // no auth tickets after moving to BIP150/151
-   response.set_hasui(callbacks_ != nullptr);
    response.set_nettype((netType_ == NetworkType::TestNet) ? headless::TestNetType : headless::MainNetType);
 
    packet.set_data(response.SerializeAsString());

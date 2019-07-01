@@ -130,7 +130,6 @@ public:
       , const std::function<void(const std::vector<std::pair<bs::Address, std::string>> &)> &, bool persistent = true) = 0;
 
    const OpMode &opMode() const { return mode_; }
-   virtual bool hasUI() const { return false; }
    virtual bool isReady() const { return true; }
    virtual bool isOffline() const { return true; }
    virtual bool isWalletOffline(const std::string &) const { return true; }

@@ -156,7 +156,6 @@ public:
    bool Connect() override;
    bool Disconnect() override;
    bool isOffline() const override;
-   bool hasUI() const override;
    void updatePeerKeys(const ZmqBIP15XPeers &peers);
 
    void setTargetDir(const QString& targetDir) override;
@@ -244,7 +243,6 @@ public:
    bs::signer::RequestId Send(Blocksettle::Communication::headless::RequestPacket
       , bool updateId = true);
    bs::signer::RequestId newRequestId() { return ++id_; }
-   bool hasUI() const { return hasUI_; }
    bool isReady() const { return isReady_; }
 
 signals:
@@ -266,7 +264,6 @@ private:
    const NetworkType                netType_;
    bs::signer::RequestId            id_ = 0;
    // This will be updated from background thread
-   std::atomic<bool>                hasUI_{false};
    std::atomic<bool>                isReady_{false};
    bool                             isConnected_{false};
    bool                             wasErrorReported_{false};

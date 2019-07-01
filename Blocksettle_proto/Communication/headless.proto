@@ -73,8 +73,7 @@ message AuthenticationReply
       bytes authTicket = 1;
       string   error = 2;
    }
-   bool     hasUI = 3;
-   NetworkType  netType = 4;
+   NetworkType  netType = 3;
 }
 
 

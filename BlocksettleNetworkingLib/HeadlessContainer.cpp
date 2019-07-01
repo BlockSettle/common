@@ -109,7 +109,6 @@ void HeadlessListener::OnDataReceived(const std::string& data)
       }
 
       // BIP 150/151 should be be complete by this point.
-      hasUI_ = response.hasui();
       isReady_ = true;
       emit authenticated();
    } else {
@@ -1236,13 +1235,6 @@ bool RemoteSigner::isOffline() const
 {
    std::lock_guard<std::mutex> lock(mutex_);
    return (listener_ == nullptr);
-}
-
-bool RemoteSigner::hasUI() const
-{
-   std::lock_guard<std::mutex> lock(mutex_);
-
-   return listener_ ? listener_->hasUI() : false;
 }
 
 void RemoteSigner::updatePeerKeys(const ZmqBIP15XPeers &peers)
