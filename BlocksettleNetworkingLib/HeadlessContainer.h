@@ -180,6 +180,7 @@ private:
    void ScheduleRestart();
 
    bs::signer::RequestId signOffline(const bs::core::wallet::TXSignRequest &txSignReq);
+   void txSignedAsync(bs::signer::RequestId id, const BinaryData &signedTX, bs::error::ErrorCode result, const std::string &errorReason = {});
 
 protected:
    const QString                              host_;
