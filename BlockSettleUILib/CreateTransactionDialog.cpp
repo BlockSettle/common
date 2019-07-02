@@ -514,13 +514,20 @@ bool CreateTransactionDialog::CreateTransaction()
 
 std::vector<bs::core::wallet::TXSignRequest> CreateTransactionDialog::ImportTransactions()
 {
-   QString defaultDir = applicationSettings_->get<QString>(ApplicationSettings::signerOfflineDir);
+   QString signerOfflineDir = applicationSettings_->get<QString>(ApplicationSettings::signerOfflineDir);
 
-   const auto reqFile = QFileDialog::getOpenFileName(this, tr("Select Transaction file"), defaultDir
+   const QString reqFile = QFileDialog::getOpenFileName(this, tr("Select Transaction file"), signerOfflineDir
       , tr("TX files (*.bin)"));
    if (reqFile.isEmpty()) {
       return {};
    }
+
+   // Update latest used directory if needed
+   QString newSignerOfflineDir = QFileInfo(reqFile).absoluteDir().path();
+   if (signerOfflineDir != newSignerOfflineDir) {
+      applicationSettings_->set(ApplicationSettings::signerOfflineDir, newSignerOfflineDir);
+   }
+
    const auto title = tr("Transaction file");
    QFile f(reqFile);
    if (!f.exists()) {
