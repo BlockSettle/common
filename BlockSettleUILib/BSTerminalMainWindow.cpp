@@ -523,7 +523,7 @@ std::shared_ptr<SignContainer> BSTerminalMainWindow::createRemoteSigner()
 
    QString resultHost = signerHost.address;
    const auto remoteSigner = std::make_shared<RemoteSigner>(logMgr_->logger()
-      , resultHost, resultPort, netType, connectionManager_, applicationSettings_
+      , resultHost, resultPort, netType, connectionManager_
       , SignContainer::OpMode::Remote, false
       , signersProvider_->remoteSignerKeysDir(), signersProvider_->remoteSignerKeysFile(), ourNewKeyCB);
 
@@ -567,7 +567,7 @@ std::shared_ptr<SignContainer> BSTerminalMainWindow::createLocalSigner()
    const bool startLocalSignerProcess = true;
    return std::make_shared<LocalSigner>(logMgr_->logger()
       , applicationSettings_->GetHomeDir(), netType
-      , localSignerPort, connectionManager_, applicationSettings_
+      , localSignerPort, connectionManager_
       , startLocalSignerProcess, "", ""
       , applicationSettings_->get<double>(ApplicationSettings::autoSignSpendLimit));
 }

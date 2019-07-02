@@ -1,6 +1,5 @@
 #include "HeadlessContainer.h"
 
-#include "ApplicationSettings.h"
 #include "ConnectionManager.h"
 #include "Wallets/SyncSettlementWallet.h"
 #include "Wallets/SyncHDWallet.h"
@@ -1083,7 +1082,6 @@ void HeadlessContainer::ProcessExtAddrChain(unsigned int id, const std::string &
 RemoteSigner::RemoteSigner(const std::shared_ptr<spdlog::logger> &logger
    , const QString &host, const QString &port, NetworkType netType
    , const std::shared_ptr<ConnectionManager>& connectionManager
-   , const std::shared_ptr<ApplicationSettings>& appSettings
    , OpMode opMode
    , const bool ephemeralDataConnKeys
    , const std::string& ownKeyFileDir
@@ -1094,7 +1092,6 @@ RemoteSigner::RemoteSigner(const std::shared_ptr<spdlog::logger> &logger
    , ephemeralDataConnKeys_(ephemeralDataConnKeys)
    , ownKeyFileDir_(ownKeyFileDir)
    , ownKeyFileName_(ownKeyFileName)
-   , appSettings_{appSettings}
    , cbNewKey_{inNewKeyCB}
    , connectionManager_{connectionManager}
 {
@@ -1446,14 +1443,13 @@ void RemoteSigner::txSignedAsync(bs::signer::RequestId id, const BinaryData &sig
 LocalSigner::LocalSigner(const std::shared_ptr<spdlog::logger> &logger
    , const QString &homeDir, NetworkType netType, const QString &port
    , const std::shared_ptr<ConnectionManager>& connectionManager
-   , const std::shared_ptr<ApplicationSettings> &appSettings
    , const bool startSignerProcess
    , const std::string& ownKeyFileDir
    , const std::string& ownKeyFileName
    , double asSpendLimit
    , const ZmqBIP15XDataConnection::cbNewKey& inNewKeyCB)
    : RemoteSigner(logger, QLatin1String("127.0.0.1"), port, netType
-      , connectionManager, appSettings, OpMode::Local, true
+      , connectionManager, OpMode::Local, true
       , ownKeyFileDir, ownKeyFileName, inNewKeyCB)
       , homeDir_(homeDir), startProcess_(startSignerProcess), asSpendLimit_(asSpendLimit)
 {}
