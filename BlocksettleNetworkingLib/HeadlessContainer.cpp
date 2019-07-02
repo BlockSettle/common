@@ -1449,9 +1449,9 @@ bs::signer::RequestId RemoteSigner::signOffline(const bs::core::wallet::TXSignRe
    }
    f.close();
 
-   QTimer::singleShot(1, [this, reqId, fileName] {    // requires some delay to avoid race condition on return
+   QMetaObject::invokeMethod(this, [this, reqId, fileName] {    // response event should be async
       emit TXSigned(reqId, fileName, bs::error::ErrorCode::NoError);
-   });
+   }, Qt::QueuedConnection);
    return reqId;
 }
 
