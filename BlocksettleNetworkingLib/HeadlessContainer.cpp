@@ -1357,16 +1357,6 @@ void RemoteSigner::onPacketReceived(headless::RequestPacket packet)
    }
 }
 
-void RemoteSigner::setTargetDir(const QString& targetDir)
-{
-   appSettings_->set(ApplicationSettings::signerOfflineDir, targetDir);
-}
-
-QString RemoteSigner::targetDir() const
-{
-   return appSettings_->get<QString>(ApplicationSettings::signerOfflineDir);
-}
-
 bs::signer::RequestId RemoteSigner::signTXRequest(const bs::core::wallet::TXSignRequest &txSignReq
    , SignContainer::TXSignMode mode, const PasswordType& password
    , bool keepDuplicatedRecipients)
@@ -1421,36 +1411,35 @@ bs::signer::RequestId RemoteSigner::signOffline(const bs::core::wallet::TXSignRe
    container->set_type(Blocksettle::Storage::Signer::RequestFileType);
    container->set_data(request.SerializeAsString());
 
-   const auto timestamp = std::to_string(QDateTime::currentDateTime().toSecsSinceEpoch());
-   const auto targetDir = appSettings_->get<std::string>(ApplicationSettings::signerOfflineDir);
-   const std::string fileName = targetDir + "/" + txSignReq.walletId + "_" + timestamp + ".bin";
-
    const auto reqId = listener_->newRequestId();
-   QFile f(QString::fromStdString(fileName));
+   const std::string &fileNamePath = txSignReq.offlineFilePath;
+
+   QFile f(QString::fromStdString(fileNamePath));
    if (f.exists()) {
-      QMetaObject::invokeMethod(this, [this, reqId, fileName] {
-         emit TXSigned(reqId, {}, bs::error::ErrorCode::TxRequestFileExist, fileName);
+      QMetaObject::invokeMethod(this, [this, reqId, fileNamePath] {
+         emit TXSigned(reqId, {}, bs::error::ErrorCode::TxRequestFileExist);
       });
       return reqId;
    }
    if (!f.open(QIODevice::WriteOnly)) {
-      QMetaObject::invokeMethod(this, [this, reqId, fileName] {
-         emit TXSigned(reqId, {}, bs::error::ErrorCode::TxFailedToOpenRequestFile, fileName);
+      QMetaObject::invokeMethod(this, [this, reqId, fileNamePath] {
+         emit TXSigned(reqId, {}, bs::error::ErrorCode::TxFailedToOpenRequestFile, fileNamePath);
       });
       return reqId;
    }
 
    const auto data = QByteArray::fromStdString(fileContainer.SerializeAsString());
    if (f.write(data) != data.size()) {
-      QMetaObject::invokeMethod(this, [this, reqId, fileName] {
-         emit TXSigned(reqId, {}, bs::error::ErrorCode::TxFailedToWriteRequestFile, fileName);
+      QMetaObject::invokeMethod(this, [this, reqId, fileNamePath] {
+         emit TXSigned(reqId, {}, bs::error::ErrorCode::TxFailedToWriteRequestFile, fileNamePath);
       });
       return reqId;
    }
    f.close();
 
-   QMetaObject::invokeMethod(this, [this, reqId, fileName] {    // response event should be async
-      emit TXSigned(reqId, fileName, bs::error::ErrorCode::NoError);
+   // response should be async
+   QMetaObject::invokeMethod(this, [this, reqId, fileNamePath] {
+      emit TXSigned(reqId, {}, bs::error::ErrorCode::NoError);
    }, Qt::QueuedConnection);
    return reqId;
 }

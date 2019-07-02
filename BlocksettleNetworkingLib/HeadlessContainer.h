@@ -162,9 +162,6 @@ public:
    bool isOffline() const override;
    void updatePeerKeys(const ZmqBIP15XPeers &peers);
 
-   void setTargetDir(const QString& targetDir) override;
-   QString targetDir() const override;
-
    bs::signer::RequestId signTXRequest(const bs::core::wallet::TXSignRequest &
       , TXSignMode mode = TXSignMode::Full, const PasswordType& password = {}
    , bool keepDuplicatedRecipients = false) override;
