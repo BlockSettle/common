@@ -452,6 +452,7 @@ message Response
         string sender_id = 1;
         string receiver_id = 2;
         bytes sender_session_public_key = 3;
+        SessionKeyError session_key_error = 4;
     }
     
     message ConfirmReplacePublicKey
