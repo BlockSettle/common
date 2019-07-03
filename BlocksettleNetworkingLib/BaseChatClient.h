@@ -172,8 +172,9 @@ protected:
    void retrySendQueuedContactRequests(const std::string &userId);
    void eraseQueuedContactRequests(const std::string& userId);
 
-   private:
-      void setInvalidAllMessagesForUser(const std::string& userId);
+private:
+   virtual void updateMessageStateAndSave(const std::shared_ptr<Chat::Data>& message, const Chat::Data_Message_State& state) = 0;
+   void setInvalidAllMessagesForUser(const std::string& userId);
 
 protected:
    std::shared_ptr<spdlog::logger>        logger_;

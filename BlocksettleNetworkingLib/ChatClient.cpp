@@ -724,3 +724,26 @@ void ChatClient::onSearchResult(const std::vector<std::shared_ptr<Chat::Data>>& 
    emit SearchUserListReceived(userList, emailEntered_);
    emailEntered_ = false;
 }
+
+void ChatClient::updateMessageStateAndSave(const std::shared_ptr<Chat::Data>& message, const Chat::Data_Message_State& newState)
+{
+   Chat::Data_Message* msg = message->mutable_message();
+   ChatUtils::messageFlagSet(msg, newState);
+
+   const std::string messageId = msg->id();
+   uint32_t state = msg->state();
+
+   if (chatDb_->updateMessageStatus(messageId, state)) {
+      std::string chatId = msg->sender_id() == currentUserId_
+         ? msg->receiver_id() : msg->sender_id();
+
+      auto modelMsg = model_->findMessageItem(chatId, messageId);
+      if (modelMsg) {
+         modelMsg->mutable_message()->set_state(state);
+         model_->notifyMessageChanged(modelMsg);
+      }
+   }
+   else {
+      logger_->error("[ChatClient::{}] failed to update message state in DB: {} {}", __func__, messageId, state);
+   }
+}

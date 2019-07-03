@@ -850,7 +850,7 @@ void BaseChatClient::setInvalidAllMessagesForUser(const std::string& userId)
 
    while (!messages.empty()) {
       std::shared_ptr<Chat::Data> messageData = messages.front();
-      ChatUtils::messageFlagSet(messageData->mutable_message(), Chat::Data_Message_State_INVALID);
+      updateMessageStateAndSave(messageData, Chat::Data_Message_State_INVALID);
       messages.pop();
    }
 }
