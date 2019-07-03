@@ -981,8 +981,5 @@ bool QuoteProvider::IsOwnPrice(const std::string& rfqId, double receivedPrice) c
 void QuoteProvider::RemoveQuotePrice(const std::string& rfqId)
 {
    FastLock locker{quotedPricesLock_};
-   auto it = quotedPrices_.find(rfqId);
-   if (it != quotedPrices_.end()) {
-      quotedPrices_.erase(it);
-   }
+   quotedPrices_.erase(rfqId);
 }
