@@ -786,24 +786,25 @@ bool BaseChatClient::removeContactFromDB(const std::string &userId)
 void BaseChatClient::OnSessionPublicKeyResponse(const Chat::Response_SessionPublicKey& response)
 {
    // Do not use base64 after protobuf switch and send binary data as-is
-   // TODO
    Chat::Request request;
    auto d = request.mutable_reply_session_public_key();
    d->set_sender_id(currentUserId_);
    d->set_receiver_id(response.sender_id());
-   //d->set_reply_session_error(Request_ReplySessionPublicKey_ReplySessionError_ERROR_WRONG_LOCAL_KEY)
-   sendRequest(request);
+   d->set_session_key_error(Chat::SESSION_WRONG_LOCAL_KEY);
 
    if (!decodeAndUpdateIncomingSessionPublicKey(response.sender_id(), BinaryData(response.sender_session_public_key()))) {
       logger_->error("[BaseChatClient::OnSessionPublicKeyResponse] Failed updating remote public key!");
+
+      sendRequest(request);
       return;
    }
 
    // encode own session public key by ies and send as reply
    BinaryData remotePublicKey;
    if (!contactPublicKeysPtr_->findPublicKeyForUser(response.sender_id(), remotePublicKey)) {
-      // this should not happen
       logger_->error("[BaseChatClient::OnSessionPublicKeyResponse] Cannot find remote public key!");
+
+      sendRequest(request);
       return;
    }
 
@@ -811,13 +812,14 @@ void BaseChatClient::OnSessionPublicKeyResponse(const Chat::Response_SessionPubl
       BinaryData encryptedLocalPublicKey = chatSessionKeyPtr_->iesEncryptLocalPublicKey(response.sender_id(), remotePublicKey);
 
       auto d = request.mutable_reply_session_public_key();
-      d->set_sender_id(currentUserId_);
-      d->set_receiver_id(response.sender_id());
       d->set_sender_session_public_key(encryptedLocalPublicKey.toBinStr());
+      d->set_session_key_error(Chat::SESSION_NO_ERROR);
       sendRequest(request);
    }
    catch (std::exception& e) {
       logger_->error("[BaseChatClient::OnSessionPublicKeyResponse] Failed to encrypt msg by ies {}", e.what());
+
+      sendRequest(request);
       return;
    }
 }

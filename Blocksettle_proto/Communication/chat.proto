@@ -72,6 +72,12 @@ enum OtcRangeType
     OTC_RANGE_250PLUS = 5;
 };
 
+enum SessionKeyError
+{
+    SESSION_NO_ERROR = 0;
+    SESSION_WRONG_LOCAL_KEY = 1;
+};
+
 message OtcRange
 {
     uint64 lower = 1;
@@ -298,6 +304,7 @@ message Request
         string sender_id = 1;
         string receiver_id = 2;
         bytes sender_session_public_key = 3;
+        SessionKeyError session_key_error = 4;
     }
     
     message UploadNewPublicKey
@@ -442,16 +449,9 @@ message Response
 
     message ReplySessionPublicKey
     {
-        enum ReplySessionError
-        {
-            NO_ERROR = 0;
-            ERROR_WRONG_LOCAL_KEY = 1;
-        }
-        
         string sender_id = 1;
         string receiver_id = 2;
         bytes sender_session_public_key = 3;
-        ReplySessionError reply_session_error = 4;
     }
     
     message ConfirmReplacePublicKey
