@@ -344,7 +344,6 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
             NotificationCenter::notify(bs::ui::NotifyType::FriendRequest, {QString::fromStdString(userId)});
    });
    connect(client_.get(), &ChatClient::ConfirmUploadNewPublicKey, this, &ChatWidget::onConfirmUploadNewPublicKey);
-   connect(client_.get(), &ChatClient::ConfirmContactsNewData, this, &ChatWidget::onConfirmContactNewKeyData);
    connect(ui_->input_textEdit, &BSChatInput::sendMessage, this, &ChatWidget::onSendButtonClicked);
    connect(ui_->input_textEdit, &BSChatInput::selectionChanged, this, &ChatWidget::onBSChatInputSelectionChanged);
    connect(ui_->searchWidget, &SearchWidget::searchUserTextEdited, this, &ChatWidget::onSearchUserTextEdited);
@@ -1303,7 +1302,8 @@ void ChatWidget::onContactListConfirmationRequested(const std::vector<std::share
 
    if (BSMessageBox(BSMessageBox::question, tr("Contacts Information Update"), tr("Some contacts information require update.")
                     , tr("Do you want to continue?"), detailsString).exec() == QDialog::Accepted) {
-      client_->OnContactListConfirmed(remoteConfirmed, remoteKeysUpdate, remoteAbsolutelyNew);
+
+      onConfirmContactNewKeyData(remoteConfirmed, remoteKeysUpdate, remoteAbsolutelyNew);
    }
 }
 
