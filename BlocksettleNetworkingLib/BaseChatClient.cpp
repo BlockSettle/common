@@ -790,11 +790,11 @@ void BaseChatClient::OnSessionPublicKeyResponse(const Chat::Response_SessionPubl
    auto d = request.mutable_reply_session_public_key();
    d->set_sender_id(currentUserId_);
    d->set_receiver_id(response.sender_id());
-   d->set_session_key_error(Chat::SESSION_WRONG_LOCAL_KEY);
 
    if (!decodeAndUpdateIncomingSessionPublicKey(response.sender_id(), BinaryData(response.sender_session_public_key()))) {
       logger_->error("[BaseChatClient::OnSessionPublicKeyResponse] Failed updating remote public key!");
 
+      d->set_session_key_error(Chat::SESSION_UNABLE_DECODE_KEY);
       sendRequest(request);
       return;
    }
@@ -804,6 +804,7 @@ void BaseChatClient::OnSessionPublicKeyResponse(const Chat::Response_SessionPubl
    if (!contactPublicKeysPtr_->findPublicKeyForUser(response.sender_id(), remotePublicKey)) {
       logger_->error("[BaseChatClient::OnSessionPublicKeyResponse] Cannot find remote public key!");
 
+      d->set_session_key_error(Chat::SESSION_USER_KEY_NOT_FOUND);
       sendRequest(request);
       return;
    }
@@ -819,6 +820,7 @@ void BaseChatClient::OnSessionPublicKeyResponse(const Chat::Response_SessionPubl
    catch (std::exception& e) {
       logger_->error("[BaseChatClient::OnSessionPublicKeyResponse] Failed to encrypt msg by ies {}", e.what());
 
+      d->set_session_key_error(Chat::SESSION_ENCRYPTION_FAILED);
       sendRequest(request);
       return;
    }
@@ -826,12 +828,31 @@ void BaseChatClient::OnSessionPublicKeyResponse(const Chat::Response_SessionPubl
 
 void BaseChatClient::OnReplySessionPublicKeyResponse(const Chat::Response_ReplySessionPublicKey& response)
 {
+   if (Chat::SESSION_NO_ERROR != response.session_key_error()) {
+      setInvalidAllMessagesForUser(response.sender_id());
+      return;
+   }
+
    if (!decodeAndUpdateIncomingSessionPublicKey(response.sender_id(), BinaryData(response.sender_session_public_key()))) {
       logger_->error("[BaseChatClient::OnReplySessionPublicKeyResponse] Failed updating remote public key!");
+
+      setInvalidAllMessagesForUser(response.sender_id());
       return;
    }
 
    retrySendQueuedMessages(response.sender_id());
+}
+
+void BaseChatClient::setInvalidAllMessagesForUser(const std::string& userId)
+{
+   messages_queue messages;
+   std::swap(messages, enqueued_messages_[userId]);
+
+   while (!messages.empty()) {
+      std::shared_ptr<Chat::Data> messageData = messages.front();
+      ChatUtils::messageFlagSet(messageData->mutable_message(), Chat::Data_Message_State_INVALID);
+      messages.pop();
+   }
 }
 
 std::shared_ptr<Chat::Data> BaseChatClient::sendMessageDataRequest(const std::shared_ptr<Chat::Data>& messageData

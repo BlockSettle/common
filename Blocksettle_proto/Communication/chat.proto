@@ -75,7 +75,9 @@ enum OtcRangeType
 enum SessionKeyError
 {
     SESSION_NO_ERROR = 0;
-    SESSION_WRONG_LOCAL_KEY = 1;
+    SESSION_UNABLE_DECODE_KEY = 1;
+    SESSION_USER_KEY_NOT_FOUND = 2;
+    SESSION_ENCRYPTION_FAILED = 3;
 };
 
 message OtcRange

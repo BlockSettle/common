@@ -172,6 +172,9 @@ protected:
    void retrySendQueuedContactRequests(const std::string &userId);
    void eraseQueuedContactRequests(const std::string& userId);
 
+   private:
+      void setInvalidAllMessagesForUser(const std::string& userId);
+
 protected:
    std::shared_ptr<spdlog::logger>        logger_;
    std::unique_ptr<ChatDB>                chatDb_;
