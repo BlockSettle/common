@@ -5,6 +5,7 @@
 #include "DataConnectionListener.h"
 #include "ChatProtocol/ResponseHandler.h"
 #include "Encryption/ChatSessionKey.h"
+#include "Encryption/ContactPublicKey.h"
 #include "SecureBinaryData.h"
 #include "ChatCommonTypes.h"
 #include "ChatDB.h"
@@ -179,7 +180,7 @@ protected:
 private:
    std::shared_ptr<ConnectionManager>     connectionManager_;
 
-   std::map<std::string, BinaryData>                  contactPublicKeys_;
+   Chat::ContactPublicKeyPtr                          contactPublicKeysPtr_;
    Chat::ChatSessionKeyPtr                            chatSessionKeyPtr_;
    std::shared_ptr<ZmqBIP15XDataConnection>           connection_;
    std::shared_ptr<UserHasher>                        hasher_;

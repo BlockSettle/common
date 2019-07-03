@@ -26,6 +26,7 @@ BaseChatClient::BaseChatClient(const std::shared_ptr<ConnectionManager>& connect
    , connectionManager_{connectionManager}
 {
    chatSessionKeyPtr_ = std::make_shared<Chat::ChatSessionKey>(logger);
+   contactPublicKeysPtr_ = std::make_shared<Chat::ContactPublicKey>(logger);
    hasher_ = std::make_shared<UserHasher>();
 
    chatDb_ = make_unique<ChatDB>(logger, dbFile);
@@ -196,7 +197,7 @@ void BaseChatClient::OnLogoutResponse(const Chat::Response_Logout & response)
 
 void BaseChatClient::setSavedKeys(std::map<std::string, BinaryData>&& loadedKeys)
 {
-   std::swap(contactPublicKeys_, loadedKeys);
+   contactPublicKeysPtr_->loadKeys(loadedKeys);
 }
 
 void BaseChatClient::onCreateOutgoingContact(const std::string &contactId)
@@ -233,11 +234,11 @@ bool BaseChatClient::sendFriendRequestToServer(const std::string &friendUserId, 
          onCRMessageReceived(message);
       }
 
-      const auto &contactPublicKeyIterator = contactPublicKeys_.find(friendUserId);
-      if (contactPublicKeyIterator == contactPublicKeys_.end()) {
+      BinaryData contactPublicKey;
+      if (!contactPublicKeysPtr_->findPublicKeyForUser(friendUserId, contactPublicKey)) {
          // Ask for public key from peer. Enqueue the message to be sent, once we receive the
          // necessary public key.
-         pending_contact_requests_.insert({friendUserId, message});
+         pending_contact_requests_.insert({ friendUserId, message });
 
          // Send our key to the peer.
          Chat::Request request;
@@ -247,7 +248,7 @@ bool BaseChatClient::sendFriendRequestToServer(const std::string &friendUserId, 
          return sendRequest(request);
       }
 
-      auto msgEncrypted = encryptMessageToSendIES(contactPublicKeyIterator->second, message);
+      auto msgEncrypted = encryptMessageToSendIES(contactPublicKey, message);
       Chat::Request request;
       auto d = request.mutable_modify_contacts_direct();
       d->set_sender_id(currentUserId_);
@@ -566,7 +567,7 @@ void BaseChatClient::OnContactListConfirmed(const std::vector<std::shared_ptr<Ch
          const auto& publicKey = BinaryData(contact->contact_record().public_key());
          const auto& publicKeyTimestamp = QDateTime::fromMSecsSinceEpoch(contact->contact_record().public_key_timestamp());
 
-         contactPublicKeys_[userId] = publicKey;
+         contactPublicKeysPtr_->setPublicKey(userId, publicKey);
 
          switch (updateInfo.second) {
             case Update:
@@ -747,7 +748,7 @@ void BaseChatClient::OnSendOwnPublicKey(const Chat::Response_SendOwnPublicKey &r
    const auto& peerId = response.sending_node_id();
    const auto& publicKey = BinaryData(response.sending_node_public_key());
    const auto& publicKeyTimestamp = QDateTime::fromMSecsSinceEpoch(response.sending_node_public_key_timestamp());
-   contactPublicKeys_[peerId] = publicKey;
+   contactPublicKeysPtr_->setPublicKey(peerId, publicKey);
    chatDb_->updateContactKey(peerId, publicKey, publicKeyTimestamp);
 
    retrySendQueuedContactRequests(response.sending_node_id());
@@ -785,25 +786,30 @@ bool BaseChatClient::removeContactFromDB(const std::string &userId)
 void BaseChatClient::OnSessionPublicKeyResponse(const Chat::Response_SessionPublicKey& response)
 {
    // Do not use base64 after protobuf switch and send binary data as-is
+   // TODO
+   Chat::Request request;
+   auto d = request.mutable_reply_session_public_key();
+   d->set_sender_id(currentUserId_);
+   d->set_receiver_id(response.sender_id());
+   //d->set_reply_session_error(Request_ReplySessionPublicKey_ReplySessionError_ERROR_WRONG_LOCAL_KEY)
+   sendRequest(request);
+
    if (!decodeAndUpdateIncomingSessionPublicKey(response.sender_id(), BinaryData(response.sender_session_public_key()))) {
       logger_->error("[BaseChatClient::OnSessionPublicKeyResponse] Failed updating remote public key!");
       return;
    }
 
    // encode own session public key by ies and send as reply
-   const auto& contactPublicKeyIterator = contactPublicKeys_.find(response.sender_id());
-   if (contactPublicKeyIterator == contactPublicKeys_.end()) {
+   BinaryData remotePublicKey;
+   if (!contactPublicKeysPtr_->findPublicKeyForUser(response.sender_id(), remotePublicKey)) {
       // this should not happen
       logger_->error("[BaseChatClient::OnSessionPublicKeyResponse] Cannot find remote public key!");
       return;
    }
 
-   BinaryData remotePublicKey(contactPublicKeyIterator->second);
-
    try {
       BinaryData encryptedLocalPublicKey = chatSessionKeyPtr_->iesEncryptLocalPublicKey(response.sender_id(), remotePublicKey);
 
-      Chat::Request request;
       auto d = request.mutable_reply_session_public_key();
       d->set_sender_id(currentUserId_);
       d->set_receiver_id(response.sender_id());
@@ -863,8 +869,8 @@ std::shared_ptr<Chat::Data> BaseChatClient::sendMessageDataRequest(const std::sh
       return messageData;
    }
 
-   const auto &contactPublicKeyIterator = contactPublicKeys_.find(receiver);
-   if (contactPublicKeyIterator == contactPublicKeys_.end()) {
+   BinaryData receiverPublicKey;
+   if (!contactPublicKeysPtr_->findPublicKeyForUser(receiver, receiverPublicKey)) {
       // Ask for public key from peer. Enqueue the message to be sent, once we receive the
       // necessary public key.
       enqueued_messages_[receiver].push(messageData);
@@ -881,7 +887,7 @@ std::shared_ptr<Chat::Data> BaseChatClient::sendMessageDataRequest(const std::sh
 
    switch (resolveMessageEncryption(messageData)) {
       case Chat::Data_Message_Encryption_AEAD: {
-         auto msgEncrypted = encryptMessageToSendAEAD(receiver, contactPublicKeyIterator->second, messageData);
+         auto msgEncrypted = encryptMessageToSendAEAD(receiver, receiverPublicKey, messageData);
          if (msgEncrypted) {
             Chat::Request request;
             auto d = request.mutable_send_message();
@@ -893,7 +899,7 @@ std::shared_ptr<Chat::Data> BaseChatClient::sendMessageDataRequest(const std::sh
          break;
       }
       case Chat::Data_Message_Encryption_IES: {
-         auto msgEncrypted = encryptMessageToSendIES(contactPublicKeyIterator->second, messageData);
+         auto msgEncrypted = encryptMessageToSendIES(receiverPublicKey, messageData);
          if (msgEncrypted) {
             Chat::Request request;
             auto d = request.mutable_send_message();
@@ -1059,7 +1065,7 @@ std::shared_ptr<Chat::Data> BaseChatClient::decryptIESMessage(const std::shared_
 void BaseChatClient::onFriendRequestReceived(const std::string &userId, const std::string &contactId, BinaryData publicKey, const QDateTime& publicKeyTimestamp, const std::shared_ptr<Chat::Data>& message)
 {
    // incoming public key was replaced by server, it's not directly sent by client
-   contactPublicKeys_[contactId] = publicKey;
+   contactPublicKeysPtr_->setPublicKey(contactId, publicKey);
    chatDb_->addKey(contactId, publicKey, publicKeyTimestamp);
 
    onFriendRequest(userId, contactId, publicKey);
@@ -1090,7 +1096,7 @@ void BaseChatClient::onFriendRequestReceived(const std::string &userId, const st
 void BaseChatClient::onFriendRequestAccepted(const std::string &contactId, BinaryData publicKey, const QDateTime& publicKeyTimestamp)
 {
    // incoming public key was replaced by server, it's not directly sent by client
-   contactPublicKeys_[contactId] = publicKey;
+   contactPublicKeysPtr_->setPublicKey(contactId, publicKey);
    chatDb_->addKey(contactId, publicKey, publicKeyTimestamp);
 
    onContactAccepted(contactId);
