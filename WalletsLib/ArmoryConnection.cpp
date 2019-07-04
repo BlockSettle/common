@@ -898,12 +898,14 @@ void ArmoryConnection::onRefresh(const std::vector<BinaryData>& ids)
 
 void ArmoryConnection::processDelayedZC()
 {
+   const auto currentTime = std::chrono::steady_clock::now();
+
    std::unique_lock<std::mutex> lock(zcMutex_);
 
    auto it = zcWaitingEntries_.begin();
    while (it != zcWaitingEntries_.end()) {
       auto &waitingEntry = it->second;
-      const auto timeDiff = std::chrono::steady_clock::now() - waitingEntry.recvTime;
+      const auto timeDiff = currentTime - waitingEntry.recvTime;
       if (timeDiff < std::chrono::milliseconds(2300)) { // can be tuned later
          ++it;
          continue;
@@ -935,9 +937,10 @@ void ArmoryConnection::processDelayedZC()
 
 void ArmoryConnection::onZCsReceived(const std::vector<ClientClasses::LedgerEntry> &entries)
 {
-   std::unique_lock<std::mutex> lock(zcMutex_);
    std::vector<bs::TXEntry> immediates;
-   auto newEntries = bs::TXEntry::fromLedgerEntries(entries);
+   const auto newEntries = bs::TXEntry::fromLedgerEntries(entries);
+
+   std::unique_lock<std::mutex> lock(zcMutex_);
 
    for (const auto &newEntry : newEntries) {
       auto it = zcWaitingEntries_.find(newEntry.txHash);
