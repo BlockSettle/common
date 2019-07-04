@@ -119,7 +119,7 @@ std::shared_ptr<Chat::Data> ChatClient::sendOwnMessage(
    auto d = messageData->mutable_message();
    d->set_message(message);
 
-   logger_->debug("[ChatClient::sendOwnMessage] {}", message);
+   logger_->debug("[ChatClient::{}] {}", __func__, message);
 
    return sendMessageDataRequest(messageData, receiver);
 }
@@ -127,7 +127,7 @@ std::shared_ptr<Chat::Data> ChatClient::sendOwnMessage(
 std::shared_ptr<Chat::Data> ChatClient::SubmitPrivateOTCRequest(const bs::network::OTCRequest& otcRequest
    , const std::string &receiver)
 {
-   logger_->debug("[ChatClient::SubmitPrivateOTCRequest]");
+   logger_->debug("[ChatClient::{}]", __func__);
 
    auto otcMessageData = std::make_shared<Chat::Data>();
    initMessage(otcMessageData.get(), receiver);
@@ -154,7 +154,7 @@ std::shared_ptr<Chat::Data> ChatClient::SubmitPrivateOTCResponse(const bs::netwo
    otc->mutable_quantity()->set_lower(otcResponse.quantityRange.lower);
    otc->mutable_quantity()->set_upper(otcResponse.quantityRange.upper);
 
-   logger_->debug("[ChatClient::SubmitPrivateOTCResponse]");
+   logger_->debug("[ChatClient::{}]", __func__);
 
    return sendMessageDataRequest(otcMessageData, receiver);
 }
@@ -168,7 +168,7 @@ std::shared_ptr<Chat::Data> ChatClient::SubmitPrivateCancel(const std::string &r
    // Just to select required message type
    d->mutable_otc_close_trading();
 
-   logger_->debug("[ChatClient::SubmitPrivateCancel] to {}", receiver);
+   logger_->debug("[ChatClient::{}] to {}", __func__, receiver);
 
    return sendMessageDataRequest(otcMessageData, receiver);
 }
@@ -183,7 +183,7 @@ std::shared_ptr<Chat::Data> ChatClient::SubmitPrivateUpdate(const bs::network::O
    otc->set_price(update.price);
    otc->set_amount(update.amount);
 
-   logger_->debug("[ChatClient::SubmitPrivateUpdate] to {}", receiver);
+   logger_->debug("[ChatClient::{}] to {}", __func__, receiver);
 
    return sendMessageDataRequest(otcMessageData, receiver);
 }
@@ -211,7 +211,7 @@ std::shared_ptr<Chat::Data> ChatClient::sendRoomOwnMessage(const std::string& me
 //      return result;
 //   }
 
-   logger_->debug("[ChatClient::sendRoomOwnMessage] {}", message);
+   logger_->debug("[ChatClient::{}] {}", __func__, message);
 
 //   auto localEncMsg = msg;
 //   if (!localEncMsg.encrypt(appSettings_->GetAuthKeys().second)) {
@@ -306,10 +306,9 @@ void ChatClient::sendFriendRequest(const std::string &friendUserId, const std::s
 
 
    if (sendFriendRequestToServer(friendUserId, messageData)) {
-      logger_->error("[ChatClient::sendFriendRequest] Friend request sent to {}"
-                     , friendUserId);
+      logger_->error("[ChatClient::{}] Friend request sent to {}", __func__, friendUserId);
    } else {
-      logger_->error("[ChatClient::sendFriendRequest] failed to send friend request for {}", friendUserId);
+      logger_->error("[ChatClient::{}] failed to send friend request for {}", __func__, friendUserId);
    }
 }
 
@@ -518,7 +517,7 @@ void ChatClient::onMessageSent(const std::string& receiverId, const std::string&
       ChatUtils::messageFlagSet(message->mutable_message(), Chat::Data_Message_State_SENT);
       model_->notifyMessageChanged(message);
    } else {
-      logger_->error("[ChatClient::onMessageSent] message not found: {}", localId);
+      logger_->error("[ChatClient::{}] message not found: {}", __func__, localId);
    }
 }
 

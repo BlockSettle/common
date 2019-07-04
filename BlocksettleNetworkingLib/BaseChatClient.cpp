@@ -35,7 +35,7 @@ BaseChatClient::BaseChatClient(const std::shared_ptr<ConnectionManager>& connect
    setSavedKeys(chatDb_->loadKeys(&loaded));
 
    if (!loaded) {
-      logger_->error("[BaseChatClient::BaseChatClient] failed to load saved keys");
+      logger_->error("[BaseChatClient::{}] failed to load saved keys", __func__);
    }
 }
 
@@ -47,7 +47,7 @@ void BaseChatClient::OnDataReceived(const std::string& data)
    auto response = std::make_shared<Chat::Response>();
    bool result = response->ParseFromString(data);
    if (!result) {
-      logger_->error("[BaseChatClient::OnDataReceived] failed to parse message:\n{}", data);
+      logger_->error("[BaseChatClient::{}] failed to parse message:\n{}", __func__, data);
       return;
    }
 
@@ -108,7 +108,7 @@ void BaseChatClient::OnDataReceived(const std::string& data)
             OnConfirmReplacePublicKey(response->confirm_replace_public_key());
             break;
          case Chat::Response::DATA_NOT_SET:
-            logger_->error("Invalid empty or unknown response detected");
+            logger_->error("[BaseChatClient::{}] Invalid empty or unknown response detected", __func__);
             break;
       }
    });
@@ -116,7 +116,7 @@ void BaseChatClient::OnDataReceived(const std::string& data)
 
 void BaseChatClient::OnConnected()
 {
-   logger_->debug("[BaseChatClient::OnConnected]");
+   logger_->debug("[BaseChatClient::{}]", __func__);
 
    Chat::Request request;
    auto d = request.mutable_login();
@@ -128,14 +128,14 @@ void BaseChatClient::OnConnected()
 
 void BaseChatClient::OnError(DataConnectionError errorCode)
 {
-   logger_->debug("[BaseChatClient::OnError] {}", errorCode);
+   logger_->debug("[BaseChatClient::{}] {}", __func__, errorCode);
 }
 
 std::string BaseChatClient::LoginToServer(const std::string& email, const std::string& jwt
                                           , const ZmqBIP15XDataConnection::cbNewKey &cb)
 {
    if (connection_) {
-      logger_->error("[BaseChatClient::LoginToServer] connecting with not purged connection");
+      logger_->error("[BaseChatClient::{}] connecting with not purged connection", __func__);
       return {};
    }
 
@@ -147,7 +147,7 @@ std::string BaseChatClient::LoginToServer(const std::string& email, const std::s
 
    if (!connection_->openConnection( getChatServerHost(), getChatServerPort(), this))
    {
-      logger_->error("[BaseChatClient::LoginToServer] failed to open ZMQ data connection");
+      logger_->error("[BaseChatClient::{}] failed to open ZMQ data connection", __func__);
       connection_.reset();
    }
 
@@ -157,7 +157,7 @@ std::string BaseChatClient::LoginToServer(const std::string& email, const std::s
 void BaseChatClient::LogoutFromServer()
 {
    if (!connection_) {
-      logger_->error("[BaseChatClient::LogoutFromServer] Disconnected already");
+      logger_->error("[BaseChatClient::{}] Disconnected already", __func__);
       return;
    }
 
@@ -171,7 +171,7 @@ void BaseChatClient::LogoutFromServer()
 
 void BaseChatClient::OnDisconnected()
 {
-   logger_->debug("[BaseChatClient::OnDisconnected]");
+   logger_->debug("[BaseChatClient::{}]", __func__);
    QMetaObject::invokeMethod(this, [this] {
       cleanupConnection();
    });
@@ -189,7 +189,7 @@ void BaseChatClient::OnLoginReturned(const Chat::Response_Login &response)
 
 void BaseChatClient::OnLogoutResponse(const Chat::Response_Logout & response)
 {
-   logger_->debug("[BaseChatClient::OnLogoutResponse]");
+   logger_->debug("[BaseChatClient::{}]", __func__);
    QMetaObject::invokeMethod(this, [this] {
       cleanupConnection();
    });
@@ -210,7 +210,7 @@ bool BaseChatClient::sendRequest(const Chat::Request& request)
    logger_->debug("[BaseChatClient::{}] send: \n{}", __func__, ProtobufUtils::toJson(request));
 
    if (!connection_->isActive()) {
-      logger_->error("[BaseChatClient::sendRequest] Connection is not alive!");
+      logger_->error("[BaseChatClient::{}] Connection is not alive!", __func__);
       return false;
    }
    return connection_->send(request.SerializeAsString());
@@ -402,8 +402,8 @@ void BaseChatClient::OnSendMessageResponse(const Chat::Response_SendMessage& res
 {
    if (response.accepted()) {
       if (!chatDb_->syncMessageId(response.client_message_id(), response.server_message_id())) {
-         logger_->error("[BaseChatClient::OnSendMessageResponse] failed to update message id in DB from {} to {}"
-                        , response.client_message_id(), response.server_message_id());
+         logger_->error("[BaseChatClient::{}] failed to update message id in DB from {} to {}", 
+            __func__, response.client_message_id(), response.server_message_id());
       }
 
       onMessageSent(response.receiver_id(), response.client_message_id(), response.server_message_id());
@@ -422,8 +422,8 @@ void BaseChatClient::OnMessageChangeStatusResponse(const Chat::Response_MessageC
 
       onMessageStatusChanged(chatId, messageId, newStatus);
    } else {
-      logger_->error("[BaseChatClient::OnMessageChangeStatusResponse] failed to update message state in DB: {} {}"
-                     , response.message_id(), newStatus);
+      logger_->error("[BaseChatClient::{}] failed to update message state in DB: {} {}", 
+         __func__, response.message_id(), newStatus);
    }
 }
 
@@ -473,8 +473,8 @@ void BaseChatClient::OnModifyContactsDirectResponse(const Chat::Response_ModifyC
          break;
    }
 
-   logger_->debug("[BaseChatClient::OnContactsActionResponseDirect]: Incoming contact action from {}: {}",
-      senderId, Chat::ContactsAction_Name(response.action()));
+   logger_->debug("[BaseChatClient::{}]: Incoming contact action from {}: {}", 
+      __func__, senderId, Chat::ContactsAction_Name(response.action()));
 }
 
 void BaseChatClient::OnModifyContactsServerResponse(const Chat::Response_ModifyContactsServer & response)
@@ -683,8 +683,7 @@ void BaseChatClient::OnMessages(const Chat::Response_Messages &response)
             const auto& chatSessionKeyDataPtr = chatSessionKeyPtr_->findSessionForUser(senderId);
 
             if (!chatSessionKeyPtr_ || !chatSessionKeyPtr_->isExchangeForUserSucceeded(senderId)) {
-               logger_->error("[BaseChatClient::OnMessages] Can't find public key for sender {}"
-                              , senderId);
+               logger_->error("[BaseChatClient::{}] Can't find public key for sender {}", __func__, senderId);
                ChatUtils::messageFlagSet(msgCopy->mutable_message(), Chat::Data_Message_State_INVALID);
             }
             else {
@@ -693,7 +692,7 @@ void BaseChatClient::OnMessages(const Chat::Response_Messages &response)
 
                msgCopy = ChatUtils::decryptMessageAead(logger_, msgCopy->message(), remotePublicKey, localPrivateKey);
                if (!msgCopy) {
-                  logger_->error("decrypt message failed");
+                  logger_->error("[BaseChatClient::{}] decrypt message failed", __func__);
                   continue;
                }
             }
@@ -706,7 +705,7 @@ void BaseChatClient::OnMessages(const Chat::Response_Messages &response)
 
          case Chat::Data_Message_Encryption_IES:
          {
-            logger_->error("[BaseChatClient::OnMessages] This could not happen! Failed to decrypt msg.");
+            logger_->error("[BaseChatClient::{}] This could not happen! Failed to decrypt msg.", __func__);
             chatDb_->add(msgCopy);
             auto decMsg = decryptIESMessage(msgCopy);
             onDMMessageReceived(decMsg);
@@ -722,7 +721,7 @@ void BaseChatClient::OnMessages(const Chat::Response_Messages &response)
 
 void BaseChatClient::OnAskForPublicKey(const Chat::Response_AskForPublicKey &response)
 {
-   logger_->debug("Received request to send own public key from server");
+   logger_->debug("[BaseChatClient::{}] Received request to send own public key from server", __func__);
 
    // Make sure we are the node for which a public key was expected, if not, ignore this call.
    if (currentUserId_ != response.peer_id()) {
@@ -792,7 +791,7 @@ void BaseChatClient::OnSessionPublicKeyResponse(const Chat::Response_SessionPubl
    d->set_receiver_id(response.sender_id());
 
    if (!decodeAndUpdateIncomingSessionPublicKey(response.sender_id(), BinaryData(response.sender_session_public_key()))) {
-      logger_->error("[BaseChatClient::OnSessionPublicKeyResponse] Failed updating remote public key!");
+      logger_->error("[BaseChatClient::{}] Failed updating remote public key!", __func__);
 
       d->set_session_key_error(Chat::SESSION_UNABLE_DECODE_KEY);
       sendRequest(request);
@@ -802,7 +801,7 @@ void BaseChatClient::OnSessionPublicKeyResponse(const Chat::Response_SessionPubl
    // encode own session public key by ies and send as reply
    BinaryData remotePublicKey;
    if (!contactPublicKeysPtr_->findPublicKeyForUser(response.sender_id(), remotePublicKey)) {
-      logger_->error("[BaseChatClient::OnSessionPublicKeyResponse] Cannot find remote public key!");
+      logger_->error("[BaseChatClient::{}] Cannot find remote public key!", __func__);
 
       d->set_session_key_error(Chat::SESSION_USER_KEY_NOT_FOUND);
       sendRequest(request);
@@ -818,7 +817,7 @@ void BaseChatClient::OnSessionPublicKeyResponse(const Chat::Response_SessionPubl
       sendRequest(request);
    }
    catch (std::exception& e) {
-      logger_->error("[BaseChatClient::OnSessionPublicKeyResponse] Failed to encrypt msg by ies {}", e.what());
+      logger_->error("[BaseChatClient::{}] Failed to encrypt msg by ies {}", __func__, e.what());
 
       d->set_session_key_error(Chat::SESSION_ENCRYPTION_FAILED);
       sendRequest(request);
@@ -834,7 +833,7 @@ void BaseChatClient::OnReplySessionPublicKeyResponse(const Chat::Response_ReplyS
    }
 
    if (!decodeAndUpdateIncomingSessionPublicKey(response.sender_id(), BinaryData(response.sender_session_public_key()))) {
-      logger_->error("[BaseChatClient::OnReplySessionPublicKeyResponse] Failed updating remote public key!");
+      logger_->error("[BaseChatClient::{}] Failed updating remote public key!", __func__);
 
       setInvalidAllMessagesForUser(response.sender_id());
       return;
@@ -863,7 +862,7 @@ std::shared_ptr<Chat::Data> BaseChatClient::sendMessageDataRequest(const std::sh
    if (!isFromQueue) {
       if (!encryptByIESAndSaveMessageInDb(messageData))
       {
-         logger_->error("[BaseChatClient::sendMessageDataRequest] failed to encrypt. discarding message");
+         logger_->error("[BaseChatClient::{}] failed to encrypt. discarding message", __func__);
          ChatUtils::messageFlagSet(messageData->mutable_message(), Chat::Data_Message_State_INVALID);
          return messageData;
       }
@@ -885,9 +884,7 @@ std::shared_ptr<Chat::Data> BaseChatClient::sendMessageDataRequest(const std::sh
    chatDb_->getContact(messageData->message().receiver_id(), &contact);
 
    if (contact.status() == Chat::CONTACT_STATUS_REJECTED) {
-      logger_->error("[BaseChatClient::sendMessageDataRequest] {}",
-                     "Receiver has rejected state. Discarding message."
-                     , receiver);
+      logger_->error("[BaseChatClient::{}] {} Receiver has rejected state. Discarding message.", __func__, receiver);
       ChatUtils::messageFlagSet(messageData->mutable_message(), Chat::Data_Message_State_INVALID);
       return messageData;
    }
@@ -1006,7 +1003,7 @@ std::shared_ptr<Chat::Data> BaseChatClient::encryptMessageToSendAEAD(const std::
       chatSessionKeyPtr_->generateLocalKeysForUser(receiver);
 
       BinaryData remotePublicKey(rpk);
-      logger_->debug("[BaseChatClient::encryptMessageToSendAEAD] USING PUBLIC KEY: {}", remotePublicKey.toHexStr());
+      logger_->debug("[BaseChatClient::{}] USING PUBLIC KEY: {}", __func__, remotePublicKey.toHexStr());
 
       try {
          BinaryData encryptedLocalPublicKey = chatSessionKeyPtr_->iesEncryptLocalPublicKey(receiver, remotePublicKey);
@@ -1020,7 +1017,7 @@ std::shared_ptr<Chat::Data> BaseChatClient::encryptMessageToSendAEAD(const std::
 
          return nullptr;
       } catch (std::exception& e) {
-         logger_->error("[ChatClient::sendMessageDataRequest] Failed to encrypt msg by ies {}", e.what());
+         logger_->error("[BaseChatClient::{}] Failed to encrypt msg by ies {}", __func__, e.what());
          return nullptr;
       }
    }
