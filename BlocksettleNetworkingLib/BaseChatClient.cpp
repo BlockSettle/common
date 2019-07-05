@@ -19,11 +19,9 @@
 
 #include "ChatProtocol/ChatUtils.h"
 
-BaseChatClient::BaseChatClient(const std::shared_ptr<ConnectionManager>& connectionManager
-                               , const std::shared_ptr<spdlog::logger>& logger
-                               , const QString& dbFile)
-   : logger_{logger}
-   , connectionManager_{connectionManager}
+BaseChatClient::BaseChatClient(const std::shared_ptr<ConnectionManager>& connectionManager, 
+   const std::shared_ptr<spdlog::logger>& logger, const QString& dbFile) 
+   : logger_{logger}, connectionManager_{connectionManager}
 {
    chatSessionKeyPtr_ = std::make_shared<Chat::ChatSessionKey>(logger);
    contactPublicKeysPtr_ = std::make_shared<Chat::ContactPublicKey>(logger);
@@ -46,6 +44,7 @@ void BaseChatClient::OnDataReceived(const std::string& data)
 {
    auto response = std::make_shared<Chat::Response>();
    bool result = response->ParseFromString(data);
+
    if (!result) {
       logger_->error("[BaseChatClient::{}] failed to parse message:\n{}", __func__, data);
       return;
@@ -131,8 +130,7 @@ void BaseChatClient::OnError(DataConnectionError errorCode)
    logger_->debug("[BaseChatClient::{}] {}", __func__, errorCode);
 }
 
-std::string BaseChatClient::LoginToServer(const std::string& email, const std::string& jwt
-                                          , const ZmqBIP15XDataConnection::cbNewKey &cb)
+std::string BaseChatClient::LoginToServer(const std::string& email, const std::string& jwt, const ZmqBIP15XDataConnection::cbNewKey &cb)
 {
    if (connection_) {
       logger_->error("[BaseChatClient::{}] connecting with not purged connection", __func__);
@@ -222,7 +220,7 @@ bool BaseChatClient::sendFriendRequestToServer(const std::string &friendUserId)
    return sendFriendRequestToServer(friendUserId, nullptr);
 }
 
-bool BaseChatClient::sendFriendRequestToServer(const std::string &friendUserId, std::shared_ptr<Chat::Data> message, bool isFromPendings)
+bool BaseChatClient::sendFriendRequestToServer(const std::string &friendUserId, ChatDataPtr message, bool isFromPendings)
 {
    if (message) {
 
@@ -332,7 +330,7 @@ bool BaseChatClient::sendRemoveFriendToServer(const std::string &contactId)
    return sendRequest(request);
 }
 
-bool BaseChatClient::sendUpdateMessageState(const std::shared_ptr<Chat::Data>& message)
+bool BaseChatClient::sendUpdateMessageState(const ChatDataPtr& message)
 {
    assert(message->has_message());
 
@@ -499,9 +497,9 @@ void BaseChatClient::OnModifyContactsServerResponse(const Chat::Response_ModifyC
 
 void BaseChatClient::OnContactsListResponse(const Chat::Response_ContactsList & response)
 {
-   std::vector<std::shared_ptr<Chat::Data>> checkedList;
-   std::vector<std::shared_ptr<Chat::Data>> absolutelyNewList;
-   std::vector<std::shared_ptr<Chat::Data>> toConfirmKeysList;
+   ChatDataVectorPtr checkedList;
+   ChatDataVectorPtr absolutelyNewList;
+   ChatDataVectorPtr toConfirmKeysList;
    for (const auto& contact : response.contacts()) {
       if (!contact.has_contact_record()) {
          logger_->error("[BaseChatClient::{}] invalid response detected", __func__);
@@ -543,9 +541,8 @@ void BaseChatClient::OnContactsListResponse(const Chat::Response_ContactsList & 
    }
 }
 
-void BaseChatClient::OnContactListConfirmed(const std::vector<std::shared_ptr<Chat::Data>>& checked,
-                                            const std::vector<std::shared_ptr<Chat::Data>>& keyUpdate,
-                                            const std::vector<std::shared_ptr<Chat::Data>>& absolutelyNew)
+void BaseChatClient::OnContactListConfirmed(
+   const ChatDataVectorPtr& checked, const ChatDataVectorPtr& keyUpdate, const ChatDataVectorPtr& absolutelyNew)
 {
    enum ContactListKeyAction {
       Leave,
@@ -553,13 +550,13 @@ void BaseChatClient::OnContactListConfirmed(const std::vector<std::shared_ptr<Ch
       Add
    };
 
-   std::vector<std::pair<std::vector<std::shared_ptr<Chat::Data>>, ContactListKeyAction>> updateLists;
+   std::vector<std::pair<ChatDataVectorPtr, ContactListKeyAction>> updateLists;
 
    updateLists.push_back({checked, Leave});
    updateLists.push_back({keyUpdate, Update});
    updateLists.push_back({absolutelyNew, Add});
 
-   std::vector<std::shared_ptr<Chat::Data>> resultContactsCollection;
+   ChatDataVectorPtr resultContactsCollection;
 
    for (auto updateInfo : updateLists) {
       for (const auto& contact : updateInfo.first) {
@@ -592,7 +589,7 @@ void BaseChatClient::OnContactListConfirmed(const std::vector<std::shared_ptr<Ch
 
 void BaseChatClient::OnChatroomsList(const Chat::Response_ChatroomsList &response)
 {
-   std::vector<std::shared_ptr<Chat::Data>> newList;
+   ChatDataVectorPtr newList;
    for (const auto& room : response.rooms()) {
       if (!room.has_room()) {
          logger_->error("[BaseChatClient::{}] invalid response detected", __func__);
@@ -636,7 +633,7 @@ void BaseChatClient::OnRoomMessages(const Chat::Response_RoomMessages& response)
 
 void BaseChatClient::OnSearchUsersResponse(const Chat::Response_SearchUsers & response)
 {
-   std::vector<std::shared_ptr<Chat::Data>> newList;
+   ChatDataVectorPtr newList;
    for (const auto& user : response.users()) {
       if (!user.has_user()) {
          logger_->error("[BaseChatClient::{}] invalid response detected", __func__);
@@ -663,7 +660,7 @@ void BaseChatClient::OnUsersList(const Chat::Response_UsersList& response)
 
 void BaseChatClient::OnMessages(const Chat::Response_Messages &response)
 {
-   std::vector<std::shared_ptr<Chat::Data>> messages;
+   ChatDataVectorPtr messages;
    for (const auto &msg : response.messages()) {
       auto msgCopy = std::make_shared<Chat::Data>(msg);
 
@@ -848,14 +845,13 @@ void BaseChatClient::setInvalidAllMessagesForUser(const std::string& userId)
    std::swap(messages, enqueued_messages_[userId]);
 
    while (!messages.empty()) {
-      std::shared_ptr<Chat::Data> messageData = messages.front();
+      ChatDataPtr messageData = messages.front();
       updateMessageStateAndSave(messageData, Chat::Data_Message_State_INVALID);
       messages.pop();
    }
 }
 
-std::shared_ptr<Chat::Data> BaseChatClient::sendMessageDataRequest(const std::shared_ptr<Chat::Data>& messageData
-                                                                   , const std::string &receiver, bool isFromQueue)
+ChatDataPtr BaseChatClient::sendMessageDataRequest(const ChatDataPtr& messageData, const std::string &receiver, bool isFromQueue)
 {
    messageData->set_direction(Chat::Data_Direction_SENT);
 
@@ -976,7 +972,7 @@ void BaseChatClient::eraseQueuedContactRequests(const std::string& userId)
    }
 }
 
-bool BaseChatClient::encryptByIESAndSaveMessageInDb(const std::shared_ptr<Chat::Data>& message)
+bool BaseChatClient::encryptByIESAndSaveMessageInDb(const ChatDataPtr& message)
 {
    auto msgEncrypted = ChatUtils::encryptMessageIes(logger_, message->message(), getOwnAuthPublicKey());
 
@@ -994,7 +990,7 @@ bool BaseChatClient::encryptByIESAndSaveMessageInDb(const std::shared_ptr<Chat::
    return true;
 }
 
-std::shared_ptr<Chat::Data> BaseChatClient::encryptMessageToSendAEAD(const std::string &receiver, BinaryData &rpk, std::shared_ptr<Chat::Data> messageData)
+ChatDataPtr BaseChatClient::encryptMessageToSendAEAD(const std::string &receiver, BinaryData &rpk, ChatDataPtr messageData)
 {
    const auto& chatSessionKeyDataPtr = chatSessionKeyPtr_->findSessionForUser(receiver);
    if (chatSessionKeyDataPtr == nullptr || !chatSessionKeyPtr_->isExchangeForUserSucceeded(receiver)) {
@@ -1056,7 +1052,7 @@ std::shared_ptr<Chat::Data> BaseChatClient::encryptMessageToSendAEAD(const std::
    return msgEncrypted;
 }
 
-std::shared_ptr<Chat::Data> BaseChatClient::encryptMessageToSendIES(BinaryData &rpk, std::shared_ptr<Chat::Data> messageData)
+ChatDataPtr BaseChatClient::encryptMessageToSendIES(BinaryData &rpk, ChatDataPtr messageData)
 {
    auto msgEncrypted = ChatUtils::encryptMessageIes(logger_, messageData->message(), rpk);
 
@@ -1069,7 +1065,7 @@ std::shared_ptr<Chat::Data> BaseChatClient::encryptMessageToSendIES(BinaryData &
    return msgEncrypted;
 }
 
-std::shared_ptr<Chat::Data> BaseChatClient::decryptIESMessage(const std::shared_ptr<Chat::Data>& message)
+ChatDataPtr BaseChatClient::decryptIESMessage(const ChatDataPtr& message)
 {
    auto msgDecrypted = ChatUtils::decryptMessageIes(logger_, message->message(), getOwnAuthPrivateKey());
    if (!msgDecrypted) {
@@ -1082,7 +1078,7 @@ std::shared_ptr<Chat::Data> BaseChatClient::decryptIESMessage(const std::shared_
    return msgDecrypted;
 }
 
-void BaseChatClient::onFriendRequestReceived(const std::string &userId, const std::string &contactId, BinaryData publicKey, const QDateTime& publicKeyTimestamp, const std::shared_ptr<Chat::Data>& message)
+void BaseChatClient::onFriendRequestReceived(const std::string &userId, const std::string &contactId, BinaryData publicKey, const QDateTime& publicKeyTimestamp, const ChatDataPtr& message)
 {
    // incoming public key was replaced by server, it's not directly sent by client
    contactPublicKeysPtr_->setPublicKey(contactId, publicKey);
