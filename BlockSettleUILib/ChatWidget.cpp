@@ -1300,10 +1300,19 @@ void ChatWidget::onContactListConfirmationRequested(const std::vector<std::share
 
    QString  detailsString = detailsPattern.arg(remoteConfirmed.size()).arg(remoteKeysUpdate.size()).arg(remoteAbsolutelyNew.size());
 
-   if (BSMessageBox(BSMessageBox::question, tr("Contacts Information Update"), tr("Some contacts information require update.")
-                    , tr("Do you want to continue?"), detailsString).exec() == QDialog::Accepted) {
+   BSMessageBox bsMessageBox(BSMessageBox::question, tr("Contacts Information Update"),
+      tr("Some contacts information require update."), tr("Do you want to continue?"), detailsString);
+   int ret = bsMessageBox.exec();
 
+   if (QDialog::Accepted == ret) {
       onConfirmContactNewKeyData(remoteConfirmed, remoteKeysUpdate, remoteAbsolutelyNew);
+   }
+   else if (QDialog::Rejected == ret) {
+      std::vector<std::shared_ptr<Chat::Data>> mergedList;
+      mergedList.insert(mergedList.end(), remoteConfirmed.begin(), remoteConfirmed.end());
+      mergedList.insert(mergedList.end(), remoteKeysUpdate.begin(), remoteKeysUpdate.end());
+      mergedList.insert(mergedList.end(), remoteAbsolutelyNew.begin(), remoteAbsolutelyNew.end());
+      client_->OnContactListRejected(mergedList);
    }
 }
 

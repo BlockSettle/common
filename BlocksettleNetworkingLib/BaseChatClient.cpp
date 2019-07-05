@@ -1180,3 +1180,10 @@ void BaseChatClient::uploadNewPublicKeyToServer(const bool& confirmed)
    uploadNewPublicKey->set_public_key_to_replace(getOwnAuthPublicKey().toBinStr());
    sendRequest(request);
 }
+
+void BaseChatClient::OnContactListRejected(const ChatDataVectorPtr& rejectedList)
+{
+   for (auto contact : rejectedList) {
+      onFriendRequestedRemove(contact->contact_record().contact_id());
+   }
+}
