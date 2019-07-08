@@ -1002,8 +1002,9 @@ void TransactionsViewItem::calcAmount(const std::shared_ptr<bs::sync::WalletsMan
 {
    if (wallet && tx.isInitialized()) {
       bool hasSpecialAddr = false;
-      int64_t outputVal = 0, ownOutputVal = 0;
+      int64_t totalVal = 0;
       int64_t addressVal = 0;
+
       for (size_t i = 0; i < tx.getNumTxOut(); ++i) {
          const TxOut out = tx.getTxOutCopy(i);
          const auto addr = bs::Address::fromTxOut(out);
@@ -1011,27 +1012,32 @@ void TransactionsViewItem::calcAmount(const std::shared_ptr<bs::sync::WalletsMan
          if (txEntry.isChainedZC && !hasSpecialAddr && addrWallet) {
             hasSpecialAddr = isSpecialWallet(addrWallet);
          }
-         if (addrWallet) {
-            ownOutputVal += out.getValue();
+
+         if (addrWallet == wallet) {
+            totalVal += out.getValue();
          }
-         outputVal += out.getValue();
 
          if (filterAddress.isValid() && addr == filterAddress) {
             addressVal += out.getValue();
          }
       }
 
-      int64_t inputVal = 0;
       for (size_t i = 0; i < tx.getNumTxIn(); i++) {
          TxIn in = tx.getTxInCopy(i);
          OutPoint op = in.getOutPoint();
          const auto &prevTx = txIns[op.getTxHash()];
          if (prevTx.isInitialized()) {
             TxOut prevOut = prevTx.getTxOutCopy(op.getTxOutIndex());
-            inputVal += prevOut.getValue();
+
             const auto addr = bs::Address::fromTxOut(prevTx.getTxOutCopy(op.getTxOutIndex()));
+            const auto addrWallet = walletsManager->getWalletByAddress(addr.id());
+
             if (txEntry.isChainedZC && !hasSpecialAddr) {
                hasSpecialAddr = isSpecialWallet(walletsManager->getWalletByAddress(addr.id()));
+            }
+
+            if (addrWallet == wallet) {
+               totalVal -= prevOut.getValue();
             }
 
             if (filterAddress.isValid() && filterAddress == addr) {
@@ -1039,14 +1045,9 @@ void TransactionsViewItem::calcAmount(const std::shared_ptr<bs::sync::WalletsMan
             }
          }
       }
-      const int64_t fee = (wallet->type() == bs::core::wallet::Type::ColorCoin) || (txEntry.value > 0)
-         ? 0 : (inputVal - outputVal);
-      const auto value = (txEntry.value < -fee) ? -(outputVal - ownOutputVal + fee)
-         : (ownOutputVal > 0) ? ownOutputVal : outputVal;
-
       if (!filterAddress.isValid()) {
-         amount = wallet->getTxBalance(value);
-         amountStr = wallet->displayTxValue(value);
+         amount = wallet->getTxBalance(totalVal);
+         amountStr = wallet->displayTxValue(totalVal);
       } else {
          amount = wallet->getTxBalance(addressVal);
          amountStr = wallet->displayTxValue(addressVal);
