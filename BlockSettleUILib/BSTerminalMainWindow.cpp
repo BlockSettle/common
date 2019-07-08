@@ -101,7 +101,7 @@ BSTerminalMainWindow::BSTerminalMainWindow(const std::shared_ptr<ApplicationSett
 
    setupIcon();
    UiUtils::setupIconFont(this);
-   NotificationCenter::createInstance(applicationSettings_, ui_.get(), sysTrayIcon_, this);
+   NotificationCenter::createInstance(logMgr_->logger(), applicationSettings_, ui_.get(), sysTrayIcon_, this);
 
    cbApprovePuB_ = PubKeyLoader::getApprovingCallback(PubKeyLoader::KeyType::PublicBridge
       , this, applicationSettings_);
