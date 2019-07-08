@@ -35,7 +35,7 @@ enum class ArmoryState : uint8_t {
 namespace bs {
    struct TXEntry {
       BinaryData  txHash;
-      std::string id;
+      std::string walletId;
       int64_t     value;
       uint32_t    blockNum;
       uint32_t    txTime;

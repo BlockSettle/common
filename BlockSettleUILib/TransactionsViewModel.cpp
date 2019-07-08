@@ -421,7 +421,7 @@ std::shared_ptr<TransactionsViewItem> TransactionsViewModel::itemFromTransaction
    auto item = std::make_shared<TransactionsViewItem>();
    item->txEntry = entry;
    item->displayDateTime = UiUtils::displayDateTime(entry.txTime);
-   item->wallet = walletsManager_->getWalletById(entry.id);
+   item->wallet = walletsManager_->getWalletById(entry.walletId);
    item->filterAddress = filterAddress_;
    if (!item->wallet && defaultWallet_) {
       item->wallet = defaultWallet_;
@@ -430,7 +430,7 @@ std::shared_ptr<TransactionsViewItem> TransactionsViewModel::itemFromTransaction
       item->walletID = QString::fromStdString(item->wallet->walletId());
    }
    else {
-      item->walletID = QString::fromStdString(entry.id);
+      item->walletID = QString::fromStdString(entry.walletId);
    }
 
    item->confirmations = armory_->getConfirmationsNumber(entry.blockNum);
@@ -449,8 +449,8 @@ static std::string mkTxKey(const BinaryData &txHash, const std::string &id)
 static std::string mkTxKey(const bs::TXEntry &item)
 {
    std::string id;
-   id.reserve(item.id.size());
-   for (const auto &c : item.id) {
+   id.reserve(item.walletId.size());
+   for (const auto &c : item.walletId) {
       id.push_back(tolower(c));
    }
    return mkTxKey(item.txHash, id);
@@ -512,7 +512,7 @@ static bool isChildOf(TransactionPtr child, TransactionPtr parent)
       }
    }
    if ((!child->confirmations && child->txEntry.isRBF && !parent->confirmations && parent->txEntry.isRBF)
-       && (child->txEntry.txHash != parent->txEntry.txHash) && (child->txEntry.id == parent->txEntry.id)) {
+       && (child->txEntry.txHash != parent->txEntry.txHash) && (child->txEntry.walletId == parent->txEntry.walletId)) {
       std::set<BinaryData> childInputs, parentInputs;
       for (int i = 0; i < int(child->tx.getNumTxIn()); i++) {
          childInputs.insert(child->tx.getTxInCopy(i).serialize());
