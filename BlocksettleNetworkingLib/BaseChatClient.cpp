@@ -1187,3 +1187,8 @@ void BaseChatClient::OnContactListRejected(const ChatDataVectorPtr& rejectedList
       onFriendRequestedRemove(contact->contact_record().contact_id());
    }
 }
+
+void BaseChatClient::OnContactNewPublicKeyRejected(const std::string& userId)
+{
+   onFriendRequestedRemove(userId);
+}

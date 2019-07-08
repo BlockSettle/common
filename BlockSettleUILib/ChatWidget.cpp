@@ -667,10 +667,13 @@ void ChatWidget::onConfirmContactNewKeyData(
       if (box.exec() == QDialog::Accepted) {
          updateList.push_back(contact);
       } else {
-         auto it = dict.find(contact->mutable_contact_record()->contact_id());
+         auto userId = contact->mutable_contact_record()->contact_id();
+         auto it = dict.find(userId);
          if (it != dict.end()) {
             dict.erase(it);
          }
+         // New public key rejected, let's remove contact from friends
+         client_->OnContactNewPublicKeyRejected(userId);
       }
    }
 
@@ -1313,9 +1316,9 @@ void ChatWidget::onContactListConfirmationRequested(const std::vector<std::share
    }
    else if (QDialog::Rejected == ret) {
       std::vector<std::shared_ptr<Chat::Data>> mergedList;
-      mergedList.insert(mergedList.end(), remoteConfirmed.begin(), remoteConfirmed.end());
       mergedList.insert(mergedList.end(), remoteKeysUpdate.begin(), remoteKeysUpdate.end());
       mergedList.insert(mergedList.end(), remoteAbsolutelyNew.begin(), remoteAbsolutelyNew.end());
+      // User canceled contact changes, remove this contacts from friend list
       client_->OnContactListRejected(mergedList);
    }
 }

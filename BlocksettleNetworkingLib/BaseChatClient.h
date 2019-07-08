@@ -86,6 +86,7 @@ public:
 
    void OnContactListConfirmed(const ChatDataVectorPtr& /*checked*/, const ChatDataVectorPtr& /*keyUpdate*/, const ChatDataVectorPtr& /*absolutelyNew*/);
    void OnContactListRejected(const ChatDataVectorPtr& /*rejectedList*/);
+   void OnContactNewPublicKeyRejected(const std::string& /*userId*/);
 
    bool sendSearchUsersRequest(const std::string& /*userIdPattern*/);
    std::string deriveKey(const std::string& /*email*/) const;
