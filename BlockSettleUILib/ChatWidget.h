@@ -27,7 +27,6 @@ namespace Chat {
    class OTCRequestData;
 }
 
-class BSTerminalMainWindow;
 class ChatClient;
 class ConnectionManager;
 class ApplicationSettings;
@@ -57,7 +56,6 @@ public:
 
    void init(const std::shared_ptr<ConnectionManager>& connectionManager
            , const std::shared_ptr<ApplicationSettings> &appSettings
-           , BSTerminalMainWindow *mainWindow
            , const std::shared_ptr<spdlog::logger>& logger);
 
    std::string login(const std::string& email, const std::string& jwt
@@ -175,7 +173,6 @@ private:
    std::vector<QVariantList> oldMessages_;
 
    std::string pbUserId_;
-   BSTerminalMainWindow *mainWindow_;
 
 private:
    bool isRoom();

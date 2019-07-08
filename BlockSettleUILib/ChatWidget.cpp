@@ -306,10 +306,8 @@ ChatWidget::~ChatWidget() = default;
 
 void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManager
                  , const std::shared_ptr<ApplicationSettings> &appSettings
-                 , BSTerminalMainWindow *mainWindow
                  , const std::shared_ptr<spdlog::logger>& logger)
 {
-   mainWindow_ = mainWindow;
    logger_ = logger;
    oldNotificationsTimer_ = std::make_unique<QTimer>();
    oldNotificationsTimer_->setSingleShot(true);
@@ -631,7 +629,12 @@ void ChatWidget::onConfirmUploadNewPublicKey(const std::string &oldKey, const st
       client_->uploadNewPublicKeyToServer(confirmed);
    };
 
-   mainWindow_->addDeferredDialog(deferredDialog);
+   for (QWidget *widget : qApp->topLevelWidgets()) {
+      BSTerminalMainWindow *mainWindow = qobject_cast<BSTerminalMainWindow *>(widget);
+      if (mainWindow) {
+         mainWindow->addDeferredDialog(deferredDialog);
+      }
+   }
 }
 
 void ChatWidget::onConfirmContactNewKeyData(
