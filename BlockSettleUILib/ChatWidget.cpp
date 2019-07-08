@@ -633,6 +633,7 @@ void ChatWidget::onConfirmUploadNewPublicKey(const std::string &oldKey, const st
       BSTerminalMainWindow *mainWindow = qobject_cast<BSTerminalMainWindow *>(widget);
       if (mainWindow) {
          mainWindow->addDeferredDialog(deferredDialog);
+         break;
       }
    }
 }
