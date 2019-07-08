@@ -107,7 +107,7 @@ public:
    bool isWalletOffline(const std::string &walletId) const override;
 
 protected:
-   bs::signer::RequestId Send(Blocksettle::Communication::headless::RequestPacket, bool incSeqNo = true);
+   bs::signer::RequestId Send(const Blocksettle::Communication::headless::RequestPacket &, bool incSeqNo = true);
    void ProcessSignTXResponse(unsigned int id, const std::string &data);
    void ProcessSettlementSignTXResponse(unsigned int id, const std::string &data);
    void ProcessPasswordRequest(const std::string &data);
@@ -265,6 +265,7 @@ private:
    std::atomic<bool>                isReady_{false};
    bool                             isConnected_{false};
    bool                             wasErrorReported_{false};
+   std::atomic<bool>                isShuttingDown_{false};
 };
 
 #endif // __HEADLESS_CONTAINER_H__
