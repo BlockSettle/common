@@ -1,6 +1,7 @@
 #include "ChatWidget.h"
 #include "ui_ChatWidget.h"
 
+#include "BSTerminalMainWindow.h"
 #include "ApplicationSettings.h"
 #include "ChatClient.h"
 #include "ChatClientDataModel.h"
@@ -305,8 +306,10 @@ ChatWidget::~ChatWidget() = default;
 
 void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManager
                  , const std::shared_ptr<ApplicationSettings> &appSettings
+                 , BSTerminalMainWindow *mainWindow
                  , const std::shared_ptr<spdlog::logger>& logger)
 {
+   mainWindow_ = mainWindow;
    logger_ = logger;
    oldNotificationsTimer_ = std::make_unique<QTimer>();
    oldNotificationsTimer_->setSingleShot(true);
@@ -610,21 +613,25 @@ void ChatWidget::onContactRequestAccepted(const std::string &userId)
 
 void ChatWidget::onConfirmUploadNewPublicKey(const std::string &oldKey, const std::string &newKey)
 {
-   ImportKeyBox box(BSMessageBox::question
-                    , tr("Update OTC ID Key?")
-                    , this);
+   const auto deferredDialog = [this, oldKey, newKey]{
+      ImportKeyBox box(BSMessageBox::question
+                       , tr("Update OTC ID Key?")
+                       , this);
 
-   box.setAddrPort("");
-   box.setDescription(QStringLiteral("Unless your OTC ID Key is lost or compromised, "
-      "BlockSettle strongly discourages from re-submitting a new OTC ID Key. "
-      "When updating your OTC ID Key, all your contacts will be asked to replace the OTC ID Key they use in relation to communication with yourself. "
-      "You will need to rebuild and re-establish your reputation. Are you sure you wish to continue?"));
-   box.setNewKeyFromBinary(newKey);
-   box.setOldKeyFromBinary(oldKey);
-   box.setCancelVisible(true);
+      box.setAddrPort("");
+      box.setDescription(QStringLiteral("Unless your OTC ID Key is lost or compromised, "
+         "BlockSettle strongly discourages from re-submitting a new OTC ID Key. "
+         "When updating your OTC ID Key, all your contacts will be asked to replace the OTC ID Key they use in relation to communication with yourself. "
+         "You will need to rebuild and re-establish your reputation. Are you sure you wish to continue?"));
+      box.setNewKeyFromBinary(newKey);
+      box.setOldKeyFromBinary(oldKey);
+      box.setCancelVisible(true);
 
-   bool confirmed = box.exec() == QDialog::Accepted;
-   client_->uploadNewPublicKeyToServer(confirmed);
+      bool confirmed = box.exec() == QDialog::Accepted;
+      client_->uploadNewPublicKeyToServer(confirmed);
+   };
+
+   mainWindow_->addDeferredDialog(deferredDialog);
 }
 
 void ChatWidget::onConfirmContactNewKeyData(
