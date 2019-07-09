@@ -148,10 +148,18 @@ std::shared_ptr<AddressEntry> hd::Leaf::getAddressEntryForAddr(const BinaryData 
 
 SecureBinaryData hd::Leaf::getPublicKeyFor(const bs::Address &addr)
 {
-   auto idPair = accountPtr_->getAssetIDPairForAddr(addr.prefixed());
-   auto assetPtr = accountPtr_->getAssetForID(idPair.first);
+   auto& addrMap = accountPtr_->getAddressHashMap();
+   auto iter = addrMap.find(addr);
+   if (iter == addrMap.end())
+      return {};
+
+   const auto assetPtr = walletPtr_->getAssetForID(iter->second.first);
+
+   // does not working:
+//   auto idPair = accountPtr_->getAssetIDPairForAddr(addr.prefixed());
+//   auto assetPtr = accountPtr_->getAssetForID(idPair.first);
    
-   auto assetSingle = std::dynamic_pointer_cast<AssetEntry_Single>(assetPtr);
+   const auto assetSingle = std::dynamic_pointer_cast<AssetEntry_Single>(assetPtr);
    if (assetSingle == nullptr)
       throw AccountException("unexpected asset entry type");
 
