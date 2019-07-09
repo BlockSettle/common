@@ -590,7 +590,7 @@ bool HeadlessContainerListener::onPasswordReceived(const std::string &clientId, 
       logger_->error("[HeadlessContainerListener] walletId is empty in PasswordReply");
       return false;
    }
-   const auto password = SecureBinaryData(response.password());
+   SecureBinaryData password(response.password());
    if (!password.isNull()) {
       passwords_[response.walletid()] = password;
    }
