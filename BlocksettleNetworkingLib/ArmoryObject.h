@@ -18,10 +18,6 @@ public:
    void setupConnection(const ArmorySettings &settings
       , const BIP151Cb &bip150PromptUserCb = [](const BinaryData&, const std::string&) { return true; });
 
-   std::string registerWallet(const std::string &walletId, const std::string &mergedWalletId
-      , const std::vector<BinaryData> &addrVec, const RegisterWalletCb &
-      , bool asNew = false) override;
-
    bool getWalletsHistory(const std::vector<std::string> &walletIDs, const WalletsHistoryCb &) override;
 
    bool getLedgerDelegateForAddress(const std::string &walletId, const bs::Address &
