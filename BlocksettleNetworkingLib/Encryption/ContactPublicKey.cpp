@@ -12,7 +12,7 @@ namespace Chat {
 
    void ContactPublicKey::loadKeys(const std::map<std::string, BinaryData>& newKeys)
    {
-      contactPublicKeys_.swap(std::map<std::string, BinaryData>());
+      contactPublicKeys_.clear();
 
       for (auto userKey : newKeys) {
          if (userKey.first.empty() || userKey.second.isNull()) {
