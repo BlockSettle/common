@@ -90,6 +90,7 @@ private slots:
    void selectGlobalRoom();
    void onContactRequestAccepted(const std::string &userId);
    void onConfirmUploadNewPublicKey(const std::string &oldKey, const std::string &newKey);
+   void onContactChanged();
    void onBSChatInputSelectionChanged();
    void onChatMessagesSelectionChanged();
    void onContactRequestAcceptSendClicked();

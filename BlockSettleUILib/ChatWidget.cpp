@@ -343,8 +343,10 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
    connect(client_.get(), &ChatClient::RoomsInserted, this, &ChatWidget::selectGlobalRoom);
    connect(client_.get(), &ChatClient::NewContactRequest, this, [=] (const std::string &userId) {
             NotificationCenter::notify(bs::ui::NotifyType::FriendRequest, {QString::fromStdString(userId)});
+            onContactChanged();
    });
    connect(client_.get(), &ChatClient::ConfirmUploadNewPublicKey, this, &ChatWidget::onConfirmUploadNewPublicKey);
+   connect(client_.get(), &ChatClient::ContactChanged, this, &ChatWidget::onContactChanged);
    connect(ui_->input_textEdit, &BSChatInput::sendMessage, this, &ChatWidget::onSendButtonClicked);
    connect(ui_->input_textEdit, &BSChatInput::selectionChanged, this, &ChatWidget::onBSChatInputSelectionChanged);
    connect(ui_->searchWidget, &SearchWidget::searchUserTextEdited, this, &ChatWidget::onSearchUserTextEdited);
@@ -1333,6 +1335,11 @@ void ChatWidget::onContactListConfirmationRequested(const std::vector<std::share
       // User canceled contact changes, remove this contacts from friend list
       client_->OnContactListRejected(mergedList);
    }
+}
+
+void ChatWidget::onContactChanged()
+{
+   updateChat(true);
 }
 
 void ChatWidget::showOldMessagesNotification()
