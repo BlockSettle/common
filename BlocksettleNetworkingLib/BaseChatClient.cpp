@@ -236,7 +236,7 @@ bool BaseChatClient::sendFriendRequestToServer(const std::string &friendUserId, 
       if (!contactPublicKeysPtr_->findPublicKeyForUser(friendUserId, contactPublicKey)) {
          // Ask for public key from peer. Enqueue the message to be sent, once we receive the
          // necessary public key.
-         pending_contact_requests_.insert({ friendUserId, message });
+         pendingContactRequests_.insert({ friendUserId, message });
 
          // Send our key to the peer.
          Chat::Request request;
@@ -841,8 +841,8 @@ void BaseChatClient::OnReplySessionPublicKeyResponse(const Chat::Response_ReplyS
 
 void BaseChatClient::setInvalidAllMessagesForUser(const std::string& userId)
 {
-   messages_queue messages;
-   std::swap(messages, enqueued_messages_[userId]);
+   MessagesQueue messages = enqueuedMessages_[userId];
+   enqueuedMessages_.erase(userId);
 
    while (!messages.empty()) {
       ChatDataPtr messageData = messages.front();
@@ -869,7 +869,7 @@ ChatDataPtr BaseChatClient::sendMessageDataRequest(const ChatDataPtr& messageDat
    if (!chatDb_->isContactExist(receiver)) {
       //make friend request before sending direct message.
       //Enqueue the message to be sent, once our friend request accepted.
-      enqueued_messages_[receiver].push(messageData);
+      enqueuedMessages_[receiver].push(messageData);
       // we should not send friend request from here. this is user action
       // sendFriendRequest(receiver);
       return messageData;
@@ -889,7 +889,7 @@ ChatDataPtr BaseChatClient::sendMessageDataRequest(const ChatDataPtr& messageDat
    if (!contactPublicKeysPtr_->findPublicKeyForUser(receiver, receiverPublicKey)) {
       // Ask for public key from peer. Enqueue the message to be sent, once we receive the
       // necessary public key.
-      enqueued_messages_[receiver].push(messageData);
+      enqueuedMessages_[receiver].push(messageData);
 
       // Send our key to the peer.
       Chat::Request request;
@@ -940,8 +940,8 @@ ChatDataPtr BaseChatClient::sendMessageDataRequest(const ChatDataPtr& messageDat
 void BaseChatClient::retrySendQueuedMessages(const std::string userId)
 {
    // Run over enqueued messages if any, and try to send them all now.
-   messages_queue messages;
-   std::swap(messages, enqueued_messages_[userId]);
+   MessagesQueue messages;
+   std::swap(messages, enqueuedMessages_[userId]);
 
    while (!messages.empty()) {
       sendMessageDataRequest(messages.front(), userId, true);
@@ -951,24 +951,24 @@ void BaseChatClient::retrySendQueuedMessages(const std::string userId)
 
 void BaseChatClient::eraseQueuedMessages(const std::string userId)
 {
-   enqueued_messages_.erase(userId);
+   enqueuedMessages_.erase(userId);
 }
 
 void BaseChatClient::retrySendQueuedContactRequests(const std::string& userId)
 {
-   auto crMessage = pending_contact_requests_.find(userId);
-   if (crMessage != pending_contact_requests_.end()) {
+   auto crMessage = pendingContactRequests_.find(userId);
+   if (crMessage != pendingContactRequests_.end()) {
       auto message = crMessage->second;
-      pending_contact_requests_.erase(crMessage);
+      pendingContactRequests_.erase(crMessage);
       sendFriendRequestToServer(userId, message, true);
    }
 }
 
 void BaseChatClient::eraseQueuedContactRequests(const std::string& userId)
 {
-   auto crMessage = pending_contact_requests_.find(userId);
-   if (crMessage != pending_contact_requests_.end()) {
-      pending_contact_requests_.erase(crMessage);
+   auto crMessage = pendingContactRequests_.find(userId);
+   if (crMessage != pendingContactRequests_.end()) {
+      pendingContactRequests_.erase(crMessage);
    }
 }
 
@@ -994,7 +994,7 @@ ChatDataPtr BaseChatClient::encryptMessageToSendAEAD(const std::string &receiver
 {
    const auto& chatSessionKeyDataPtr = chatSessionKeyPtr_->findSessionForUser(receiver);
    if (chatSessionKeyDataPtr == nullptr || !chatSessionKeyPtr_->isExchangeForUserSucceeded(receiver)) {
-      enqueued_messages_[receiver].push(messageData);
+      enqueuedMessages_[receiver].push(messageData);
 
       chatSessionKeyPtr_->generateLocalKeysForUser(receiver);
 

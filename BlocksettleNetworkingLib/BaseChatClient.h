@@ -24,8 +24,8 @@ using UserHasherPtr = std::shared_ptr<UserHasher>;
 using ChatDataPtr = std::shared_ptr<Chat::Data>;
 using ChatDataVectorPtr = std::vector<ChatDataPtr>;
 using UserNonceMap = std::map<std::string, Botan::SecureVector<uint8_t>>;
-using messages_queue = std::queue<ChatDataPtr>;
-using EnqueueMessagesMap = std::map<std::string, messages_queue>;
+using MessagesQueue = std::queue<ChatDataPtr>;
+using EnqueueMessagesMap = std::map<std::string, MessagesQueue>;
 using PendingContactRequestMap = std::map<std::string, ChatDataPtr>;
 
 class BaseChatClient : public QObject, public DataConnectionListener, public Chat::ResponseHandler
@@ -59,7 +59,7 @@ public:
    void OnDataReceived(const std::string& /*data*/) override;
    void OnConnected() override;
    void OnDisconnected() override;
-   void OnError(DataConnectionError /*errorCode*/) override;
+   void OnError(DataConnectionError) override;
 
    void OnUsersList(const Chat::Response_UsersList &) override;
    void OnMessages(const Chat::Response_Messages &) override;
@@ -177,8 +177,8 @@ private:
    UserHasherPtr                          hasher_;
    UserNonceMap                           userNonces_;
    // Queue of messages to be sent for each receiver, once we received the public key.
-   EnqueueMessagesMap                     enqueued_messages_;
-   PendingContactRequestMap               pending_contact_requests_;
+   EnqueueMessagesMap                     enqueuedMessages_;
+   PendingContactRequestMap               pendingContactRequests_;
 
    std::string                            currentJwt_;
 };
