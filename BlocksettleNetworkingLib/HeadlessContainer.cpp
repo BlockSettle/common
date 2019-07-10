@@ -235,16 +235,6 @@ void HeadlessContainer::ProcessSettlementSignTXResponse(unsigned int id, const s
    cbSettlementSignTxMap_.erase(itCb);
 }
 
-void HeadlessContainer::ProcessPasswordRequest(const std::string &data)
-{
-   headless::PasswordRequest request;
-   if (!request.ParseFromString(data)) {
-      logger_->error("[HeadlessContainer] Failed to parse PasswordRequest");
-      return;
-   }
-   logger_->error("[{}] shouldn't arrive from signer anymore", __func__);
-}
-
 void HeadlessContainer::ProcessCreateHDLeafResponse(unsigned int id, const std::string &data)
 {
    headless::CreateHDLeafResponse response;
@@ -351,7 +341,7 @@ headless::SignTxRequest HeadlessContainer::createSignTxRequest(const bs::core::w
    }
 
    if (!password.isNull()) {
-      request.set_password(password.toHexStr());
+      request.set_password(password.toBinStr());
    }
 
    if (!txSignReq.prevStates.empty()) {
@@ -419,7 +409,7 @@ bs::signer::RequestId HeadlessContainer::signPayoutTXRequest(const bs::core::wal
 //   }
 
    if (!password.isNull()) {
-      request.set_password(password.toHexStr());
+      request.set_password(password.toBinStr());
    }
 
    headless::RequestPacket packet;
@@ -548,24 +538,7 @@ bs::signer::RequestId HeadlessContainer::CancelSignTx(const BinaryData &txId)
    return Send(packet);
 }
 
-void HeadlessContainer::SendPassword(const std::string &walletId, bs::error::ErrorCode result, const PasswordType &password)
-{
-   headless::RequestPacket packet;
-   packet.set_type(headless::PasswordRequestType);
-
-   headless::PasswordReply response;
-   if (!walletId.empty()) {
-      response.set_walletid(walletId);
-   }
-   if (!password.isNull()) {
-      response.set_password(password.toHexStr());
-   }
-   response.set_errorcode(static_cast<uint32_t>(result));
-   packet.set_data(response.SerializeAsString());
-   Send(packet, false);
-}
-
-bs::signer::RequestId HeadlessContainer::SetUserId(const BinaryData &userId)
+bs::signer::RequestId HeadlessContainer::setUserId(const BinaryData &userId)
 {
    if (!listener_) {
       logger_->warn("[HeadlessContainer::SetUserId] listener not set yet");
@@ -573,7 +546,6 @@ bs::signer::RequestId HeadlessContainer::SetUserId(const BinaryData &userId)
    }
 
    bs::sync::PasswordDialogData info;
-   info.setType(bs::sync::PasswordDialogData::Type::CreateAuthLeaf);
    info.setValue("Prompt", "Auth wallet creation");
 
    headless::SetUserIdRequest request;
@@ -600,6 +572,20 @@ bs::signer::RequestId HeadlessContainer::createHDLeaf(const std::string &rootWal
 
    headless::RequestPacket packet;
    packet.set_type(headless::CreateHDLeafRequestType);
+   packet.set_data(request.SerializeAsString());
+   return Send(packet);
+}
+
+bs::signer::RequestId HeadlessContainer::syncCCNames(const std::vector<std::string> &ccNames)
+{
+   logger_->debug("[{}] syncing {} CCs", __func__, ccNames.size());
+   headless::SyncCCNamesData request;
+   for (const auto &cc : ccNames) {
+      request.add_ccnames(cc);
+   }
+
+   headless::RequestPacket packet;
+   packet.set_type(headless::SyncCCNamesType);
    packet.set_data(request.SerializeAsString());
    return Send(packet);
 }
@@ -1285,10 +1271,6 @@ void RemoteSigner::onPacketReceived(headless::RequestPacket packet)
 
    case headless::SignSettlementTxRequestType:
       ProcessSettlementSignTXResponse(packet.id(), packet.data());
-      break;
-
-   case headless::PasswordRequestType:
-      ProcessPasswordRequest(packet.data());
       break;
 
    case headless::CreateHDLeafRequestType:

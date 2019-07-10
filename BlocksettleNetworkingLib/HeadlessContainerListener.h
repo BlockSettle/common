@@ -62,7 +62,6 @@ public:
       , const std::shared_ptr<DispatchQueue> &
       , const std::string &walletsPath
       , NetworkType netType
-      , bool watchingOnly = false
       , const bool &backupEnabled = true);
    ~HeadlessContainerListener() noexcept override;
 
@@ -106,10 +105,9 @@ private:
       , Blocksettle::Communication::headless::RequestType requestType);
    bool onSignPayoutTXRequest(const std::string &clientId, const Blocksettle::Communication::headless::RequestPacket &packet);
    bool onSignMultiTXRequest(const std::string &clientId, const Blocksettle::Communication::headless::RequestPacket &packet);
-   bool onPasswordReceived(const std::string &clientId, Blocksettle::Communication::headless::RequestPacket &packet);
    bool onCreateHDLeaf(const std::string &clientId, Blocksettle::Communication::headless::RequestPacket &packet);
    bool onSetUserId(const std::string &clientId, Blocksettle::Communication::headless::RequestPacket &packet);
-   bool onDeleteHDWallet(Blocksettle::Communication::headless::RequestPacket &packet);
+   bool onSyncCCNames(Blocksettle::Communication::headless::RequestPacket &packet);
    bool onGetHDWalletInfo(const std::string &clientId, Blocksettle::Communication::headless::RequestPacket &packet);
    bool onCancelSignTx(const std::string &clientId, Blocksettle::Communication::headless::RequestPacket packet);
    bool onSyncWalletInfo(const std::string &clientId, Blocksettle::Communication::headless::RequestPacket packet);
@@ -147,8 +145,6 @@ private:
 
    bool CheckSpendLimit(uint64_t value, const std::string &walletId);
 
-   bool isRequestAllowed(Blocksettle::Communication::headless::RequestType) const;
-
 private:
    std::shared_ptr<spdlog::logger>     logger_;
    ServerConnection                    *connection_{};
@@ -158,7 +154,6 @@ private:
    const std::string                   backupPath_;
    const NetworkType                   netType_;
    bs::signer::Limits                  limits_;
-   const bool                          watchingOnly_;
    std::unordered_set<std::string>     connectedClients_;
 
    std::unordered_map<std::string, std::vector<PasswordReceivedCb>>  passwordCallbacks_; // map<wallet_id, std::vector<PasswordReceivedCb>>

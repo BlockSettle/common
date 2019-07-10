@@ -13,7 +13,6 @@ bs::sync::PasswordDialogData::PasswordDialogData(const Blocksettle::Communicatio
 bs::sync::PasswordDialogData::PasswordDialogData(const bs::sync::PasswordDialogData &src)
 {
    setParent(src.parent());
-   type_ = src.type_;
    values_ = src.values_;
 }
 

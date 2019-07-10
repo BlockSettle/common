@@ -11,7 +11,6 @@ SettlementContainer::SettlementContainer(const std::shared_ptr<ArmoryConnection>
 sync::PasswordDialogData SettlementContainer::toPasswordDialogData() const
 {
    bs::sync::PasswordDialogData info;
-   info.setType(sync::PasswordDialogData::Type::CCSettlementTx);
 
    info.setValue("ProductGroup", tr(bs::network::Asset::toString(assetType())));
    info.setValue("Security", QString::fromStdString(security()));

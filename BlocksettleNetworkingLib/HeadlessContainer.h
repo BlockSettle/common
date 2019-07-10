@@ -73,9 +73,10 @@ public:
    bs::signer::RequestId signMultiTXRequest(const bs::core::wallet::TXMultiSignRequest &) override;
 
    bs::signer::RequestId CancelSignTx(const BinaryData &txId) override;
-   void SendPassword(const std::string &walletId, bs::error::ErrorCode result, const PasswordType &password) override;
 
-   bs::signer::RequestId SetUserId(const BinaryData &) override;
+   bs::signer::RequestId setUserId(const BinaryData &) override;
+   bs::signer::RequestId syncCCNames(const std::vector<std::string> &) override;
+
    bs::signer::RequestId createHDLeaf(const std::string &rootWalletId, const bs::hd::Path &
       , const std::vector<bs::wallet::PasswordData> &pwdData = {}
       , const std::function<void(bs::error::ErrorCode result)> &cb = nullptr) override;
@@ -108,7 +109,6 @@ protected:
    bs::signer::RequestId Send(const Blocksettle::Communication::headless::RequestPacket &, bool incSeqNo = true);
    void ProcessSignTXResponse(unsigned int id, const std::string &data);
    void ProcessSettlementSignTXResponse(unsigned int id, const std::string &data);
-   void ProcessPasswordRequest(const std::string &data);
    void ProcessCreateHDLeafResponse(unsigned int id, const std::string &data);
    bs::signer::RequestId SendDeleteHDRequest(const std::string &rootWalletId, const std::string &leafId);
    void ProcessGetHDWalletInfoResponse(unsigned int id, const std::string &data);

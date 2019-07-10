@@ -10,7 +10,6 @@ enum RequestType
    SignTxRequestType           = 2;
    SignPartialTXRequestType    = 3;
    SignPayoutTXRequestType     = 4;
-   PasswordRequestType         = 5;
    SetUserIdType               = 6;
    CreateSettlWalletType       = 7;
    CreateHDLeafRequestType     = 8;
@@ -34,6 +33,7 @@ enum RequestType
    SignSettlementTxRequestType = 25;
    SignSettlementPartialTxRequestType = 26;
    SignSettlementPayoutTxRequestType = 27;
+   SyncCCNamesType             = 28;
 }
 
 message RequestPacket
@@ -95,7 +95,7 @@ message SignTxRequest
    bytes          unsignedState = 6;
    Change         change = 7;
    bool           populateUTXOs = 8;
-   string         password = 10;
+   bytes          password = 10;
    bool           keepDuplicatedRecipients = 11;
 }
 
@@ -129,7 +129,7 @@ message SignPayoutTXRequest
    bytes    recipient = 2;
    string   authAddress = 3;
    bytes    settlementId = 4;
-   string   password = 8;
+   bytes    password = 8;
 }
 
 message PasswordRequest
@@ -145,7 +145,7 @@ message PasswordReply
 {
    uint32   errorCode = 1;
    string   walletId = 2;
-   string   password = 3;
+   bytes    password = 3;
 }
 
 
@@ -442,5 +442,11 @@ message SyncNewAddressRequest
    }
    string wallet_id = 1;
    repeated Address addresses = 2;
-   
+
+}
+
+
+message SyncCCNamesData
+{
+   repeated string ccNames = 1;
 }
