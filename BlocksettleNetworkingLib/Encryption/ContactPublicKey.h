@@ -30,7 +30,7 @@ namespace Chat {
       void setPublicKey(const std::string& userId, const BinaryData& publicKey);
 
    private:
-      std::shared_ptr<spdlog::logger> logger_ = nullptr;
+      std::shared_ptr<spdlog::logger> logger_;
       std::map<std::string, BinaryData> contactPublicKeys_;
    };
 
