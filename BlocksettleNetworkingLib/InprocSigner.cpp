@@ -132,7 +132,7 @@ bs::signer::RequestId InprocSigner::signMultiTXRequest(const bs::core::wallet::T
 }
 
 bs::signer::RequestId InprocSigner::createHDLeaf(const std::string &rootWalletId, const bs::hd::Path &path
-   , const std::vector<bs::wallet::PasswordData> &pwdData)
+   , const std::vector<bs::wallet::PasswordData> &pwdData, const std::function<void(bs::error::ErrorCode result)> &)
 {
    const auto hdWallet = walletsMgr_->getHDWalletById(rootWalletId);
    if (!hdWallet) {
@@ -193,24 +193,6 @@ bs::signer::RequestId InprocSigner::createHDLeaf(const std::string &rootWalletId
    }
    QTimer::singleShot(1, [this, reqId, hdLeaf] {emit HDLeafCreated(reqId, hdLeaf); });
    return reqId;
-}
-
-bs::signer::RequestId InprocSigner::createHDWallet(const std::string &name, const std::string &desc
-   , bool primary, const bs::core::wallet::Seed &seed, const std::vector<bs::wallet::PasswordData> &pwdData
-   , bs::wallet::KeyRank keyRank)
-{
-   try {
-      const auto wallet = walletsMgr_->createWallet(name, desc, seed, walletsPath_, pwdData.begin()->password, primary);
-      const bs::signer::RequestId reqId = seqId_++;
-      const auto hdWallet = std::make_shared<bs::sync::hd::Wallet>(wallet->walletId()
-         , wallet->name(), wallet->description(), this, logger_);
-      QTimer::singleShot(1, [this, reqId, hdWallet] { emit HDWalletCreated(reqId, hdWallet); });
-      return reqId;
-   }
-   catch (const std::exception &e) {
-      logger_->error("[{}] failed to create HD wallet: {}", __func__, e.what());
-   }
-   return 0;
 }
 
 void InprocSigner::createSettlementWallet(const std::function<void(const std::shared_ptr<bs::sync::SettlementWallet> &)> &cb)

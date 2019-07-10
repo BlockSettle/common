@@ -54,6 +54,8 @@ enum PacketType
 
    // Sent from headless signer when unknown terminal is trying to connect
    TerminalHandshakeFailedType = 29;
+
+   DecryptWalletRequestType   = 30;
 }
 
 message Packet
@@ -160,8 +162,14 @@ message SignTxCancelRequest
 
 message SignSettlementTxRequest
 {
-   SignTxRequest signTXRequest                                        = 1;
-   Blocksettle.Communication.Internal.SettlementInfo settlementInfo   = 2;
+   SignTxRequest signTXRequest                                                = 1;
+   Blocksettle.Communication.Internal.PasswordDialogData passwordDialogData   = 2;
+}
+
+message DecryptWalletRequest
+{
+   Blocksettle.Communication.Internal.PasswordDialogData passwordDialogData   = 1;
+   SignTxRequest signTXRequest                                                = 2;
 }
 
 message XbtSpentEvent
