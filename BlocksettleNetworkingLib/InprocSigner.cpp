@@ -216,7 +216,7 @@ bs::signer::RequestId InprocSigner::customDialogRequest(bs::signer::ui::DialogTy
    return 0;
 }
 
-bs::signer::RequestId InprocSigner::setUserId(const BinaryData &userId)
+bs::signer::RequestId InprocSigner::setUserId(const BinaryData &userId, const std::string &walletId)
 {
    //walletsMgr_->setChainCode(userId);
    //TODO: add SetUserId implementation here

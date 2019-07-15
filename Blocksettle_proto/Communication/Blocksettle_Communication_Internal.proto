@@ -2,14 +2,7 @@ syntax = "proto3";
 
 package Blocksettle.Communication.Internal;
 
-enum PasswordDialogDataType
-{
-   RegularTx          = 0;
-   CreateAuthLeaf     = 1;
-   CCSettlementTx     = 2;
-}
-
 message PasswordDialogData {
-   PasswordDialogDataType   type              = 1;
+   //PasswordDialogType       type              = 1;
    bytes                    valuesMap         = 2;
 }

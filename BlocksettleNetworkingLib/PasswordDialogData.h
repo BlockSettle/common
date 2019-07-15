@@ -22,6 +22,9 @@ public:
    QVariantMap values() const;
    void setValues(const QVariantMap &values);
 
+   QVariant value(const QString &key) const;
+   QVariant value(const char *key) const;
+
    void setValue(const QString &key, const QVariant &value);
    void setValue(const char *key, const QVariant &value);
    void setValue(const char *key, const char *value);

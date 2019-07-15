@@ -152,6 +152,7 @@ message PasswordReply
 message SetUserIdRequest
 {
    bytes userId = 1;
+   Blocksettle.Communication.Internal.PasswordDialogData passwordDialogData  = 2;
 }
 
 enum AuthWalletResponseType

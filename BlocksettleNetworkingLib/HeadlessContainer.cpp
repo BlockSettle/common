@@ -421,7 +421,7 @@ bs::signer::RequestId HeadlessContainer::signPayoutTXRequest(const bs::core::wal
 }
 
 bs::signer::RequestId HeadlessContainer::signSettlementTXRequest(const bs::core::wallet::TXSignRequest &txSignReq
-   , const bs::sync::PasswordDialogData &passwordDialogData, SignContainer::TXSignMode mode
+   , const bs::sync::PasswordDialogData &dialogData, SignContainer::TXSignMode mode
    , bool keepDuplicatedRecipients
    , const std::function<void (bs::error::ErrorCode result, const BinaryData &signedTX)> &cb)
 {
@@ -434,7 +434,7 @@ bs::signer::RequestId HeadlessContainer::signSettlementTXRequest(const bs::core:
 
    headless::SignSettlementTxRequest settlementRequest;
    *(settlementRequest.mutable_signtxrequest()) = signTxRequest;
-   *(settlementRequest.mutable_passworddialogdata()) = passwordDialogData.toProtobufMessage();
+   *(settlementRequest.mutable_passworddialogdata()) = dialogData.toProtobufMessage();
 
    headless::RequestPacket packet;
    packet.set_type(headless::SignSettlementTxRequestType);
@@ -446,7 +446,7 @@ bs::signer::RequestId HeadlessContainer::signSettlementTXRequest(const bs::core:
 }
 
 bs::signer::RequestId HeadlessContainer::signSettlementPartialTXRequest(const bs::core::wallet::TXSignRequest &txSignReq
-   , const bs::sync::PasswordDialogData &passwordDialogData
+   , const bs::sync::PasswordDialogData &dialogData
    , const std::function<void (bs::error::ErrorCode, const BinaryData &)> &cb)
 {
    if (!txSignReq.isValid()) {
@@ -458,7 +458,7 @@ bs::signer::RequestId HeadlessContainer::signSettlementPartialTXRequest(const bs
 
    headless::SignSettlementTxRequest settlementRequest;
    *(settlementRequest.mutable_signtxrequest()) = signTxRequest;
-   *(settlementRequest.mutable_passworddialogdata()) = passwordDialogData.toProtobufMessage();
+   *(settlementRequest.mutable_passworddialogdata()) = dialogData.toProtobufMessage();
 
    headless::RequestPacket packet;
    packet.set_type(headless::SignSettlementPartialTxRequestType);
@@ -470,7 +470,7 @@ bs::signer::RequestId HeadlessContainer::signSettlementPartialTXRequest(const bs
 }
 
 bs::signer::RequestId HeadlessContainer::signSettlementPayoutTXRequest(const bs::core::wallet::TXSignRequest &txSignReq
-   , const bs::sync::PasswordDialogData &passwordDialogData, const bs::Address &authAddr, const std::string &settlementId
+   , const bs::sync::PasswordDialogData &dialogData, const bs::Address &authAddr, const std::string &settlementId
    , const std::function<void (bs::error::ErrorCode, const BinaryData &)> &cb)
 {
    if ((txSignReq.inputs.size() != 1) || (txSignReq.recipients.size() != 1) || settlementId.empty()) {
@@ -488,7 +488,7 @@ bs::signer::RequestId HeadlessContainer::signSettlementPayoutTXRequest(const bs:
 
    headless::SignSettlementPayoutTxRequest settlementRequest;
    *(settlementRequest.mutable_signpayouttxrequest()) = request;
-   *(settlementRequest.mutable_passworddialogdata()) = passwordDialogData.toProtobufMessage();
+   *(settlementRequest.mutable_passworddialogdata()) = dialogData.toProtobufMessage();
 
    headless::RequestPacket packet;
    packet.set_type(headless::SignPayoutTXRequestType);
@@ -538,7 +538,7 @@ bs::signer::RequestId HeadlessContainer::CancelSignTx(const BinaryData &txId)
    return Send(packet);
 }
 
-bs::signer::RequestId HeadlessContainer::setUserId(const BinaryData &userId)
+bs::signer::RequestId HeadlessContainer::setUserId(const BinaryData &userId, const std::string &walletId)
 {
    if (!listener_) {
       logger_->warn("[HeadlessContainer::SetUserId] listener not set yet");
@@ -547,8 +547,11 @@ bs::signer::RequestId HeadlessContainer::setUserId(const BinaryData &userId)
 
    bs::sync::PasswordDialogData info;
    info.setValue("Prompt", "Auth wallet creation");
+   info.setValue("WalletId", QString::fromStdString(walletId));
 
    headless::SetUserIdRequest request;
+   auto dialogData = request.mutable_passworddialogdata();
+   *dialogData = info.toProtobufMessage();
    if (!userId.isNull()) {
       request.set_userid(userId.toBinStr());
    }

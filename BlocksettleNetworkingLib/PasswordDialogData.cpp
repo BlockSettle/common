@@ -5,7 +5,7 @@
 bs::sync::PasswordDialogData::PasswordDialogData(const Blocksettle::Communication::Internal::PasswordDialogData &info, QObject *parent)
    : QObject (parent)
 {
-   QByteArray ba;
+   QByteArray ba = QByteArray::fromStdString(info.valuesmap());
    QDataStream stream(&ba, QIODevice::ReadOnly);
    stream >> values_;
 }
@@ -23,7 +23,7 @@ Blocksettle::Communication::Internal::PasswordDialogData bs::sync::PasswordDialo
    stream << values_;
 
    Blocksettle::Communication::Internal::PasswordDialogData info;
-   info.set_valuesmap(ba);
+   info.set_valuesmap(ba.data(), ba.size());
 
    return info;
 }
@@ -37,6 +37,16 @@ void bs::sync::PasswordDialogData::setValues(const QVariantMap &values)
 {
    values_ = values;
    emit dataChanged();
+}
+
+QVariant bs::sync::PasswordDialogData::value(const QString &key) const
+{
+   return values_.value(key);
+}
+
+QVariant bs::sync::PasswordDialogData::value(const char *key) const
+{
+   return value(QString::fromLatin1(key));
 }
 
 void bs::sync::PasswordDialogData::setValue(const QString &key, const QVariant &value)

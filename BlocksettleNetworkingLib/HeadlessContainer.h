@@ -57,16 +57,16 @@ public:
       , const std::string &settlementId, const PasswordType& password = {}) override;
 
    bs::signer::RequestId signSettlementTXRequest(const bs::core::wallet::TXSignRequest &txSignReq
-      , const bs::sync::PasswordDialogData &passwordDialogData
+      , const bs::sync::PasswordDialogData &dialogData
       , TXSignMode mode = TXSignMode::Full, bool keepDuplicatedRecipients = false
       , const std::function<void(bs::error::ErrorCode result, const BinaryData &signedTX)> &cb = nullptr) override;
 
    bs::signer::RequestId signSettlementPartialTXRequest(const bs::core::wallet::TXSignRequest &txSignReq
-      , const bs::sync::PasswordDialogData &passwordDialogData
+      , const bs::sync::PasswordDialogData &dialogData
       , const std::function<void(bs::error::ErrorCode result, const BinaryData &signedTX)> &cb = nullptr) override;
 
    bs::signer::RequestId signSettlementPayoutTXRequest(const bs::core::wallet::TXSignRequest &txSignReq
-      , const bs::sync::PasswordDialogData &passwordDialogData
+      , const bs::sync::PasswordDialogData &dialogData
       , const bs::Address &authAddr, const std::string &settlementId
       , const std::function<void(bs::error::ErrorCode result, const BinaryData &signedTX)> &cb = nullptr) override;
 
@@ -74,7 +74,7 @@ public:
 
    bs::signer::RequestId CancelSignTx(const BinaryData &txId) override;
 
-   bs::signer::RequestId setUserId(const BinaryData &) override;
+   bs::signer::RequestId setUserId(const BinaryData &, const std::string &walletId) override;
    bs::signer::RequestId syncCCNames(const std::vector<std::string> &) override;
 
    bs::signer::RequestId createHDLeaf(const std::string &rootWalletId, const bs::hd::Path &

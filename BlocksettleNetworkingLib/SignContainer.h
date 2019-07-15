@@ -85,24 +85,24 @@ public:
       , const PasswordType& password = {}) = 0;
 
    virtual bs::signer::RequestId signSettlementTXRequest(const bs::core::wallet::TXSignRequest &
-      , const bs::sync::PasswordDialogData &passwordDialogData
+      , const bs::sync::PasswordDialogData &dialogData
       , TXSignMode mode = TXSignMode::Full
       , bool keepDuplicatedRecipients = false
       , const std::function<void(bs::error::ErrorCode result, const BinaryData &signedTX)> &cb = nullptr) = 0;
 
    virtual bs::signer::RequestId signSettlementPartialTXRequest(const bs::core::wallet::TXSignRequest &
-      , const bs::sync::PasswordDialogData &passwordDialogData
+      , const bs::sync::PasswordDialogData &dialogData
       , const std::function<void(bs::error::ErrorCode result, const BinaryData &signedTX)> &cb = nullptr) = 0;
 
    virtual bs::signer::RequestId signSettlementPayoutTXRequest(const bs::core::wallet::TXSignRequest &
-      , const bs::sync::PasswordDialogData &passwordDialogData
+      , const bs::sync::PasswordDialogData &dialogData
       , const bs::Address &authAddr, const std::string &settlementId
       , const std::function<void(bs::error::ErrorCode result, const BinaryData &signedTX)> &cb = nullptr) = 0;
 
    virtual bs::signer::RequestId signMultiTXRequest(const bs::core::wallet::TXMultiSignRequest &) = 0;
    virtual bs::signer::RequestId CancelSignTx(const BinaryData &txId) = 0;
 
-   virtual bs::signer::RequestId setUserId(const BinaryData &) = 0;
+   virtual bs::signer::RequestId setUserId(const BinaryData &, const std::string &walletId) = 0;
    virtual bs::signer::RequestId syncCCNames(const std::vector<std::string> &) = 0;
 
    virtual bs::signer::RequestId createHDLeaf(const std::string &rootWalletId, const bs::hd::Path &

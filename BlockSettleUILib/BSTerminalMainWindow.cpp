@@ -597,7 +597,10 @@ void BSTerminalMainWindow::SignerReady()
 
    LoadWallets();
 
-   signContainer_->setUserId(BinaryData::CreateFromHex(celerConnection_->userId()));
+   if (walletsMgr_->hasPrimaryWallet()) {
+      const auto wallet = walletsMgr_->getPrimaryWallet();
+      signContainer_->setUserId(BinaryData::CreateFromHex(celerConnection_->userId()), wallet->walletId());
+   }
 
    if (deferCCsync_) {
       signContainer_->syncCCNames(walletsMgr_->ccResolver()->securities());
@@ -1254,7 +1257,10 @@ void BSTerminalMainWindow::onUserLoggedIn()
    const auto userId = BinaryData::CreateFromHex(celerConnection_->userId());
    const auto &deferredDialog = [this, userId] {
       if (signContainer_) {
-         signContainer_->setUserId(userId);
+         if (walletsMgr_->hasPrimaryWallet()) {
+            const auto wallet = walletsMgr_->getPrimaryWallet();
+            signContainer_->setUserId(userId, wallet->walletId());
+         }
       }
    };
    addDeferredDialog(deferredDialog);
@@ -1276,7 +1282,10 @@ void BSTerminalMainWindow::onUserLoggedOut()
    ui_->actionLinkAdditionalBankAccount->setEnabled(false);
 
    if (signContainer_) {
-      signContainer_->setUserId(BinaryData{});
+      if (walletsMgr_->hasPrimaryWallet()) {
+         const auto wallet = walletsMgr_->getPrimaryWallet();
+         signContainer_->setUserId({}, {});
+      }
    }
    if (walletsMgr_) {
       walletsMgr_->setUserId(BinaryData{});

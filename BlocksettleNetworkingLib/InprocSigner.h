@@ -64,7 +64,7 @@ public:
    bs::signer::RequestId signMultiTXRequest(const bs::core::wallet::TXMultiSignRequest &) override;
    bs::signer::RequestId CancelSignTx(const BinaryData &) override { return 0; }
 
-   bs::signer::RequestId setUserId(const BinaryData &) override;
+   bs::signer::RequestId setUserId(const BinaryData &, const std::string &walletId) override;
    bs::signer::RequestId syncCCNames(const std::vector<std::string> &) override;
 
    bs::signer::RequestId createHDLeaf(const std::string &rootWalletId, const bs::hd::Path &
