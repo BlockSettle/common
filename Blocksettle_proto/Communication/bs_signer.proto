@@ -8,7 +8,6 @@ enum PacketType
    HeadlessReadyType = 0;
    PeerConnectedType = 1;
    PeerDisconnectedType = 2;
-   SignTxRequestType = 3;
    TxSignedType = 4;
    CancelTxSignType = 5;
    XbtSpentType = 6;
@@ -58,10 +57,12 @@ enum PacketType
 
 enum PasswordDialogType
 {
-   RegularTx          = 0;
-   CreateAuthLeaf     = 1;
-   CCSettlementTx     = 2;
-   CreateHDLeaf       = 3;
+   SignTx                      = 0;
+   SignPartialTx               = 1;
+   SignSettlementTx            = 2;
+   SignSettlementPartialTx     = 3;
+   CreateAuthLeaf              = 4;
+   CreateHDLeaf                = 5;
 }
 
 message Packet

@@ -39,7 +39,6 @@ public:
    virtual void peerConn(const std::string &) = 0;
    virtual void peerDisconn(const std::string &) = 0;
    virtual void clientDisconn(const std::string &) = 0;
-   virtual void requestPasswordForSigningTx(const bs::core::wallet::TXSignRequest &, const std::string &) = 0;
 
    virtual void decryptWalletRequest(Blocksettle::Communication::signer::PasswordDialogType dialogType
       , const Blocksettle::Communication::Internal::PasswordDialogData &dialogData
@@ -133,13 +132,13 @@ private:
       , const std::vector<bs::wallet::PasswordData> &pwdData);
    bool RequestPasswordIfNeeded(const std::string &clientId, const bs::core::wallet::TXSignRequest &
       , Blocksettle::Communication::headless::RequestType reqType, const Blocksettle::Communication::Internal::PasswordDialogData &dialogData
-      , const std::string &prompt, const PasswordReceivedCb &cb);
+      , const PasswordReceivedCb &cb);
    bool RequestPasswordsIfNeeded(int reqId, const std::string &clientId
       , const bs::core::wallet::TXMultiSignRequest &, const bs::core::WalletMap &
       , const std::string &prompt, const PasswordsReceivedCb &cb);
    bool RequestPassword(const std::string &clientId, const bs::core::wallet::TXSignRequest &
       , Blocksettle::Communication::headless::RequestType reqType, const Blocksettle::Communication::Internal::PasswordDialogData &dialogData
-      , const std::string &prompt, const PasswordReceivedCb &cb);
+      , const PasswordReceivedCb &cb);
 
    bool CheckSpendLimit(uint64_t value, const std::string &walletId);
 
