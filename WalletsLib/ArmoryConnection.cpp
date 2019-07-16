@@ -353,7 +353,8 @@ bool ArmoryConnection::broadcastZC(const BinaryData& rawTx)
    return true;
 }
 
-std::string ArmoryConnection::registerWallet(const std::string &walletId, const std::string &mergedWalletId
+std::string ArmoryConnection::registerWallet(const std::shared_ptr<AsyncClient::BtcWallet> &wallet
+   , const std::string &walletId, const std::string &mergedWalletId
    , const std::vector<BinaryData> &addrVec, const RegisterWalletCb &cb, bool asNew)
 {
    if (!bdv_ || ((state_ != ArmoryState::Ready) && (state_ != ArmoryState::Connected))) {
@@ -363,8 +364,6 @@ std::string ArmoryConnection::registerWallet(const std::string &walletId, const 
 
    std::unique_lock<std::mutex> lock(registrationCallbacksMutex_);
 
-   auto wallet = std::make_shared<AsyncClient::BtcWallet>(
-      bdv_->instantiateWallet(walletId));
    const auto &regId = wallet->registerAddresses(addrVec, asNew);
 
    registrationCallbacks_[regId] = cb;
@@ -536,6 +535,31 @@ bool ArmoryConnection::getRBFoutputs(const std::vector<std::string> &walletIds, 
    bdv_->getCombinedRBFTxOuts(walletIds, cbWrap);
    return true;
 }
+
+bool ArmoryConnection::getUTXOsForAddress(const bs::Address &addr, const UTXOsCb &cb, bool withZC)
+{
+   if (!bdv_ || (state_ != ArmoryState::Ready)) {
+      logger_->error("[{}] invalid state: {}", __func__, (int)state_.load());
+      return false;
+   }
+   const auto &cbWrap = [this, cb, addr](ReturnMessage<std::vector<UTXO>> retMsg) {
+      try {
+         const auto &utxos = retMsg.get();
+         if (cb) {
+            cb(utxos);
+         }
+      }
+      catch (const std::exception &e) {
+         logger_->error("[ArmoryConnection::getUTXOsForAddress] {} failed: {}"
+            , addr.display(), e.what());
+         if (cb) {
+            cb({});
+         }
+      }
+   };
+   bdv_->getUTXOsForAddress(addr.id(), withZC, cbWrap);
+}
+
 
 bool ArmoryConnection::getCombinedBalances(const std::vector<std::string> &walletIDs)
 {

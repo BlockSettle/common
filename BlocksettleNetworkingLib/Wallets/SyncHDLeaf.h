@@ -83,7 +83,6 @@ namespace bs {
 
             std::vector<std::string> registerWallet(const std::shared_ptr<ArmoryConnection> &armory = nullptr
                , bool asNew = false) override;
-            void unregisterWallet() override;
 
             std::vector<BinaryData> getAddrHashes() const override;
             std::vector<BinaryData> getAddrHashesExt() const;
@@ -180,6 +179,7 @@ namespace bs {
 
             std::string regIdExt_, regIdInt_;
             std::mutex  regMutex_;
+            std::vector<std::string> unconfTgtRegIds_;
 
          private:
             void createAddress(const CbAddress &, AddressEntryType aet, bool isInternal = false);
@@ -262,6 +262,24 @@ namespace bs {
             double         balanceCorrection_ = 0;
             std::set<UTXO> invalidTx_;
             std::set<BinaryData> invalidTxHash_;
+         };
+
+
+         class SettlementLeaf : public Leaf
+         {
+         public:
+            SettlementLeaf(const std::string &walletId, const std::string &name, 
+               const std::string &desc, SignContainer *, const std::shared_ptr<spdlog::logger> &);
+
+            SecureBinaryData getRootPubkey(void) const;
+            void setSettlementID(const SecureBinaryData&);
+
+         protected:
+            void createAddress(const CbAddress &, const AddrPoolKey &) override;
+            void topUpAddressPool(bool extInt, const std::function<void()> &cb = nullptr) override;
+
+         private:
+            BinaryData              userId_;
          };
 
       }  //namespace hd

@@ -126,7 +126,8 @@ public:
    using UTXOsCb = std::function<void(const std::vector<UTXO> &)>;
 
    // For ZC notifications walletId would be replaced with mergedWalletId (and notifications are merged)
-   virtual std::string registerWallet(const std::string &walletId, const std::string &mergedWalletId
+   virtual std::string registerWallet(const std::shared_ptr<AsyncClient::BtcWallet> &
+      , const std::string &walletId, const std::string &mergedWalletId
       , const std::vector<BinaryData> &addrVec, const RegisterWalletCb&
       , bool asNew = false);
    virtual bool getWalletsHistory(const std::vector<std::string> &walletIDs, const WalletsHistoryCb&);
@@ -140,6 +141,7 @@ public:
       , const UTXOsCb &);
    bool getSpendableZCoutputs(const std::vector<std::string> &walletIds, const UTXOsCb &);
    bool getRBFoutputs(const std::vector<std::string> &walletIds, const UTXOsCb &);
+   bool getUTXOsForAddress(const bs::Address &, const UTXOsCb &, bool withZC = false);
 
    using TxCb = std::function<void(const Tx&)>;
    using TXsCb = std::function<void(const std::vector<Tx>&)>;
