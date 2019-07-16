@@ -849,7 +849,7 @@ bool HeadlessContainerListener::onCreateHDLeaf(const std::string &clientId, head
    const auto path = bs::hd::Path::fromString(request.path());
    if ((path.length() != 3) || !path.isAbolute()) {
       logger_->error("[HeadlessContainerListener] invalid path {} at HD wallet creation", request.path());
-      //CreateHDLeafResponse(clientId, packet.id(), ErrorCode::InvalidLeafPath);
+      CreateHDLeafResponse(clientId, packet.id(), ErrorCode::InternalError);
       return false;
    }
 
@@ -876,7 +876,7 @@ bool HeadlessContainerListener::onCreateHDLeaf(const std::string &clientId, head
 
          if (leaf == nullptr) {
             logger_->error("[HeadlessContainerListener] failed to create/get leaf {}", path.toString());
-            //CreateHDLeafResponse(clientId, id, ErrorCode::FailedToCreateLeaf);
+            CreateHDLeafResponse(clientId, id, ErrorCode::InternalError);
             return;
          }
       }

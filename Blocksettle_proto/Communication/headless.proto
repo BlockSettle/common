@@ -114,13 +114,13 @@ message CancelSignTx
 message SignSettlementTxRequest
 {
    SignTxRequest signTxRequest                                                 = 1;
-   Blocksettle.Communication.Internal.PasswordDialogData passwordDialogData  = 2;
+   Blocksettle.Communication.Internal.PasswordDialogData passwordDialogData    = 2;
 }
 
 message SignSettlementPayoutTxRequest
 {
    SignPayoutTXRequest signPayoutTXRequest                                     = 1;
-   Blocksettle.Communication.Internal.PasswordDialogData passwordDialogData  = 2;
+   Blocksettle.Communication.Internal.PasswordDialogData passwordDialogData    = 2;
 }
 
 message SignPayoutTXRequest

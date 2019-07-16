@@ -3,6 +3,5 @@ syntax = "proto3";
 package Blocksettle.Communication.Internal;
 
 message PasswordDialogData {
-   //PasswordDialogType       type              = 1;
-   bytes                    valuesMap         = 2;
+   bytes                    valuesMap         = 1;
 }

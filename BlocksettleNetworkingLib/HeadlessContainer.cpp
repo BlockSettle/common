@@ -5,6 +5,7 @@
 #include "Wallets/SyncHDWallet.h"
 #include "Wallets/SyncWalletsManager.h"
 #include "SystemFileUtils.h"
+#include "BSErrorCodeStrings.h"
 
 #include <QCoreApplication>
 #include <QDataStream>
@@ -267,7 +268,7 @@ void HeadlessContainer::ProcessCreateHDLeafResponse(unsigned int id, const std::
       emit HDLeafCreated(id, leaf);
    }
    else {
-
+      emit Error(id, bs::error::ErrorCodeToString(result).toStdString());
    }
 }
 
@@ -546,7 +547,6 @@ bs::signer::RequestId HeadlessContainer::setUserId(const BinaryData &userId, con
    }
 
    bs::sync::PasswordDialogData info;
-   info.setValue("Prompt", "Auth wallet creation");
    info.setValue("WalletId", QString::fromStdString(walletId));
 
    headless::SetUserIdRequest request;
@@ -558,6 +558,20 @@ bs::signer::RequestId HeadlessContainer::setUserId(const BinaryData &userId, con
 
    headless::RequestPacket packet;
    packet.set_type(headless::SetUserIdType);
+   packet.set_data(request.SerializeAsString());
+   return Send(packet);
+}
+
+bs::signer::RequestId HeadlessContainer::syncCCNames(const std::vector<std::string> &ccNames)
+{
+   logger_->debug("[{}] syncing {} CCs", __func__, ccNames.size());
+   headless::SyncCCNamesData request;
+   for (const auto &cc : ccNames) {
+      request.add_ccnames(cc);
+   }
+
+   headless::RequestPacket packet;
+   packet.set_type(headless::SyncCCNamesType);
    packet.set_data(request.SerializeAsString());
    return Send(packet);
 }
@@ -575,20 +589,6 @@ bs::signer::RequestId HeadlessContainer::createHDLeaf(const std::string &rootWal
 
    headless::RequestPacket packet;
    packet.set_type(headless::CreateHDLeafRequestType);
-   packet.set_data(request.SerializeAsString());
-   return Send(packet);
-}
-
-bs::signer::RequestId HeadlessContainer::syncCCNames(const std::vector<std::string> &ccNames)
-{
-   logger_->debug("[{}] syncing {} CCs", __func__, ccNames.size());
-   headless::SyncCCNamesData request;
-   for (const auto &cc : ccNames) {
-      request.add_ccnames(cc);
-   }
-
-   headless::RequestPacket packet;
-   packet.set_type(headless::SyncCCNamesType);
    packet.set_data(request.SerializeAsString());
    return Send(packet);
 }

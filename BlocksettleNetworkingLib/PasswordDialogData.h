@@ -34,30 +34,6 @@ signals:
 
 private:
    QVariantMap values_;
-
-//   // Details
-//   QString productGroup_;
-//   QString security_;
-//   QString product_;
-//   QString side_;
-//   QString quantity_;
-//   QString price_;
-//   QString totalValue_;
-
-//   // Settlement details
-//   QString payment_;
-//   QString genesisAddress_;
-
-//   // XBT Settlement details
-//   QString requesterAuthAddress_;
-//   QString responderAuthAddress_;
-//   QString wallet_;
-//   QString transaction_;
-
-//   // Transaction details
-//   QString transactionAmount_;
-//   QString networkFee_;
-//   QString totalSpent_;
 };
 
 
