@@ -587,6 +587,12 @@ bs::signer::RequestId HeadlessContainer::createHDLeaf(const std::string &rootWal
    request.set_rootwalletid(rootWalletId);
    request.set_path(path.toString());
 
+   bs::sync::PasswordDialogData info;
+   info.setValue(QLatin1String("WalletId"), QString::fromStdString(rootWalletId));
+
+   auto dialogData = request.mutable_passworddialogdata();
+   *dialogData = info.toProtobufMessage();
+
    headless::RequestPacket packet;
    packet.set_type(headless::CreateHDLeafRequestType);
    packet.set_data(request.SerializeAsString());
