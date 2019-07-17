@@ -1,5 +1,5 @@
 #include "HeadlessContainerListener.h"
-#include <spdlog/spdlog.h>
+
 #include "CheckRecipSigner.h"
 #include "ConnectionManager.h"
 #include "CoreHDWallet.h"
@@ -8,6 +8,8 @@
 #include "ServerConnection.h"
 #include "WalletEncryption.h"
 #include "ZmqHelperFunctions.h"
+
+#include <spdlog/spdlog.h>
 
 using namespace Blocksettle::Communication;
 using namespace bs::error;
@@ -871,7 +873,7 @@ bool HeadlessContainerListener::onCreateHDLeaf(const std::string &clientId, head
       auto leaf = group->getLeafByPath(leafIndex);
 
       if (leaf == nullptr) {
-         hdWallet->lockForEncryption(pass);
+         auto lock = hdWallet->lockForEncryption(pass);
          leaf = group->createLeaf(leafIndex);
 
          if (leaf == nullptr) {
@@ -891,7 +893,10 @@ bool HeadlessContainerListener::onCreateHDLeaf(const std::string &clientId, head
          rootPtr->getChaincode());
    };
 
-   RequestPasswordIfNeeded(clientId, {}, headless::CreateHDLeafRequestType, {}, onPassword);
+   bs::core::wallet::TXSignRequest txReq;
+   txReq.walletId = hdWallet->walletId();
+
+   RequestPasswordIfNeeded(clientId, txReq, headless::CreateHDLeafRequestType, request.passworddialogdata(), onPassword);
    return true;
 }
 
