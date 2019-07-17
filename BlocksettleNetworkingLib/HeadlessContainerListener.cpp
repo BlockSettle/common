@@ -1,5 +1,5 @@
 #include "HeadlessContainerListener.h"
-#include <spdlog/spdlog.h>
+
 #include "CheckRecipSigner.h"
 #include "ConnectionManager.h"
 #include "CoreHDWallet.h"
@@ -8,6 +8,8 @@
 #include "ServerConnection.h"
 #include "WalletEncryption.h"
 #include "ZmqHelperFunctions.h"
+
+#include <spdlog/spdlog.h>
 
 using namespace Blocksettle::Communication;
 using namespace bs::error;
