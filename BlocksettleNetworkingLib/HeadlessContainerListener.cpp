@@ -774,33 +774,39 @@ bool HeadlessContainerListener::onSetUserId(const std::string &clientId, headles
       }
    }
 
-   const auto &onPassword = [this, wallet, group, clientId, id=packet.id()]
-   (bs::error::ErrorCode result, const SecureBinaryData &password) {
-      if (result != bs::error::ErrorCode::NoError) {
-         setUserIdResponse(clientId, id, headless::AWR_NotDecrypted);
-         return;
-      }
-      try {
-         auto lock = wallet->lockForEncryption(password);
-         auto leaf = group->createLeaf(0x80000000, 5);
-         if (leaf) {
-            setUserIdResponse(clientId, id, headless::AWR_NoError, leaf->walletId());
+   if (!request.userid().empty()) {
+      const auto &onPassword = [this, wallet, group, clientId, id=packet.id()]
+      (bs::error::ErrorCode result, const SecureBinaryData &password) {
+         if (result != bs::error::ErrorCode::NoError) {
+            setUserIdResponse(clientId, id, headless::AWR_NotDecrypted);
             return;
          }
-         else {
-            logger_->warn("[HeadlessContainerListener::onSetUserId] failed to create auth leaf");
+         try {
+            auto lock = wallet->lockForEncryption(password);
+            auto leaf = group->createLeaf(0x80000000, 5);
+            if (leaf) {
+               setUserIdResponse(clientId, id, headless::AWR_NoError, leaf->walletId());
+               return;
+            }
+            else {
+               logger_->warn("[HeadlessContainerListener::onSetUserId] failed to create auth leaf");
+            }
          }
-      }
-      catch (const std::exception &e) {
-         logger_->error("[HeadlessContainerListener::onSetUserId] failed to create auth leaf: {}", e.what());
-      }
-      setUserIdResponse(clientId, id, headless::AWR_SaltSetFailed);
-      return;
-   };
-   bs::core::wallet::TXSignRequest txReq;
-   txReq.walletId = wallet->walletId();
+         catch (const std::exception &e) {
+            logger_->error("[HeadlessContainerListener::onSetUserId] failed to create auth leaf: {}", e.what());
+         }
+         setUserIdResponse(clientId, id, headless::AWR_SaltSetFailed);
+         return;
+      };
+      bs::core::wallet::TXSignRequest txReq;
+      txReq.walletId = wallet->walletId();
 
-   return RequestPasswordIfNeeded(clientId, txReq, headless::SetUserIdType, request.passworddialogdata(), onPassword);
+      return RequestPasswordIfNeeded(clientId, txReq, headless::SetUserIdType, request.passworddialogdata(), onPassword);
+   }
+   else {
+      // FIXME: implement reset user id
+      return true;
+   }
 }
 
 bool HeadlessContainerListener::onSyncCCNames(headless::RequestPacket &packet)
