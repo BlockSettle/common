@@ -1451,7 +1451,7 @@ QStringList LocalSigner::args() const
    }
 
    QStringList result;
-   result << QLatin1String("--guimode") << QLatin1String("lightgui");
+   result << QLatin1String("--guimode") << QLatin1String("litegui");
    switch (netType_) {
    case NetworkType::TestNet:
    case NetworkType::RegTest:
