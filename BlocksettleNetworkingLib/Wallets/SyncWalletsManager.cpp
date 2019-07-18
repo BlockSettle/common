@@ -332,7 +332,7 @@ WalletsManager::WalletPtr WalletsManager::getDefaultWallet() const
    const auto &priWallet = getPrimaryWallet();
    if (priWallet) {
       const auto &group = priWallet->getGroup(priWallet->getXBTGroupType());
-      
+
       //all leaf paths are always hardened
       result = group ? group->getLeaf(0x80000000) : nullptr;
    }
@@ -353,7 +353,7 @@ WalletsManager::WalletPtr WalletsManager::getCCWallet(const std::string &cc)
       //cc wallet is always ext only
       ccGroup = priWallet->createGroup(bs::hd::CoinType::BlockSettle_CC, true);
    }
-   return ccGroup->getLeaf(bs::hd::Path::keyToElem(cc) | bs::hd::hardFlag);
+   return ccGroup->getLeaf(cc);
 }
 
 void WalletsManager::setUserId(const BinaryData &userId)
