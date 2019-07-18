@@ -353,7 +353,7 @@ WalletsManager::WalletPtr WalletsManager::getCCWallet(const std::string &cc)
       //cc wallet is always ext only
       ccGroup = priWallet->createGroup(bs::hd::CoinType::BlockSettle_CC, true);
    }
-   return ccGroup->getLeaf(cc);
+   return ccGroup->getLeaf(bs::hd::Path::keyToElem(cc) | bs::hd::hardFlag);
 }
 
 void WalletsManager::setUserId(const BinaryData &userId)
