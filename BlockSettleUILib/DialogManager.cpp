@@ -14,6 +14,7 @@ void DialogManager::adjustDialogPosition(QDialog *dlg)
 {
 #ifndef QT_NO_DEBUG
    Q_ASSERT(dlg);
+   Q_ASSERT(mainWindow_);
 #endif
    if (!dlg)
       return;

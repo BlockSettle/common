@@ -27,9 +27,9 @@ private slots:
    void onDialogFinished();
 
 private:
-   const QWidget*             mainWindow_ = nullptr;
-   QList<QPointer<QDialog>>   activeDlgs_;
-   static const int           offset = 10;
+   const QPointer<const QWidget> mainWindow_ = nullptr;
+   QList<QPointer<QDialog>>      activeDlgs_;
+   static const int              offset = 10;
 };
 
 #endif // __DIALOG_MANAGER_H__
