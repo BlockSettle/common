@@ -16,8 +16,9 @@ void DialogManager::adjustDialogPosition(QDialog *dlg)
    Q_ASSERT(dlg);
    Q_ASSERT(mainWindow_);
 #endif
-   if (!dlg)
+   if (!dlg) {
       return;
+   }
 
    // Sanity check
    auto startDlg = std::remove_if(activeDlgs_.begin(), activeDlgs_.end(), [](const auto dlg) {
@@ -94,18 +95,19 @@ void DialogManager::adjustDialogPosition(QDialog *dlg)
       const auto &other = activeDlgs_[i];
 
 #ifndef QT_NO_DEBUG
-   Q_ASSERT(!other.isNull());
+      Q_ASSERT(!other.isNull());
 #endif
-      if (other.isNull())
+      if (other.isNull()) {
          continue;
+      }
 
       const QPoint otherP = other.data()->geometry().topLeft();
       const QPoint delta = dialogTopLeft - otherP;
       // If there less then 5 pixels difference
       // update position.
       if (delta.manhattanLength() <= 5) {
-         dialogTopLeft.setX(dialogTopLeft.x() + offset);
-         dialogTopLeft.setY(dialogTopLeft.y() + offset);
+         dialogTopLeft.setX(dialogTopLeft.x() + offset_);
+         dialogTopLeft.setY(dialogTopLeft.y() + offset_);
       }
    }
 
