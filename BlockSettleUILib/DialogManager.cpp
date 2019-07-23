@@ -20,7 +20,6 @@ void DialogManager::adjustDialogPosition(QDialog *dlg)
       return;
 
    // Sanity check
-   activeDlgs_.push_back(QPointer<QDialog>(dlg));
    auto startDlg = std::remove_if(activeDlgs_.begin(), activeDlgs_.end(), [](const auto dlg) {
 #ifndef QT_NO_DEBUG
       // We expected all dialogs are alive
@@ -101,12 +100,16 @@ void DialogManager::adjustDialogPosition(QDialog *dlg)
          continue;
 
       const QPoint otherP = other.data()->geometry().topLeft();
-      if (dialogTopLeft == otherP) {
+      const QPoint delta = dialogTopLeft - otherP;
+      // If there less then 5 pixels difference
+      // update position.
+      if (delta.manhattanLength() <= 5) {
          dialogTopLeft.setX(dialogTopLeft.x() + offset);
          dialogTopLeft.setY(dialogTopLeft.y() + offset);
       }
    }
 
+   activeDlgs_.push_back(QPointer<QDialog>(dlg));
    dlg->move(dialogTopLeft);
    dlg->show();
 }
