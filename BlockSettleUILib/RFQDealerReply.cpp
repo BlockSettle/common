@@ -38,11 +38,11 @@ namespace {
 
    QString getDefaultScriptsDir()
    {
-   #if defined(_WIN32) || defined(__APPLE__)
-         return QCoreApplication::applicationDirPath() + QStringLiteral("/scripts");
-   #else
-         return QStringLiteral("/usr/share/blocksettle/scripts");
-   #endif
+#if defined(Q_OS_WIN) || defined(Q_OS_MACOS)
+      return QCoreApplication::applicationDirPath() + QStringLiteral("/scripts");
+#else
+      return QStringLiteral("/usr/share/blocksettle/scripts");
+#endif
    }
 
 } // namespace
