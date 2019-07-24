@@ -108,8 +108,6 @@ public:
    virtual bs::signer::RequestId customDialogRequest(bs::signer::ui::DialogType signerDialog
       , const QVariantMap &data = QVariantMap()) = 0;
 
-   virtual void syncHDWallet(const std::string &id, const std::function<void(bs::sync::HDWalletData)> &) = 0;
-   virtual void syncWallet(const std::string &id, const std::function<void(bs::sync::WalletData)> &) = 0;
    virtual void syncAddressComment(const std::string &walletId, const bs::Address &, const std::string &) = 0;
    virtual void syncTxComment(const std::string &walletId, const BinaryData &, const std::string &) = 0;
 
@@ -151,7 +149,7 @@ signals:
    void TXSigned(bs::signer::RequestId id, BinaryData signedTX, bs::error::ErrorCode result, const std::string &errorReason = {});
 
    void HDLeafCreated(bs::signer::RequestId id, const std::shared_ptr<bs::sync::hd::Leaf> &);
-   //void HDWalletCreated(bs::signer::RequestId id, std::shared_ptr<bs::sync::hd::Wallet>);
+
    void QWalletInfo(unsigned int id, const bs::hd::WalletInfo &);
    void PasswordChanged(const std::string &walletId, bool success);
    void AutoSignStateChanged(const std::string &walletId, bool active);

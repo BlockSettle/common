@@ -197,20 +197,25 @@ void InprocSigner::createSettlementWallet(const bs::Address &authAddr
 {
    const auto priWallet = walletsMgr_->getPrimaryWallet();
    if (!priWallet) {
-      if (cb)
+      if (cb) {
          cb({});
+      }
       return;
    }
+
    const auto leaf = priWallet->createSettlementLeaf(authAddr);
    if (!leaf) {
-      if (cb)
+      if (cb) {
          cb({});
+      }
       return;
    }
    const auto &cbWrap = [cb](bool, const SecureBinaryData &pubKey) {
-      if (cb)
+      if (cb) {
          cb(pubKey);
+      }
    };
+
    getRootPubkey(priWallet->walletId(), cbWrap);
 }
 

@@ -16,6 +16,8 @@ public:
 
 public:
    virtual void syncWalletInfo(const std::function<void(std::vector<bs::sync::WalletInfo>)> &) = 0;
+   virtual void syncHDWallet(const std::string &id, const std::function<void(bs::sync::HDWalletData)> &) = 0;
+   virtual void syncWallet(const std::string &id, const std::function<void(bs::sync::WalletData)> &) = 0;
 
 signals:
    void AuthLeafAdded(const std::string &walletId);

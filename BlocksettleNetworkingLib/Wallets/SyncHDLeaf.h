@@ -25,7 +25,7 @@ namespace bs {
          {
          protected:
             Leaf(const std::string &walletId, const std::string &name, const std::string &desc
-               , SignContainer *, const std::shared_ptr<spdlog::logger> &
+               , WalletSignerContainer *, const std::shared_ptr<spdlog::logger> &
                , bs::core::wallet::Type type
                , bool extOnlyAddresses);
 
@@ -193,7 +193,7 @@ namespace bs {
          {
          public:
             XBTLeaf(const std::string &walletId, const std::string &name, const std::string &desc
-               , SignContainer *, const std::shared_ptr<spdlog::logger> &, bool extOnlyAddresses);
+               , WalletSignerContainer *, const std::shared_ptr<spdlog::logger> &, bool extOnlyAddresses);
             ~XBTLeaf() override = default;
          };
 
@@ -201,7 +201,7 @@ namespace bs {
          {
          public:
             AuthLeaf(const std::string &walletId, const std::string &name, const std::string &desc
-               , SignContainer *, const std::shared_ptr<spdlog::logger> &);
+               , WalletSignerContainer *, const std::shared_ptr<spdlog::logger> &);
 
             void setUserId(const BinaryData &) override;
 
@@ -218,7 +218,7 @@ namespace bs {
          {
          public:
             CCLeaf(const std::string &walletId, const std::string &name, const std::string &desc
-               , SignContainer *,const std::shared_ptr<spdlog::logger> &);
+               , WalletSignerContainer *,const std::shared_ptr<spdlog::logger> &);
             ~CCLeaf() override;
 
             bs::core::wallet::Type type() const override { return bs::core::wallet::Type::ColorCoin; }
@@ -274,7 +274,7 @@ namespace bs {
          {
          public:
             SettlementLeaf(const std::string &walletId, const std::string &name,
-               const std::string &desc, SignContainer *, const std::shared_ptr<spdlog::logger> &);
+               const std::string &desc, WalletSignerContainer *, const std::shared_ptr<spdlog::logger> &);
 
             void getRootPubkey(const std::function<void(const SecureBinaryData &)> &) const;
             void setSettlementID(const SecureBinaryData &, const std::function<void(bool)> &);
