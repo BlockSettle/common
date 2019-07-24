@@ -55,6 +55,27 @@ public:
    BsProxy *proxy_{};
 };
 
+class ProxyPbListener : public ServerConnectionListener
+{
+public:
+   void OnDataFromClient(const std::string& clientId, const std::string& data) override
+   {
+      proxy_->onPbData(clientId, data);
+   }
+
+   void OnClientConnected(const std::string& clientId) override
+   {
+      proxy_->onPbConnected(clientId);
+   }
+
+   void OnClientDisconnected(const std::string& clientId) override
+   {
+      proxy_->onPbDisconnected(clientId);
+   }
+
+   BsProxy *proxy_{};
+};
+
 class BsClientCelerListener : public DataConnectionListener
 {
 public:
@@ -227,6 +248,21 @@ void BsProxy::onProxyClientDisconnected(const std::string &clientId)
       // Erase old client's data
       clients_.erase(clientId);
    });
+}
+
+void BsProxy::onPbData(const std::string &clientId, const std::string &data)
+{
+
+}
+
+void BsProxy::onPbConnected(const std::string &clientId)
+{
+
+}
+
+void BsProxy::onPbDisconnected(const std::string &clientId)
+{
+
 }
 
 void BsProxy::onCelerDataReceived(const std::string &clientId, const std::string &data)

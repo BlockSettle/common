@@ -11,6 +11,7 @@
 
 class AutheIDClient;
 class BsClientCelerListener;
+class ProxyPbListener;
 class BsProxy;
 class BsProxyListener;
 class ConnectionManager;
@@ -81,6 +82,7 @@ public:
 private:
    friend class BsProxyListener;
    friend class BsClientCelerListener;
+   friend class ProxyPbListener;
 
    enum class State
    {
@@ -108,6 +110,10 @@ private:
    void onProxyDataFromClient(const std::string& clientId, const std::string& data);
    void onProxyClientConnected(const std::string& clientId);
    void onProxyClientDisconnected(const std::string& clientId);
+
+   void onPbData(const std::string& clientId, const std::string& data);
+   void onPbConnected(const std::string& clientId);
+   void onPbDisconnected(const std::string& clientId);
 
    void onCelerDataReceived(const std::string& clientId, const std::string& data);
    void onCelerConnected(const std::string& clientId);
@@ -142,6 +148,10 @@ private:
    std::shared_ptr<ConnectionManager> connectionManager_;
    std::shared_ptr<QNetworkAccessManager> nam_{};
    std::unique_ptr<LoginHasher> loginHasher_;
+
+   std::unique_ptr<ProxyPbListener> pbListener_;
+   std::unique_ptr<ZmqBIP15XServerConnection> pbServer_;
+   std::string pbClientId_;
 
    QThreadPool *threadPool_{};
 };
