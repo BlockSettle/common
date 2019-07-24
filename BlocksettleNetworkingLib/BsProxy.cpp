@@ -141,31 +141,6 @@ void BsProxy::overrideCelerHost(const std::string &host, int port)
    g_celerPortOverride = port;
 }
 
-// static
-std::string BsProxy::requestTitleAuthAddr()
-{
-   return "Authentication Address";
-}
-
-// static
-std::string BsProxy::requestDescAuthAddr(const bs::Address &address)
-{
-   return fmt::format("Submit auth address for verification: {}", address.display());
-}
-
-// static
-std::string BsProxy::requestTitleCcAddr()
-{
-   return "Private Market token";
-}
-
-// static
-std::string BsProxy::requestDescCcAddr(const bs::Address &address)
-{
-   // We don't show address details here yet
-   return fmt::format("Submitting CC wallet address to receive PM token");
-}
-
 BsProxy::~BsProxy()
 {
    threadPool_->waitForDone();
@@ -490,13 +465,13 @@ void BsProxy::processStartSignAddress(BsProxy::Client *client, int64_t requestId
    auto type = BsClient::SignAddressReq::Type(request.type());
    switch (type) {
       case BsClient::SignAddressReq::AuthAddr:
-         req.title = requestTitleAuthAddr();
-         req.description = requestDescAuthAddr(address);
+         req.title = BsClient::requestTitleAuthAddr();
+         req.description = BsClient::requestDescAuthAddr(address);
          req.expiration = int(std::chrono::duration_cast<std::chrono::seconds>(BsClient::autheidAuthAddressTimeout()).count());
          break;
       case BsClient::SignAddressReq::CcAddr:
-         req.title = requestTitleCcAddr();
-         req.description = requestDescCcAddr(address);
+         req.title = BsClient::requestTitleCcAddr();
+         req.description = BsClient::requestDescCcAddr(address);
          req.expiration = int(std::chrono::duration_cast<std::chrono::seconds>(BsClient::autheidCcAddressTimeout()).count());
          break;
       default:
