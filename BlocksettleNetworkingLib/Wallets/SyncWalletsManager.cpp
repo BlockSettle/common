@@ -2,9 +2,9 @@
 
 #include "ApplicationSettings.h"
 #include "FastLock.h"
-#include "SignContainer.h"
 #include "SyncHDWallet.h"
 #include "SyncSettlementWallet.h"
+#include "WalletSignerContainer.h"
 
 #include <QCoreApplication>
 #include <QDir>
@@ -39,12 +39,12 @@ WalletsManager::~WalletsManager() noexcept
    }
 }
 
-void WalletsManager::setSignContainer(const std::shared_ptr<SignContainer> &container)
+void WalletsManager::setSignContainer(const std::shared_ptr<WalletSignerContainer> &container)
 {
    signContainer_ = container;
 
-   connect(signContainer_.get(), &SignContainer::AuthLeafAdded, this, &WalletsManager::onAuthLeafAdded);
-   connect(signContainer_.get(), &SignContainer::walletsListUpdated, this, &WalletsManager::onWalletsListUpdated);
+   connect(signContainer_.get(), &WalletSignerContainer::AuthLeafAdded, this, &WalletsManager::onAuthLeafAdded);
+   connect(signContainer_.get(), &WalletSignerContainer::walletsListUpdated, this, &WalletsManager::onWalletsListUpdated);
 }
 
 void WalletsManager::reset()

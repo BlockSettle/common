@@ -1,7 +1,7 @@
 #ifndef INPROC_SIGNER_H
 #define INPROC_SIGNER_H
 
-#include "SignContainer.h"
+#include "WalletSignerContainer.h"
 #include <vector>
 
 namespace spdlog {
@@ -18,7 +18,7 @@ namespace bs {
 }
 
 
-class InprocSigner : public SignContainer
+class InprocSigner : public WalletSignerContainer
 {
    Q_OBJECT
 public:

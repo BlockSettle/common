@@ -2,14 +2,16 @@
 #define BS_SYNC_WALLETS_MANAGER_H
 
 #include <memory>
-#include <vector>
 #include <set>
 #include <unordered_map>
-#include <QString>
+#include <vector>
+
+#include <QDateTime>
+#include <QMutex>
 #include <QObject>
 #include <QPointer>
-#include <QMutex>
-#include <QDateTime>
+#include <QString>
+
 #include "ArmoryConnection.h"
 #include "BTCNumericTypes.h"
 #include "CoreWallet.h"
@@ -19,8 +21,9 @@
 namespace spdlog {
    class logger;
 }
+
 class ApplicationSettings;
-class SignContainer;
+class WalletSignerContainer;
 
 namespace bs {
    namespace hd {
@@ -50,7 +53,7 @@ namespace bs {
          WalletsManager(WalletsManager&&) = delete;
          WalletsManager& operator = (WalletsManager&&) = delete;
 
-         void setSignContainer(const std::shared_ptr<SignContainer> &container);
+         void setSignContainer(const std::shared_ptr<WalletSignerContainer> &container);
          void reset();
 
          void syncWallets(const CbProgress &cb = nullptr);
@@ -179,7 +182,7 @@ namespace bs {
          void maintenanceThreadFunc();
 
       private:
-         std::shared_ptr<SignContainer>         signContainer_;
+         std::shared_ptr<WalletSignerContainer>         signContainer_;
          std::shared_ptr<spdlog::logger>        logger_;
          std::shared_ptr<ApplicationSettings>   appSettings_;
          std::shared_ptr<ArmoryConnection>      armoryPtr_;

@@ -191,7 +191,7 @@ bs::signer::RequestId HeadlessListener::Send(headless::RequestPacket packet, boo
 }
 
 HeadlessContainer::HeadlessContainer(const std::shared_ptr<spdlog::logger> &logger, OpMode opMode)
-   : SignContainer(logger, opMode)
+   : WalletSignerContainer(logger, opMode)
 {
    qRegisterMetaType<headless::RequestPacket>();
    qRegisterMetaType<std::shared_ptr<bs::sync::hd::Leaf>>();

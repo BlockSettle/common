@@ -11,7 +11,7 @@
 #include "ArmoryObject.h"
 #include "CelerClientProxy.h"
 #include "QWalletInfo.h"
-#include "SignContainer.h"
+#include "WalletSignerContainer.h"
 #include "ZMQ_BIP15X_DataConnection.h"
 #include "BsClient.h"
 
@@ -76,9 +76,9 @@ private:
    void initArmory();
    void connectArmory();
    void connectSigner();
-   std::shared_ptr<SignContainer> createSigner();
-   std::shared_ptr<SignContainer> createRemoteSigner();
-   std::shared_ptr<SignContainer> createLocalSigner();
+   std::shared_ptr<WalletSignerContainer> createSigner();
+   std::shared_ptr<WalletSignerContainer> createRemoteSigner();
+   std::shared_ptr<WalletSignerContainer> createLocalSigner();
 
    void setTabStyle();
 

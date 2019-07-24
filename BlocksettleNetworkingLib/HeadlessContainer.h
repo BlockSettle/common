@@ -7,7 +7,7 @@
 #include <string>
 #include <QStringList>
 #include "DataConnectionListener.h"
-#include "SignContainer.h"
+#include "WalletSignerContainer.h"
 #include "ZMQ_BIP15X_DataConnection.h"
 
 #include "headless.pb.h"
@@ -29,7 +29,7 @@ class QProcess;
 class WalletsManager;
 class ZmqBIP15XDataConnection;
 
-class HeadlessContainer : public SignContainer
+class HeadlessContainer : public WalletSignerContainer
 {
    Q_OBJECT
 public:

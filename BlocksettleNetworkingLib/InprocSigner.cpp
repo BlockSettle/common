@@ -9,13 +9,13 @@
 InprocSigner::InprocSigner(const std::shared_ptr<bs::core::WalletsManager> &mgr
    , const std::shared_ptr<spdlog::logger> &logger, const std::string &walletsPath
    , NetworkType netType)
-   : SignContainer(logger, SignContainer::OpMode::LocalInproc)
+   : WalletSignerContainer(logger, SignContainer::OpMode::LocalInproc)
    , walletsMgr_(mgr), walletsPath_(walletsPath), netType_(netType)
 { }
 
 InprocSigner::InprocSigner(const std::shared_ptr<bs::core::hd::Wallet> &wallet
    , const std::shared_ptr<spdlog::logger> &logger)
-   : SignContainer(logger, SignContainer::OpMode::LocalInproc)
+   : WalletSignerContainer(logger, SignContainer::OpMode::LocalInproc)
    , walletsPath_({}), netType_(wallet->networkType())
 {
    walletsMgr_ = std::make_shared<bs::core::WalletsManager>(logger);
@@ -24,7 +24,7 @@ InprocSigner::InprocSigner(const std::shared_ptr<bs::core::hd::Wallet> &wallet
 
 InprocSigner::InprocSigner(const std::shared_ptr<bs::core::SettlementWallet> &wallet
    , const std::shared_ptr<spdlog::logger> &logger)
-   : SignContainer(logger, SignContainer::OpMode::LocalInproc)
+   : WalletSignerContainer(logger, SignContainer::OpMode::LocalInproc)
    , walletsPath_({}), netType_(wallet->networkType())
 {
    walletsMgr_ = std::make_shared<bs::core::WalletsManager>(logger);
