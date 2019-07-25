@@ -385,7 +385,7 @@ std::shared_ptr<WalletSignerContainer> BSTerminalMainWindow::createRemoteSigner(
    // for the old and new keys, and a promise to set once the user decides.
    const auto &ourNewKeyCB = [this](const std::string& oldKey, const std::string& newKey
       , const std::string& srvAddrPort
-      , const std::shared_ptr<std::promise<bool>> &newKeyProm) {
+      , const std::shared_ptr<FutureValue<bool>> &newKeyProm) {
       logMgr_->logger()->debug("[BSTerminalMainWindow::createSigner::callback] received"
          " new key {} [{}], old key {} [{}] for {} ({})", newKey, newKey.size(), oldKey
          , oldKey.size(), srvAddrPort, signersProvider_->getCurrentSigner().serverId());
@@ -408,7 +408,13 @@ std::shared_ptr<WalletSignerContainer> BSTerminalMainWindow::createRemoteSigner(
          if (answer) {
             signersProvider_->addKey(srvAddrPort, newKey);
          }
-         newKeyProm->set_value(answer);
+
+         bool result = newKeyProm->setValue(answer);
+         if (!result) {
+            SPDLOG_LOGGER_DEBUG(logMgr_->logger()
+               , "can't set result for signer key prompt for {}, perhaps connection was already closed"
+               , srvAddrPort);
+         }
       };
 
       addDeferredDialog(deferredDialog);
@@ -1063,6 +1069,7 @@ void BSTerminalMainWindow::onLogin()
    }
 
    bsClient_ = loginDialog.getClient();
+   ccFileManager_->setBsClient(bsClient_.get());
 
    connect(bsClient_.get(), &BsClient::connectionFailed, this, &BSTerminalMainWindow::onBsConnectionFailed);
 
