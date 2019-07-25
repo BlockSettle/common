@@ -1,5 +1,5 @@
-#ifndef __MANUAL_RESET_EVENT_H__
-#define __MANUAL_RESET_EVENT_H__
+#ifndef FUTURE_VALUE_H
+#define FUTURE_VALUE_H
 
 #include <atomic>
 #include <condition_variable>
@@ -50,4 +50,4 @@ private:
    T value_;
 };
 
-#endif // __MANUAL_RESET_EVENT_H__
+#endif
