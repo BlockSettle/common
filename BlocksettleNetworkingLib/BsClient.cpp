@@ -19,7 +19,7 @@ BsClient::BsClient(const std::shared_ptr<spdlog::logger> &logger
    connection_ = std::make_unique<ZmqBIP15XDataConnection>(logger, zmqBipParams);
 
    connection_->setCBs([this](const std::string &oldKey, const std::string &newKey
-      , const std::string& srvAddrPort, const std::shared_ptr<std::promise<bool>> &prompt)
+      , const std::string& srvAddrPort, const std::shared_ptr<FutureValue<bool>> &prompt)
    {
       BsClientParams::NewKey d;
       d.oldKey = oldKey;

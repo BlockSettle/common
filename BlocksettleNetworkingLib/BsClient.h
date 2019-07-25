@@ -1,18 +1,20 @@
 #ifndef BS_CLIENT_H
 #define BS_CLIENT_H
 
-#include <string>
-#include <map>
-#include <memory>
 #include <functional>
 #include <future>
-#include <spdlog/logger.h>
+#include <map>
+#include <memory>
+#include <string>
 #include <QObject>
+#include <spdlog/logger.h>
+
 #include "Address.h"
-#include "autheid_utils.h"
 #include "AutheIDClient.h"
 #include "CelerMessageMapper.h"
 #include "DataConnectionListener.h"
+#include "FutureValue.h"
+#include "autheid_utils.h"
 
 class ZmqContext;
 class ZmqBIP15XDataConnection;
@@ -31,7 +33,7 @@ struct BsClientParams
    {
       std::string oldKey;
       std::string newKey;
-      std::shared_ptr<std::promise<bool>> prompt;
+      std::shared_ptr<FutureValue<bool>> prompt;
    };
 
    using NewKeyCallback = std::function<void(const NewKey &newKey)>;
