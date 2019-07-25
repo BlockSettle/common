@@ -101,36 +101,16 @@ public:
    virtual bs::signer::RequestId createHDLeaf(const std::string &rootWalletId, const bs::hd::Path &
       , const std::vector<bs::wallet::PasswordData> &pwdData = {}
       , const std::function<void(bs::error::ErrorCode result)> &cb = nullptr) = 0;
-   virtual bs::signer::RequestId DeleteHDRoot(const std::string &rootWalletId) = 0;
-   virtual bs::signer::RequestId DeleteHDLeaf(const std::string &leafWalletId) = 0;
+
    virtual bs::signer::RequestId GetInfo(const std::string &rootWalletId) = 0;
 
    virtual bs::signer::RequestId customDialogRequest(bs::signer::ui::DialogType signerDialog
       , const QVariantMap &data = QVariantMap()) = 0;
 
-   virtual void syncAddressComment(const std::string &walletId, const bs::Address &, const std::string &) = 0;
-   virtual void syncTxComment(const std::string &walletId, const BinaryData &, const std::string &) = 0;
-
-   virtual void syncAddressBatch(const std::string &walletId,
-      const std::set<BinaryData>& addrSet, std::function<void(bs::sync::SyncState)>) = 0;
-   virtual void extendAddressChain(const std::string &walletId, unsigned count, bool extInt,
-      const std::function<void(const std::vector<std::pair<bs::Address, std::string>> &)> &) = 0;
-
    virtual void syncNewAddress(const std::string &walletId, const std::string &index, AddressEntryType
       , const std::function<void(const bs::Address &)> &);
    virtual void syncNewAddresses(const std::string &walletId, const std::vector<std::pair<std::string, AddressEntryType>> &
       , const std::function<void(const std::vector<std::pair<bs::Address, std::string>> &)> &, bool persistent = true) = 0;
-
-   //settlement related methods
-   virtual void createSettlementWallet(const bs::Address &authAddr
-      , const std::function<void(const SecureBinaryData &)> &) = 0;
-   virtual void setSettlementID(const std::string &walletId, const SecureBinaryData &id
-      , const std::function<void(bool)> &) = 0;
-   virtual void getSettlementPayinAddress(const std::string &walletID
-      , const bs::core::wallet::SettlementData &
-      , const std::function<void(bool, bs::Address)> &) = 0;
-   virtual void getRootPubkey(const std::string &walletID
-      , const std::function<void(bool, const SecureBinaryData &)> &) = 0;
 
    const OpMode &opMode() const { return mode_; }
    virtual bool isReady() const { return true; }
