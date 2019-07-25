@@ -1049,7 +1049,7 @@ void BSTerminalMainWindow::openCCTokenDialog()
 {
    const auto &deferredDialog = [this]{
       if (walletsMgr_->hasPrimaryWallet() || createWallet(true, false)) {
-         CCTokenEntryDialog dialog(walletsMgr_, ccFileManager_, signContainer_, this);
+         CCTokenEntryDialog dialog(walletsMgr_, ccFileManager_, this);
          dialog.exec();
       }
    };

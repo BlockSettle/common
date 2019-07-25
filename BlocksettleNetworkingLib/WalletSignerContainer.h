@@ -40,6 +40,10 @@ public:
    virtual void getRootPubkey(const std::string &walletID
       , const std::function<void(bool, const SecureBinaryData &)> &) = 0;
 
+   virtual bool createHDLeaf(const std::string &rootWalletId, const bs::hd::Path &
+      , const std::vector<bs::wallet::PasswordData> &pwdData = {}
+      , const std::function<void(bs::error::ErrorCode result)> &cb = nullptr) = 0;
+
 signals:
    void AuthLeafAdded(const std::string &walletId);
    // Notified from remote/local signer when wallets list is updated

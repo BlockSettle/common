@@ -98,10 +98,6 @@ public:
    virtual bs::signer::RequestId setUserId(const BinaryData &, const std::string &walletId) = 0;
    virtual bs::signer::RequestId syncCCNames(const std::vector<std::string> &) = 0;
 
-   virtual bs::signer::RequestId createHDLeaf(const std::string &rootWalletId, const bs::hd::Path &
-      , const std::vector<bs::wallet::PasswordData> &pwdData = {}
-      , const std::function<void(bs::error::ErrorCode result)> &cb = nullptr) = 0;
-
    virtual bs::signer::RequestId GetInfo(const std::string &rootWalletId) = 0;
 
    virtual bs::signer::RequestId customDialogRequest(bs::signer::ui::DialogType signerDialog
@@ -127,8 +123,6 @@ signals:
    void ready();
    void Error(bs::signer::RequestId id, std::string error);
    void TXSigned(bs::signer::RequestId id, BinaryData signedTX, bs::error::ErrorCode result, const std::string &errorReason = {});
-
-   void HDLeafCreated(bs::signer::RequestId id, const std::shared_ptr<bs::sync::hd::Leaf> &);
 
    void QWalletInfo(unsigned int id, const bs::hd::WalletInfo &);
    void PasswordChanged(const std::string &walletId, bool success);
