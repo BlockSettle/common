@@ -46,13 +46,13 @@ void CCTokenEntryDialog::tokenChanged()
 {
    ui_->labelTokenHint->clear();
    ui_->pushButtonOk->setEnabled(false);
-   const auto &strToken = ui_->lineEditToken->text().toStdString();
-   if (strToken.empty()) {
+   strToken_ = ui_->lineEditToken->text().toStdString();
+   if (strToken_.empty()) {
       return;
    }
 
    try {
-      BinaryData base58In(strToken);
+      BinaryData base58In(strToken_);
       base58In.append('\0'); // Remove once base58toScrAddr() is fixed.
       const auto decoded = BtcUtils::base58toScrAddr(base58In).toBinStr();
       Blocksettle::Communication::CCSeedResponse response;
@@ -124,7 +124,7 @@ void CCTokenEntryDialog::accept()
       return;
    }
    const auto &cbAddr = [this](const bs::Address &address) {
-      if (ccFileMgr_->SubmitAddressToPuB(address, seed_)) {
+      if (ccFileMgr_->SubmitAddressToPuB(address, seed_, strToken_)) {
          ui_->pushButtonOk->setEnabled(false);
       } else {
          onCCSubmitFailed(QString::fromStdString(address.display())

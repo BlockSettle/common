@@ -51,6 +51,7 @@ private:
    std::shared_ptr<bs::sync::Wallet>         ccWallet_;
 
    std::string    ccProduct_;
+   std::string    strToken_;
    uint32_t       seed_ = 0;
 };
 
