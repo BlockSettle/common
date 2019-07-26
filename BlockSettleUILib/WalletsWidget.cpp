@@ -49,6 +49,13 @@ public:
 
    bool filterAcceptsRow(int source_row, const QModelIndex & source_parent) const override
    {
+      const auto walletType = bs::core::wallet::Type(sourceModel()->data(sourceModel()->index(
+            source_row, AddressListModel::ColumnAddress, source_parent),
+         AddressListModel::WalletTypeRole).toInt());
+      if (walletType != bs::core::wallet::Type::Bitcoin) {
+         return false;
+      }
+
       const int txCount = sourceModel()->data(sourceModel()->index(
          source_row, AddressListModel::ColumnTxCount, source_parent)).toInt();
       const double balance = QLocale().toDouble(sourceModel()->data(sourceModel()->index(

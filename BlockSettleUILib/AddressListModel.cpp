@@ -359,6 +359,9 @@ QVariant AddressListModel::data(const QModelIndex& index, int role) const
       case AddressRole:
          return row.displayedAddress;
 
+      case WalletTypeRole:
+         return int(row.wltType);
+
       case Qt::ToolTipRole:
          if ((index.column() == ColumnComment) && row.isMultiLineComment()) {
             return row.comment;
