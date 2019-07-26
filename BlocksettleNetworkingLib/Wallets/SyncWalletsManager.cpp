@@ -14,7 +14,7 @@
 
 using namespace bs::sync;
 
-bool CCNameCorrect(const std::string& ccName)
+bool isCCNameCorrect(const std::string& ccName)
 {
    if ((ccName.length() == 1) && (ccName[0] >= '0') && (ccName[0] <= '9')) {
       return false;
@@ -323,7 +323,7 @@ WalletsManager::WalletPtr WalletsManager::getCCWallet(const std::string &cc)
       return nullptr;
    }
 
-   if (!CCNameCorrect(cc)) {
+   if (!isCCNameCorrect(cc)) {
       logger_->error("[WalletsManager::getCCWallet] invalid cc name passed: {}"
                      , cc);
       return nullptr;
@@ -1412,7 +1412,7 @@ bs::Address WalletsManager::CCResolver::genesisAddrFor(const std::string &cc) co
 
 bool WalletsManager::CreateCCLeaf(const std::string &ccName)
 {
-   if (!CCNameCorrect(ccName)) {
+   if (!isCCNameCorrect(ccName)) {
       logger_->error("[WalletsManager::CreateCCLeaf] invalid cc name passed: {}"
                      , ccName);
       return false;
