@@ -1470,6 +1470,7 @@ void WalletsManager::ProcessCreatedCCLeaf(const std::string &ccName, bs::error::
       // XXX rescan ?
 
       emit CCLeafCreated(ccName);
+      emit walletChanged(wallet->walletId());
    } else {
       logger_->error("[WalletsManager::ProcessCreatedCCLeaf] CC leaf {} creation failed: {}"
                      , ccName, static_cast<int>(result));
