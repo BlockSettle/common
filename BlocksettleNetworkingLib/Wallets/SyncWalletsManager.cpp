@@ -177,6 +177,8 @@ void WalletsManager::saveWallet(const WalletPtr &newWallet)
    addWallet(newWallet);
 }
 
+// XXX should it be register in armory ?
+// XXX should it start rescan ?
 void WalletsManager::addWallet(const WalletPtr &wallet, bool isHDLeaf)
 {
 /*   if (!isHDLeaf && hdDummyWallet_)
@@ -251,8 +253,9 @@ void WalletsManager::saveWallet(const HDWalletPtr &wallet)
    hdWallets_.insert(make_pair(wallet->walletId(), wallet));
    walletNames_.insert(wallet->name());
 
-   for (const auto &leaf : wallet->getLeaves())
+   for (const auto &leaf : wallet->getLeaves()) {
       addWallet(leaf, true);
+   }
 }
 
 void WalletsManager::walletCreated(const std::string &walletId)
@@ -1447,10 +1450,24 @@ void WalletsManager::ProcessCreatedCCLeaf(const std::string &ccName, bs::error::
       logger_->debug("[WalletsManager::ProcessCreatedCCLeaf] CC leaf {} created"
                      , ccName);
 
-      // add CC leaf
-      // set cc resolver
-      // register in armory
-      // rescan
+      auto wallet = getPrimaryWallet();
+      if (!wallet) {
+         logger_->error("[WalletsManager::ProcessCreatedCCLeaf] primary wallet should exist");
+         return;
+      }
+
+      auto group = wallet->getGroup(bs::hd::CoinType::BlockSettle_CC);
+      if (!group) {
+         logger_->error("[WalletsManager::ProcessCreatedCCLeaf] missing CC group");
+         return;
+      }
+
+      auto leaf = group->createLeaf(ccName, wallet->walletId());
+
+      addWallet(leaf);
+
+      // XXX register in armory ?
+      // XXX rescan ?
 
       emit CCLeafCreated(ccName);
    } else {
