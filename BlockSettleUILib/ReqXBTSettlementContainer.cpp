@@ -26,7 +26,7 @@ ReqXBTSettlementContainer::ReqXBTSettlementContainer(const std::shared_ptr<spdlo
    , const bs::network::RFQ &rfq
    , const bs::network::Quote &quote
    , const std::shared_ptr<TransactionData> &txData
-   , const bs::Address &authAdd)
+   , const bs::Address &authAddr)
    : bs::SettlementContainer()
    , logger_(logger)
    , authAddrMgr_(authAddrMgr)
@@ -38,9 +38,9 @@ ReqXBTSettlementContainer::ReqXBTSettlementContainer(const std::shared_ptr<spdlo
    , rfq_(rfq)
    , quote_(quote)
    , clientSells_(!rfq.isXbtBuy())
-   , authAdd_(authAdd)
+   , authAddr_(authAddr)
 {
-   assert(authAdd.isValid());
+   assert(authAddr.isValid());
 
    qRegisterMetaType<AddressVerificationState>();
 
@@ -215,9 +215,9 @@ void ReqXBTSettlementContainer::activate()
       return;
    }
 
-   auto settlLeaf = group->getLeaf(authAdd_);
+   auto settlLeaf = group->getLeaf(authAddr_);
    if (!settlLeaf) {
-      SPDLOG_LOGGER_ERROR(logger_, "can't find settlement leaf for auth address '{}'", authAdd_.display());
+      SPDLOG_LOGGER_ERROR(logger_, "can't find settlement leaf for auth address '{}'", authAddr_.display());
       return;
    }
 
@@ -228,7 +228,7 @@ void ReqXBTSettlementContainer::activate()
       }
 
       if (!success) {
-         SPDLOG_LOGGER_ERROR(thisPtr->logger_, "can't find settlement leaf for auth address '{}'", thisPtr->authAdd_.display());
+         SPDLOG_LOGGER_ERROR(thisPtr->logger_, "can't find settlement leaf for auth address '{}'", thisPtr->authAddr_.display());
          return;
       }
 

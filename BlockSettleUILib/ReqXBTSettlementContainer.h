@@ -41,7 +41,7 @@ public:
       , const bs::network::RFQ &
       , const bs::network::Quote &
       , const std::shared_ptr<TransactionData> &
-      , const bs::Address &authAdd
+      , const bs::Address &authAddr
    );
    ~ReqXBTSettlementContainer() override;
 
@@ -142,7 +142,7 @@ private:
    unsigned int      infoReqId_ = 0;
    unsigned int      infoReqIdAuth_ = 0;
 
-   const bs::Address authAdd_;
+   const bs::Address authAddr_;
 };
 
 #endif // __REQ_XBT_SETTLEMENT_CONTAINER_H__
