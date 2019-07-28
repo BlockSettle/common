@@ -221,7 +221,7 @@ void ReqXBTSettlementContainer::activate()
       return;
    }
 
-   auto thisPtr = this;
+   QPointer<ReqXBTSettlementContainer> thisPtr = this;
    settlLeaf->setSettlementID(settlementId_, [thisPtr](bool success) {
       if (!thisPtr) {
          return;
