@@ -442,7 +442,7 @@ bool HeadlessContainerListener::onSignMultiTXRequest(const std::string &clientId
          SignTXResponse(clientId, id, reqType, ErrorCode::InternalError);
       }
    };
-   return RequestPasswordsIfNeeded(++reqSeqNo_, clientId, txMultiReq, walletMap, prompt, cbOnAllPasswords);
+   return RequestPasswordsIfNeeded(++reqSeqNo_, clientId, txMultiReq, walletMap, cbOnAllPasswords);
 }
 
 bool HeadlessContainerListener::onSignSettlementPayoutTxRequest(const std::string &clientId
@@ -592,64 +592,67 @@ bool HeadlessContainerListener::RequestPasswordIfNeeded(const std::string &clien
       return true;
    }
 
-   return RequestPassword(clientId, txReq, reqType, dialogData, cb);
+   return RequestPassword(rootId, txReq, reqType, dialogData, cb);
 }
 
 bool HeadlessContainerListener::RequestPasswordsIfNeeded(int reqId, const std::string &clientId
    , const bs::core::wallet::TXMultiSignRequest &txMultiReq, const bs::core::WalletMap &walletMap
-   , const std::string &prompt, const PasswordsReceivedCb &cb)
+   , const PasswordsReceivedCb &cb)
 {
-   // FIXME - get settlement info in request
-   Internal::PasswordDialogDataWrapper dialogData;
+   // FIXME: signer ui can't display stacked password input dialogs
+   // Need to rewrite code to support multi password dialog in ui or async loop
+   return false;
 
-   TempPasswords tempPasswords;
-   for (const auto &wallet : walletMap) {
-      const auto &walletId = wallet.first;
-      const auto &rootWallet = walletsMgr_->getHDRootForLeaf(walletId);
-      const auto &rootWalletId = rootWallet->walletId();
+//   Internal::PasswordDialogDataWrapper dialogData;
 
-      tempPasswords.rootLeaves[rootWalletId].insert(walletId);
-      tempPasswords.reqWalletIds.insert(walletId);
+//   TempPasswords tempPasswords;
+//   for (const auto &wallet : walletMap) {
+//      const auto &walletId = wallet.first;
+//      const auto &rootWallet = walletsMgr_->getHDRootForLeaf(walletId);
+//      const auto &rootWalletId = rootWallet->walletId();
 
-      if (!rootWallet->encryptionTypes().empty()) {
-         const auto cbWalletPass = [this, reqId, cb, rootWalletId](bs::error::ErrorCode result, const SecureBinaryData &password) {
-            auto &tempPasswords = tempPasswords_[reqId];
-            const auto &walletsIt = tempPasswords.rootLeaves.find(rootWalletId);
-            if (walletsIt == tempPasswords.rootLeaves.end()) {
-               return;
-            }
-            for (const auto &walletId : walletsIt->second) {
-               tempPasswords.passwords[walletId] = password;
-            }
-            if (tempPasswords.passwords.size() == tempPasswords.reqWalletIds.size()) {
-               cb(tempPasswords.passwords);
-               tempPasswords_.erase(reqId);
-            }
-         };
+//      tempPasswords.rootLeaves[rootWalletId].insert(walletId);
+//      tempPasswords.reqWalletIds.insert(walletId);
 
-         bs::core::wallet::TXSignRequest txReq;
-         txReq.walletId = rootWallet->walletId();
-         RequestPassword(clientId, txReq, headless::RequestType::SignTxRequestType, dialogData, cbWalletPass);
-      }
-      else {
-         tempPasswords.passwords[walletId] = {};
-      }
-   }
-   if (tempPasswords.reqWalletIds.size() == tempPasswords.passwords.size()) {
-      cb(tempPasswords.passwords);
-   }
-   else {
-      tempPasswords_[reqId] = tempPasswords;
-   }
-   return true;
+//      if (!rootWallet->encryptionTypes().empty()) {
+//         const auto cbWalletPass = [this, reqId, cb, rootWalletId](bs::error::ErrorCode result, const SecureBinaryData &password) {
+//            auto &tempPasswords = tempPasswords_[reqId];
+//            const auto &walletsIt = tempPasswords.rootLeaves.find(rootWalletId);
+//            if (walletsIt == tempPasswords.rootLeaves.end()) {
+//               return;
+//            }
+//            for (const auto &walletId : walletsIt->second) {
+//               tempPasswords.passwords[walletId] = password;
+//            }
+//            if (tempPasswords.passwords.size() == tempPasswords.reqWalletIds.size()) {
+//               cb(tempPasswords.passwords);
+//               tempPasswords_.erase(reqId);
+//            }
+//         };
+
+//         bs::core::wallet::TXSignRequest txReq;
+//         txReq.walletId = rootWallet->walletId();
+//         RequestPassword(clientId, txReq, headless::RequestType::SignTxRequestType, dialogData, cbWalletPass);
+//      }
+//      else {
+//         tempPasswords.passwords[walletId] = {};
+//      }
+//   }
+//   if (tempPasswords.reqWalletIds.size() == tempPasswords.passwords.size()) {
+//      cb(tempPasswords.passwords);
+//   }
+//   else {
+//      tempPasswords_[reqId] = tempPasswords;
+//   }
+//   return true;
 }
 
-bool HeadlessContainerListener::RequestPassword(const std::string &clientId, const bs::core::wallet::TXSignRequest &txReq
+bool HeadlessContainerListener::RequestPassword(const std::string &rootId, const bs::core::wallet::TXSignRequest &txReq
    , headless::RequestType reqType, const Internal::PasswordDialogDataWrapper &dialogData
    , const PasswordReceivedCb &cb)
 {
    if (cb) {
-      auto &callbacks = passwordCallbacks_[txReq.walletId];
+      auto &callbacks = passwordCallbacks_[rootId];
       callbacks.push_back(cb);
       // TODO: review this code
       // need to clear callbacks if pw input canceled in signer ui
