@@ -126,8 +126,7 @@ void CCTokenEntryDialog::onCCAddrSubmitted(const QString)
 {
    QDialog::accept();
    BSMessageBox(BSMessageBox::info, tr("Submission Successful")
-      , tr("The token has been submitted, please note that it might take a while before the"
-         " transaction is broadcast in the Terminal")).exec();
+      , tr("Your token has been submitted. Please allow up to 24h for the transaction to be broadcast.")).exec();
 }
 
 void CCTokenEntryDialog::onCCInitialSubmitted(const QString)
