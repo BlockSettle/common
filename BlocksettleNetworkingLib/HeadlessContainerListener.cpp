@@ -388,6 +388,7 @@ bool HeadlessContainerListener::onSignTxRequest(const std::string &clientId, con
       }
    };
 
+   dialogData.insert("WalletId", rootWalletId);
    return RequestPasswordIfNeeded(clientId, rootWalletId, txSignReq, reqType, dialogData, onPassword);
 }
 
@@ -601,50 +602,49 @@ bool HeadlessContainerListener::RequestPasswordsIfNeeded(int reqId, const std::s
 {
    // FIXME: signer ui can't display stacked password input dialogs
    // Need to rewrite code to support multi password dialog in ui or async loop
-   return false;
 
-//   Internal::PasswordDialogDataWrapper dialogData;
+   Internal::PasswordDialogDataWrapper dialogData;
 
-//   TempPasswords tempPasswords;
-//   for (const auto &wallet : walletMap) {
-//      const auto &walletId = wallet.first;
-//      const auto &rootWallet = walletsMgr_->getHDRootForLeaf(walletId);
-//      const auto &rootWalletId = rootWallet->walletId();
+   TempPasswords tempPasswords;
+   for (const auto &wallet : walletMap) {
+      const auto &walletId = wallet.first;
+      const auto &rootWallet = walletsMgr_->getHDRootForLeaf(walletId);
+      const auto &rootWalletId = rootWallet->walletId();
 
-//      tempPasswords.rootLeaves[rootWalletId].insert(walletId);
-//      tempPasswords.reqWalletIds.insert(walletId);
+      tempPasswords.rootLeaves[rootWalletId].insert(walletId);
+      tempPasswords.reqWalletIds.insert(walletId);
 
-//      if (!rootWallet->encryptionTypes().empty()) {
-//         const auto cbWalletPass = [this, reqId, cb, rootWalletId](bs::error::ErrorCode result, const SecureBinaryData &password) {
-//            auto &tempPasswords = tempPasswords_[reqId];
-//            const auto &walletsIt = tempPasswords.rootLeaves.find(rootWalletId);
-//            if (walletsIt == tempPasswords.rootLeaves.end()) {
-//               return;
-//            }
-//            for (const auto &walletId : walletsIt->second) {
-//               tempPasswords.passwords[walletId] = password;
-//            }
-//            if (tempPasswords.passwords.size() == tempPasswords.reqWalletIds.size()) {
-//               cb(tempPasswords.passwords);
-//               tempPasswords_.erase(reqId);
-//            }
-//         };
+      if (!rootWallet->encryptionTypes().empty()) {
+         const auto cbWalletPass = [this, reqId, cb, rootWalletId](bs::error::ErrorCode result, const SecureBinaryData &password) {
+            auto &tempPasswords = tempPasswords_[reqId];
+            const auto &walletsIt = tempPasswords.rootLeaves.find(rootWalletId);
+            if (walletsIt == tempPasswords.rootLeaves.end()) {
+               return;
+            }
+            for (const auto &walletId : walletsIt->second) {
+               tempPasswords.passwords[walletId] = password;
+            }
+            if (tempPasswords.passwords.size() == tempPasswords.reqWalletIds.size()) {
+               cb(tempPasswords.passwords);
+               tempPasswords_.erase(reqId);
+            }
+         };
 
-//         bs::core::wallet::TXSignRequest txReq;
-//         txReq.walletId = rootWallet->walletId();
-//         RequestPassword(clientId, txReq, headless::RequestType::SignTxRequestType, dialogData, cbWalletPass);
-//      }
-//      else {
-//         tempPasswords.passwords[walletId] = {};
-//      }
-//   }
-//   if (tempPasswords.reqWalletIds.size() == tempPasswords.passwords.size()) {
-//      cb(tempPasswords.passwords);
-//   }
-//   else {
-//      tempPasswords_[reqId] = tempPasswords;
-//   }
-//   return true;
+         bs::core::wallet::TXSignRequest txReq;
+         txReq.walletId = rootWallet->walletId();
+         RequestPassword(clientId, txReq, headless::RequestType::SignTxRequestType, dialogData, cbWalletPass);
+      }
+      else {
+         tempPasswords.passwords[walletId] = {};
+      }
+   }
+   if (tempPasswords.reqWalletIds.size() == tempPasswords.passwords.size()) {
+      cb(tempPasswords.passwords);
+   }
+   else {
+      tempPasswords_[reqId] = tempPasswords;
+   }
+   return true;
 }
 
 bool HeadlessContainerListener::RequestPassword(const std::string &rootId, const bs::core::wallet::TXSignRequest &txReq
