@@ -116,21 +116,21 @@ void CCFileManager::ProcessGenAddressesResponse(const std::string& response, boo
       return;
    }*/
 
+   if (genAddrResp.networktype() != networkType(appSettings_)) {
+      logger_->error("[CCFileManager::ProcessCCGenAddressesResponse] network type mismatch in reply: {}"
+         , (int)genAddrResp.networktype());
+      return;
+   }
+
    if (currentRev_ > 0) {
       if (genAddrResp.revision() == currentRev_) {
          logger_->debug("[CCFileManager::ProcessCCGenAddressesResponse] having the same revision already");
          return;
       }
       if (genAddrResp.revision() < currentRev_) {
-         logger_->warn("[CCFileManager::ProcessCCGenAddressesResponse] PuB has more recent revision {} than we ({})"
+         logger_->warn("[CCFileManager::ProcessCCGenAddressesResponse] PuB has older revision {} than we ({})"
             , genAddrResp.revision(), currentRev_);
       }
-   }
-
-   if (genAddrResp.networktype() != networkType(appSettings_)) {
-      logger_->error("[CCFileManager::ProcessCCGenAddressesResponse] network type mismatch in reply: {}"
-         , (int)genAddrResp.networktype());
-      return;
    }
 
    resolver_->fillFrom(&genAddrResp);
