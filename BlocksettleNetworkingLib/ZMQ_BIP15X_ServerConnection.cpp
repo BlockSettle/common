@@ -728,22 +728,22 @@ bool ZmqBIP15XServerConnection::processAEADHandshake(
          }
 
          if (!forcedTrustedClients_.empty()) {
-            auto choosenKey = ZmqBIP15XUtils::convertCompressedKey(connection->encData_->getChosenAuthPeerKey());
-            if (choosenKey.isNull()) {
+            auto chosenKey = ZmqBIP15XUtils::convertCompressedKey(connection->encData_->getChosenAuthPeerKey());
+            if (chosenKey.isNull()) {
                SPDLOG_LOGGER_ERROR(logger_, "invalid choosed public key for forced trusted clients");
                return false;
             }
 
             bool isValid = false;
             for (const auto &client : forcedTrustedClients_) {
-               if (client.pubKey() == choosenKey) {
+               if (client.pubKey() == chosenKey) {
                   isValid = true;
                   break;
                }
             }
 
             if (!isValid) {
-               SPDLOG_LOGGER_ERROR(logger_, "drop connection from unknown client, unexpected public key: {}", choosenKey.toHexStr());
+               SPDLOG_LOGGER_ERROR(logger_, "drop connection from unknown client, unexpected public key: {}", chosenKey.toHexStr());
                return false;
             }
          }
