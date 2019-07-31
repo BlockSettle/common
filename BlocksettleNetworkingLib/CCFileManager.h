@@ -41,14 +41,14 @@ public:
    std::vector<std::string> securities() const override;
 
    void fillFrom(Blocksettle::Communication::GetCCGenesisAddressesResponse *resp);
-   bool loadFromFile(const std::string &path);
-   bool saveToFile(const std::string &path, unsigned int rev
+   bool loadFromFile(const std::string &path, NetworkType netType);
+   bool saveToFile(const std::string &path, const std::string &response
       , const std::string &signature);
 
+   bool verifySignature(const std::string& data, const std::string& signature) const;
 private:
    void add(const bs::network::CCSecurityDef &);
    void clear();
-   bool verifySignature(const std::string& data, const std::string& signature) const;
 
 private:
    std::shared_ptr<spdlog::logger>  logger_;
@@ -103,7 +103,7 @@ private:
    void RemoveAndDisableFileSave();
 
 protected:
-   void ProcessGenAddressesResponse(const std::string& response, bool sigVerified, const std::string &sig) override;
+   void ProcessGenAddressesResponse(const std::string& response, const std::string &sig) override;
    void ProcessSubmitAddrResponse(const std::string& response) override;
 
    bool IsTestNet() const override;
