@@ -73,7 +73,6 @@ public:
    CCFileManager& operator = (CCFileManager&&) = delete;
 
    std::shared_ptr<bs::sync::CCDataResolver> getResolver() const { return resolver_; }
-   bool synchronized() const { return syncFinished_; }
 
    void LoadSavedCCDefinitions();
    void ConnectToCelerClient(const std::shared_ptr<BaseCelerClient> &);
@@ -114,21 +113,15 @@ protected:
 
 private:
    std::shared_ptr<ApplicationSettings>   appSettings_;
-   std::shared_ptr<BaseCelerClient>           celerClient_;
+   std::shared_ptr<BaseCelerClient>       celerClient_;
 
    // when user changes PuB connection settings - save to file should be disabled.
    // dev build feature only. final release should have single PuB.
    bool saveToFileDisabled_ = false;
 
-   bool syncStarted_ = false;
-   bool syncFinished_ = false;
-
    std::shared_ptr<CCPubResolver>   resolver_;
    QPointer<BsClient> bsClient_;
    QString ccFilePath_;
-
-private:
-   bool RequestFromPuB();
 };
 
 #endif // __CC_FILE_MANAGER_H__
