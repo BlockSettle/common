@@ -7,7 +7,6 @@
 #include "BSErrorCodeStrings.h"
 #include "UiUtils.h"
 
-
 DealerCCSettlementContainer::DealerCCSettlementContainer(const std::shared_ptr<spdlog::logger> &logger
       , const bs::network::Order &order, const std::string &quoteReqId, uint64_t lotSize
       , const bs::Address &genAddr, const std::string &ownRecvAddr
