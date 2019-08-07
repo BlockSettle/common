@@ -788,8 +788,9 @@ void ChatWidget::SetLoggedOutOTCState()
 
 bool ChatWidget::TradingAvailableForUser() const
 {
-   return celerClient_ && (celerClient_->celerUserType() == BaseCelerClient::CelerUserType::Dealing
-      || celerClient_->celerUserType() == BaseCelerClient::CelerUserType::Trading);
+   return celerClient_ && celerClient_->IsConnected() &&
+      (celerClient_->celerUserType() == BaseCelerClient::CelerUserType::Dealing
+         || celerClient_->celerUserType() == BaseCelerClient::CelerUserType::Trading);
 }
 
 void ChatWidget::clearCursorSelection(QTextEdit *element)
