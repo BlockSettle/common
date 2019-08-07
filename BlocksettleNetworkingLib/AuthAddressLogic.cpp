@@ -448,7 +448,7 @@ BinaryData ValidationAddressManager::vetUserAddress(
    signer.addSpender(spenderPtr);
 
    //vetting output
-   signer.addRecipient(addr.getRecipient(uint64_t(AUTH_VALUE_THRESHOLD)));
+   signer.addRecipient(addr.getRecipient(AUTH_VALUE_THRESHOLD));
 
    //change: vetting coin value + fee
    uint64_t changeVal = vettingUtxo.getValue() - AUTH_VALUE_THRESHOLD - 1000;
@@ -525,7 +525,7 @@ BinaryData ValidationAddressManager::revokeValidationAddress(
    signer.addSpender(spenderPtr);
 
    //revocation output, no need for change
-   signer.addRecipient(addr.getRecipient(uint64_t(firstUtxo.getValue() - 1000ULL)));
+   signer.addRecipient(addr.getRecipient(firstUtxo.getValue() - 1000ULL));
 
    //sign & serialize tx
    signer.sign();
@@ -605,11 +605,11 @@ BinaryData ValidationAddressManager::revokeUserAddress(
    signer.addSpender(spenderPtr);
 
    //revocation output
-   signer.addRecipient(addr.getRecipient(uint64_t(AUTH_VALUE_THRESHOLD)));
+   signer.addRecipient(addr.getRecipient(AUTH_VALUE_THRESHOLD));
 
    //change
-   signer.addRecipient(validationAddr.getRecipient(uint64_t(
-      utxo.getValue() - AUTH_VALUE_THRESHOLD - 1000ULL)));
+   signer.addRecipient(validationAddr.getRecipient(
+      utxo.getValue() - AUTH_VALUE_THRESHOLD - 1000ULL));
 
    //sign & serialize tx
    signer.sign();
