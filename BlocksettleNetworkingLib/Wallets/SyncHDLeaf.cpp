@@ -915,7 +915,7 @@ void hd::CCLeaf::refreshInvalidUTXOs(const bool& ZConly)
 void hd::CCLeaf::validationProc()
 {
    validationStarted_ = true;
-   if (!armory_ || (armory_->state() != ArmoryState::Ready)) {
+   if (!armory_ || (armory_->state() != ArmoryState::Ready) || !isRegistered_) {
       validationStarted_ = false;
       return;
    }
