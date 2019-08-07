@@ -4,35 +4,129 @@
 #include "otc.pb.h"
 
 using namespace Blocksettle::Communication::Otc;
-
-namespace {
-
-   bool isValidSide(Side side)
-   {
-      switch (side) {
-         case SIDE_BUY:
-         case SIDE_SELL:
-            return true;
-         default:
-            return false;
-      }
-   }
-
-   Side switchSide(Side side)
-   {
-      switch (side) {
-         case SIDE_BUY: return SIDE_SELL;
-         case SIDE_SELL: return SIDE_BUY;
-         default: return SIDE_UNDEFINED;
-      }
-   }
-
-}
+using namespace Blocksettle::Communication;
+using namespace bs::network;
+using namespace bs::network::otc;
 
 OtcClient::OtcClient(const std::shared_ptr<spdlog::logger> &logger, QObject *parent)
    : QObject (parent)
    , logger_(logger)
 {
+}
+
+const Peer *OtcClient::peer(const std::string &peerId) const
+{
+   auto it = peers_.find(peerId);
+   if (it == peers_.end()) {
+      return nullptr;
+   }
+   return &it->second;
+}
+
+bool OtcClient::sendOffer(const Offer &offer, const std::string &peerId)
+{
+   assert(offer.ourSide != otc::Side::Unknown);
+
+   auto peer = findPeer(peerId);
+   if (!peer) {
+      SPDLOG_LOGGER_ERROR(logger_, "can't find peer '{}'", peerId);
+      return false;
+   }
+
+   if (peer->state != State::Idle) {
+      SPDLOG_LOGGER_ERROR(logger_, "can't send offer to '{}', peer should be in idle state", peerId);
+      return false;
+   }
+
+   Message msg;
+   auto d = msg.mutable_offer();
+   d->set_price(offer.price);
+   d->set_amount(offer.amount);
+   d->set_sender_side(Otc::Side(offer.ourSide));
+   send(peer, msg);
+
+   peer->state = State::OfferSent;
+   peer->offer = offer;
+   emit peerUpdated(peerId);
+   return true;
+}
+
+bool OtcClient::pullOrRejectOffer(const std::string &peerId)
+{
+   auto peer = findPeer(peerId);
+   if (!peer) {
+      SPDLOG_LOGGER_ERROR(logger_, "can't find peer '{}'", peerId);
+      return false;
+   }
+
+   if (peer->state != State::OfferSent && peer->state != State::OfferRecv) {
+      SPDLOG_LOGGER_ERROR(logger_, "can't pull offer from '{}', we should be in OfferSent or OfferRecv state", peerId);
+      return false;
+   }
+
+   Message msg;
+   msg.mutable_close();
+   send(peer, msg);
+
+   peer->state = State::Idle;
+   emit peerUpdated(peerId);
+   return true;
+}
+
+bool OtcClient::acceptOffer(const bs::network::otc::Offer &offer, const std::string &peerId)
+{
+   assert(offer.ourSide != otc::Side::Unknown);
+
+   auto peer = findPeer(peerId);
+   if (!peer) {
+      SPDLOG_LOGGER_ERROR(logger_, "can't find peer '{}'", peerId);
+      return false;
+   }
+
+   if (peer->state != State::OfferRecv) {
+      SPDLOG_LOGGER_ERROR(logger_, "can't pull offer from '{}', we should be in OfferRecv state", peerId);
+      return false;
+   }
+
+   Message msg;
+   auto d = msg.mutable_accept();
+   d->set_price(offer.price);
+   d->set_amount(offer.amount);
+   d->set_sender_side(Otc::Side(offer.ourSide));
+   send(peer, msg);
+
+   // Add timeout detection here
+   peer->state = State::WaitAcceptAck;
+   emit peerUpdated(peerId);
+   return true;
+}
+
+bool OtcClient::updateOffer(const Offer &offer, const std::string &peerId)
+{
+   assert(offer.ourSide != otc::Side::Unknown);
+
+   auto peer = findPeer(peerId);
+   if (!peer) {
+      SPDLOG_LOGGER_ERROR(logger_, "can't find peer '{}'", peerId);
+      return false;
+   }
+
+   if (peer->state != State::OfferRecv) {
+      SPDLOG_LOGGER_ERROR(logger_, "can't pull offer from '{}', we should be in OfferRecv state", peerId);
+      return false;
+   }
+
+   Message msg;
+   auto d = msg.mutable_offer();
+   d->set_price(offer.price);
+   d->set_amount(offer.amount);
+   d->set_sender_side(Otc::Side(offer.ourSide));
+   send(peer, msg);
+
+   peer->state = State::OfferSent;
+   peer->offer = offer;
+   emit peerUpdated(peerId);
+   return true;
 }
 
 void OtcClient::peerConnected(const std::string &peerId)
@@ -41,15 +135,22 @@ void OtcClient::peerConnected(const std::string &peerId)
    assert(!oldPeer);
    if (oldPeer) {
       oldPeer->state = State::Blacklisted;
+      return;
    }
+
+   peers_.emplace(peerId, Peer(peerId));
+   emit peerUpdated(peerId);
 }
 
 void OtcClient::peerDisconnected(const std::string &peerId)
 {
+   peers_.erase(peerId);
 
+   // TODO: Close tradings
+   emit peerUpdated(peerId);
 }
 
-void OtcClient::processMessage(const std::string &peerId, const std::string &data)
+void OtcClient::processMessage(const std::string &peerId, const BinaryData &data)
 {
    Peer *peer = findPeer(peerId);
    assert(peer);
@@ -64,7 +165,7 @@ void OtcClient::processMessage(const std::string &peerId, const std::string &dat
    }
 
    Message message;
-   bool result = message.ParseFromString(data);
+   bool result = message.ParseFromArray(data.getPtr(), int(data.getSize()));
    if (!result) {
       blockPeer("can't parse OTC message", peer);
       return;
@@ -84,11 +185,13 @@ void OtcClient::processMessage(const std::string &peerId, const std::string &dat
          blockPeer("unknown or empty OTC message", peer);
          break;
    }
+
+   emit peerUpdated(peerId);
 }
 
 void OtcClient::processOffer(Peer *peer, const Message_Offer &msg)
 {
-   if (!isValidSide(msg.sender_side())) {
+   if (!isValidSide(otc::Side(msg.sender_side()))) {
       blockPeer("invalid offer side", peer);
       return;
    }
@@ -107,9 +210,10 @@ void OtcClient::processOffer(Peer *peer, const Message_Offer &msg)
       case State::Idle:
       case State::OfferSent:
          peer->state = State::OfferRecv;
-         peer->offer.ourSide = switchSide(msg.sender_side());
+         peer->offer.ourSide = switchSide(otc::Side(msg.sender_side()));
          peer->offer.amount = msg.amount();
          peer->offer.price = msg.price();
+         emit peerUpdated(peer->peerId);
          break;
 
       case State::OfferRecv:
@@ -127,7 +231,7 @@ void OtcClient::processAccept(Peer *peer, const Message_Accept &msg)
 {
    switch (peer->state) {
       case State::OfferSent: {
-         if (msg.sender_side() != switchSide(peer->offer.ourSide)) {
+         if (otc::Side(msg.sender_side()) != switchSide(peer->offer.ourSide)) {
             blockPeer("unexpected accepted sender side", peer);
             return;
          }
@@ -139,19 +243,22 @@ void OtcClient::processAccept(Peer *peer, const Message_Accept &msg)
 
          Message reply;
          auto d = reply.mutable_accept();
-         d->set_sender_side(peer->offer.ourSide);
+         d->set_sender_side(Otc::Side(peer->offer.ourSide));
          d->set_amount(peer->offer.amount);
          d->set_price(peer->offer.price);
          send(peer, reply);
 
          // TODO: Send details to PB
-         *peer = Peer();
+         *peer = Peer(peer->peerId);
          break;
       }
 
       case State::WaitAcceptAck: {
-         if (msg.sender_side() != switchSide(peer->offer.ourSide)) {
-            blockPeer("unexpected accepted sender side", peer);
+         auto senderSide = otc::Side(msg.sender_side());
+         auto expectedSenderSide = switchSide(otc::Side(peer->offer.ourSide));
+         if (senderSide != expectedSenderSide) {
+            blockPeer(fmt::format("unexpected accepted sender side: {}, expected: {}"
+               , toString(senderSide), toString(expectedSenderSide)), peer);
             return;
          }
 
@@ -161,7 +268,8 @@ void OtcClient::processAccept(Peer *peer, const Message_Accept &msg)
          }
 
          // TODO: Send details to PB
-         *peer = Peer();
+         *peer = Peer(peer->peerId);
+         emit peerUpdated(peer->peerId);
          break;
       }
 
@@ -181,7 +289,7 @@ void OtcClient::processClose(Peer *peer, const Message_Close &msg)
    switch (peer->state) {
       case State::OfferSent:
       case State::OfferRecv:
-         *peer = Peer();
+         *peer = Peer(peer->peerId);
          break;
 
       case State::WaitAcceptAck:
@@ -195,37 +303,21 @@ void OtcClient::processClose(Peer *peer, const Message_Close &msg)
    }
 }
 
-void OtcClient::blockPeer(const std::string &reason, OtcClient::Peer *peer)
+void OtcClient::blockPeer(const std::string &reason, Peer *peer)
 {
    SPDLOG_LOGGER_ERROR(logger_, "block broken peer '{}': {}, current state: {}"
-      , peer->peerId, reason, stateName(peer->state));
+      , peer->peerId, reason, toString(peer->state));
    peer->state = State::Blacklisted;
+   emit peerUpdated(peer->peerId);
 }
 
-OtcClient::Peer *OtcClient::findPeer(const std::string &peerId)
+Peer *OtcClient::findPeer(const std::string &peerId)
 {
-   auto it = peers_.find(peerId);
-   if (it == peers_.end()) {
-      return nullptr;
-   }
-   return &it->second;
+   return const_cast<Peer*>(peer(peerId));
 }
 
-void OtcClient::send(OtcClient::Peer *peer, const Message &msg)
+void OtcClient::send(Peer *peer, const Message &msg)
 {
    assert(!peer->peerId.empty());
    emit sendMessage(peer->peerId, msg.SerializeAsString());
-}
-
-std::string OtcClient::stateName(OtcClient::State state)
-{
-   switch (state) {
-      case State::OfferSent:        return "OfferSent";
-      case State::OfferRecv:        return "OfferRecv";
-      case State::WaitAcceptAck:    return "WaitAcceptAck";
-      case State::Idle:             return "Idle";
-      case State::Blacklisted:      return "Blacklisted";
-   }
-   assert(false);
-   return "";
 }

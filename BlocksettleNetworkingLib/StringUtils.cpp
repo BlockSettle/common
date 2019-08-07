@@ -26,4 +26,16 @@ std::string toUpper(std::string str)
    return str;
 }
 
+bool fromHex(const std::string &str, std::vector<uint8_t> *data)
+{
+   try
+   {
+      *data = Botan::hex_decode(str);
+      return true;
+   }
+   catch (...) {
+      return false;
+   }
+}
+
 } // namespace bs

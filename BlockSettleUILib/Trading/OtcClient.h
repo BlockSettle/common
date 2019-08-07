@@ -5,12 +5,14 @@
 #include <unordered_map>
 #include <QObject>
 
+#include "BinaryData.h"
+#include "OtcTypes.h"
+
 namespace spdlog {
    class logger;
 }
 
 namespace Blocksettle { namespace Communication { namespace Otc {
-   enum Side : int;
    class Message;
    class Message_Offer;
    class Message_Accept;
@@ -24,62 +26,36 @@ class OtcClient : public QObject
 public:
    OtcClient(const std::shared_ptr<spdlog::logger> &logger, QObject *parent = nullptr);
 
+   const bs::network::otc::Peer *peer(const std::string &peerId) const;
+
+   bool sendOffer(const bs::network::otc::Offer &offer, const std::string &peerId);
+   bool pullOrRejectOffer(const std::string &peerId);
+   bool acceptOffer(const bs::network::otc::Offer &offer, const std::string &peerId);
+   bool updateOffer(const bs::network::otc::Offer &offer, const std::string &peerId);
+
 public slots:
    void peerConnected(const std::string &peerId);
    void peerDisconnected(const std::string &peerId);
-   void processMessage(const std::string &peerId, const std::string &data);
+   void processMessage(const std::string &peerId, const BinaryData &data);
 
 signals:
-   void sendMessage(const std::string &peerId, const std::string &data);
+   void sendMessage(const std::string &peerId, const BinaryData &data);
+
+   void peerUpdated(const std::string &peerId);
 
 private:
-   enum class State
-   {
-      // No data received
-      Idle,
+   void processOffer(bs::network::otc::Peer *peer, const Blocksettle::Communication::Otc::Message_Offer &msg);
+   void processAccept(bs::network::otc::Peer *peer, const Blocksettle::Communication::Otc::Message_Accept &msg);
+   void processClose(bs::network::otc::Peer *peer, const Blocksettle::Communication::Otc::Message_Close &msg);
 
-      // We sent offer
-      OfferSent,
+   void blockPeer(const std::string &reason, bs::network::otc::Peer *peer);
 
-      // We recv offer
-      OfferRecv,
+   bs::network::otc::Peer *findPeer(const std::string &peerId);
 
-      // We have accepted recv offer and wait for ack.
-      // This should happen without user's intervention.
-      WaitAcceptAck,
-
-      // Peer does not comply to protocol, block it
-      Blacklisted,
-   };
-
-   struct Offer
-   {
-      Blocksettle::Communication::Otc::Side ourSide{};
-      int64_t amount{};
-      int64_t price{};
-   };
-
-   struct Peer
-   {
-      std::string peerId;
-      Offer offer;
-      State state{State::Idle};
-   };
-
-   void processOffer(Peer *peer, const Blocksettle::Communication::Otc::Message_Offer &msg);
-   void processAccept(Peer *peer, const Blocksettle::Communication::Otc::Message_Accept &msg);
-   void processClose(Peer *peer, const Blocksettle::Communication::Otc::Message_Close &msg);
-
-   void blockPeer(const std::string &reason, Peer *peer);
-
-   Peer *findPeer(const std::string &peerId);
-
-   void send(Peer *peer, const Blocksettle::Communication::Otc::Message &msg);
-
-   static std::string stateName(State state);
+   void send(bs::network::otc::Peer *peer, const Blocksettle::Communication::Otc::Message &msg);
 
    std::shared_ptr<spdlog::logger> logger_;
-   std::unordered_map<std::string, Peer> peers_;
+   std::unordered_map<std::string, bs::network::otc::Peer> peers_;
 };
 
 #endif
