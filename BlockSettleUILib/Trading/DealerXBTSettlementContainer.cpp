@@ -256,7 +256,9 @@ void DealerXBTSettlementContainer::onPayInDetected(int confirmationsNumber, cons
 
    payInDetected_ = true;
    emit payInDetected(confirmationsNumber, txHash);
-   startTimer(30);
+   QMetaObject::invokeMethod(this, [this] {
+      startTimer(30);
+   });
    onCptyVerified();
 }
 
