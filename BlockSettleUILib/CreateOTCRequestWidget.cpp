@@ -19,18 +19,8 @@ CreateOTCRequestWidget::CreateOTCRequestWidget(QWidget* parent)
 
    connect(ui_->pushButtonBuy, &QPushButton::clicked, this, &CreateOTCRequestWidget::onBuyClicked);
    connect(ui_->pushButtonSell, &QPushButton::clicked, this, &CreateOTCRequestWidget::onSellClicked);
-   connect(ui_->pushButtonSubmit, &QPushButton::pressed, this, &CreateOTCRequestWidget::requestCreated);
 
    onSellClicked();
-}
-
-bs::network::otc::Offer CreateOTCRequestWidget::offer() const
-{
-   bs::network::otc::Offer result;
-   result.ourSide = ui_->pushButtonSell->isChecked() ? bs::network::otc::Side::Sell : bs::network::otc::Side::Buy;
-   result.price = 1;
-   result.amount = 1;
-   return result;
 }
 
 CreateOTCRequestWidget::~CreateOTCRequestWidget() = default;

@@ -4,6 +4,8 @@
 #include <QWidget>
 #include <memory>
 
+#include "OtcTypes.h"
+
 namespace Ui {
    class OTCNegotiationCommonWidget;
 };
@@ -16,6 +18,16 @@ Q_DISABLE_COPY(OTCNegotiationRequestWidget)
 public:
    OTCNegotiationRequestWidget(QWidget* parent = nullptr);
    ~OTCNegotiationRequestWidget() override;
+
+   bs::network::otc::Offer offer() const;
+
+signals:
+   void requestCreated();
+
+private slots:
+   void onSellClicked();
+   void onBuyClicked();
+   void onChanged();
 
 private:
    std::unique_ptr<Ui::OTCNegotiationCommonWidget> ui_;

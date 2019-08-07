@@ -294,7 +294,7 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
 
    connect(otcClient_, &OtcClient::peerUpdated, this, &ChatWidget::onOtcUpdated);
 
-   connect(ui_->widgetCreateOTCRequest, &CreateOTCRequestWidget::requestCreated, this, &ChatWidget::onOtcRequestSubmit);
+   connect(ui_->widgetNegotiateRequest, &OTCNegotiationRequestWidget::requestCreated, this, &ChatWidget::onOtcRequestSubmit);
    connect(ui_->widgetPullOwnOTCRequest, &PullOwnOTCRequestWidget::requestPulled, this, &ChatWidget::onOtcRequestPull);
    connect(ui_->widgetNegotiateResponse, &OTCNegotiationResponseWidget::responseAccepted, this, &ChatWidget::onOtcResponseAccept);
    connect(ui_->widgetNegotiateResponse, &OTCNegotiationResponseWidget::responseUpdated, this, &ChatWidget::onOtcResponseUpdate);
@@ -809,9 +809,10 @@ void ChatWidget::updateOtc(const std::string &contactId)
 
    switch (peer->state) {
       case otc::State::Idle:
-         ui_->stackedWidgetOTC->setCurrentIndex(static_cast<int>(OTCPages::OTCCreateRequestPage));
+         ui_->stackedWidgetOTC->setCurrentIndex(static_cast<int>(OTCPages::OTCNegotiateRequestPage));
          break;
       case otc::State::OfferSent:
+         ui_->widgetPullOwnOTCRequest->setOffer(peer->offer);
          ui_->stackedWidgetOTC->setCurrentIndex(static_cast<int>(OTCPages::OTCPullOwnOTCRequestPage));
          break;
       case otc::State::OfferRecv:
@@ -930,7 +931,7 @@ void ChatWidget::OnOTCSelectionChanged(const QItemSelection &selected, const QIt
 
 void ChatWidget::onOtcRequestSubmit()
 {
-   bool result = otcClient_->sendOffer(ui_->widgetCreateOTCRequest->offer(), currentChat_);
+   bool result = otcClient_->sendOffer(ui_->widgetNegotiateRequest->offer(), currentChat_);
    if (!result) {
       SPDLOG_LOGGER_ERROR(logger_, "send offer failed");
       return;

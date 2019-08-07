@@ -26,6 +26,8 @@ const Peer *OtcClient::peer(const std::string &peerId) const
 bool OtcClient::sendOffer(const Offer &offer, const std::string &peerId)
 {
    assert(offer.ourSide != otc::Side::Unknown);
+   assert(offer.amount > 0);
+   assert(offer.price > 0);
 
    auto peer = findPeer(peerId);
    if (!peer) {
@@ -76,6 +78,8 @@ bool OtcClient::pullOrRejectOffer(const std::string &peerId)
 bool OtcClient::acceptOffer(const bs::network::otc::Offer &offer, const std::string &peerId)
 {
    assert(offer.ourSide != otc::Side::Unknown);
+   assert(offer.amount > 0);
+   assert(offer.price > 0);
 
    auto peer = findPeer(peerId);
    if (!peer) {
@@ -104,6 +108,8 @@ bool OtcClient::acceptOffer(const bs::network::otc::Offer &offer, const std::str
 bool OtcClient::updateOffer(const Offer &offer, const std::string &peerId)
 {
    assert(offer.ourSide != otc::Side::Unknown);
+   assert(offer.amount > 0);
+   assert(offer.price > 0);
 
    auto peer = findPeer(peerId);
    if (!peer) {
@@ -115,6 +121,9 @@ bool OtcClient::updateOffer(const Offer &offer, const std::string &peerId)
       SPDLOG_LOGGER_ERROR(logger_, "can't pull offer from '{}', we should be in OfferRecv state", peerId);
       return false;
    }
+
+   assert(offer.amount == peer->offer.amount);
+   assert(offer.ourSide == peer->offer.ourSide);
 
    Message msg;
    auto d = msg.mutable_offer();
@@ -208,10 +217,24 @@ void OtcClient::processOffer(Peer *peer, const Message_Offer &msg)
 
    switch (peer->state) {
       case State::Idle:
-      case State::OfferSent:
          peer->state = State::OfferRecv;
          peer->offer.ourSide = switchSide(otc::Side(msg.sender_side()));
          peer->offer.amount = msg.amount();
+         peer->offer.price = msg.price();
+         emit peerUpdated(peer->peerId);
+         break;
+
+      case State::OfferSent:
+         if (peer->offer.ourSide != switchSide(otc::Side(msg.sender_side()))) {
+            blockPeer("unexpected side in counter-offer", peer);
+            return;
+         }
+         if (peer->offer.amount != msg.amount()) {
+            blockPeer("invalid amount in counter-offer", peer);
+            return;
+         }
+
+         peer->state = State::OfferRecv;
          peer->offer.price = msg.price();
          emit peerUpdated(peer->peerId);
          break;

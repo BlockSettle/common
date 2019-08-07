@@ -23,6 +23,9 @@ OTCNegotiationResponseWidget::OTCNegotiationResponseWidget(QWidget* parent)
    connect(ui_->pushButtonAccept, &QPushButton::clicked, this, &OTCNegotiationResponseWidget::onAcceptOrUpdateClicked);
    connect(ui_->pushButtonCancel, &QPushButton::clicked, this, &OTCNegotiationResponseWidget::responseRejected);
 
+   ui_->widgetSideButtons->hide();
+   ui_->spinBoxQuantity->setEnabled(false);
+
    onChanged();
 }
 

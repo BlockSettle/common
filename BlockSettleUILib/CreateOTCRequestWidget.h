@@ -19,11 +19,6 @@ public:
    CreateOTCRequestWidget(QWidget* parent = nullptr);
    ~CreateOTCRequestWidget() override;
 
-   bs::network::otc::Offer offer() const;
-
-signals:
-   void requestCreated();
-
 private slots:
    void onSellClicked();
    void onBuyClicked();

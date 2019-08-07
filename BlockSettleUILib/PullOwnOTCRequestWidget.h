@@ -4,6 +4,8 @@
 #include <memory>
 #include <QWidget>
 
+#include "OtcTypes.h"
+
 namespace Ui {
     class PullOwnOTCRequestWidget;
 };
@@ -15,6 +17,8 @@ Q_OBJECT
 public:
    explicit PullOwnOTCRequestWidget(QWidget* parent = nullptr);
    ~PullOwnOTCRequestWidget() override;
+
+   void setOffer(const bs::network::otc::Offer &offer);
 
 signals:
    void requestPulled();
