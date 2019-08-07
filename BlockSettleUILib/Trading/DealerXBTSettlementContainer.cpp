@@ -290,7 +290,9 @@ void DealerXBTSettlementContainer::onPayOutDetected(bs::PayoutSigner::Type signe
    }
 
    if (settlementFailed) {
-      stopTimer();
+      QMetaObject::invokeMethod(this, [this] {
+         stopTimer();
+      });
       emit failed();
    }
    else {
