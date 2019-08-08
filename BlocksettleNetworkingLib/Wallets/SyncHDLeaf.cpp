@@ -912,6 +912,11 @@ void hd::CCLeaf::refreshInvalidUTXOs(const bool& ZConly)
    hd::Leaf::getSpendableZCList(cbRefreshZC);
 }
 
+void hd::CCLeaf::restartValidation()
+{
+   validationProc();
+}
+
 void hd::CCLeaf::validationProc()
 {
    validationStarted_ = true;
