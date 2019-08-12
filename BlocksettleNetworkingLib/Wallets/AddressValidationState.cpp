@@ -103,7 +103,7 @@ public:
    }
 
 private:
-   std::atomic<uint64_t>                     completedPages_ = 0;
+   std::atomic<uint64_t>                     completedPages_{0};
    // atomic inside PageState. atomic have disabled copy ctor, so we shoudl disable copy ctor ourselves, and so we need to wrap in smart pointer to use map
    std::unordered_map<uint64_t, std::shared_ptr<PageState>>   pagesMap_;
 };

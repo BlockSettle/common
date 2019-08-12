@@ -39,7 +39,7 @@ public:
 private:
    onValidationComletedCB                                cb_;
    std::map<bs::Address, std::shared_ptr<AddressState>>  addressStateMap_;
-   std::atomic<uint64_t>                           completedAddressesCount_ = 0;
+   std::atomic<uint64_t>                                 completedAddressesCount_{0};
 };
 
 #endif // __ADDRESS_VALIDATION_STATE_H__
