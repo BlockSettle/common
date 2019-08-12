@@ -116,12 +116,18 @@ void ArmoryConnection::maintenanceThreadFunc()
             actChanged_ = false;
             tempACT = activeTargets_;
          }
+
+         logger_->debug("--------- [ArmoryConnection::maintenanceThreadFunc] {} targets"
+                        , tempACT.size());
+
          for (const auto &tgt : tempACT) {
             if (!maintThreadRunning_ || actChanged_) {
                break;
             }
             cb(tgt);
          }
+
+         logger_->debug("--------- [ArmoryConnection::maintenanceThreadFunc] foreach target completed");
       } while (actChanged_ && maintThreadRunning_);
    };
 
@@ -146,17 +152,25 @@ void ArmoryConnection::maintenanceThreadFunc()
          tempRunQueue.swap(runQueue_);
       }
 
-      for (const auto &cb : tempRunQueue) {
-         cb();
+      if (!tempRunQueue.empty()) {
+         logger_->debug(" ------======  [ArmoryConnection::maintenanceThreadFunc] temp run ======------");
+         for (const auto &cb : tempRunQueue) {
+            cb();
+         }
       }
 
-      for (const auto &cb : tempQueue) {
-         forEachTarget(cb);
-         if (!maintThreadRunning_) {
-            break;
+      if (!tempQueue.empty()) {
+         logger_->debug(" ------======  [ArmoryConnection::maintenanceThreadFunc] temp queue for all ======------");
+         for (const auto &cb : tempQueue) {
+            forEachTarget(cb);
+            if (!maintThreadRunning_) {
+               break;
+            }
          }
       }
    }
+
+   logger_->error(" ------======  [ArmoryConnection::maintenanceThreadFunc] stopped ======------");
 }
 
 void ArmoryConnection::addMergedWalletId(const std::string &walletId, const std::string &mergedWalletId)
@@ -933,6 +947,8 @@ bool ArmoryConnection::isTransactionConfirmed(const ClientClasses::LedgerEntry &
 
 void ArmoryConnection::onRefresh(const std::vector<BinaryData>& ids)
 {
+   logger_->debug("[ArmoryConnection::onRefresh] {} ids", ids.size());
+
    {
       std::unique_lock<std::mutex> lock(registrationCallbacksMutex_);
       if (!registrationCallbacks_.empty())
@@ -1016,6 +1032,8 @@ void ArmoryConnection::processDelayedZC()
 
 void ArmoryConnection::onZCsReceived(const std::vector<ClientClasses::LedgerEntry> &entries)
 {
+   logger_->debug("[ArmoryConnection::onZCsReceived] {} entries", entries.size());
+
    std::vector<bs::TXEntry> immediates;
    auto newEntries = bs::TXEntry::fromLedgerEntries(entries);
 
