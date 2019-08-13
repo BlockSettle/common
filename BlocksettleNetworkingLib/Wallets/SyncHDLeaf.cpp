@@ -130,7 +130,7 @@ void hd::Leaf::onRefresh(const std::vector<BinaryData> &ids, bool online)
          if (id.isNull()) {
             continue;
          }
-         logger_->debug("[{}] {}: id={}, extId={}, intId={}", __func__, walletId()
+         logger_->debug("[sync::hd::Leaf::onRefresh] {}: id={}, extId={}, intId={}", walletId()
             , id.toBinStr(), regIdExt_, regIdInt_);
          if (id == regIdExt_) {
             regIdExt_.clear();
@@ -366,8 +366,8 @@ std::vector<std::string> hd::Leaf::registerWallet(
             , walletIdInt(), walletId(), addrsInt, cbRegistered, asNew);
          regIds.push_back(regIdInt_);
       }
-      logger_->debug("[{}] registered {}+{} addresses in {}, {} regIds {} {}"
-         , __func__, addrsExt.size(), addrsInt.size(), walletId(), regIds.size()
+      logger_->debug("[sync::hd::Leaf::registerWallet] registered {}+{} addresses in {}, {} regIds {} {}"
+         , addrsExt.size(), addrsInt.size(), walletId(), regIds.size()
          , regIdExt_, regIdInt_);
       return regIds;
    }
@@ -422,8 +422,8 @@ void hd::Leaf::createAddress(const CbAddress &cb, const AddrPoolKey &key)
       {
          const auto result = swapKey();
          if (result.isNull()) {
-            logger_->error("[{}] failed to find {}/{} after topping up the pool"
-               , __func__, keyCopy.path.toString(), (int)keyCopy.aet);
+            logger_->error("[sync::hd::Leaf::createAddress] failed to find {}/{} after topping up the pool"
+               , keyCopy.path.toString(), (int)keyCopy.aet);
             cb(result);
          }
          else {
@@ -442,7 +442,7 @@ void hd::Leaf::createAddress(const CbAddress &cb, const AddrPoolKey &key)
 void hd::Leaf::topUpAddressPool(bool extInt, const std::function<void()> &cb)
 {
    if (!signContainer_) {
-      logger_->error("[{}] uninited signer container", __func__);
+      logger_->error("[sync::hd::Leaf::topUpAddressPool] uninited signer container");
       throw std::runtime_error("uninitialized sign container");
    }
 
@@ -499,7 +499,7 @@ void hd::Leaf::topUpAddressPool(bool extInt, const std::function<void()> &cb)
 void hd::Leaf::scan(const std::function<void(bs::sync::SyncState)> &cb)
 {
    if (!signContainer_) {
-      logger_->error("[{}] no sign container set", __func__);
+      logger_->error("[sync::hd::Leaf::scan] no sign container set");
       cb(bs::sync::SyncState::NothingToDo);
       return;
    }
@@ -535,7 +535,7 @@ void hd::Leaf::resumeScan(const std::string &refreshId)
 {
    const auto &cbIt = cbScanMap_.find(refreshId);
    if (cbIt == cbScanMap_.end()) {
-      logger_->error("[{}] failed to find scan callback for id {}", __func__, refreshId);
+      logger_->error("[sync::hd::Leaf::resumeScan] failed to find scan callback for id {}", refreshId);
       return;
    }
    const auto cb = cbIt->second;
@@ -543,7 +543,7 @@ void hd::Leaf::resumeScan(const std::string &refreshId)
 
    const auto &cbTxNs = [this, cb](const std::map<std::string, CombinedCounts> &countMap) {
       if (countMap.size() != 1) {
-         logger_->warn("[Leaf::resumeScan] invalid countMap size: {}", countMap.size());
+         logger_->warn("[hd::Leaf::resumeScan] invalid countMap size: {}", countMap.size());
          if (cb) {
             cb(bs::sync::SyncState::Failure);
          }
@@ -551,7 +551,7 @@ void hd::Leaf::resumeScan(const std::string &refreshId)
       }
       const auto itCounts = countMap.find(scanWallet_->walletID());
       if (itCounts == countMap.end()) {
-         logger_->warn("[Leaf::resumeScan] invalid countMap (scan wallet id not found)");
+         logger_->warn("[hd::Leaf::resumeScan] invalid countMap (scan wallet id not found)");
          if (cb) {
             cb(bs::sync::SyncState::Failure);
          }
@@ -559,10 +559,10 @@ void hd::Leaf::resumeScan(const std::string &refreshId)
       }
 
       const auto &lbdCompleteScan = [this, cb](bs::sync::SyncState state) {
-         logger_->debug("[Leaf::resumeScan] completing scan with state {} and {} address[es]"
+         logger_->debug("[hd::Leaf::resumeScan] completing scan with state {} and {} address[es]"
             , (int)state, activeScannedAddresses_.size());
          synchronize([this] {
-            logger_->debug("[Leaf::resumeScan] synchronized after scan is complete");
+            logger_->debug("[hd::Leaf::resumeScan] synchronized after scan is complete");
             if (wct_) {
                wct_->addressAdded(walletId());
             }
@@ -576,7 +576,7 @@ void hd::Leaf::resumeScan(const std::string &refreshId)
          cbScanMap_.clear();
       };
       if (itCounts->second.addressTxnCounts_.empty()) {
-         logger_->debug("[Leaf::resumeScan] ext: {} found no more active addresses", scanExt_);
+         logger_->debug("[hd::Leaf::resumeScan] ext: {} found no more active addresses", scanExt_);
          if (scanExt_) {
             if (isExtOnly_) {
                signContainer_->syncAddressBatch(walletId(), activeScannedAddresses_, lbdCompleteScan);
@@ -647,7 +647,7 @@ bool hd::Leaf::getLedgerDelegateForAddress(const bs::Address &addr
       std::unique_lock<std::mutex> lock(*cbMutex_);
       const auto &itCb = cbLedgerByAddr_.find(addr);
       if (itCb != cbLedgerByAddr_.end()) {
-         logger_->error("[{}] ledger callback for addr {} already exists", __func__, addr.display());
+         logger_->error("[sync::hd::Leaf::getLedgerDelegateForAddress] ledger callback for addr {} already exists", addr.display());
          return false;
       }
       cbLedgerByAddr_[addr] = cb;

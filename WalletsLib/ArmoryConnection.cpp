@@ -76,7 +76,7 @@ bool ArmoryConnection::addTarget(ArmoryCallbackTarget *act)
    std::unique_lock<std::mutex> lock(cbMutex_);
    const auto &it = activeTargets_.find(act);
    if (it != activeTargets_.end()) {
-      logger_->warn("[{}] target {} already exists", __func__, (void*)act);
+      logger_->warn("[ArmoryConnection::addTarget] target {} already exists", (void*)act);
       return false;
    }
    actChanged_ = true;
@@ -93,7 +93,7 @@ bool ArmoryConnection::removeTarget(ArmoryCallbackTarget *act)
       std::unique_lock<std::mutex> lock(cbMutex_);
       const auto &it = activeTargets_.find(act);
       if (it == activeTargets_.end()) {
-         logger_->warn("[{}] target {} wasn't added", __func__, (void*)act);
+         logger_->warn("[ArmoryConnection::removeTarget] target {} wasn't added", (void*)act);
          done.set_value(false);
          return;
       }
@@ -311,7 +311,7 @@ void ArmoryConnection::setupConnection(NetworkType netType, const std::string &h
 bool ArmoryConnection::goOnline()
 {
    if ((state_ != ArmoryState::Connected) || !bdv_) {
-      logger_->error("[{}] invalid state: {}", __func__
+      logger_->error("[ArmoryConnection::goOnline] invalid state: {}"
                      , static_cast<int>(state_.load()));
       return false;
    }
@@ -342,7 +342,7 @@ void ArmoryConnection::registerBDV(NetworkType netType)
 void ArmoryConnection::setState(ArmoryState state)
 {
    if (state_ != state) {
-      logger_->debug("[{}] from {} to {}", __func__, (int)state_.load(), (int)state);
+      logger_->debug("[ArmoryConnection::setState] from {} to {}", (int)state_.load(), (int)state);
       state_ = state;
       addToMaintQueue([state](ArmoryCallbackTarget *tgt) {
          tgt->onStateChanged(static_cast<ArmoryState>(state));
@@ -353,15 +353,15 @@ void ArmoryConnection::setState(ArmoryState state)
 bool ArmoryConnection::broadcastZC(const BinaryData& rawTx)
 {
    if (!bdv_ || ((state_ != ArmoryState::Ready) && (state_ != ArmoryState::Connected))) {
-      logger_->error("[{}] invalid state: {} (BDV null: {})", __func__
+      logger_->error("[ArmoryConnection::broadcastZC] invalid state: {} (BDV null: {})"
          , (int)state_.load(), (bdv_ == nullptr));
       return false;
    }
 
    Tx tx(rawTx);
    if (!tx.isInitialized() || tx.getThisHash().isNull()) {
-      logger_->error("[{}] invalid TX data (size {}) - aborting broadcast"
-                     , __func__, rawTx.getSize());
+      logger_->error("[ArmoryConnection::broadcastZC] invalid TX data (size {}) - aborting broadcast"
+                     , rawTx.getSize());
       return false;
    }
 
@@ -374,7 +374,7 @@ std::string ArmoryConnection::registerWallet(const std::shared_ptr<AsyncClient::
    , const std::vector<BinaryData> &addrVec, const RegisterWalletCb &cb, bool asNew)
 {
    if (!bdv_ || ((state_ != ArmoryState::Ready) && (state_ != ArmoryState::Connected))) {
-      logger_->error("[{}] invalid state: {}", __func__, (int)state_.load());
+      logger_->error("[ArmoryConnection::registerWallet] invalid state: {}", (int)state_.load());
       return {};
    }
 
@@ -409,7 +409,7 @@ std::string ArmoryConnection::registerWallet(const std::shared_ptr<AsyncClient::
 bool ArmoryConnection::getWalletsHistory(const std::vector<std::string> &walletIDs, const WalletsHistoryCb &cb)
 {
    if (!bdv_ || (state_ != ArmoryState::Ready)) {
-      logger_->error("[{}] invalid state: {}", __func__, (int)state_.load());
+      logger_->error("[ArmoryConnection::getWalletsHistory] invalid state: {}", (int)state_.load());
       return false;
    }
    const auto &cbWrap = [this, cb]
@@ -420,7 +420,7 @@ bool ArmoryConnection::getWalletsHistory(const std::vector<std::string> &walletI
          }
       }
       catch(std::exception& e) {
-         logger_->error("[getWalletsHistory (cbWrap)] Return data error - {}"
+         logger_->error("[ArmoryConnection::getWalletsHistory (cbWrap)] Return data error - {}"
             , e.what());
       }
    };
@@ -432,7 +432,7 @@ bool ArmoryConnection::getWalletsHistory(const std::vector<std::string> &walletI
 bool ArmoryConnection::getLedgerDelegateForAddress(const std::string &walletId, const bs::Address &addr)
 {
    if (!bdv_ || (state_ != ArmoryState::Ready)) {
-      logger_->error("[{}] invalid state: {}", __func__, (int)state_.load());
+      logger_->error("[ArmoryConnection::getLedgerDelegateForAddress] invalid state: {}", (int)state_.load());
       return false;
    }
    const auto &cbWrap = [this, walletId, addr]
@@ -444,7 +444,7 @@ bool ArmoryConnection::getLedgerDelegateForAddress(const std::string &walletId, 
          });
       }
       catch (const std::exception &e) {
-         logger_->error("[getLedgerDelegateForAddress (cbWrap)] Return data "
+         logger_->error("[ArmoryConnection::getLedgerDelegateForAddress (cbWrap)] Return data "
             "error - {} - Wallet {} - Address {}", e.what(), walletId
             , addr.display());
          addToMaintQueue([addr](ArmoryCallbackTarget *tgt) {
@@ -459,7 +459,7 @@ bool ArmoryConnection::getLedgerDelegateForAddress(const std::string &walletId, 
 bool ArmoryConnection::getWalletsLedgerDelegate(const LedgerDelegateCb &cb)
 {
    if (!bdv_ || (state_ != ArmoryState::Ready)) {
-      logger_->error("[{}] invalid state: {}", __func__, (int)state_.load());
+      logger_->error("[ArmoryConnection::getWalletsLedgerDelegate] invalid state: {}", (int)state_.load());
       return false;
    }
    const auto &cbWrap = [this, cb](ReturnMessage<AsyncClient::LedgerDelegate> delegate) {
@@ -470,7 +470,7 @@ bool ArmoryConnection::getWalletsLedgerDelegate(const LedgerDelegateCb &cb)
          }
       }
       catch (const std::exception &e) {
-         logger_->error("[getWalletsLedgerDelegate (cbWrap)] Return data error "
+         logger_->error("[ArmoryConnection::getWalletsLedgerDelegate (cbWrap)] Return data error "
             "- {}", e.what());
          if (cb) {
             cb(nullptr);
@@ -485,7 +485,7 @@ bool ArmoryConnection::getSpendableTxOutListForValue(const std::vector<std::stri
    , uint64_t val, const UTXOsCb &cb)
 {
    if (!bdv_ || (state_ != ArmoryState::Ready)) {
-      logger_->error("[{}] invalid state: {}", __func__, (int)state_.load());
+      logger_->error("[ArmoryConnection::getSpendableTxOutListForValue] invalid state: {}", (int)state_.load());
       return false;
    }
    const auto &cbWrap = [this, cb](ReturnMessage<std::vector<UTXO>> retMsg) {
@@ -509,7 +509,7 @@ bool ArmoryConnection::getSpendableTxOutListForValue(const std::vector<std::stri
 bool ArmoryConnection::getSpendableZCoutputs(const std::vector<std::string> &walletIds, const UTXOsCb &cb)
 {
    if (!bdv_ || (state_ != ArmoryState::Ready)) {
-      logger_->error("[{}] invalid state: {}", __func__, (int)state_.load());
+      logger_->error("[ArmoryConnection::getSpendableZCoutputs] invalid state: {}", (int)state_.load());
       return false;
    }
    const auto &cbWrap = [this, cb](ReturnMessage<std::vector<UTXO>> retMsg) {
@@ -604,7 +604,7 @@ bool ArmoryConnection::getCombinedTxNs(const std::vector<std::string> &walletIDs
    , const std::function<void(const std::map<std::string, CombinedCounts> &)> &cb)
 {
    if (!bdv_ || (state_ != ArmoryState::Ready)) {
-      logger_->error("[{}] invalid state: {}", __func__, (int)state_.load());
+      logger_->error("[ArmoryConnection::getCombinedTxNs] invalid state: {}", (int)state_.load());
       return false;
    }
    const auto &cbWrap = [this, walletIDs, cb](ReturnMessage<std::map<std::string, CombinedCounts>> retMsg)
@@ -668,7 +668,7 @@ void ArmoryConnection::callGetTxCallbacks(const BinaryData &hash, const Tx &tx)
 bool ArmoryConnection::getTxByHash(const BinaryData &hash, const TxCb &cb)
 {
    if (!bdv_ || (state_ != ArmoryState::Ready)) {
-      logger_->error("[{}] invalid state: {}", __func__, (int)state_.load());
+      logger_->error("[ArmoryConnection::getTxByHash] invalid state: {}", (int)state_.load());
       return false;
    }
    if (addGetTxCallback(hash, cb)) {
@@ -692,15 +692,15 @@ bool ArmoryConnection::getTxByHash(const BinaryData &hash, const TxCb &cb)
 bool ArmoryConnection::getTXsByHash(const std::set<BinaryData> &hashes, const TXsCb &cb)
 {
    if (!bdv_ || (state_ != ArmoryState::Ready)) {
-      logger_->error("[{}] invalid state: {}", __func__, (int)state_.load());
+      logger_->error("[ArmoryConnection::getTXsByHash] invalid state: {}", (int)state_.load());
       return false;
    }
    if (hashes.empty()) {
-      logger_->warn("[{}] empty hash set", __func__);
+      logger_->warn("[ArmoryConnection::getTXsByHash] empty hash set");
       return false;
    }
    if (!cb) {
-      logger_->warn("[{}] missing callback", __func__);
+      logger_->warn("[ArmoryConnection::getTXsByHash] missing callback");
       return false;
    }
 
@@ -716,7 +716,7 @@ bool ArmoryConnection::getTXsByHash(const std::set<BinaryData> &hashes, const TX
 
    const auto &cbAppendTx = [this, data, cb](const Tx &tx) {
       if (!tx.isInitialized()) {
-         logger_->error("[getTXsByHash (cbUpdateTx)] received uninitialized TX");
+         logger_->error("[ArmoryConnection::getTXsByHash (cbUpdateTx)] received uninitialized TX");
       }
 
       bool isEmpty;
@@ -745,7 +745,7 @@ bool ArmoryConnection::getTXsByHash(const std::set<BinaryData> &hashes, const TX
             callGetTxCallbacks(hash, retTx);
          }
          catch (const std::exception &e) {
-            logger_->error("[getTXsByHash (cbUpdateTx)] Return data error - "
+            logger_->error("[ArmoryConnection::getTXsByHash (cbUpdateTx)] Return data error - "
                "{} - Hash {}", e.what(), hash.toHexStr(true));
             callGetTxCallbacks(hash, {});
          }
@@ -772,7 +772,7 @@ bool ArmoryConnection::getRawHeaderForTxHash(const BinaryData& inHash, const Bin
       }
       catch(std::exception& e) {
          // Switch endian on print to RPC byte order
-         logger_->error("[getRawHeaderForTxHash (cbWrap)] Return data error - "
+         logger_->error("[ArmoryConnection::getTXsByHash (cbWrap)] Return data error - "
             "{} - hash {}", e.what(), inHash.toHexStr(true));
       }
    };
@@ -894,7 +894,7 @@ bool ArmoryConnection::getFeeSchedule(const FloatMapCb &cb)
 bool ArmoryConnection::pushZC(const BinaryData& rawTx) const
 {
    if (!bdv_ || (state_ != ArmoryState::Ready)) {
-      logger_->error("[{}] invalid state: {}", __func__, (int)state_.load());
+      logger_->error("[ArmoryConnection::pushZC] invalid state: {}", (int)state_.load());
       return false;
    }
 
@@ -963,7 +963,7 @@ void ArmoryConnection::onRefresh(const std::vector<BinaryData>& ids)
       for (const auto &id : ids) {
          idString += id.toBinStr() + " ";
       }
-      logger_->debug("[{}] online={} {}", __func__, online, idString);
+      logger_->debug("[ArmoryConnection::onRefresh] online={} {}", online, idString);
    }
    addToMaintQueue([ids, online](ArmoryCallbackTarget *tgt) {
       tgt->onRefresh(ids, online);
@@ -1111,12 +1111,12 @@ void ArmoryCallback::run(BDMAction action, void* ptr, int block)
    }
    switch (action) {
    case BDMAction_Ready:
-      logger_->debug("[{}] BDMAction_Ready", __func__);
+      logger_->debug("[ArmoryCallback::run] BDMAction_Ready");
       connection_->setState(ArmoryState::Ready);
       break;
 
    case BDMAction_NewBlock:
-      logger_->debug("[{}] BDMAction_NewBlock {}", __func__, block);
+      logger_->debug("[ArmoryCallback::run] BDMAction_NewBlock {}", block);
       connection_->setState(ArmoryState::Ready);
       connection_->addToMaintQueue([block](ArmoryCallbackTarget *tgt) {
          tgt->onNewBlock(block);
@@ -1124,22 +1124,22 @@ void ArmoryCallback::run(BDMAction action, void* ptr, int block)
       break;
 
    case BDMAction_ZC:
-      logger_->debug("[{}] BDMAction_ZC", __func__);
+      logger_->debug("[ArmoryCallback::run] BDMAction_ZC");
       connection_->onZCsReceived(*reinterpret_cast<std::vector<ClientClasses::LedgerEntry>*>(ptr));
       break;
 
    case BDMAction_InvalidatedZC:
-      logger_->debug("[{}] BDMAction_InvalidateZC", __func__);
+      logger_->debug("[ArmoryCallback::run] BDMAction_InvalidateZC");
       connection_->onZCsInvalidated(*reinterpret_cast<std::set<BinaryData> *>(ptr));
       break;
 
    case BDMAction_Refresh:
-      logger_->debug("[{}] BDMAction_Refresh", __func__);
+      logger_->debug("[ArmoryCallback::run] BDMAction_Refresh");
       connection_->onRefresh(*reinterpret_cast<std::vector<BinaryData> *>(ptr));
       break;
 
    case BDMAction_NodeStatus: {
-      logger_->debug("[{}] BDMAction_NodeStatus", __func__);
+      logger_->debug("[ArmoryCallback::run] BDMAction_NodeStatus");
       const auto nodeStatus = *reinterpret_cast<ClientClasses::NodeStatusStruct *>(ptr);
       connection_->addToMaintQueue([nodeStatus](ArmoryCallbackTarget *tgt) {
          tgt->onNodeStatus(nodeStatus.status(), nodeStatus.isSegWitEnabled(), nodeStatus.rpcStatus());
@@ -1149,7 +1149,7 @@ void ArmoryCallback::run(BDMAction action, void* ptr, int block)
 
    case BDMAction_BDV_Error: {
       const auto bdvError = *reinterpret_cast<BDV_Error_Struct *>(ptr);
-      logger_->debug("[{}] BDMAction_BDV_Error {}, str: {}, msg: {}", __func__
+      logger_->debug("[ArmoryCallback::run] BDMAction_BDV_Error {}, str: {}, msg: {}"
                      , (int)bdvError.errType_, bdvError.errorStr_
                      , bdvError.extraMsg_);
       switch (bdvError.errType_) {
@@ -1168,14 +1168,14 @@ void ArmoryCallback::run(BDMAction action, void* ptr, int block)
    }
 
    default:
-      logger_->debug("[{}] unknown BDMAction: {}", __func__, (int)action);
+      logger_->debug("[ArmoryCallback::run] unknown BDMAction: {}", (int)action);
       break;
    }
 }
 
 void ArmoryCallback::disconnected()
 {
-   logger_->debug("[{}]", __func__);
+   logger_->debug("[ArmoryCallback::disconnected]");
    std::lock_guard<std::mutex> lock(mutex_);
    if (connection_) {
       connection_->regThreadRunning_ = false;
