@@ -58,8 +58,9 @@ void Wallet::synchronize(const std::function<void()> &cbDone)
       for (const auto &txComment : data.txComments)
          setTransactionComment(txComment.txHash, txComment.comment, false);
 
-      if (cbDone)
+      if (cbDone) {
          cbDone();
+      }
    };
 
    signContainer_->syncWallet(walletId(), cbProcess);
@@ -160,8 +161,9 @@ std::vector<uint64_t> Wallet::getAddrBalance(const bs::Address &addr) const
    std::unique_lock<std::mutex> lock(*addrMapsMtx_);
 
    auto iter = addressBalanceMap_->find(addr.prefixed());
-   if (iter == addressBalanceMap_->end())
+   if (iter == addressBalanceMap_->end()) {
       return {};
+   }
 
    return iter->second;
 }
@@ -174,8 +176,9 @@ uint64_t Wallet::getAddrTxN(const bs::Address &addr) const
    std::unique_lock<std::mutex> lock(*addrMapsMtx_);
 
    auto iter = addressTxNMap_->find(addr.prefixed());
-   if (iter == addressTxNMap_->end())
+   if (iter == addressTxNMap_->end()) {
       return 0;
+   }
 
    return iter->second;
 }
@@ -260,8 +263,9 @@ bool Wallet::getSpendableTxOutList(const ArmoryConnection::UTXOsCb &cb, uint64_t
 {
    //combined utxo fetch method
 
-   if (!isBalanceAvailable())
+   if (!isBalanceAvailable()) {
       return false;
+   }
 
    const auto &cbTxOutList = [this, val, cb]
       (const std::vector<UTXO> &txOutList) {
@@ -302,8 +306,9 @@ bool Wallet::getSpendableTxOutList(const ArmoryConnection::UTXOsCb &cb, uint64_t
 
 bool Wallet::getSpendableZCList(const ArmoryConnection::UTXOsCb &cb) const
 {
-   if (!isBalanceAvailable())
+   if (!isBalanceAvailable()) {
       return false;
+   }
 
    std::vector<std::string> walletIDs;
    walletIDs.push_back(walletId());
@@ -319,8 +324,9 @@ bool Wallet::getSpendableZCList(const ArmoryConnection::UTXOsCb &cb) const
 
 bool Wallet::getRBFTxOutList(const ArmoryConnection::UTXOsCb &cb) const
 {
-   if (!isBalanceAvailable())
+   if (!isBalanceAvailable()) {
       return false;
+   }
 
    std::vector<std::string> walletIDs;
    walletIDs.push_back(walletId());
@@ -849,18 +855,18 @@ bool Wallet::getLedgerDelegateForAddress(const bs::Address &addr
 int Wallet::addAddress(const bs::Address &addr, const std::string &index
    , AddressEntryType aet, bool sync)
 {
-   if (!addr.isNull())
+   if (!addr.isNull()) {
       usedAddresses_.push_back(addr);
+   }
 
-   if (sync && signContainer_)
-   {
+   if (sync && signContainer_) {
       std::string idxCopy = index;
-      if (idxCopy.empty() && !addr.isNull())
-      {
+      if (idxCopy.empty() && !addr.isNull()) {
          aet = addr.getType();
          idxCopy = getAddressIndex(addr);
-         if (idxCopy.empty())
+         if (idxCopy.empty()) {
             idxCopy = addr.display();
+         }
       }
 
       signContainer_->syncNewAddress(walletId(), idxCopy, aet, nullptr);
@@ -874,6 +880,7 @@ void Wallet::syncAddresses()
    if (armory_) {
       registerWallet();
    }
+
    if (signContainer_) {
       std::set<BinaryData> addrSet;
       for (const auto &addr : getUsedAddressList()) {
@@ -938,8 +945,9 @@ size_t Wallet::getActiveAddressCount()
 
    size_t count = 0;
    for (auto& addrBal : *addressBalanceMap_) {
-      if (addrBal.second[0] != 0)
+      if (addrBal.second[0] != 0) {
          ++count;
+      }
    }
 
    return count;
