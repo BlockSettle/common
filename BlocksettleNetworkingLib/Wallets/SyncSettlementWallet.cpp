@@ -212,8 +212,8 @@ bool SettlementWallet::createMonitorCb(const BinaryData &settlementId
       (const std::shared_ptr<AsyncClient::BtcWallet> &addressWallet, const bs::Address &settlAddr
          , const BinaryData &buyPubKey, const BinaryData &sellPubKey)
    {
-      userCB(std::make_shared<bs::SettlementMonitorCb>(armory_, logger
-         , settlAddr, buyPubKey, sellPubKey, [] {}, addressWallet));
+      // userCB(std::make_shared<bs::SettlementMonitorCb>(armory_, logger
+      //    , settlAddr, buyPubKey, sellPubKey, [] {}, addressWallet));
    };
 
    return createMonitorCommon(settlementId, logger, createMonitorCB);
