@@ -925,7 +925,7 @@ void hd::CCLeaf::restartValidation()
 void hd::CCLeaf::validationProc()
 {
    validationStarted_ = true;
-   if (!armory_ || (armory_->state() != ArmoryState::Ready) || !isRegistered_) {
+   if (!armory_ || (armory_->state() != ArmoryState::Ready) || !isRegistered_ || checker_ == nullptr) {
       validationStarted_ = false;
       return;
    }
