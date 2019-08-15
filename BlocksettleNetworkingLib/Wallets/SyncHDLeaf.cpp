@@ -2,6 +2,7 @@
 
 #include "AddressValidationState.h"
 #include "CheckRecipSigner.h"
+#include "FastLock.h"
 #include "WalletSignerContainer.h"
 
 #include <unordered_map>
@@ -58,8 +59,11 @@ void hd::Leaf::synchronize(const std::function<void()> &cbDone)
       for (const auto &addr : data.addrPool) {
          //addPool normally won't contain comments
          const auto path = bs::hd::Path::fromString(addr.index);
-         addressPool_[{ path, addr.address.getType() }] = addr.address;
-         poolByAddr_[addr.address] = { path, addr.address.getType() };
+         {
+            FastLock locker{addressPoolLock_};
+            addressPool_[{ path, addr.address.getType() }] = addr.address;
+            poolByAddr_[addr.address] = { path, addr.address.getType() };
+         }
       }
 
       for (const auto &txComment : data.txComments) {
@@ -315,9 +319,13 @@ std::vector<BinaryData> hd::Leaf::getAddrHashesExt() const
 {
    std::vector<BinaryData> result;
    result.insert(result.end(), addrPrefixedHashes_.external.cbegin(), addrPrefixedHashes_.external.cend());
-   for (const auto &addr : addressPool_) {
-      if (addr.first.path.get(-2) == addrTypeExternal) {
-         result.push_back(addr.second.id());
+
+   {
+      FastLock locker{addressPoolLock_};
+      for (const auto &addr : addressPool_) {
+         if (addr.first.path.get(-2) == addrTypeExternal) {
+            result.push_back(addr.second.id());
+         }
       }
    }
    return result;
@@ -327,9 +335,12 @@ std::vector<BinaryData> hd::Leaf::getAddrHashesInt() const
 {
    std::vector<BinaryData> result;
    result.insert(result.end(), addrPrefixedHashes_.internal.cbegin(), addrPrefixedHashes_.internal.cend());
-   for (const auto &addr : addressPool_) {
-      if (addr.first.path.get(-2) == addrTypeInternal) {
-         result.push_back(addr.second.id());
+   {
+      FastLock locker{addressPoolLock_};
+      for (const auto &addr : addressPool_) {
+         if (addr.first.path.get(-2) == addrTypeInternal) {
+            result.push_back(addr.second.id());
+         }
       }
    }
    return result;
@@ -398,6 +409,7 @@ void hd::Leaf::createAddress(const CbAddress &cb, const AddrPoolKey &key)
    const auto &swapKey = [this, keyCopy](void) -> bs::Address
    {
       bs::Address result;
+      FastLock locker{addressPoolLock_};
       const auto addrPoolIt = addressPool_.find(keyCopy);
       if (addrPoolIt != addressPool_.end()) {
          result = std::move(addrPoolIt->second);
@@ -460,6 +472,8 @@ void hd::Leaf::topUpAddressPool(bool extInt, const std::function<void()> &cb)
 
       for (const auto &addrPair : addrVec) {
          const auto path = bs::hd::Path::fromString(addrPair.second);
+
+         FastLock locker{addressPoolLock_};
          addressPool_[{ path, addrPair.first.getType() }] = addrPair.first;
          poolByAddr_[addrPair.first] = { path, addrPair.first.getType() };
       }
@@ -767,21 +781,6 @@ bool hd::Leaf::addressIndexExists(const std::string &index) const
    return false;
 }
 
-bs::hd::Path::Elem hd::Leaf::getLastAddrPoolIndex(bs::hd::Path::Elem addrType) const
-{
-   bs::hd::Path::Elem result = 0;
-   for (const auto &addr : addressPool_) {
-      const auto &path = addr.first.path;
-      if (path.get(-2) == addrType) {
-         result = qMax(result, path.get(-1));
-      }
-   }
-   if (!result) {
-      result = (addrType == addrTypeInternal) ? lastIntIdx_ : lastExtIdx_;
-   }
-   return result;
-}
-
 void hd::Leaf::merge(const std::shared_ptr<Wallet> walletPtr)
 {
    //rudimentary implementation, flesh it out on the go
@@ -794,8 +793,11 @@ void hd::Leaf::merge(const std::shared_ptr<Wallet> walletPtr)
    txComments_.insert(
       leafPtr->txComments_.begin(), leafPtr->txComments_.end());
 
-   addressPool_ = leafPtr->addressPool_;
-   poolByAddr_ = leafPtr->poolByAddr_;
+   {
+      FastLock locker{addressPoolLock_};
+      addressPool_ = leafPtr->addressPool_;
+      poolByAddr_ = leafPtr->poolByAddr_;
+   }
 
    addressMap_ = leafPtr->addressMap_;
    intAddresses_ = leafPtr->intAddresses_;

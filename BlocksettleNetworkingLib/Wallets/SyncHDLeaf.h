@@ -154,6 +154,7 @@ namespace bs {
                AddressEntryType(AddressEntryType_P2SH | AddressEntryType_P2WPKH),
                AddressEntryType_P2WPKH };
 
+            mutable std::atomic_flag            addressPoolLock_ = ATOMIC_FLAG_INIT;
             std::map<AddrPoolKey, bs::Address>  addressPool_;
             std::map<bs::Address, AddrPoolKey>  poolByAddr_;
 
@@ -191,7 +192,6 @@ namespace bs {
             void createAddress(const CbAddress &, AddressEntryType aet, bool isInternal = false);
             AddrPoolKey getAddressIndexForAddr(const BinaryData &addr) const;
             AddrPoolKey addressIndex(const bs::Address &) const;
-            bs::hd::Path::Elem getLastAddrPoolIndex(bs::hd::Path::Elem) const;
             void resumeScan(const std::string &refreshId);
 
             static std::vector<BinaryData> getRegAddresses(const std::vector<PooledAddress> &src);
