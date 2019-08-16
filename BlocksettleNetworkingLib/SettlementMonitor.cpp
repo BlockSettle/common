@@ -374,7 +374,7 @@ void bs::PayoutSigner::WhichSignature(const Tx& tx
    auto result = std::make_shared<Result>();
    result->value = value;
 
-   const auto &cbProcess = [result, settlAddr, buyAuthKey, sellAuthKey, tx, cb, logger]
+   const auto cbProcess = [result, settlAddr, buyAuthKey, sellAuthKey, tx, cb, logger]
       (const std::vector<Tx> &txs)
    {
       for (const auto &prevTx : txs) {
@@ -399,6 +399,10 @@ void bs::PayoutSigner::WhichSignature(const Tx& tx
 
       //serialize signed tx
       auto txdata = tx.serialize();
+
+      logger->debug("[PayoutSigner::WhichSignature cbProcess] serialized tx:\n{}"
+                     , txdata.toHexStr());
+
       auto bctx = BCTX::parse(txdata);
 
       std::map<BinaryData, std::map<unsigned, UTXO>> utxoMap;
@@ -408,6 +412,9 @@ void bs::PayoutSigner::WhichSignature(const Tx& tx
       //setup verifier
       try {
          TransactionVerifier tsv(*bctx, utxoMap);
+
+         logger->debug("[PayoutSigner::WhichSignature cbProcess] witness data in verifier tx:\n{}"
+                     , tsv.getWitnessData(0).toHexStr());
 
          auto tsvFlags = tsv.getFlags();
          tsvFlags |= SCRIPT_VERIFY_P2SH_SHA256 | SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_SEGWIT;
