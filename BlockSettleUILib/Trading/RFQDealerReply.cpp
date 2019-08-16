@@ -166,7 +166,6 @@ void RFQDealerReply::initUi()
 void RFQDealerReply::setWalletsManager(const std::shared_ptr<bs::sync::WalletsManager> &walletsManager)
 {
    walletsManager_ = walletsManager;
-   UiUtils::fillHDWalletsComboBox(ui_->comboBoxWalletAS, walletsManager_);
    validateGUI();
 
    connect(walletsManager_.get(), &bs::sync::WalletsManager::CCLeafCreated, this, &RFQDealerReply::onHDLeafCreated);
@@ -899,24 +898,32 @@ void RFQDealerReply::tryEnableAutoSign()
       return;
    }
 
-   auto walletId = ui_->comboBoxWalletAS->currentData(UiUtils::WalletIdRole).toString();
-
-   const auto wallet = walletsManager_->getHDWalletById(walletId.toStdString());
+   const auto wallet = walletsManager_->getPrimaryWallet();
    if (!wallet) {
-      logger_->error("Failed to obtain auto-sign wallet for id {}", walletId.toStdString());
+      logger_->error("Failed to obtain auto-sign primary wallet");
       return;
    }
 
    QVariantMap data;
-   data[QLatin1String("rootId")] = walletId;
+   data[QLatin1String("rootId")] = QString::fromStdString(wallet->walletId());
    data[QLatin1String("enable")] = true;
    signingContainer_->customDialogRequest(bs::signer::ui::DialogType::ActivateAutoSign, data);
 }
 
 void RFQDealerReply::disableAutoSign()
 {
+   if (!walletsManager_) {
+      return;
+   }
+
+   const auto wallet = walletsManager_->getPrimaryWallet();
+   if (!wallet) {
+      logger_->error("Failed to obtain auto-sign primary wallet");
+      return;
+   }
+
    QVariantMap data;
-   data[QLatin1String("rootId")] = ui_->comboBoxWalletAS->currentData(UiUtils::WalletIdRole).toString();
+   data[QLatin1String("rootId")] = QString::fromStdString(wallet->walletId());
    data[QLatin1String("enable")] = false;
    signingContainer_->customDialogRequest(bs::signer::ui::DialogType::ActivateAutoSign, data);
 }
@@ -1031,9 +1038,9 @@ void RFQDealerReply::validateGUI()
    ui_->comboBoxAQScript->setEnabled(celerConnected_);
    ui_->groupBoxAutoSign->setEnabled(celerConnected_);
 
-   bool bFlag = (ui_->comboBoxWalletAS->count() > 0) ? true : false;
+
+   bool bFlag = walletsManager_ && walletsManager_->getPrimaryWallet();
    ui_->checkBoxAutoSign->setEnabled(bFlag && celerConnected_);
-   ui_->comboBoxWalletAS->setEnabled(!ui_->checkBoxAutoSign->isChecked() && celerConnected_);
 }
 
 void RFQDealerReply::onTransactionDataChanged()
