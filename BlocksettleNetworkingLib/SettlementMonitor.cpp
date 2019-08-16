@@ -424,6 +424,13 @@ void bs::PayoutSigner::WhichSignature(const Tx& tx
 
          auto inputState = verifierState.getSignedStateForInput(inputId);
 
+         const auto txHashString = tx.getThisHash().toHexStr();
+         const auto signaturesMap = inputState.getPubKeyMap();
+         for (auto& state : signaturesMap) {
+            logger->debug("[bs::PayoutSigner::WhichSignature] {} : signature: {} {}"
+                           , txHashString, state.first.toHexStr(), (state.second ? "signed" : "not signed"));
+         }
+
          if (inputState.getSigCount() == 0) {
             logger->error("[bs::PayoutSigner::WhichSignature] no signatures received for TX: {}"
                , tx.getThisHash().toHexStr());
