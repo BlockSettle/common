@@ -400,9 +400,6 @@ void bs::PayoutSigner::WhichSignature(const Tx& tx
       //serialize signed tx
       auto txdata = tx.serialize();
 
-      logger->debug("[PayoutSigner::WhichSignature cbProcess] serialized tx:\n{}"
-                     , txdata.toHexStr());
-
       auto bctx = BCTX::parse(txdata);
 
       std::map<BinaryData, std::map<unsigned, UTXO>> utxoMap;
@@ -413,9 +410,6 @@ void bs::PayoutSigner::WhichSignature(const Tx& tx
       try {
          TransactionVerifier tsv(*bctx, utxoMap);
 
-         logger->debug("[PayoutSigner::WhichSignature cbProcess] witness data in verifier tx:\n{}"
-                     , tsv.getWitnessData(0).toHexStr());
-
          auto tsvFlags = tsv.getFlags();
          tsvFlags |= SCRIPT_VERIFY_P2SH_SHA256 | SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_SEGWIT;
          tsv.setFlags(tsvFlags);
@@ -423,13 +417,6 @@ void bs::PayoutSigner::WhichSignature(const Tx& tx
          auto verifierState = tsv.evaluateState();
 
          auto inputState = verifierState.getSignedStateForInput(inputId);
-
-         const auto txHashString = tx.getThisHash().toHexStr();
-         const auto signaturesMap = inputState.getPubKeyMap();
-         for (auto& state : signaturesMap) {
-            logger->debug("[bs::PayoutSigner::WhichSignature] {} : signature: {} {}"
-                           , txHashString, state.first.toHexStr(), (state.second ? "signed" : "not signed"));
-         }
 
          if (inputState.getSigCount() == 0) {
             logger->error("[bs::PayoutSigner::WhichSignature] no signatures received for TX: {}"

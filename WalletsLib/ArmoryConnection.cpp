@@ -117,17 +117,12 @@ void ArmoryConnection::maintenanceThreadFunc()
             tempACT = activeTargets_;
          }
 
-         logger_->debug("--------- [ArmoryConnection::maintenanceThreadFunc] {} targets"
-                        , tempACT.size());
-
          for (const auto &tgt : tempACT) {
             if (!maintThreadRunning_ || actChanged_) {
                break;
             }
             cb(tgt);
          }
-
-         logger_->debug("--------- [ArmoryConnection::maintenanceThreadFunc] foreach target completed");
       } while (actChanged_ && maintThreadRunning_);
    };
 
@@ -153,14 +148,12 @@ void ArmoryConnection::maintenanceThreadFunc()
       }
 
       if (!tempRunQueue.empty()) {
-         logger_->debug(" ------======  [ArmoryConnection::maintenanceThreadFunc] temp run ======------");
          for (const auto &cb : tempRunQueue) {
             cb();
          }
       }
 
       if (!tempQueue.empty()) {
-         logger_->debug(" ------======  [ArmoryConnection::maintenanceThreadFunc] temp queue for all ======------");
          for (const auto &cb : tempQueue) {
             forEachTarget(cb);
             if (!maintThreadRunning_) {
@@ -169,8 +162,6 @@ void ArmoryConnection::maintenanceThreadFunc()
          }
       }
    }
-
-   logger_->error(" ------======  [ArmoryConnection::maintenanceThreadFunc] stopped ======------");
 }
 
 void ArmoryConnection::addMergedWalletId(const std::string &walletId, const std::string &mergedWalletId)
