@@ -52,7 +52,7 @@ void hd::Leaf::synchronize(const std::function<void()> &cbDone)
       logger_->debug("[sync::hd::Leaf::synchronize] {}: last indices {}+{}={} address[es]"
          , walletId(), lastExtIdx_, lastIntIdx_, data.addresses.size());
       for (const auto &addr : data.addresses) {
-         addAddress(addr.address, addr.index, addr.address.getType(), false);
+         addAddress(addr.address, addr.index, false);
          setAddressComment(addr.address, addr.comment, false);
       }
 
@@ -61,8 +61,8 @@ void hd::Leaf::synchronize(const std::function<void()> &cbDone)
          const auto path = bs::hd::Path::fromString(addr.index);
          {
             FastLock locker{addressPoolLock_};
-            addressPool_[{ path, addr.address.getType() }] = addr.address;
-            poolByAddr_[addr.address] = { path, addr.address.getType() };
+            addressPool_[{ path }] = addr.address;
+            poolByAddr_[addr.address] = { path };
          }
       }
 
@@ -229,7 +229,6 @@ void hd::Leaf::reset()
    std::lock_guard<std::mutex> lock(regMutex_);
 
    lastIntIdx_ = lastExtIdx_ = 0;
-   addressMap_.clear();
    usedAddresses_.clear();
    intAddresses_.clear();
    extAddresses_.clear();
@@ -274,6 +273,27 @@ std::string hd::Leaf::description() const
    return desc_;
 }
 
+std::string hd::Leaf::shortName() const
+{
+   std::string name;
+   switch (static_cast<bs::hd::Purpose>(path_.get(0) & ~bs::hd::hardFlag)) {
+   case bs::hd::Purpose::Native:
+      name = QObject::tr("Native SegWit").toStdString();
+      break;
+   case bs::hd::Purpose::Nested:
+      name = QObject::tr("Nested SegWit").toStdString();
+      break;
+   case bs::hd::Purpose::NonSegWit:
+      name = QObject::tr("Legacy").toStdString();
+      break;
+   default:
+      name = QObject::tr("Unknown").toStdString();
+      break;
+   }
+   name += " " + suffix_;
+   return name;
+}
+
 bool hd::Leaf::containsAddress(const bs::Address &addr)
 {
    return !getAddressIndex(addr).empty();
@@ -285,21 +305,21 @@ bool hd::Leaf::containsHiddenAddress(const bs::Address &addr) const
 }
 
 // Return an external-facing address.
-void hd::Leaf::getNewExtAddress(const CbAddress &cb, AddressEntryType aet)
+void hd::Leaf::getNewExtAddress(const CbAddress &cb)
 {
-   createAddress(cb, aet, false);
+   createAddress(cb, false);
 }
 
 // Return an internal-facing address.
-void hd::Leaf::getNewIntAddress(const CbAddress &cb, AddressEntryType aet)
+void hd::Leaf::getNewIntAddress(const CbAddress &cb)
 {
-   createAddress(cb, aet, true);
+   createAddress(cb, true);
 }
 
 // Return a change address.
-void hd::Leaf::getNewChangeAddress(const CbAddress &cb, AddressEntryType aet)
+void hd::Leaf::getNewChangeAddress(const CbAddress &cb)
 {
-   createAddress(cb, aet, isExtOnly_ ? false : true);
+   createAddress(cb, isExtOnly_ ? false : true);
 }
 
 std::vector<BinaryData> hd::Leaf::getAddrHashes() const
@@ -386,7 +406,7 @@ std::vector<std::string> hd::Leaf::registerWallet(
    return {};
 }
 
-void hd::Leaf::createAddress(const CbAddress &cb, AddressEntryType aet, bool isInternal)
+void hd::Leaf::createAddress(const CbAddress &cb, bool isInternal)
 {
    bs::hd::Path addrPath;
    if (isInternal && !isExtOnly_) {
@@ -397,20 +417,18 @@ void hd::Leaf::createAddress(const CbAddress &cb, AddressEntryType aet, bool isI
       addrPath.append(addrTypeExternal);
       addrPath.append(lastExtIdx_++);
    }
-   createAddress(cb, { addrPath, aet });
+   createAddress(cb, { addrPath });
 }
 
 void hd::Leaf::createAddress(const CbAddress &cb, const AddrPoolKey &key)
 {
-   AddrPoolKey keyCopy = key;
-   if (key.aet == AddressEntryType_Default)
-      keyCopy.aet = defaultAET_;
-
-   const auto &swapKey = [this, keyCopy](void) -> bs::Address
+   const auto &swapKey = [this, key](void) -> bs::Address
    {
       bs::Address result;
+
       FastLock locker{addressPoolLock_};
-      const auto addrPoolIt = addressPool_.find(keyCopy);
+      const auto addrPoolIt = addressPool_.find(key);
+
       if (addrPoolIt != addressPool_.end()) {
          result = std::move(addrPoolIt->second);
          addressPool_.erase(addrPoolIt->first);
@@ -419,8 +437,8 @@ void hd::Leaf::createAddress(const CbAddress &cb, const AddrPoolKey &key)
       return result;
    };
 
-   const auto &cbAddAddr = [this, cb, keyCopy](const bs::Address &addr) {
-      addAddress(addr, keyCopy.path.toString(), keyCopy.aet);
+   const auto &cbAddAddr = [this, cb, key](const bs::Address &addr) {
+      addAddress(addr, key.path.toString());
       if (cb) {
          cb(addr);
       }
@@ -431,12 +449,12 @@ void hd::Leaf::createAddress(const CbAddress &cb, const AddrPoolKey &key)
 
    const auto result = swapKey();
    if (result.isNull()) {
-      auto topUpCb = [this, keyCopy, swapKey, cbAddAddr, cb](void)
+      auto topUpCb = [this, key, swapKey, cbAddAddr, cb](void)
       {
          const auto result = swapKey();
          if (result.isNull()) {
-            logger_->error("[sync::hd::Leaf::createAddress] failed to find {}/{} after topping up the pool"
-               , keyCopy.path.toString(), (int)keyCopy.aet);
+            logger_->error("[{}] failed to find {} after topping up the pool"
+               , __func__, key.path.toString());
             cb(result);
          }
          else {
@@ -474,8 +492,8 @@ void hd::Leaf::topUpAddressPool(bool extInt, const std::function<void()> &cb)
          const auto path = bs::hd::Path::fromString(addrPair.second);
 
          FastLock locker{addressPoolLock_};
-         addressPool_[{ path, addrPair.first.getType() }] = addrPair.first;
-         poolByAddr_[addrPair.first] = { path, addrPair.first.getType() };
+         addressPool_[{ path }] = addrPair.first;
+         poolByAddr_[addrPair.first] = { path };
       }
 
       //register new addresses with db
@@ -682,11 +700,11 @@ bool hd::Leaf::hasId(const std::string &id) const
    return ((walletId() == id) || (!isExtOnly_ && (walletIdInt() == id)));
 }
 
-int hd::Leaf::addAddress(const bs::Address &addr, const std::string &index, AddressEntryType aet, bool sync)
+int hd::Leaf::addAddress(const bs::Address &addr, const std::string &index, bool sync)
 {
    const auto path = bs::hd::Path::fromString(index);
    const bool isInternal = (path.get(-2) == addrTypeInternal);
-   const int id = bs::sync::Wallet::addAddress(addr, index, aet, sync);
+   const int id = bs::sync::Wallet::addAddress(addr, index, sync);
    const auto addrIndex = path.get(-1);
    if (isInternal) {
       intAddresses_.push_back(addr);
@@ -701,8 +719,7 @@ int hd::Leaf::addAddress(const bs::Address &addr, const std::string &index, Addr
          lastExtIdx_ = addrIndex + 1;
       }
    }
-   addressMap_[{path, aet}] = addr;
-   addrToIndex_[addr.unprefixed()] = {path, aet};
+   addrToIndex_[addr.unprefixed()] = {path};
    return id;
 }
 
@@ -767,20 +784,6 @@ bool hd::Leaf::isExternalAddress(const bs::Address &addr) const
    return (path.get(-2) == addrTypeExternal);
 }
 
-bool hd::Leaf::addressIndexExists(const std::string &index) const
-{
-   const auto path = bs::hd::Path::fromString(index);
-   if (path.length() < 2) {
-      return false;
-   }
-   for (const auto &addr : addressMap_) {
-      if (addr.first.path == path) {
-         return true;
-      }
-   }
-   return false;
-}
-
 void hd::Leaf::merge(const std::shared_ptr<Wallet> walletPtr)
 {
    //rudimentary implementation, flesh it out on the go
@@ -799,7 +802,6 @@ void hd::Leaf::merge(const std::shared_ptr<Wallet> walletPtr)
       poolByAddr_ = leafPtr->poolByAddr_;
    }
 
-   addressMap_ = leafPtr->addressMap_;
    intAddresses_ = leafPtr->intAddresses_;
    extAddresses_ = leafPtr->extAddresses_;
 
@@ -824,7 +826,6 @@ hd::AuthLeaf::AuthLeaf(const std::string &walletId, const std::string &name, con
 {
    intAddressPoolSize_ = 0;
    extAddressPoolSize_ = 5;
-   poolAET_ = { AddressEntryType_P2WPKH };
 }
 
 
@@ -1213,7 +1214,6 @@ hd::SettlementLeaf::SettlementLeaf(const std::string &walletId, const std::strin
 {
    intAddressPoolSize_ = 0;
    extAddressPoolSize_ = 0;
-   poolAET_ = { AddressEntryType_P2WPKH };
 }
 
 void hd::SettlementLeaf::createAddress(const CbAddress &cb, const AddrPoolKey &key)

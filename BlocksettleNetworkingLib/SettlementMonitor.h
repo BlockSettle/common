@@ -2,7 +2,7 @@
 #define __SETTLEMENT_MONITOR_H__
 
 #include "ArmoryConnection.h"
-#include "SettlementAddressEntry.h"
+#include "CoreWallet.h"
 
 #include <spdlog/spdlog.h>
 
@@ -57,7 +57,7 @@ namespace bs {
       PayoutSigner::Type getPayoutSignerSide() const { return payoutSignedBy_; }
       void getPayinInput(const std::function<void(UTXO)> &, bool allowZC = true);
 
-      static bs::core::wallet::TXSignRequest createPayoutTXRequest(const UTXO &
+      static bs::core::wallet::TXSignRequest createPayoutTXRequest(UTXO
          , const bs::Address &recvAddr, float feePerByte, unsigned int topBlock);
       static UTXO getInputFromTX(const bs::Address &, const BinaryData &payinHash
          , const double amount);
