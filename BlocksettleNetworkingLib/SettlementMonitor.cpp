@@ -372,9 +372,7 @@ bs::core::wallet::TXSignRequest bs::SettlementMonitor::createPayoutTXRequest(UTX
    bs::core::wallet::TXSignRequest txReq;
    txReq.inputs.push_back(input);
    input.isInputSW_ = true;
-   // Payout TX has more complicated witness data (because it uses 1 of 2 signatures).
-   // Let's set its eastimated size manually.
-   input.witnessDataSizeBytes_ = 148;
+   input.witnessDataSizeBytes_ = unsigned(bs::Address::getPayoutWitnessDataSize());
    uint64_t fee = getEstimatedFeeFor(input, recvAddr, feePerByte, topBlock);
 
    uint64_t value = input.getValue();
