@@ -940,6 +940,9 @@ void ArmoryConnection::onRefresh(const std::vector<BinaryData>& ids)
 {
    logger_->debug("[ArmoryConnection::onRefresh] {} ids", ids.size());
 
+   std::string refreshId;
+   std::function<void(const std::string &)> refreshCB;
+
    {
       std::unique_lock<std::mutex> lock(registrationCallbacksMutex_);
       if (!registrationCallbacks_.empty())
@@ -948,20 +951,22 @@ void ArmoryConnection::onRefresh(const std::vector<BinaryData>& ids)
          {
             const auto regIdIt = registrationCallbacks_.find(id.toBinStr());
             if (regIdIt != registrationCallbacks_.end()) {
-               logger_->debug("[{}] found preOnline registration id: {}", __func__
+               logger_->debug("[ArmoryConnection::onRefresh] found preOnline registration id: {}"
                   , id.toBinStr());
-               const auto regId = regIdIt->first;
-               const auto cb = regIdIt->second;
+               refreshId = regIdIt->first;
+               refreshCB = regIdIt->second;
                registrationCallbacks_.erase(regIdIt);
 
-               //return as soon as possible from this callback, this isn't meant
-               //to cascade operations from
-               if (cb) {
-                  cb(regId);
-               }
+               break;
             }
          }
       }
+   }
+
+   //return as soon as possible from this callback, this isn't meant
+   //to cascade operations from
+   if (refreshCB) {
+      refreshCB(refreshId);
    }
 
    const bool online = (state_ == ArmoryState::Ready);
