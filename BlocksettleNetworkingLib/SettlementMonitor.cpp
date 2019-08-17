@@ -5,7 +5,7 @@
 
 bs::SettlementMonitor::SettlementMonitor(const std::shared_ptr<ArmoryConnection> &armory
    , const std::shared_ptr<spdlog::logger> &logger, const bs::Address &addr
-   , const BinaryData &buyAuthKey, const BinaryData &sellAuthKey
+   , const SecureBinaryData &buyAuthKey, const SecureBinaryData &sellAuthKey
    , const std::function<void()> &cbInited)
    : armoryPtr_(armory)
    , logger_(logger)

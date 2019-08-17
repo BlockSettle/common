@@ -44,7 +44,7 @@ namespace bs {
    public:
       SettlementMonitor(const std::shared_ptr<ArmoryConnection> &
          , const std::shared_ptr<spdlog::logger> &, const bs::Address &
-         , const BinaryData &buyAuthKey, const BinaryData &sellAuthKey
+         , const SecureBinaryData &buyAuthKey, const SecureBinaryData &sellAuthKey
          , const std::function<void()> &);
 
       ~SettlementMonitor() noexcept override;
@@ -99,8 +99,8 @@ namespace bs {
       std::shared_ptr<ArmoryConnection>   armoryPtr_;
       std::shared_ptr<spdlog::logger>     logger_;
       bs::Address                         settlAddress_;
-      BinaryData                          buyAuthKey_;
-      BinaryData                          sellAuthKey_;
+      SecureBinaryData                    buyAuthKey_;
+      SecureBinaryData                    sellAuthKey_;
 
    protected:
       void IsPayInTransaction(const ClientClasses::LedgerEntry &, std::function<void(bool)>) const;
@@ -122,7 +122,7 @@ namespace bs {
    public:
       SettlementMonitorCb(const std::shared_ptr<ArmoryConnection> &armory
          , const std::shared_ptr<spdlog::logger> &logger, const bs::Address &addr
-         , const BinaryData &buyAuthKey, const BinaryData &sellAuthKey
+         , const SecureBinaryData &buyAuthKey, const SecureBinaryData &sellAuthKey
          , const std::function<void()> &cbInited)
          : SettlementMonitor(armory, logger, addr, buyAuthKey, sellAuthKey, cbInited) {}
       ~SettlementMonitorCb() noexcept override;
