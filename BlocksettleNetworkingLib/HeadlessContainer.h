@@ -77,6 +77,9 @@ public:
       , const std::vector<bs::wallet::PasswordData> &pwdData = {}
       , bs::sync::PasswordDialogData dialogData = {}, const CreateHDLeafCb &cb = nullptr) override;
 
+   bool promoteHDWallet(const std::string& rootWalletId, const std::vector<bs::wallet::PasswordData>& pwdData = {}
+      , bs::sync::PasswordDialogData dialogData = {}, const PromoteHDWalletCb& cb = nullptr) override;
+
    bs::signer::RequestId DeleteHDRoot(const std::string &rootWalletId) override;
    bs::signer::RequestId DeleteHDLeaf(const std::string &leafWalletId) override;
    bs::signer::RequestId GetInfo(const std::string &rootWalletId) override;
@@ -115,6 +118,7 @@ protected:
    void ProcessSignTXResponse(unsigned int id, const std::string &data);
    void ProcessSettlementSignTXResponse(unsigned int id, const std::string &data);
    void ProcessCreateHDLeafResponse(unsigned int id, const std::string &data);
+   void ProcessHDWalletPromotionResponse(unsigned int id, const std::string& data);
    bs::signer::RequestId SendDeleteHDRequest(const std::string &rootWalletId, const std::string &leafId);
    void ProcessGetHDWalletInfoResponse(unsigned int id, const std::string &data);
    void ProcessAutoSignActEvent(unsigned int id, const std::string &data);
@@ -128,6 +132,9 @@ protected:
    void ProcessSetUserId(const std::string &data);
    void ProcessGetPayinAddr(unsigned int id, const std::string &data);
    void ProcessSettlGetRootPubkey(unsigned int id, const std::string &data);
+
+private:
+
 
 protected:
    std::shared_ptr<HeadlessListener>   listener_;
@@ -148,6 +155,7 @@ protected:
    std::map<bs::signer::RequestId, std::function<void(bool, const SecureBinaryData &)>>   cbSettlPubkeyMap_;
 
    std::map<bs::signer::RequestId, CreateHDLeafCb> cbCCreateLeafMap_;
+   std::map<bs::signer::RequestId, PromoteHDWalletCb> cbPromoteHDWalletMap_;
 };
 
 

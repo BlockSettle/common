@@ -169,6 +169,21 @@ bool InprocSigner::createHDLeaf(const std::string &rootWalletId, const bs::hd::P
    return false;
 }
 
+bool InprocSigner::promoteHDWallet(const std::string& rootWalletId,
+                                   const std::vector<bs::wallet::PasswordData>& pwdData, bs::sync::PasswordDialogData dialogData,
+                                   const WalletSignerContainer::PromoteHDWalletCb& cb)
+{
+   Q_UNUSED(rootWalletId);
+   Q_UNUSED(pwdData);
+   Q_UNUSED(dialogData);
+   Q_UNUSED(cb);
+
+   // Have not used in moment of creating UI functionality.
+   // This should be created if you hit breakpoint.
+   Q_ASSERT(false);
+   return false;
+}
+
 void InprocSigner::createSettlementWallet(const bs::Address &authAddr
    , const std::function<void(const SecureBinaryData &)> &cb)
 {

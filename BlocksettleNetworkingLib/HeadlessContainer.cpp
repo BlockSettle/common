@@ -273,6 +273,44 @@ void HeadlessContainer::ProcessCreateHDLeafResponse(unsigned int id, const std::
    }
 }
 
+void HeadlessContainer::ProcessHDWalletPromotionResponse(unsigned int id, const std::string& data)
+{
+   headless::PromoteHDWalletResponse response;
+
+   auto it = cbPromoteHDWalletMap_.find(id);
+   WalletSignerContainer::PromoteHDWalletCb cb = nullptr;
+
+   if (it != cbPromoteHDWalletMap_.end()) {
+      cb = it->second;
+      cbPromoteHDWalletMap_.erase(it);
+   } else {
+      logger_->debug("[HeadlessContainer::ProcessHDWalletPromotionResponse] no CB for promote HD Wallet response");
+   }
+
+   if (!response.ParseFromString(data)) {
+      logger_->error("[HeadlessContainer::ProcessHDWalletPromotionResponse] Failed to parse PromoteHDWallet reply");
+
+      if (cb) {
+         cb(bs::error::ErrorCode::FailedToParse, {});
+      }
+
+      return;
+   }
+
+   bs::error::ErrorCode result = static_cast<bs::error::ErrorCode>(response.errorcode());
+
+   if (result == bs::error::ErrorCode::NoError) {
+      logger_->debug("[HeadlessContainer::ProcessHDWalletPromotionResponse] HDWallet {} promoted", response.wallet().walletid());
+   } else {
+      logger_->error("[HeadlessContainer::ProcessHDWalletPromotionResponse] failed to create leaf: {}"
+                     , response.errorcode());
+   }
+
+   if (cb) {
+      cb(result, response.wallet().walletid());
+   }
+}
+
 void HeadlessContainer::ProcessGetHDWalletInfoResponse(unsigned int id, const std::string &data)
 {
    headless::GetHDWalletInfoResponse response;
@@ -571,6 +609,40 @@ bool HeadlessContainer::createHDLeaf(const std::string &rootWalletId, const bs::
    } else {
       logger_->warn("[HeadlessContainer::createHDLeaf] cb not set for leaf creation {}"
                      , path.toString());
+   }
+
+   return true;
+}
+
+bool HeadlessContainer::promoteHDWallet(const std::string& rootWalletId,
+                                   const std::vector<bs::wallet::PasswordData>& pwdData, bs::sync::PasswordDialogData dialogData,
+                                   const WalletSignerContainer::PromoteHDWalletCb& cb)
+{
+   Q_UNUSED(pwdData);
+
+   headless::PromoteHDWalletRequest request;
+   request.set_rootwalletid(rootWalletId);
+
+   dialogData.setValue(QLatin1String("WalletId"), QString::fromStdString(rootWalletId));
+
+   auto requestDialogData = request.mutable_passworddialogdata();
+   *requestDialogData = dialogData.toProtobufMessage();
+
+   headless::RequestPacket packet;
+   packet.set_type(headless::PromoteHDWalletRequestType);
+   packet.set_data(request.SerializeAsString());
+   auto promoteWalletRequestID = Send(packet);
+
+   if (promoteWalletRequestID == 0) {
+      logger_->error("[HeadlessContainer::promoteHDWallet] failed to send request");
+      return false;
+   }
+
+   if (cb) {
+      cbPromoteHDWalletMap_.emplace(promoteWalletRequestID, cb);
+   } else {
+      logger_->warn("[HeadlessContainer::promoteHDWallet] cb not set for wallet promotion {}"
+                     , rootWalletId);
    }
 
    return true;
@@ -1357,6 +1429,10 @@ void RemoteSigner::onPacketReceived(headless::RequestPacket packet)
 
    case headless::CreateHDLeafRequestType:
       ProcessCreateHDLeafResponse(packet.id(), packet.data());
+      break;
+
+   case headless::PromoteHDWalletRequestType:
+      ProcessHDWalletPromotionResponse(packet.id(), packet.data());
       break;
 
    case headless::GetHDWalletInfoRequestType:
