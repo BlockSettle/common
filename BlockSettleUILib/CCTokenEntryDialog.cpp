@@ -17,7 +17,7 @@
 #include "BSErrorCodeStrings.h"
 
 namespace {
-   const auto AuthTimeout = int(BsClient::autheidCcAddressTimeout() / std::chrono::seconds(1));
+   const auto kAutheIdTimeout = int(BsClient::autheidCcAddressTimeout() / std::chrono::seconds(1));
 }
 
 CCTokenEntryDialog::CCTokenEntryDialog(const std::shared_ptr<bs::sync::WalletsManager> &walletsMgr
@@ -42,7 +42,7 @@ CCTokenEntryDialog::CCTokenEntryDialog(const std::shared_ptr<bs::sync::WalletsMa
 
    updateOkState();
 
-   ui_->progressBar->setMaximum(AuthTimeout * 10);
+   ui_->progressBar->setMaximum(kAutheIdTimeout * 10);
 
    timer_.setInterval(100);
    connect(&timer_, &QTimer::timeout, this, &CCTokenEntryDialog::onTimer);
@@ -131,8 +131,8 @@ void CCTokenEntryDialog::accept()
    };
    ccWallet_->getNewExtAddress(cbAddr);
 
-   ui_->progressBar->setValue(AuthTimeout * 10);
-   timeLeft_ = AuthTimeout;
+   ui_->progressBar->setValue(kAutheIdTimeout * 10);
+   timeLeft_ = kAutheIdTimeout;
    timer_.start();
    ui_->stackedWidgetAuth->setCurrentWidget(ui_->pageAuth);
    ui_->labelToken->setText(ui_->lineEditToken->text());
