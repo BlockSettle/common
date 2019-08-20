@@ -174,10 +174,7 @@ bool InprocSigner::promoteHDWallet(const std::string&,
                                    bs::sync::PasswordDialogData,
                                    const WalletSignerContainer::PromoteHDWalletCb&)
 {
-   // Have not used in moment of creating UI functionality.
-   // This should be created if you hit breakpoint.
-   Q_ASSERT(false);
-   return false;
+   throw std::bad_function_call();
 }
 
 void InprocSigner::createSettlementWallet(const bs::Address &authAddr
