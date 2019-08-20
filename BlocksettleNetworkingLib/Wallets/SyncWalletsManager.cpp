@@ -1515,7 +1515,7 @@ bool WalletsManager::PromoteHDWallet(const std::string& walletId, const std::fun
       }
    };
 
-   return signContainer_->promoteHDWallet(walletId, {}, dialogData, promoteHDWalletCb);
+   return signContainer_->promoteHDWallet(walletId, dialogData, promoteHDWalletCb);
 }
 
 void WalletsManager::ProcessPromoteHDWallet(bs::error::ErrorCode result, const std::string& walletId)

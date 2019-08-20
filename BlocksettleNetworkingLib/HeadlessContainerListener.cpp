@@ -981,8 +981,7 @@ void HeadlessContainerListener::CreatePromoteHDWalletResponse(const std::string&
 {
    logger_->debug("[HeadlessContainerListener] PromoteHDWalletResponse: {}", id);
    headless::PromoteHDWalletResponse response;
-   auto* walletWO = response.mutable_wallet();
-   walletWO->set_walletid(walletId);
+   response.set_rootwalletid(walletId);
    response.set_errorcode(static_cast<uint32_t>(result));
 
    headless::RequestPacket packet;

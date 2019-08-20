@@ -300,14 +300,14 @@ void HeadlessContainer::ProcessHDWalletPromotionResponse(unsigned int id, const 
    bs::error::ErrorCode result = static_cast<bs::error::ErrorCode>(response.errorcode());
 
    if (result == bs::error::ErrorCode::NoError) {
-      logger_->debug("[HeadlessContainer::ProcessHDWalletPromotionResponse] HDWallet {} promoted", response.wallet().walletid());
+      logger_->debug("[HeadlessContainer::ProcessHDWalletPromotionResponse] HDWallet {} promoted", response.rootwalletid());
    } else {
       logger_->error("[HeadlessContainer::ProcessHDWalletPromotionResponse] failed to create leaf: {}"
                      , response.errorcode());
    }
 
    if (cb) {
-      cb(result, response.wallet().walletid());
+      cb(result, response.rootwalletid());
    }
 }
 
@@ -578,9 +578,9 @@ bs::signer::RequestId HeadlessContainer::syncCCNames(const std::vector<std::stri
    return Send(packet);
 }
 
-bool HeadlessContainer::createHDLeaf(const std::string &rootWalletId, const bs::hd::Path &path
-   , const std::vector<bs::wallet::PasswordData> &pwdData, bs::sync::PasswordDialogData dialogData
-   , const CreateHDLeafCb &cb)
+bool HeadlessContainer::createHDLeaf(const std::string &rootWalletId, const bs::hd::Path &path,
+                                     const std::vector<bs::wallet::PasswordData>&,
+                                     bs::sync::PasswordDialogData dialogData, const CreateHDLeafCb &cb)
 {
    if (rootWalletId.empty() || (path.length() != 3)) {
       logger_->error("[HeadlessContainer::createHDLeaf] Invalid input data for HD wallet creation");
@@ -614,12 +614,10 @@ bool HeadlessContainer::createHDLeaf(const std::string &rootWalletId, const bs::
    return true;
 }
 
-bool HeadlessContainer::promoteHDWallet(const std::string& rootWalletId,
-                                   const std::vector<bs::wallet::PasswordData>& pwdData, bs::sync::PasswordDialogData dialogData,
+bool HeadlessContainer::promoteHDWallet(const std::string& rootWalletId
+                                   , bs::sync::PasswordDialogData dialogData,
                                    const WalletSignerContainer::PromoteHDWalletCb& cb)
 {
-   Q_UNUSED(pwdData);
-
    headless::PromoteHDWalletRequest request;
    request.set_rootwalletid(rootWalletId);
 

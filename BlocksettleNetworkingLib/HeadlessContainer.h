@@ -1,5 +1,5 @@
-#ifndef __HEADLESS_CONTAINER_H__
-#define __HEADLESS_CONTAINER_H__
+#ifndef HEADLESS_CONTAINER_H
+#define HEADLESS_CONTAINER_H
 
 #include <atomic>
 #include <memory>
@@ -74,10 +74,9 @@ public:
    bs::signer::RequestId syncCCNames(const std::vector<std::string> &) override;
 
    bool createHDLeaf(const std::string &rootWalletId, const bs::hd::Path &
-      , const std::vector<bs::wallet::PasswordData> &pwdData = {}
-      , bs::sync::PasswordDialogData dialogData = {}, const CreateHDLeafCb &cb = nullptr) override;
+      , const std::vector<bs::wallet::PasswordData>& = {}, bs::sync::PasswordDialogData dialogData = {}, const CreateHDLeafCb &cb = nullptr) override;
 
-   bool promoteHDWallet(const std::string& rootWalletId, const std::vector<bs::wallet::PasswordData>& pwdData = {}
+   bool promoteHDWallet(const std::string& rootWalletId
       , bs::sync::PasswordDialogData dialogData = {}, const PromoteHDWalletCb& cb = nullptr) override;
 
    bs::signer::RequestId DeleteHDRoot(const std::string &rootWalletId) override;
@@ -132,9 +131,6 @@ protected:
    void ProcessSetUserId(const std::string &data);
    void ProcessGetPayinAddr(unsigned int id, const std::string &data);
    void ProcessSettlGetRootPubkey(unsigned int id, const std::string &data);
-
-private:
-
 
 protected:
    std::shared_ptr<HeadlessListener>   listener_;

@@ -304,8 +304,8 @@ message CreateHDLeafResponse
 
 message PromoteHDWalletResponse
 {
-   uint32      errorCode   = 1;
-   HDWalletWO  wallet      = 2;
+   uint32    errorCode   = 1;
+   string    rootWalletId = 2;
 }
 
 message DeleteHDWalletRequest
