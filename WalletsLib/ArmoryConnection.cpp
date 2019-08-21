@@ -530,7 +530,9 @@ bool ArmoryConnection::getSpendableZCoutputs(const std::vector<std::string> &wal
          }
       }
    };
-   bdv_->getCombinedSpendableZcOutputs(walletIds, cbWrap);
+
+   bdv_->getCombinedRBFTxOuts(walletIds, cbWrap);
+
    return true;
 }
 
@@ -556,6 +558,10 @@ bool ArmoryConnection::getNodeStatus(const std::function<void(const std::shared_
          userCB({});
       }
    };
+
+   bdv_->getNodeStatus(cbWrap);
+
+   return true;
 }
 
 bool ArmoryConnection::getRBFoutputs(const std::vector<std::string> &walletIds, const UTXOsCb &cb)
