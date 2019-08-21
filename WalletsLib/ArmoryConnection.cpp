@@ -531,8 +531,7 @@ bool ArmoryConnection::getSpendableZCoutputs(const std::vector<std::string> &wal
       }
    };
 
-   bdv_->getCombinedRBFTxOuts(walletIds, cbWrap);
-
+   bdv_->getCombinedSpendableZcOutputs(walletIds, cbWrap);
    return true;
 }
 
