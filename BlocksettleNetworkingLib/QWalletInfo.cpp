@@ -199,6 +199,13 @@ EncryptionType WalletInfo::encType()
    return encTypes_.isEmpty() ? bs::wallet::EncryptionType::Unencrypted : encTypes_.at(0);
 }
 
+void WalletInfo::setEncType(int encType)
+{
+   encTypes_.clear();
+   encTypes_.push_back(static_cast<EncryptionType>(encType));
+   emit walletChanged();
+}
+
 QString WalletInfo::email() const
 {
    if (encKeys_.isEmpty())
