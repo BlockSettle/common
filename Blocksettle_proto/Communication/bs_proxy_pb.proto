@@ -27,9 +27,10 @@ message Response
 {
     message OnlineUsers
     {
-        int32 market_participants = 1;
-        int32 trading_participants = 2;
-        int32 dealing_participants = 3;
+        int32 chat = 1;
+        int32 market = 2;
+        int32 trading = 3;
+        int32 dealing = 4;
     }
 
     message Terminal
