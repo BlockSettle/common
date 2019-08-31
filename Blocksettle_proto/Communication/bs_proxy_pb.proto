@@ -7,10 +7,6 @@ package Blocksettle.Communication.ProxyPb;
 
 message Request
 {
-    message OnlineUsers
-    {
-    }
-
     message Terminal
     {
         string email = 1;
@@ -21,9 +17,6 @@ message Request
 
     oneof data
     {
-        // Requests
-        OnlineUsers online_users = 1;
-
         // Messages
         Terminal terminal = 30;
     }
@@ -34,7 +27,9 @@ message Response
 {
     message OnlineUsers
     {
-        repeated string emails = 1;
+        int32 market_participants = 1;
+        int32 trading_participants = 2;
+        int32 dealing_participants = 3;
     }
 
     message Terminal
@@ -47,10 +42,8 @@ message Response
 
     oneof data
     {
-        // Responses
-        OnlineUsers online_users = 1;
-
         // Messages
         Terminal terminal = 30;
+        OnlineUsers online_users = 31;
     }
 }
