@@ -72,14 +72,11 @@ signals:
    void aqScriptLoaded(const QString &filename);
    void aqScriptUnLoaded();
    void aqHistoryChanged();
-
    void autoSignStateChanged(const std::string &walletId, bool active);
-
    void autoSQAvailabilityChanged();
 
 public slots:
    void onSignerStateUpdated();
-   //void onAutoSignActivated();
    void onAutoSignStateChanged(const std::string &walletId, bool active);
 
    void onAqScriptLoaded(const QString &filename);

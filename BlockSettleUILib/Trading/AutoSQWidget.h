@@ -24,7 +24,6 @@ public slots:
    void onAutoSQAvailChanged();
 
    void onAqScriptLoaded();
-   void onAqScriptUnloaded();
 
 private slots:
    void aqFillHistory();

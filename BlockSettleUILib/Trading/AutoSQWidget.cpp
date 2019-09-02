@@ -37,7 +37,6 @@ void AutoSQWidget::init(const std::shared_ptr<AutoSQProvider> &autoSQProvider)
    connect(autoSQProvider_.get(), &AutoSQProvider::autoSignStateChanged, this, &AutoSQWidget::onAutoSignStateChanged);
 
    connect(autoSQProvider_.get(), &AutoSQProvider::aqScriptLoaded, this, &AutoSQWidget::onAqScriptLoaded);
-   connect(autoSQProvider_.get(), &AutoSQProvider::aqScriptUnLoaded, this, &AutoSQWidget::onAqScriptUnloaded);
    connect(autoSQProvider_.get(), &AutoSQProvider::aqHistoryChanged, this, &AutoSQWidget::aqFillHistory);
 }
 
@@ -86,11 +85,6 @@ void AutoSQWidget::onAutoSQAvailChanged()
 void AutoSQWidget::onAqScriptLoaded()
 {
    ui_->checkBoxAQ->setChecked(true);
-}
-
-void AutoSQWidget::onAqScriptUnloaded()
-{
-   ui_->checkBoxAQ->setChecked(false);
 }
 
 void AutoSQWidget::aqFillHistory()
@@ -150,18 +144,6 @@ void AutoSQWidget::onAutoSignToggled()
 void AutoSQWidget::validateGUI()
 {
    ui_->checkBoxAQ->setChecked(autoSQProvider_->aqLoaded());
-
-   // enable toggleswitch only if a script file is already selected
-//   bool isValidScript = (ui_->comboBoxAQScript->currentIndex() > kSelectAQFileItemIndex);
-//   if (!(isValidScript && celerConnected_)) {
-//      ui_->checkBoxAQ->setChecked(false);
-//   }
-//   ui_->comboBoxAQScript->setEnabled(celerConnected_);
-//   ui_->groupBoxAutoSign->setEnabled(celerConnected_);
-
-
-//   bool bFlag = walletsManager_ && walletsManager_->getPrimaryWallet();
-//   ui_->checkBoxAutoSign->setEnabled(bFlag && celerConnected_);
 }
 
 QString AutoSQWidget::askForAQScript()

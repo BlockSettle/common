@@ -71,16 +71,6 @@ void AutoSQProvider::onSignerStateUpdated()
    emit autoSQAvailabilityChanged();
 }
 
-//void AutoSQProvider::onAutoSignActivated()
-//{
-//   if (ui_->checkBoxAutoSign->isChecked()) {
-//      tryEnableAutoSign();
-//   } else {
-//      disableAutoSign();
-//   }
-//   ui_->checkBoxAutoSign->setChecked(autoSignState_);
-//}
-
 void AutoSQProvider::disableAutoSign()
 {
    if (!walletsManager_) {
@@ -101,8 +91,6 @@ void AutoSQProvider::disableAutoSign()
 
 void AutoSQProvider::tryEnableAutoSign()
 {
-   //ui_->checkBoxAQ->setChecked(false);
-
    if (!walletsManager_ || !signingContainer_) {
       return;
    }
@@ -165,6 +153,7 @@ void AutoSQProvider::deinitAQ()
 void AutoSQProvider::onAqScriptLoaded(const QString &filename)
 {
    logger_->info("AQ script loaded ({})", filename.toStdString());
+   aqLoaded_ = true;
 
    auto scripts = appSettings_->get<QStringList>(ApplicationSettings::aqScripts);
    if (scripts.indexOf(filename) < 0) {
@@ -174,14 +163,6 @@ void AutoSQProvider::onAqScriptLoaded(const QString &filename)
    appSettings_->set(ApplicationSettings::lastAqScript, filename);
    emit aqScriptLoaded(filename);
    emit aqHistoryChanged();
-
-//   if (newLoaded_) {
-//      newLoaded_ = false;
-//      deinitAQ();
-//   } else {
-//      setAqLoaded(true);
-//      //validateGUI();
-//   }
 }
 
 void AutoSQProvider::onAqScriptFailed(const QString &filename, const QString &error)
