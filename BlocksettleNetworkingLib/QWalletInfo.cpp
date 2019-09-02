@@ -201,8 +201,7 @@ EncryptionType WalletInfo::encType()
 
 void WalletInfo::setEncType(int encType)
 {
-   encTypes_.clear();
-   encTypes_.push_back(static_cast<EncryptionType>(encType));
+   encTypes_ = { static_cast<EncryptionType>(encType) };
    emit walletChanged();
 }
 
