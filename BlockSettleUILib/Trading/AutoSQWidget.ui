@@ -194,7 +194,11 @@
           </widget>
          </item>
          <item>
-          <widget class="CustomComboBox" name="comboBoxAQScript"/>
+          <widget class="CustomComboBox" name="comboBoxAQScript">
+           <property name="enabled">
+            <bool>false</bool>
+           </property>
+          </widget>
          </item>
          <item>
           <widget class="QWidget" name="horizontalWidget6_2" native="true">

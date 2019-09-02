@@ -7,20 +7,25 @@
 #include "Wallets/SyncHDWallet.h"
 #include "UserScriptRunner.h"
 
+#include <BaseCelerClient.h>
 #include <QCoreApplication>
 #include <QFileDialog>
 #include <QFileInfo>
 
-AutoSQProvider::AutoSQProvider(const std::shared_ptr<spdlog::logger> logger
+AutoSQProvider::AutoSQProvider(const std::shared_ptr<spdlog::logger> &logger
    , const std::shared_ptr<AssetManager>& assetManager
    , const std::shared_ptr<QuoteProvider>& quoteProvider
    , const std::shared_ptr<ApplicationSettings> &appSettings
    , const std::shared_ptr<bs::DealerUtxoResAdapter> &dealerUtxoAdapter
    , const std::shared_ptr<SignContainer> &container
    , const std::shared_ptr<MarketDataProvider> &mdProvider
+   , const std::shared_ptr<BaseCelerClient> &celerClient
    , QObject *parent)
    : QObject(parent)
    , appSettings_(appSettings)
+   , logger_(logger)
+   , signingContainer_(container)
+   , celerClient_(celerClient)
 {
    aq_ = new UserScriptRunner(quoteProvider, dealerUtxoAdapter, container,
       mdProvider, assetManager, logger, this);
@@ -53,12 +58,17 @@ AutoSQProvider::AutoSQProvider(const std::shared_ptr<spdlog::logger> logger
       }
 
    }
+
+   connect(celerClient_.get(), &BaseCelerClient::OnConnectedToServer, this, &AutoSQProvider::onConnectedToCeler);
+   connect(celerClient_.get(), &BaseCelerClient::OnConnectionClosed, this, &AutoSQProvider::onDisconnectedFromCeler);
 }
 
 void AutoSQProvider::onSignerStateUpdated()
 {
-   emit autoSignAvailabilityChanged(signingContainer_ && !signingContainer_->isOffline());
    disableAutoSign();
+   autoQuoter()->disableAQ();
+
+   emit autoSQAvailabilityChanged();
 }
 
 //void AutoSQProvider::onAutoSignActivated()
@@ -107,6 +117,13 @@ void AutoSQProvider::tryEnableAutoSign()
    data[QLatin1String("rootId")] = QString::fromStdString(wallet->walletId());
    data[QLatin1String("enable")] = true;
    signingContainer_->customDialogRequest(bs::signer::ui::DialogType::ActivateAutoSign, data);
+}
+
+bool AutoSQProvider::autoSQAvailable()
+{
+   return signingContainer_ && !signingContainer_->isOffline()
+      && walletsManager_ && walletsManager_->isReadyForTrading()
+      && celerClient_->IsConnected();
 }
 
 bool AutoSQProvider::aqLoaded() const
@@ -178,15 +195,42 @@ void AutoSQProvider::onAqScriptFailed(const QString &filename, const QString &er
    emit aqHistoryChanged();
 }
 
-bool AutoSQProvider::autoSignState() const
+void AutoSQProvider::onConnectedToCeler()
 {
-   return autoSignState_;
+   emit autoSQAvailabilityChanged();
 }
 
-void AutoSQProvider::setWalletManager(std::shared_ptr<bs::sync::WalletsManager> w)
+void AutoSQProvider::onDisconnectedFromCeler()
 {
-   walletsManager_ = w;
-   aq_->setWalletsManager(w);
+   autoQuoter()->disableAQ();
+   disableAutoSign();
+
+   emit autoSQAvailabilityChanged();
+}
+
+UserScriptRunner *AutoSQProvider::autoQuoter() const
+{
+    return aq_;
+}
+
+bool AutoSQProvider::autoSignState() const
+{
+    return autoSignState_;
+}
+
+void AutoSQProvider::setWalletsManager(std::shared_ptr<bs::sync::WalletsManager> &walletsMgr)
+{
+   walletsManager_ = walletsMgr;
+   aq_->setWalletsManager(walletsMgr);
+
+   connect(walletsMgr.get(), &bs::sync::WalletsManager::walletDeleted, this, &AutoSQProvider::autoSQAvailabilityChanged);
+   connect(walletsMgr.get(), &bs::sync::WalletsManager::walletAdded, this, &AutoSQProvider::autoSQAvailabilityChanged);
+   connect(walletsMgr.get(), &bs::sync::WalletsManager::walletsReady, this, &AutoSQProvider::autoSQAvailabilityChanged);
+   connect(walletsMgr.get(), &bs::sync::WalletsManager::walletsSynchronized, this, &AutoSQProvider::autoSQAvailabilityChanged);
+   connect(walletsMgr.get(), &bs::sync::WalletsManager::newWalletAdded, this, &AutoSQProvider::autoSQAvailabilityChanged);
+   connect(walletsMgr.get(), &bs::sync::WalletsManager::walletImportFinished, this, &AutoSQProvider::autoSQAvailabilityChanged);
+
+   emit autoSQAvailabilityChanged();
 }
 
 QString AutoSQProvider::getDefaultScriptsDir()

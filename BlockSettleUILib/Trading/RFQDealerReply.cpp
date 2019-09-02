@@ -12,6 +12,7 @@
 #include "ApplicationSettings.h"
 #include "AssetManager.h"
 #include "AuthAddressManager.h"
+#include "AutoSQProvider.h"
 #include "BSErrorCodeStrings.h"
 #include "BSMessageBox.h"
 #include "CoinControlDialog.h"
@@ -25,6 +26,7 @@
 #include "TransactionData.h"
 #include "TxClasses.h"
 #include "UiUtils.h"
+#include "UserScriptRunner.h"
 #include "UtxoReserveAdapters.h"
 #include "Wallets/SyncHDWallet.h"
 #include "Wallets/SyncWalletsManager.h"
@@ -56,7 +58,7 @@ RFQDealerReply::RFQDealerReply(QWidget* parent)
 
 RFQDealerReply::~RFQDealerReply()
 {
-   bs::UtxoReservation::delAdapter(utxoAdapter_);
+   bs::UtxoReservation::delAdapter(dealerUtxoAdapter_);
 }
 
 void RFQDealerReply::init(const std::shared_ptr<spdlog::logger> logger
@@ -67,7 +69,8 @@ void RFQDealerReply::init(const std::shared_ptr<spdlog::logger> logger
    , const std::shared_ptr<ConnectionManager> &connectionManager
    , const std::shared_ptr<SignContainer> &container
    , const std::shared_ptr<ArmoryConnection> &armory
-   , std::shared_ptr<MarketDataProvider> mdProvider)
+   , const std::shared_ptr<bs::DealerUtxoResAdapter> &dealerUtxoAdapter
+   , const std::shared_ptr<AutoSQProvider> &autoSQProvider)
 {
    logger_ = logger;
    assetManager_ = assetManager;
@@ -77,17 +80,17 @@ void RFQDealerReply::init(const std::shared_ptr<spdlog::logger> logger
    signingContainer_ = container;
    armory_ = armory;
    connectionManager_ = connectionManager;
+   dealerUtxoAdapter_ = dealerUtxoAdapter;
+   autoSQProvider_ = autoSQProvider;
 
-   utxoAdapter_ = std::make_shared<bs::DealerUtxoResAdapter>(logger_, nullptr);
-   connect(quoteProvider_.get(), &QuoteProvider::orderUpdated, utxoAdapter_.get(), &bs::OrderUtxoResAdapter::onOrder);
+   connect(quoteProvider_.get(), &QuoteProvider::orderUpdated, dealerUtxoAdapter_.get(), &bs::OrderUtxoResAdapter::onOrder);
    connect(quoteProvider_.get(), &QuoteProvider::orderUpdated, this, &RFQDealerReply::onOrderUpdated);
-   connect(utxoAdapter_.get(), &bs::OrderUtxoResAdapter::reservedUtxosChanged, this, &RFQDealerReply::onReservedUtxosChanged, Qt::QueuedConnection);
+   connect(dealerUtxoAdapter_.get(), &bs::OrderUtxoResAdapter::reservedUtxosChanged, this, &RFQDealerReply::onReservedUtxosChanged, Qt::QueuedConnection);
 
-   connect(aq_, &UserScriptRunner::sendQuote, this, &RFQDealerReply::onAQReply, Qt::QueuedConnection);
-   connect(aq_, &UserScriptRunner::pullQuoteNotif, this, &RFQDealerReply::pullQuoteNotif, Qt::QueuedConnection);
+   connect(autoSQProvider_->autoQuoter(), &UserScriptRunner::sendQuote, this, &RFQDealerReply::onAQReply, Qt::QueuedConnection);
+   connect(autoSQProvider_->autoQuoter(), &UserScriptRunner::pullQuoteNotif, this, &RFQDealerReply::pullQuoteNotif, Qt::QueuedConnection);
 
-   UtxoReservation::addAdapter(utxoAdapter_);
-
+   UtxoReservation::addAdapter(dealerUtxoAdapter_);
 }
 
 void RFQDealerReply::initUi()
@@ -118,8 +121,8 @@ void RFQDealerReply::setWalletsManager(const std::shared_ptr<bs::sync::WalletsMa
    connect(walletsManager_.get(), &bs::sync::WalletsManager::CCLeafCreated, this, &RFQDealerReply::onHDLeafCreated);
    connect(walletsManager_.get(), &bs::sync::WalletsManager::CCLeafCreateFailed, this, &RFQDealerReply::onCreateHDWalletError);
 
-   if (aq_) {
-      aq_->setWalletsManager(walletsManager_);
+   if (autoSQProvider_->autoQuoter()) {
+      autoSQProvider_->autoQuoter()->setWalletsManager(walletsManager_);
    }
 
    auto updateAuthAddresses = [this] {
@@ -128,11 +131,6 @@ void RFQDealerReply::setWalletsManager(const std::shared_ptr<bs::sync::WalletsMa
    };
    updateAuthAddresses();
    connect(authAddressManager_.get(), &AuthAddressManager::VerifiedAddressListUpdated, this, updateAuthAddresses);
-}
-
-bool RFQDealerReply::autoSign() const
-{
-   return ui_->checkBoxAutoSign->isChecked();
 }
 
 CustomDoubleSpinBox* RFQDealerReply::bidSpinBox() const
@@ -512,7 +510,7 @@ bool RFQDealerReply::checkBalance() const
       }
       else if ((currentQRN_.assetType == bs::network::Asset::PrivateMarket) && ccCoinSel_) {
          uint64_t balance = 0;
-         for (const auto &utxo : utxoAdapter_->get(currentQRN_.quoteRequestId)) {
+         for (const auto &utxo : dealerUtxoAdapter_->get(currentQRN_.quoteRequestId)) {
             balance += utxo.getValue();
          }
          if (!balance) {
@@ -649,7 +647,7 @@ void RFQDealerReply::submitReply(const std::shared_ptr<TransactionData> transDat
 
          const auto &cbFee = [this, qrn, transData, spendVal, wallet, cb, qn](float feePerByte) {
             const auto recipient = bs::Address(qrn.requestorRecvAddress).getRecipient(*spendVal);
-            std::vector<UTXO> inputs = utxoAdapter_->get(qn->quoteRequestId);
+            std::vector<UTXO> inputs = dealerUtxoAdapter_->get(qn->quoteRequestId);
             if (inputs.empty() && ccCoinSel_) {
                inputs = ccCoinSel_->GetSelectedTransactions();
                if (inputs.empty()) {
@@ -678,7 +676,7 @@ void RFQDealerReply::submitReply(const std::shared_ptr<TransactionData> transDat
                   , { recipient }, BinaryData::CreateFromHex(qrn.requestorAuthPublicKey));
                qn->transactionData = txReq.serializeState().toHexStr();
                logger_->debug("[cbFee] txData={}", qn->transactionData);
-               utxoAdapter_->reserve(txReq, qn->quoteRequestId);
+               dealerUtxoAdapter_->reserve(txReq, qn->quoteRequestId);
             } catch (const std::exception &e) {
                logger_->error("[RFQDealerReply::submit] error creating own unsigned half: {}", e.what());
                cb({});
@@ -761,7 +759,7 @@ void RFQDealerReply::submitReply(const std::shared_ptr<TransactionData> transDat
                      unsignedTxReq = transData->createUnsignedTransaction();
                   }
                   quoteProvider_->saveDealerPayin(qrn.settlementId, unsignedTxReq.serializeState());
-                  utxoAdapter_->reserve(unsignedTxReq, qrn.settlementId);
+                  dealerUtxoAdapter_->reserve(unsignedTxReq, qrn.settlementId);
 
                   const auto txData = unsignedTxReq.txId().toHexStr();
                   lbdQuoteNotif(txData);
@@ -882,8 +880,8 @@ std::shared_ptr<TransactionData> RFQDealerReply::getTransactionData(const std::s
       return transactionData_;
    }
 
-   if (aq_) {
-      return aq_->getTransactionData(reqId);
+   if (autoSQProvider_->autoQuoter()) {
+      return autoSQProvider_->autoQuoter()->getTransactionData(reqId);
    } else {
       return nullptr;
    }
@@ -904,7 +902,7 @@ void RFQDealerReply::onOrderUpdated(const bs::network::Order &order)
    if ((order.assetType == bs::network::Asset::PrivateMarket) && (order.status == bs::network::Order::Failed)) {
       const auto &quoteReqId = quoteProvider_->getQuoteReqId(order.quoteId);
       if (!quoteReqId.empty()) {
-         utxoAdapter_->unreserve(quoteReqId);
+         dealerUtxoAdapter_->unreserve(quoteReqId);
       }
    }
 }
@@ -997,10 +995,11 @@ void RFQDealerReply::onAQReply(const bs::network::QuoteReqNotification &qrn, dou
             curWallet_ = wallet;
          } else {
             if (!ccWallet) {
-               ui_->checkBoxAQ->setChecked(false);
-               BSMessageBox(BSMessageBox::critical, tr("Auto Quoting")
-                  , tr("No wallet created for %1 - auto-quoting disabled").arg(QString::fromStdString(cc))
-               ).exec();
+               // FIXME: disable auto quoting via AutoSQProvider
+//               ui_->checkBoxAQ->setChecked(false);
+//               BSMessageBox(BSMessageBox::critical, tr("Auto Quoting")
+//                  , tr("No wallet created for %1 - auto-quoting disabled").arg(QString::fromStdString(cc))
+//               ).exec();
                return;
             }
             transData->setSigningWallet(wallet);
@@ -1014,7 +1013,7 @@ void RFQDealerReply::onAQReply(const bs::network::QuoteReqNotification &qrn, dou
             , qrn.quoteRequestId, (transData->InputsLoadedFromArmory() ? "inputs loaded" : "inputs not loaded"));
 
          if (transData->InputsLoadedFromArmory()) {
-            aq_->setTxData(qrn.quoteRequestId, transData);
+            autoSQProvider_->autoQuoter()->setTxData(qrn.quoteRequestId, transData);
             // submit reply will change transData, but we should not get this notifications
             transData->disableTransactionUpdate();
             submitReply(transData, qrn, price, cbSubmit);
@@ -1079,7 +1078,5 @@ void RFQDealerReply::onCelerDisconnected()
 {
    logger_->info("Disabled auto-quoting due to Celer disconnection");
    celerConnected_ = false;
-   aq_->disableAQ();
-   disableAutoSign();
    validateGUI();
 }

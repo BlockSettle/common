@@ -35,6 +35,7 @@ class ApplicationSettings;
 class ArmoryConnection;
 class AssetManager;
 class AuthAddressManager;
+class AutoSQProvider;
 class QuoteProvider;
 class SelectedTransactionInputs;
 class SignContainer;
@@ -70,11 +71,12 @@ namespace bs {
             , const std::shared_ptr<ConnectionManager> &connectionManager
             , const std::shared_ptr<SignContainer> &
             , const std::shared_ptr<ArmoryConnection> &
-            , std::shared_ptr<MarketDataProvider> mdProvider);
+            , const std::shared_ptr<bs::DealerUtxoResAdapter> &dealerUtxoAdapter
+            , const std::shared_ptr<AutoSQProvider> &autoSQProvider);
+
          void setWalletsManager(const std::shared_ptr<bs::sync::WalletsManager> &);
 
          std::shared_ptr<TransactionData> getTransactionData(const std::string &reqId) const;
-         bool autoSign() const;
 
          CustomDoubleSpinBox* bidSpinBox() const;
          CustomDoubleSpinBox* offerSpinBox() const;
@@ -124,7 +126,8 @@ namespace bs {
          std::shared_ptr<ConnectionManager>     connectionManager_;
          std::shared_ptr<SignContainer>         signingContainer_;
          std::shared_ptr<ArmoryConnection>      armory_;
-         std::shared_ptr<MarketDataProvider>    mdProvider_;
+         std::shared_ptr<AutoSQProvider>        autoSQProvider_;
+         std::shared_ptr<DealerUtxoResAdapter>  dealerUtxoAdapter_;
 
          std::shared_ptr<bs::sync::Wallet>   curWallet_;
          std::shared_ptr<bs::sync::Wallet>   prevWallet_;
@@ -159,8 +162,6 @@ namespace bs {
             double   lastPrice{};
          };
          std::unordered_map<std::string, MDInfo>  mdInfo_;
-
-         std::shared_ptr<DealerUtxoResAdapter>  utxoAdapter_;
 
       private:
          void reset();

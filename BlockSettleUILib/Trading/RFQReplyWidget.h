@@ -8,6 +8,7 @@
 #include <unordered_set>
 #include <tuple>
 
+#include "AutoSQProvider.h"
 #include "TransactionData.h"
 #include "CoinControlModel.h"
 #include "CommonTypes.h"
@@ -23,6 +24,7 @@ namespace bs {
    namespace sync {
       class WalletsManager;
    }
+   class DealerUtxoResAdapter;
    class SettlementAddressEntry;
    class SecurityStatsCollector;
 }
@@ -46,17 +48,19 @@ public:
    RFQReplyWidget(QWidget* parent = nullptr);
    ~RFQReplyWidget() override;
 
-   void init(std::shared_ptr<spdlog::logger> logger
-      , const std::shared_ptr<BaseCelerClient>& celerClient
+   void init(const std::shared_ptr<spdlog::logger> &
+      , const std::shared_ptr<BaseCelerClient> &
       , const std::shared_ptr<AuthAddressManager> &
-      , const std::shared_ptr<QuoteProvider>& quoteProvider
-      , const std::shared_ptr<MarketDataProvider>& mdProvider
-      , const std::shared_ptr<AssetManager>& assetManager
-      , const std::shared_ptr<ApplicationSettings> &appSettings
-      , const std::shared_ptr<DialogManager> &dialogManager
+      , const std::shared_ptr<QuoteProvider> &
+      , const std::shared_ptr<MarketDataProvider> &
+      , const std::shared_ptr<AssetManager> &
+      , const std::shared_ptr<ApplicationSettings> &
+      , const std::shared_ptr<DialogManager> &
       , const std::shared_ptr<SignContainer> &
       , const std::shared_ptr<ArmoryConnection> &
-      , const std::shared_ptr<ConnectionManager> &connectionManager);
+      , const std::shared_ptr<ConnectionManager> &
+      , const std::shared_ptr<bs::DealerUtxoResAdapter> &
+      , const std::shared_ptr<AutoSQProvider> &);
 
    void setWalletsManager(const std::shared_ptr<bs::sync::WalletsManager> &);
 
@@ -112,6 +116,8 @@ private:
    std::shared_ptr<ArmoryConnection>      armory_;
    std::shared_ptr<ApplicationSettings>   appSettings_;
    std::shared_ptr<ConnectionManager>     connectionManager_;
+   std::shared_ptr<AutoSQProvider>        autoSQProvider_;
+   std::shared_ptr<bs::DealerUtxoResAdapter> dealerUtxoAdapter_;
 
    std::unordered_map<std::string, transaction_data_ptr>   sentXbtTransactionData_;
    std::unordered_map<std::string, SentCCReply>    sentCCReplies_;

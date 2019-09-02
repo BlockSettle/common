@@ -22,14 +22,17 @@ AutoSQWidget::AutoSQWidget(QWidget *parent) :
 
    connect(ui_->checkBoxAQ, &ToggleSwitch::clicked, this, &AutoSQWidget::checkBoxAQClicked);
    connect(ui_->comboBoxAQScript, SIGNAL(activated(int)), this, SLOT(aqScriptChanged(int)));
-   connect(ui_->checkBoxAutoSign, &ToggleSwitch::clicked, this, &AutoSQWidget::onAutoSignActivated);
+   connect(ui_->checkBoxAutoSign, &ToggleSwitch::clicked, this, &AutoSQWidget::onAutoSignToggled);
 
    ui_->comboBoxAQScript->setFirstItemHidden(true);
 }
 
-void AutoSQWidget::init()
+void AutoSQWidget::init(const std::shared_ptr<AutoSQProvider> &autoSQProvider)
 {
+   autoSQProvider_ = autoSQProvider;
    aqFillHistory();
+
+   connect(autoSQProvider_.get(), &AutoSQProvider::autoSQAvailabilityChanged, this, &AutoSQWidget::onAutoSQAvailChanged);
 }
 
 AutoSQWidget::~AutoSQWidget() = default;
@@ -66,7 +69,13 @@ void AutoSQWidget::checkBoxAQClicked()
 void AutoSQWidget::onAutoSignStateChanged(const std::string &walletId, bool active)
 {
 //   autoSignState_ = active;
-//   ui_->checkBoxAutoSign->setChecked(active);
+   ui_->checkBoxAutoSign->setChecked(active);
+}
+
+void AutoSQWidget::onAutoSQAvailChanged()
+{
+   ui_->groupBoxAutoSign->setEnabled(autoSQProvider_->autoSQAvailable());
+   ui_->groupBoxAutoQuote->setEnabled(autoSQProvider_->autoSQAvailable());
 }
 
 void AutoSQWidget::aqFillHistory()
@@ -113,12 +122,7 @@ void AutoSQWidget::aqScriptChanged(int curIndex)
    }
 }
 
-void AutoSQWidget::onSignerStateUpdated(bool autoSignAvailable)
-{
-   ui_->groupBoxAutoSign->setEnabled(autoSignAvailable);
-}
-
-void AutoSQWidget::onAutoSignActivated()
+void AutoSQWidget::onAutoSignToggled()
 {
    if (ui_->checkBoxAutoSign->isChecked()) {
       autoSQProvider_->tryEnableAutoSign();

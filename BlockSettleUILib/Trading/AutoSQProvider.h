@@ -4,6 +4,7 @@
 #include <QObject>
 
 class ApplicationSettings;
+class BaseCelerClient;
 class SignContainer;
 class UserScriptRunner;
 class AssetManager;
@@ -30,14 +31,15 @@ class AutoSQProvider : public QObject
 {
    Q_OBJECT
 public:
-   explicit AutoSQProvider(const std::shared_ptr<spdlog::logger> logger
-       , const std::shared_ptr<AssetManager>& assetManager
-       , const std::shared_ptr<QuoteProvider>& quoteProvider
-       , const std::shared_ptr<ApplicationSettings> &appSettings
-       , const std::shared_ptr<bs::DealerUtxoResAdapter> &dealerUtxoAdapter
-       , const std::shared_ptr<SignContainer> &container
-       , const std::shared_ptr<MarketDataProvider> &mdProvider
-       , QObject *parent = nullptr);
+   explicit AutoSQProvider(const std::shared_ptr<spdlog::logger> &
+      , const std::shared_ptr<AssetManager>&
+      , const std::shared_ptr<QuoteProvider>&
+      , const std::shared_ptr<ApplicationSettings> &
+      , const std::shared_ptr<bs::DealerUtxoResAdapter> &
+      , const std::shared_ptr<SignContainer> &
+      , const std::shared_ptr<MarketDataProvider> &
+      , const std::shared_ptr<BaseCelerClient> &
+      , QObject *parent = nullptr);
 
    // auto quote
    bool aqLoaded() const;
@@ -45,9 +47,6 @@ public:
 
    void initAQ(const QString &filename);
    void deinitAQ();
-
-   void disableAutoSign();
-   void tryEnableAutoSign();
 
    QString getDefaultScriptsDir();
 
@@ -60,16 +59,23 @@ public:
    // auto sign
    bool autoSignState() const;
 
+   void disableAutoSign();
+   void tryEnableAutoSign();
+
    //
-   void setWalletManager(std::shared_ptr<bs::sync::WalletsManager> w);
+   bool autoSQAvailable();
+   void setWalletsManager(std::shared_ptr<bs::sync::WalletsManager> &);
+
+   UserScriptRunner *autoQuoter() const;
 
 signals:
    void aqScriptLoaded(const QString &filename);
    void aqScriptUnLoaded();
    void aqHistoryChanged();
 
-   void autoSignAvailabilityChanged(bool available);
    void autoSignStateChanged(const std::string &walletId, bool active);
+
+   void autoSQAvailabilityChanged();
 
 public slots:
    void onSignerStateUpdated();
@@ -78,6 +84,9 @@ public slots:
 
    void onAqScriptLoaded(const QString &filename);
    void onAqScriptFailed(const QString &filename, const QString &error);
+
+   void onConnectedToCeler();
+   void onDisconnectedFromCeler();
 private:
    bool              autoSignState_{false};
    UserScriptRunner *aq_{};
@@ -89,6 +98,7 @@ private:
    std::shared_ptr<spdlog::logger>            logger_;
    std::shared_ptr<SignContainer>             signingContainer_;
    std::shared_ptr<bs::sync::WalletsManager>  walletsManager_;
+   std::shared_ptr<BaseCelerClient>           celerClient_;
 };
 
 #endif // AUTOSQPROVIDER_H

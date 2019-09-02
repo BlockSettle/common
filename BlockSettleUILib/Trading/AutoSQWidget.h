@@ -17,10 +17,11 @@ public:
    explicit AutoSQWidget(QWidget *parent = nullptr);
    ~AutoSQWidget();
 
-   void init();
+   void init(const std::shared_ptr<AutoSQProvider> &autoSQProvider);
 
 public slots:
    void onAutoSignStateChanged(const std::string &walletId, bool active);
+   void onAutoSQAvailChanged();
 
 private slots:
    void aqFillHistory();
@@ -28,12 +29,11 @@ private slots:
 
    void checkBoxAQClicked();
 
-   void onSignerStateUpdated(bool autoSignAvailable);
-   void onAutoSignActivated();
+   void onAutoSignToggled();
 
 private:
-   void validateGUI();
    QString askForAQScript();
+   void validateGUI();
 
 private:
    std::unique_ptr<Ui::AutoSQWidget>      ui_;
