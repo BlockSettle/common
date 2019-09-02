@@ -87,6 +87,7 @@ public slots:
 
    void onConnectedToCeler();
    void onDisconnectedFromCeler();
+
 private:
    bool              autoSignState_{false};
    UserScriptRunner *aq_{};

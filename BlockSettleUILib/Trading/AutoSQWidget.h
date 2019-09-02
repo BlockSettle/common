@@ -23,12 +23,14 @@ public slots:
    void onAutoSignStateChanged(const std::string &walletId, bool active);
    void onAutoSQAvailChanged();
 
+   void onAqScriptLoaded();
+   void onAqScriptUnloaded();
+
 private slots:
    void aqFillHistory();
    void aqScriptChanged(int curIndex);
 
-   void checkBoxAQClicked();
-
+   void onAutoQuoteToggled();
    void onAutoSignToggled();
 
 private:

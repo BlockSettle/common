@@ -20,7 +20,7 @@ AutoSQWidget::AutoSQWidget(QWidget *parent) :
 {
    ui_->setupUi(this);
 
-   connect(ui_->checkBoxAQ, &ToggleSwitch::clicked, this, &AutoSQWidget::checkBoxAQClicked);
+   connect(ui_->checkBoxAQ, &ToggleSwitch::clicked, this, &AutoSQWidget::onAutoQuoteToggled);
    connect(ui_->comboBoxAQScript, SIGNAL(activated(int)), this, SLOT(aqScriptChanged(int)));
    connect(ui_->checkBoxAutoSign, &ToggleSwitch::clicked, this, &AutoSQWidget::onAutoSignToggled);
 
@@ -31,13 +31,19 @@ void AutoSQWidget::init(const std::shared_ptr<AutoSQProvider> &autoSQProvider)
 {
    autoSQProvider_ = autoSQProvider;
    aqFillHistory();
+   onAutoSQAvailChanged();
 
    connect(autoSQProvider_.get(), &AutoSQProvider::autoSQAvailabilityChanged, this, &AutoSQWidget::onAutoSQAvailChanged);
+   connect(autoSQProvider_.get(), &AutoSQProvider::autoSignStateChanged, this, &AutoSQWidget::onAutoSignStateChanged);
+
+   connect(autoSQProvider_.get(), &AutoSQProvider::aqScriptLoaded, this, &AutoSQWidget::onAqScriptLoaded);
+   connect(autoSQProvider_.get(), &AutoSQProvider::aqScriptUnLoaded, this, &AutoSQWidget::onAqScriptUnloaded);
+   connect(autoSQProvider_.get(), &AutoSQProvider::aqHistoryChanged, this, &AutoSQWidget::aqFillHistory);
 }
 
 AutoSQWidget::~AutoSQWidget() = default;
 
-void AutoSQWidget::checkBoxAQClicked()
+void AutoSQWidget::onAutoQuoteToggled()
 {
    bool isValidScript = (ui_->comboBoxAQScript->currentIndex() > kSelectAQFileItemIndex);
    if (ui_->checkBoxAQ->isChecked() && !isValidScript) {
@@ -68,7 +74,6 @@ void AutoSQWidget::checkBoxAQClicked()
 
 void AutoSQWidget::onAutoSignStateChanged(const std::string &walletId, bool active)
 {
-//   autoSignState_ = active;
    ui_->checkBoxAutoSign->setChecked(active);
 }
 
@@ -76,6 +81,16 @@ void AutoSQWidget::onAutoSQAvailChanged()
 {
    ui_->groupBoxAutoSign->setEnabled(autoSQProvider_->autoSQAvailable());
    ui_->groupBoxAutoQuote->setEnabled(autoSQProvider_->autoSQAvailable());
+}
+
+void AutoSQWidget::onAqScriptLoaded()
+{
+   ui_->checkBoxAQ->setChecked(true);
+}
+
+void AutoSQWidget::onAqScriptUnloaded()
+{
+   ui_->checkBoxAQ->setChecked(false);
 }
 
 void AutoSQWidget::aqFillHistory()

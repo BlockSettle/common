@@ -172,15 +172,16 @@ void AutoSQProvider::onAqScriptLoaded(const QString &filename)
       appSettings_->set(ApplicationSettings::aqScripts, scripts);
    }
    appSettings_->set(ApplicationSettings::lastAqScript, filename);
-   //aqFillHistory();
+   emit aqScriptLoaded(filename);
+   emit aqHistoryChanged();
 
-   if (newLoaded_) {
-      newLoaded_ = false;
-      deinitAQ();
-   } else {
-      setAqLoaded(true);
-      //validateGUI();
-   }
+//   if (newLoaded_) {
+//      newLoaded_ = false;
+//      deinitAQ();
+//   } else {
+//      setAqLoaded(true);
+//      //validateGUI();
+//   }
 }
 
 void AutoSQProvider::onAqScriptFailed(const QString &filename, const QString &error)
