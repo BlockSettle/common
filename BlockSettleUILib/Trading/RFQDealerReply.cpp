@@ -995,11 +995,10 @@ void RFQDealerReply::onAQReply(const bs::network::QuoteReqNotification &qrn, dou
             curWallet_ = wallet;
          } else {
             if (!ccWallet) {
-               // FIXME: disable auto quoting via AutoSQProvider
-//               ui_->checkBoxAQ->setChecked(false);
-//               BSMessageBox(BSMessageBox::critical, tr("Auto Quoting")
-//                  , tr("No wallet created for %1 - auto-quoting disabled").arg(QString::fromStdString(cc))
-//               ).exec();
+               autoSQProvider_->deinitAQ();
+               BSMessageBox(BSMessageBox::critical, tr("Auto Quoting")
+                  , tr("No wallet created for %1 - auto-quoting disabled").arg(QString::fromStdString(cc))
+               ).exec();
                return;
             }
             transData->setSigningWallet(wallet);

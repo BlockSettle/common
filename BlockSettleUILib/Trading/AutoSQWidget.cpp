@@ -37,6 +37,7 @@ void AutoSQWidget::init(const std::shared_ptr<AutoSQProvider> &autoSQProvider)
    connect(autoSQProvider_.get(), &AutoSQProvider::autoSignStateChanged, this, &AutoSQWidget::onAutoSignStateChanged);
 
    connect(autoSQProvider_.get(), &AutoSQProvider::aqScriptLoaded, this, &AutoSQWidget::onAqScriptLoaded);
+   connect(autoSQProvider_.get(), &AutoSQProvider::aqScriptUnLoaded, this, &AutoSQWidget::onAqScriptUnloaded);
    connect(autoSQProvider_.get(), &AutoSQProvider::aqHistoryChanged, this, &AutoSQWidget::aqFillHistory);
 }
 
@@ -80,11 +81,19 @@ void AutoSQWidget::onAutoSQAvailChanged()
 {
    ui_->groupBoxAutoSign->setEnabled(autoSQProvider_->autoSQAvailable());
    ui_->groupBoxAutoQuote->setEnabled(autoSQProvider_->autoSQAvailable());
+
+   ui_->checkBoxAutoSign->setChecked(false);
+   ui_->checkBoxAQ->setChecked(false);
 }
 
 void AutoSQWidget::onAqScriptLoaded()
 {
    ui_->checkBoxAQ->setChecked(true);
+}
+
+void AutoSQWidget::onAqScriptUnloaded()
+{
+   ui_->checkBoxAQ->setChecked(false);
 }
 
 void AutoSQWidget::aqFillHistory()

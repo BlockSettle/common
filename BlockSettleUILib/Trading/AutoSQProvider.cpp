@@ -149,7 +149,6 @@ void AutoSQProvider::deinitAQ()
    emit aqScriptUnLoaded();
 }
 
-
 void AutoSQProvider::onAqScriptLoaded(const QString &filename)
 {
    logger_->info("AQ script loaded ({})", filename.toStdString());
