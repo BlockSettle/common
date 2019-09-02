@@ -48,8 +48,6 @@ class QDoubleSpinBox;
 class QPushButton;
 QT_END_NAMESPACE
 
-class UserScriptRunner;
-
 namespace bs {
    namespace network {
       struct QuoteNotification;
@@ -93,7 +91,6 @@ namespace bs {
          void quoteReqNotifStatusChanged(const network::QuoteReqNotification &);
          void onMDUpdate(bs::network::Asset::Type, const QString &security, bs::network::MDFields);
          void onBestQuotePrice(const QString reqId, double price, bool own);
-         void onAutoSignStateChanged(const std::string &walletId, bool active);
          void onCelerConnected();
          void onCelerDisconnected();
 
@@ -104,25 +101,17 @@ namespace bs {
          void submitButtonClicked();
          void pullButtonClicked();
          void showCoinControl();
-         void aqFillHistory();
-         void aqScriptChanged(int curIndex);
-         void onAqScriptLoaded(const QString &filename);
-         void onAqScriptFailed(const QString &filename, const QString &error);
          void walletSelected(int index);
          void onTransactionDataChanged();
-         void checkBoxAQClicked();
          void onAQReply(const bs::network::QuoteReqNotification &qrn, double price);
          void onReservedUtxosChanged(const std::string &walletId, const std::vector<UTXO> &);
          void onOrderUpdated(const bs::network::Order &);
          void onHDLeafCreated(const std::string& ccName);
          void onCreateHDWalletError(const std::string& ccName, bs::error::ErrorCode result);
-         void onSignerStateUpdated();
-         void onAutoSignActivated();
          void onAuthAddrChanged(int);
 
       protected:
          bool eventFilter(QObject *watched, QEvent *evt) override;
-         QString askForAQScript();
 
       private:
          std::unique_ptr<Ui::RFQDealerReply> ui_;
@@ -160,11 +149,7 @@ namespace bs {
          std::string product_;
          std::string baseProduct_;
 
-         UserScriptRunner *aq_{};
-
-         bool           aqLoaded_{false};
          bool           celerConnected_{false};
-         bool           newLoaded_{false};
 
          std::unordered_map<std::string, double>   bestQPrices_;
 
@@ -176,8 +161,6 @@ namespace bs {
          std::unordered_map<std::string, MDInfo>  mdInfo_;
 
          std::shared_ptr<DealerUtxoResAdapter>  utxoAdapter_;
-
-         bool autoSignState_{false};
 
       private:
          void reset();
@@ -192,8 +175,6 @@ namespace bs {
          std::shared_ptr<bs::sync::Wallet> getCCWallet(const std::string &cc);
          std::shared_ptr<bs::sync::Wallet> getXbtWallet();
          bs::Address getRecvAddress() const;
-         void initAQ(const QString &filename);
-         void deinitAQ();
          void setBalanceOk(bool ok);
          void updateRecvAddresses();
          bool checkBalance() const;
@@ -202,8 +183,6 @@ namespace bs {
          void submitReply(const std::shared_ptr<TransactionData> transData
             , const network::QuoteReqNotification &qrn, double price
             , std::function<void(bs::network::QuoteNotification)>);
-         void tryEnableAutoSign();
-         void disableAutoSign();
       };
 
    }  //namespace ui

@@ -80,7 +80,6 @@ private slots:
    void onConnectedToCeler();
    void onDisconnectedFromCeler();
    void onEnterKeyPressed(const QModelIndex &index);
-
    void onSelected(const QString& productGroup, const bs::network::QuoteReqNotification& request, double indicBid, double indicAsk);
 
 private:
@@ -101,9 +100,9 @@ private:
    };
 
 private:
-   std::unique_ptr<Ui::RFQReplyWidget> ui_;
+   std::unique_ptr<Ui::RFQReplyWidget>    ui_;
    std::shared_ptr<spdlog::logger>        logger_;
-   std::shared_ptr<BaseCelerClient>           celerClient_;
+   std::shared_ptr<BaseCelerClient>       celerClient_;
    std::shared_ptr<QuoteProvider>         quoteProvider_;
    std::shared_ptr<AuthAddressManager>    authAddressManager_;
    std::shared_ptr<AssetManager>          assetManager_;

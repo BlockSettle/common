@@ -452,3 +452,4 @@ void RFQReplyWidget::showEditableRFQPage()
    ui_->pageRFQReply->setEnabled(true);
    ui_->stackedWidget->setCurrentIndex(static_cast<int>(DealingPages::DealingPage));
 }
+

@@ -25,27 +25,11 @@
 #include "TransactionData.h"
 #include "TxClasses.h"
 #include "UiUtils.h"
-#include "UserScriptRunner.h"
 #include "UtxoReserveAdapters.h"
 #include "Wallets/SyncHDWallet.h"
 #include "Wallets/SyncWalletsManager.h"
 
 using namespace bs::ui;
-
-constexpr int kSelectAQFileItemIndex = 1;
-
-namespace {
-
-   QString getDefaultScriptsDir()
-   {
-#if defined(Q_OS_WIN) || defined(Q_OS_MACOS)
-      return QCoreApplication::applicationDirPath() + QStringLiteral("/scripts");
-#else
-      return QStringLiteral("/usr/share/blocksettle/scripts");
-#endif
-   }
-
-} // namespace
 
 RFQDealerReply::RFQDealerReply(QWidget* parent)
    : QWidget(parent)
@@ -62,14 +46,10 @@ RFQDealerReply::RFQDealerReply(QWidget* parent)
 
    connect(ui_->pushButtonSubmit, &QPushButton::clicked, this, &RFQDealerReply::submitButtonClicked);
    connect(ui_->pushButtonPull, &QPushButton::clicked, this, &RFQDealerReply::pullButtonClicked);
-   connect(ui_->checkBoxAQ, &ToggleSwitch::clicked, this, &RFQDealerReply::checkBoxAQClicked);
-   connect(ui_->comboBoxAQScript, SIGNAL(activated(int)), this, SLOT(aqScriptChanged(int)));
    connect(ui_->pushButtonAdvanced, &QPushButton::clicked, this, &RFQDealerReply::showCoinControl);
 
    connect(ui_->comboBoxWallet, SIGNAL(currentIndexChanged(int)), this, SLOT(walletSelected(int)));
    connect(ui_->authenticationAddressComboBox, SIGNAL(currentIndexChanged(int)), SLOT(onAuthAddrChanged(int)));
-
-   connect(ui_->checkBoxAutoSign, &ToggleSwitch::clicked, this, &RFQDealerReply::onAutoSignActivated);
 
    ui_->responseTitle->hide();
 }
@@ -103,43 +83,11 @@ void RFQDealerReply::init(const std::shared_ptr<spdlog::logger> logger
    connect(quoteProvider_.get(), &QuoteProvider::orderUpdated, this, &RFQDealerReply::onOrderUpdated);
    connect(utxoAdapter_.get(), &bs::OrderUtxoResAdapter::reservedUtxosChanged, this, &RFQDealerReply::onReservedUtxosChanged, Qt::QueuedConnection);
 
-   aq_ = new UserScriptRunner(quoteProvider_, utxoAdapter_, signingContainer_,
-      mdProvider, assetManager_, logger_, this);
-
-   if (walletsManager_) {
-      aq_->setWalletsManager(walletsManager_);
-   }
-
-   connect(aq_, &UserScriptRunner::aqScriptLoaded, this, &RFQDealerReply::onAqScriptLoaded);
-   connect(aq_, &UserScriptRunner::failedToLoad, this, &RFQDealerReply::onAqScriptFailed);
    connect(aq_, &UserScriptRunner::sendQuote, this, &RFQDealerReply::onAQReply, Qt::QueuedConnection);
    connect(aq_, &UserScriptRunner::pullQuoteNotif, this, &RFQDealerReply::pullQuoteNotif, Qt::QueuedConnection);
 
-   if (signingContainer_) {
-      connect(signingContainer_.get(), &SignContainer::ready, this, &RFQDealerReply::onSignerStateUpdated, Qt::QueuedConnection);
-      connect(signingContainer_.get(), &SignContainer::disconnected, this, &RFQDealerReply::onSignerStateUpdated, Qt::QueuedConnection);
-      connect(signingContainer_.get(), &SignContainer::AutoSignStateChanged, this, &RFQDealerReply::onAutoSignStateChanged);
-   }
-
    UtxoReservation::addAdapter(utxoAdapter_);
 
-   auto botFileInfo = QFileInfo(getDefaultScriptsDir() + QStringLiteral("/RFQBot.qml"));
-   if (botFileInfo.exists() && botFileInfo.isFile()) {
-      auto list = appSettings_->get<QStringList>(ApplicationSettings::aqScripts);
-      if (list.indexOf(botFileInfo.absoluteFilePath()) == -1) {
-         list << botFileInfo.absoluteFilePath();
-      }
-      appSettings_->set(ApplicationSettings::aqScripts, list);
-      const auto lastScript = appSettings_->get<QString>(ApplicationSettings::lastAqScript);
-      if (lastScript.isEmpty()) {
-         appSettings_->set(ApplicationSettings::lastAqScript, botFileInfo.absoluteFilePath());
-      }
-
-   }
-
-   aqFillHistory();
-
-   onSignerStateUpdated();
 }
 
 void RFQDealerReply::initUi()
@@ -151,7 +99,6 @@ void RFQDealerReply::initUi()
    ui_->pushButtonSubmit->setEnabled(false);
    ui_->pushButtonPull->setEnabled(false);
    ui_->widgetWallet->hide();
-   ui_->comboBoxAQScript->setFirstItemHidden(true);
 
    ui_->spinBoxBidPx->clear();
    ui_->spinBoxOfferPx->clear();
@@ -206,22 +153,6 @@ QPushButton* RFQDealerReply::pullButton() const
 QPushButton* RFQDealerReply::quoteButton() const
 {
    return ui_->pushButtonSubmit;
-}
-
-void RFQDealerReply::onSignerStateUpdated()
-{
-   ui_->groupBoxAutoSign->setVisible(signingContainer_ && !signingContainer_->isOffline());
-   disableAutoSign();
-}
-
-void RFQDealerReply::onAutoSignActivated()
-{
-   if (ui_->checkBoxAutoSign->isChecked()) {
-      tryEnableAutoSign();
-   } else {
-      disableAutoSign();
-   }
-   ui_->checkBoxAutoSign->setChecked(autoSignState_);
 }
 
 bs::Address RFQDealerReply::getRecvAddress() const
@@ -879,44 +810,6 @@ void RFQDealerReply::submitReply(const std::shared_ptr<TransactionData> transDat
    lbdQuoteNotif({});
 }
 
-void RFQDealerReply::tryEnableAutoSign()
-{
-   ui_->checkBoxAQ->setChecked(false);
-
-   if (!walletsManager_ || !signingContainer_) {
-      return;
-   }
-
-   const auto wallet = walletsManager_->getPrimaryWallet();
-   if (!wallet) {
-      logger_->error("Failed to obtain auto-sign primary wallet");
-      return;
-   }
-
-   QVariantMap data;
-   data[QLatin1String("rootId")] = QString::fromStdString(wallet->walletId());
-   data[QLatin1String("enable")] = true;
-   signingContainer_->customDialogRequest(bs::signer::ui::DialogType::ActivateAutoSign, data);
-}
-
-void RFQDealerReply::disableAutoSign()
-{
-   if (!walletsManager_) {
-      return;
-   }
-
-   const auto wallet = walletsManager_->getPrimaryWallet();
-   if (!wallet) {
-      logger_->error("Failed to obtain auto-sign primary wallet");
-      return;
-   }
-
-   QVariantMap data;
-   data[QLatin1String("rootId")] = QString::fromStdString(wallet->walletId());
-   data[QLatin1String("enable")] = false;
-   signingContainer_->customDialogRequest(bs::signer::ui::DialogType::ActivateAutoSign, data);
-}
-
 void RFQDealerReply::onReservedUtxosChanged(const std::string &walletId, const std::vector<UTXO> &utxos)
 {
    if (ccCoinSel_ && (ccCoinSel_->GetWallet()->walletId() == walletId)) {
@@ -974,23 +867,6 @@ bool RFQDealerReply::eventFilter(QObject *watched, QEvent *evt)
    return QWidget::eventFilter(watched, evt);
 }
 
-QString RFQDealerReply::askForAQScript()
-{
-   auto lastDir = appSettings_->get<QString>(ApplicationSettings::LastAqDir);
-   if (lastDir.isEmpty()) {
-      lastDir = getDefaultScriptsDir();
-   }
-
-   auto path = QFileDialog::getOpenFileName(this, tr("Open Auto-quoting script file")
-      , lastDir, tr("QML files (*.qml)"));
-
-   if (!path.isEmpty()) {
-      appSettings_->set(ApplicationSettings::LastAqDir, QFileInfo(path).dir().absolutePath());
-   }
-
-   return path;
-}
-
 void RFQDealerReply::showCoinControl()
 {
    if (currentQRN_.assetType == bs::network::Asset::PrivateMarket) {
@@ -1016,154 +892,11 @@ std::shared_ptr<TransactionData> RFQDealerReply::getTransactionData(const std::s
 void RFQDealerReply::validateGUI()
 {
    updateSubmitButton();
-
-   ui_->checkBoxAQ->setChecked(aqLoaded_);
-
-   // enable toggleswitch only if a script file is already selected
-   bool isValidScript = (ui_->comboBoxAQScript->currentIndex() > kSelectAQFileItemIndex);
-   if (!(isValidScript && celerConnected_)) {
-      ui_->checkBoxAQ->setChecked(false);
-   }
-   ui_->comboBoxAQScript->setEnabled(celerConnected_);
-   ui_->groupBoxAutoSign->setEnabled(celerConnected_);
-
-
-   bool bFlag = walletsManager_ && walletsManager_->getPrimaryWallet();
-   ui_->checkBoxAutoSign->setEnabled(bFlag && celerConnected_);
 }
 
 void RFQDealerReply::onTransactionDataChanged()
 {
    QMetaObject::invokeMethod(this, &RFQDealerReply::updateSubmitButton);
-}
-
-void RFQDealerReply::initAQ(const QString &filename)
-{
-   if (filename.isEmpty()) {
-      return;
-   }
-   aqLoaded_ = false;
-   aq_->enableAQ(filename);
-   validateGUI();
-}
-
-void RFQDealerReply::deinitAQ()
-{
-   aq_->disableAQ();
-   aqLoaded_ = false;
-   validateGUI();
-}
-
-void RFQDealerReply::aqFillHistory()
-{
-   if (!appSettings_) {
-      return;
-   }
-   ui_->comboBoxAQScript->clear();
-   int curIndex = 0;
-   ui_->comboBoxAQScript->addItem(tr("Select script..."));
-   ui_->comboBoxAQScript->addItem(tr("Load new AQ script"));
-   const auto scripts = appSettings_->get<QStringList>(ApplicationSettings::aqScripts);
-   if (!scripts.isEmpty()) {
-      const auto lastScript = appSettings_->get<QString>(ApplicationSettings::lastAqScript);
-      for (int i = 0; i < scripts.size(); i++) {
-         QFileInfo fi(scripts[i]);
-         ui_->comboBoxAQScript->addItem(fi.fileName(), scripts[i]);
-         if (scripts[i] == lastScript) {
-            curIndex = i + kSelectAQFileItemIndex + 1; // note the "Load" row in the head
-         }
-      }
-   }
-   ui_->comboBoxAQScript->setCurrentIndex(curIndex);
-}
-
-void RFQDealerReply::aqScriptChanged(int curIndex)
-{
-   if (curIndex < kSelectAQFileItemIndex) {
-      return;
-   }
-
-   if (curIndex == kSelectAQFileItemIndex) {
-      const auto scriptFN = askForAQScript();
-
-      if (scriptFN.isEmpty()) {
-         aqFillHistory();
-         return;
-      }
-
-      // comboBoxAQScript will be updated later from onAqScriptLoaded
-      newLoaded_ = true;
-      initAQ(scriptFN);
-   } else {
-      if (aqLoaded_) {
-         deinitAQ();
-      }
-   }
-}
-
-void RFQDealerReply::onAqScriptLoaded(const QString &filename)
-{
-   logger_->info("AQ script loaded ({})", filename.toStdString());
-
-   auto scripts = appSettings_->get<QStringList>(ApplicationSettings::aqScripts);
-   if (scripts.indexOf(filename) < 0) {
-      scripts << filename;
-      appSettings_->set(ApplicationSettings::aqScripts, scripts);
-   }
-   appSettings_->set(ApplicationSettings::lastAqScript, filename);
-   aqFillHistory();
-
-   if (newLoaded_) {
-      newLoaded_ = false;
-      deinitAQ();
-   } else {
-      aqLoaded_ = true;
-      validateGUI();
-   }
-}
-
-void RFQDealerReply::onAqScriptFailed(const QString &filename, const QString &error)
-{
-   logger_->error("AQ script loading failed (): {}", filename.toStdString(), error.toStdString());
-   aqLoaded_ = false;
-
-   auto scripts = appSettings_->get<QStringList>(ApplicationSettings::aqScripts);
-   scripts.removeOne(filename);
-   appSettings_->set(ApplicationSettings::aqScripts, scripts);
-   appSettings_->reset(ApplicationSettings::lastAqScript);
-   aqFillHistory();
-
-   validateGUI();
-}
-
-void RFQDealerReply::checkBoxAQClicked()
-{
-   bool isValidScript = (ui_->comboBoxAQScript->currentIndex() > kSelectAQFileItemIndex);
-   if (ui_->checkBoxAQ->isChecked() && !isValidScript) {
-      BSMessageBox question(BSMessageBox::question
-         , tr("Try to enable Auto Quoting")
-         , tr("Auto Quoting Script is not specified. Do you want to select a script from file?"));
-      const bool answerYes = (question.exec() == QDialog::Accepted);
-      if (answerYes) {
-         const auto scriptFileName = askForAQScript();
-         if (scriptFileName.isEmpty()) {
-            ui_->checkBoxAQ->setChecked(false);
-         } else {
-            initAQ(scriptFileName);
-         }
-      } else {
-         ui_->checkBoxAQ->setChecked(false);
-      }
-   }
-
-   if (aqLoaded_) {
-      aq_->disableAQ();
-      aqLoaded_ = false;
-   } else {
-      initAQ(ui_->comboBoxAQScript->currentData().toString());
-   }
-
-   validateGUI();
 }
 
 void RFQDealerReply::onOrderUpdated(const bs::network::Order &order)
@@ -1304,13 +1037,6 @@ void RFQDealerReply::onAQReply(const bs::network::QuoteReqNotification &qrn, dou
    }
 
    submitReply(transData, qrn, price, cbSubmit);
-}
-
-void RFQDealerReply::onAutoSignStateChanged(const std::string &walletId, bool active)
-{
-   autoSignState_ = active;
-   ui_->checkBoxAutoSign->setChecked(active);
-   validateGUI();
 }
 
 void RFQDealerReply::onHDLeafCreated(const std::string& ccName)
