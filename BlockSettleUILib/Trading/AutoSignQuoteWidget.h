@@ -2,6 +2,7 @@
 #define AUTOSIGNQUOTEWIDGET_H
 
 #include <QWidget>
+#include <memory>
 
 class AutoSignQuoteProvider;
 

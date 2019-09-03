@@ -2,6 +2,7 @@
 #define AUTOSIGNQUOTEPROVIDER_H
 
 #include <QObject>
+#include <memory>
 
 class ApplicationSettings;
 class BaseCelerClient;
@@ -14,9 +15,6 @@ class MarketDataProvider;
 namespace bs {
    class DealerUtxoResAdapter;
    namespace sync {
-      namespace hd {
-         class Leaf;
-      }
       class Wallet;
       class WalletsManager;
    }
