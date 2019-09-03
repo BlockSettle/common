@@ -123,7 +123,7 @@ void RFQReplyWidget::init(const std::shared_ptr<spdlog::logger> &logger
    , const std::shared_ptr<ArmoryConnection> &armory
    , const std::shared_ptr<ConnectionManager> &connectionManager
    , const std::shared_ptr<bs::DealerUtxoResAdapter> &dealerUtxoAdapter
-   , const std::shared_ptr<AutoSQProvider> &autoSQProvider)
+   , const std::shared_ptr<AutoSignQuoteProvider> &autoSignQuoteProvider)
 {
    logger_ = logger;
    celerClient_ = celerClient;
@@ -136,7 +136,7 @@ void RFQReplyWidget::init(const std::shared_ptr<spdlog::logger> &logger
    appSettings_ = appSettings;
    connectionManager_ = connectionManager;
    dealerUtxoAdapter_ = dealerUtxoAdapter;
-   autoSQProvider_ = autoSQProvider;
+   autoSignQuoteProvider_ = autoSignQuoteProvider;
 
    statsCollector_ = std::make_shared<bs::SecurityStatsCollector>(appSettings, ApplicationSettings::Filter_MD_QN_cnt);
    connect(ui_->pageRFQReply, &RFQDealerReply::submitQuoteNotif, statsCollector_.get(), &bs::SecurityStatsCollector::onQuoteSubmitted);
@@ -144,9 +144,9 @@ void RFQReplyWidget::init(const std::shared_ptr<spdlog::logger> &logger
    ui_->widgetQuoteRequests->init(logger_, quoteProvider_, assetManager, statsCollector_,
                                   appSettings, celerClient_);
    ui_->pageRFQReply->init(logger, authAddressManager, assetManager, quoteProvider_,
-                           appSettings, connectionManager, signingContainer_, armory_, dealerUtxoAdapter_, autoSQProvider_);
+                           appSettings, connectionManager, signingContainer_, armory_, dealerUtxoAdapter_, autoSignQuoteProvider_);
 
-   ui_->widgetAutoSQ->init(autoSQProvider_);
+   ui_->widgetAutoSignQuote->init(autoSignQuoteProvider_);
 
    connect(ui_->widgetQuoteRequests, &QuoteRequestsWidget::Selected, this, &RFQReplyWidget::onSelected);
 

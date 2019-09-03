@@ -7,6 +7,7 @@
 #include "SignContainer.h"
 #include "UiUtils.h"
 #include "Wallets/SyncWallet.h"
+#include "SignerDefs.h"
 
 #include <QPointer>
 
@@ -46,6 +47,7 @@ DealerCCSettlementContainer::~DealerCCSettlementContainer()
 bs::sync::PasswordDialogData DealerCCSettlementContainer::toPasswordDialogData() const
 {
    bs::sync::PasswordDialogData dialogData = SettlementContainer::toPasswordDialogData();
+   dialogData.setValue("AutoSignCategory", static_cast<int>(bs::signer::AutoSignCategory::SettlementDealer));
 
    dialogData.remove("SettlementId");
 

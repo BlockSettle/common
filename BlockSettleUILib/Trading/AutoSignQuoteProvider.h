@@ -1,5 +1,5 @@
-#ifndef AUTOSQPROVIDER_H
-#define AUTOSQPROVIDER_H
+#ifndef AUTOSIGNQUOTEPROVIDER_H
+#define AUTOSIGNQUOTEPROVIDER_H
 
 #include <QObject>
 
@@ -27,11 +27,11 @@ namespace spdlog {
 }
 
 // Auto quoting and signing provider
-class AutoSQProvider : public QObject
+class AutoSignQuoteProvider : public QObject
 {
    Q_OBJECT
 public:
-   explicit AutoSQProvider(const std::shared_ptr<spdlog::logger> &
+   explicit AutoSignQuoteProvider(const std::shared_ptr<spdlog::logger> &
       , const std::shared_ptr<AssetManager>&
       , const std::shared_ptr<QuoteProvider>&
       , const std::shared_ptr<ApplicationSettings> &
@@ -63,7 +63,7 @@ public:
    void tryEnableAutoSign();
 
    //
-   bool autoSQAvailable();
+   bool autoSignQuoteAvailable();
    void setWalletsManager(std::shared_ptr<bs::sync::WalletsManager> &);
 
    UserScriptRunner *autoQuoter() const;
@@ -73,7 +73,7 @@ signals:
    void aqScriptUnLoaded();
    void aqHistoryChanged();
    void autoSignStateChanged(const std::string &walletId, bool active);
-   void autoSQAvailabilityChanged();
+   void autoSignQuoteAvailabilityChanged();
 
 public slots:
    void onSignerStateUpdated();
@@ -99,4 +99,4 @@ private:
    std::shared_ptr<BaseCelerClient>           celerClient_;
 };
 
-#endif // AUTOSQPROVIDER_H
+#endif // AUTOSIGNQUOTEPROVIDER_H

@@ -337,7 +337,7 @@ void BSTerminalMainWindow::LoadWallets()
    connect(walletsMgr_.get(), &bs::sync::WalletsManager::walletsReady, [this] {
       ui_->widgetRFQ->setWalletsManager(walletsMgr_);
       ui_->widgetRFQReply->setWalletsManager(walletsMgr_);
-      autoSQProvider_->setWalletsManager(walletsMgr_);
+      autoSignQuoteProvider_->setWalletsManager(walletsMgr_);
    });
    connect(walletsMgr_.get(), &bs::sync::WalletsManager::walletsSynchronized, [this] {
       walletsSynched_ = true;
@@ -1534,7 +1534,7 @@ void BSTerminalMainWindow::InitWidgets()
    auto quoteProvider = std::make_shared<QuoteProvider>(assetManager_, logMgr_->logger("message"));
    quoteProvider->ConnectToCelerClient(celerConnection_);
 
-   autoSQProvider_ = std::make_shared<AutoSQProvider>(logMgr_->logger(), assetManager_, quoteProvider
+   autoSignQuoteProvider_ = std::make_shared<AutoSignQuoteProvider>(logMgr_->logger(), assetManager_, quoteProvider
       , applicationSettings_, dealerUtxoAdapter_, signContainer_, mdProvider_, celerConnection_);
 
    auto dialogManager = std::make_shared<DialogManager>(this);
@@ -1542,7 +1542,7 @@ void BSTerminalMainWindow::InitWidgets()
    ui_->widgetRFQ->init(logMgr_->logger(), celerConnection_, authManager_, quoteProvider, assetManager_
       , dialogManager, signContainer_, armory_, connectionManager_);
    ui_->widgetRFQReply->init(logMgr_->logger(), celerConnection_, authManager_, quoteProvider, mdProvider_, assetManager_
-      , applicationSettings_, dialogManager, signContainer_, armory_, connectionManager_, dealerUtxoAdapter_, autoSQProvider_);
+      , applicationSettings_, dialogManager, signContainer_, armory_, connectionManager_, dealerUtxoAdapter_, autoSignQuoteProvider_);
 
    auto primaryWalletCreationCb = [this]() {
       createWallet(true, [this] {

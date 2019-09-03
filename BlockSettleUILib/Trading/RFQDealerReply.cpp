@@ -12,7 +12,7 @@
 #include "ApplicationSettings.h"
 #include "AssetManager.h"
 #include "AuthAddressManager.h"
-#include "AutoSQProvider.h"
+#include "AutoSignQuoteProvider.h"
 #include "BSErrorCodeStrings.h"
 #include "BSMessageBox.h"
 #include "CoinControlDialog.h"
@@ -70,7 +70,7 @@ void RFQDealerReply::init(const std::shared_ptr<spdlog::logger> logger
    , const std::shared_ptr<SignContainer> &container
    , const std::shared_ptr<ArmoryConnection> &armory
    , const std::shared_ptr<bs::DealerUtxoResAdapter> &dealerUtxoAdapter
-   , const std::shared_ptr<AutoSQProvider> &autoSQProvider)
+   , const std::shared_ptr<AutoSignQuoteProvider> &autoSignQuoteProvider)
 {
    logger_ = logger;
    assetManager_ = assetManager;
@@ -81,14 +81,14 @@ void RFQDealerReply::init(const std::shared_ptr<spdlog::logger> logger
    armory_ = armory;
    connectionManager_ = connectionManager;
    dealerUtxoAdapter_ = dealerUtxoAdapter;
-   autoSQProvider_ = autoSQProvider;
+   autoSignQuoteProvider_ = autoSignQuoteProvider;
 
    connect(quoteProvider_.get(), &QuoteProvider::orderUpdated, dealerUtxoAdapter_.get(), &bs::OrderUtxoResAdapter::onOrder);
    connect(quoteProvider_.get(), &QuoteProvider::orderUpdated, this, &RFQDealerReply::onOrderUpdated);
    connect(dealerUtxoAdapter_.get(), &bs::OrderUtxoResAdapter::reservedUtxosChanged, this, &RFQDealerReply::onReservedUtxosChanged, Qt::QueuedConnection);
 
-   connect(autoSQProvider_->autoQuoter(), &UserScriptRunner::sendQuote, this, &RFQDealerReply::onAQReply, Qt::QueuedConnection);
-   connect(autoSQProvider_->autoQuoter(), &UserScriptRunner::pullQuoteNotif, this, &RFQDealerReply::pullQuoteNotif, Qt::QueuedConnection);
+   connect(autoSignQuoteProvider_->autoQuoter(), &UserScriptRunner::sendQuote, this, &RFQDealerReply::onAQReply, Qt::QueuedConnection);
+   connect(autoSignQuoteProvider_->autoQuoter(), &UserScriptRunner::pullQuoteNotif, this, &RFQDealerReply::pullQuoteNotif, Qt::QueuedConnection);
 
    UtxoReservation::addAdapter(dealerUtxoAdapter_);
 }
@@ -121,8 +121,8 @@ void RFQDealerReply::setWalletsManager(const std::shared_ptr<bs::sync::WalletsMa
    connect(walletsManager_.get(), &bs::sync::WalletsManager::CCLeafCreated, this, &RFQDealerReply::onHDLeafCreated);
    connect(walletsManager_.get(), &bs::sync::WalletsManager::CCLeafCreateFailed, this, &RFQDealerReply::onCreateHDWalletError);
 
-   if (autoSQProvider_->autoQuoter()) {
-      autoSQProvider_->autoQuoter()->setWalletsManager(walletsManager_);
+   if (autoSignQuoteProvider_->autoQuoter()) {
+      autoSignQuoteProvider_->autoQuoter()->setWalletsManager(walletsManager_);
    }
 
    auto updateAuthAddresses = [this] {
@@ -880,8 +880,8 @@ std::shared_ptr<TransactionData> RFQDealerReply::getTransactionData(const std::s
       return transactionData_;
    }
 
-   if (autoSQProvider_->autoQuoter()) {
-      return autoSQProvider_->autoQuoter()->getTransactionData(reqId);
+   if (autoSignQuoteProvider_->autoQuoter()) {
+      return autoSignQuoteProvider_->autoQuoter()->getTransactionData(reqId);
    } else {
       return nullptr;
    }
@@ -995,7 +995,7 @@ void RFQDealerReply::onAQReply(const bs::network::QuoteReqNotification &qrn, dou
             curWallet_ = wallet;
          } else {
             if (!ccWallet) {
-               autoSQProvider_->deinitAQ();
+               autoSignQuoteProvider_->deinitAQ();
                BSMessageBox(BSMessageBox::critical, tr("Auto Quoting")
                   , tr("No wallet created for %1 - auto-quoting disabled").arg(QString::fromStdString(cc))
                ).exec();
@@ -1012,7 +1012,7 @@ void RFQDealerReply::onAQReply(const bs::network::QuoteReqNotification &qrn, dou
             , qrn.quoteRequestId, (transData->InputsLoadedFromArmory() ? "inputs loaded" : "inputs not loaded"));
 
          if (transData->InputsLoadedFromArmory()) {
-            autoSQProvider_->autoQuoter()->setTxData(qrn.quoteRequestId, transData);
+            autoSignQuoteProvider_->autoQuoter()->setTxData(qrn.quoteRequestId, transData);
             // submit reply will change transData, but we should not get this notifications
             transData->disableTransactionUpdate();
             submitReply(transData, qrn, price, cbSubmit);

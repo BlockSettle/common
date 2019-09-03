@@ -421,7 +421,7 @@
        </widget>
       </item>
       <item>
-       <widget class="AutoSQWidget" name="widgetAutoSQ" native="true">
+       <widget class="AutoSignQuoteWidget" name="widgetAutoSignQuote" native="true">
         <property name="minimumSize">
          <size>
           <width>0</width>
@@ -459,9 +459,9 @@
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>AutoSQWidget</class>
+   <class>AutoSignQuoteWidget</class>
    <extends>QWidget</extends>
-   <header>AutoSQWidget.h</header>
+   <header>AutoSignQuoteWidget.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

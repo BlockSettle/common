@@ -37,7 +37,7 @@ class AssetManager;
 class AuthAddressDialog;
 class AuthAddressManager;
 class AutheIDClient;
-class AutoSQProvider;
+class AutoSignQuoteProvider;
 class BSMarketDataProvider;
 class BSTerminalSplashScreen;
 class BaseCelerClient;
@@ -159,7 +159,7 @@ private:
    std::shared_ptr<AboutDialog>              aboutDlg_;
    std::shared_ptr<SignContainer>            signContainer_;
    std::shared_ptr<bs::DealerUtxoResAdapter> dealerUtxoAdapter_;
-   std::shared_ptr<AutoSQProvider>           autoSQProvider_;
+   std::shared_ptr<AutoSignQuoteProvider>    autoSignQuoteProvider_;
 
 
    std::shared_ptr<WalletManagementWizard> walletsWizard_;

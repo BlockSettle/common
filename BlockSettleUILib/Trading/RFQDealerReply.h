@@ -35,7 +35,7 @@ class ApplicationSettings;
 class ArmoryConnection;
 class AssetManager;
 class AuthAddressManager;
-class AutoSQProvider;
+class AutoSignQuoteProvider;
 class QuoteProvider;
 class SelectedTransactionInputs;
 class SignContainer;
@@ -72,7 +72,7 @@ namespace bs {
             , const std::shared_ptr<SignContainer> &
             , const std::shared_ptr<ArmoryConnection> &
             , const std::shared_ptr<bs::DealerUtxoResAdapter> &dealerUtxoAdapter
-            , const std::shared_ptr<AutoSQProvider> &autoSQProvider);
+            , const std::shared_ptr<AutoSignQuoteProvider> &autoSignQuoteProvider);
 
          void setWalletsManager(const std::shared_ptr<bs::sync::WalletsManager> &);
 
@@ -126,7 +126,7 @@ namespace bs {
          std::shared_ptr<ConnectionManager>     connectionManager_;
          std::shared_ptr<SignContainer>         signingContainer_;
          std::shared_ptr<ArmoryConnection>      armory_;
-         std::shared_ptr<AutoSQProvider>        autoSQProvider_;
+         std::shared_ptr<AutoSignQuoteProvider> autoSignQuoteProvider_;
          std::shared_ptr<DealerUtxoResAdapter>  dealerUtxoAdapter_;
 
          std::shared_ptr<bs::sync::Wallet>   curWallet_;

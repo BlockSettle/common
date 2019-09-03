@@ -1,4 +1,4 @@
-#include "AutoSQProvider.h"
+#include "AutoSignQuoteProvider.h"
 
 #include "ApplicationSettings.h"
 #include "SignContainer.h"
@@ -12,7 +12,7 @@
 #include <QFileDialog>
 #include <QFileInfo>
 
-AutoSQProvider::AutoSQProvider(const std::shared_ptr<spdlog::logger> &logger
+AutoSignQuoteProvider::AutoSignQuoteProvider(const std::shared_ptr<spdlog::logger> &logger
    , const std::shared_ptr<AssetManager>& assetManager
    , const std::shared_ptr<QuoteProvider>& quoteProvider
    , const std::shared_ptr<ApplicationSettings> &appSettings
@@ -35,13 +35,13 @@ AutoSQProvider::AutoSQProvider(const std::shared_ptr<spdlog::logger> &logger
    }
 
    if (signingContainer_) {
-      connect(signingContainer_.get(), &SignContainer::ready, this, &AutoSQProvider::onSignerStateUpdated, Qt::QueuedConnection);
-      connect(signingContainer_.get(), &SignContainer::disconnected, this, &AutoSQProvider::onSignerStateUpdated, Qt::QueuedConnection);
-      connect(signingContainer_.get(), &SignContainer::AutoSignStateChanged, this, &AutoSQProvider::onAutoSignStateChanged);
+      connect(signingContainer_.get(), &SignContainer::ready, this, &AutoSignQuoteProvider::onSignerStateUpdated, Qt::QueuedConnection);
+      connect(signingContainer_.get(), &SignContainer::disconnected, this, &AutoSignQuoteProvider::onSignerStateUpdated, Qt::QueuedConnection);
+      connect(signingContainer_.get(), &SignContainer::AutoSignStateChanged, this, &AutoSignQuoteProvider::onAutoSignStateChanged);
    }
 
-   connect(aq_, &UserScriptRunner::aqScriptLoaded, this, &AutoSQProvider::onAqScriptLoaded);
-   connect(aq_, &UserScriptRunner::failedToLoad, this, &AutoSQProvider::onAqScriptFailed);
+   connect(aq_, &UserScriptRunner::aqScriptLoaded, this, &AutoSignQuoteProvider::onAqScriptLoaded);
+   connect(aq_, &UserScriptRunner::failedToLoad, this, &AutoSignQuoteProvider::onAqScriptFailed);
 
    onSignerStateUpdated();
 
@@ -59,19 +59,19 @@ AutoSQProvider::AutoSQProvider(const std::shared_ptr<spdlog::logger> &logger
 
    }
 
-   connect(celerClient_.get(), &BaseCelerClient::OnConnectedToServer, this, &AutoSQProvider::onConnectedToCeler);
-   connect(celerClient_.get(), &BaseCelerClient::OnConnectionClosed, this, &AutoSQProvider::onDisconnectedFromCeler);
+   connect(celerClient_.get(), &BaseCelerClient::OnConnectedToServer, this, &AutoSignQuoteProvider::onConnectedToCeler);
+   connect(celerClient_.get(), &BaseCelerClient::OnConnectionClosed, this, &AutoSignQuoteProvider::onDisconnectedFromCeler);
 }
 
-void AutoSQProvider::onSignerStateUpdated()
+void AutoSignQuoteProvider::onSignerStateUpdated()
 {
    disableAutoSign();
    autoQuoter()->disableAQ();
 
-   emit autoSQAvailabilityChanged();
+   emit autoSignQuoteAvailabilityChanged();
 }
 
-void AutoSQProvider::disableAutoSign()
+void AutoSignQuoteProvider::disableAutoSign()
 {
    if (!walletsManager_) {
       return;
@@ -89,7 +89,7 @@ void AutoSQProvider::disableAutoSign()
    signingContainer_->customDialogRequest(bs::signer::ui::DialogType::ActivateAutoSign, data);
 }
 
-void AutoSQProvider::tryEnableAutoSign()
+void AutoSignQuoteProvider::tryEnableAutoSign()
 {
    if (!walletsManager_ || !signingContainer_) {
       return;
@@ -107,25 +107,25 @@ void AutoSQProvider::tryEnableAutoSign()
    signingContainer_->customDialogRequest(bs::signer::ui::DialogType::ActivateAutoSign, data);
 }
 
-bool AutoSQProvider::autoSQAvailable()
+bool AutoSignQuoteProvider::autoSignQuoteAvailable()
 {
    return signingContainer_ && !signingContainer_->isOffline()
       && walletsManager_ && walletsManager_->isReadyForTrading()
       && celerClient_->IsConnected();
 }
 
-bool AutoSQProvider::aqLoaded() const
+bool AutoSignQuoteProvider::aqLoaded() const
 {
    return aqLoaded_;
 }
 
-void AutoSQProvider::onAutoSignStateChanged(const std::string &walletId, bool active)
+void AutoSignQuoteProvider::onAutoSignStateChanged(const std::string &walletId, bool active)
 {
    autoSignState_ = active;
    emit autoSignStateChanged(walletId, active);
 }
 
-void AutoSQProvider::setAqLoaded(bool loaded)
+void AutoSignQuoteProvider::setAqLoaded(bool loaded)
 {
    aqLoaded_ = loaded;
    if (!loaded) {
@@ -133,7 +133,7 @@ void AutoSQProvider::setAqLoaded(bool loaded)
    }
 }
 
-void AutoSQProvider::initAQ(const QString &filename)
+void AutoSignQuoteProvider::initAQ(const QString &filename)
 {
    if (filename.isEmpty()) {
       return;
@@ -142,14 +142,14 @@ void AutoSQProvider::initAQ(const QString &filename)
    aq_->enableAQ(filename);
 }
 
-void AutoSQProvider::deinitAQ()
+void AutoSignQuoteProvider::deinitAQ()
 {
    aq_->disableAQ();
    aqLoaded_ = false;
    emit aqScriptUnLoaded();
 }
 
-void AutoSQProvider::onAqScriptLoaded(const QString &filename)
+void AutoSignQuoteProvider::onAqScriptLoaded(const QString &filename)
 {
    logger_->info("AQ script loaded ({})", filename.toStdString());
    aqLoaded_ = true;
@@ -164,7 +164,7 @@ void AutoSQProvider::onAqScriptLoaded(const QString &filename)
    emit aqHistoryChanged();
 }
 
-void AutoSQProvider::onAqScriptFailed(const QString &filename, const QString &error)
+void AutoSignQuoteProvider::onAqScriptFailed(const QString &filename, const QString &error)
 {
    logger_->error("AQ script loading failed (): {}", filename.toStdString(), error.toStdString());
    setAqLoaded(false);
@@ -176,45 +176,45 @@ void AutoSQProvider::onAqScriptFailed(const QString &filename, const QString &er
    emit aqHistoryChanged();
 }
 
-void AutoSQProvider::onConnectedToCeler()
+void AutoSignQuoteProvider::onConnectedToCeler()
 {
-   emit autoSQAvailabilityChanged();
+   emit autoSignQuoteAvailabilityChanged();
 }
 
-void AutoSQProvider::onDisconnectedFromCeler()
+void AutoSignQuoteProvider::onDisconnectedFromCeler()
 {
    autoQuoter()->disableAQ();
    disableAutoSign();
 
-   emit autoSQAvailabilityChanged();
+   emit autoSignQuoteAvailabilityChanged();
 }
 
-UserScriptRunner *AutoSQProvider::autoQuoter() const
+UserScriptRunner *AutoSignQuoteProvider::autoQuoter() const
 {
     return aq_;
 }
 
-bool AutoSQProvider::autoSignState() const
+bool AutoSignQuoteProvider::autoSignState() const
 {
     return autoSignState_;
 }
 
-void AutoSQProvider::setWalletsManager(std::shared_ptr<bs::sync::WalletsManager> &walletsMgr)
+void AutoSignQuoteProvider::setWalletsManager(std::shared_ptr<bs::sync::WalletsManager> &walletsMgr)
 {
    walletsManager_ = walletsMgr;
    aq_->setWalletsManager(walletsMgr);
 
-   connect(walletsMgr.get(), &bs::sync::WalletsManager::walletDeleted, this, &AutoSQProvider::autoSQAvailabilityChanged);
-   connect(walletsMgr.get(), &bs::sync::WalletsManager::walletAdded, this, &AutoSQProvider::autoSQAvailabilityChanged);
-   connect(walletsMgr.get(), &bs::sync::WalletsManager::walletsReady, this, &AutoSQProvider::autoSQAvailabilityChanged);
-   connect(walletsMgr.get(), &bs::sync::WalletsManager::walletsSynchronized, this, &AutoSQProvider::autoSQAvailabilityChanged);
-   connect(walletsMgr.get(), &bs::sync::WalletsManager::newWalletAdded, this, &AutoSQProvider::autoSQAvailabilityChanged);
-   connect(walletsMgr.get(), &bs::sync::WalletsManager::walletImportFinished, this, &AutoSQProvider::autoSQAvailabilityChanged);
+   connect(walletsMgr.get(), &bs::sync::WalletsManager::walletDeleted, this, &AutoSignQuoteProvider::autoSignQuoteAvailabilityChanged);
+   connect(walletsMgr.get(), &bs::sync::WalletsManager::walletAdded, this, &AutoSignQuoteProvider::autoSignQuoteAvailabilityChanged);
+   connect(walletsMgr.get(), &bs::sync::WalletsManager::walletsReady, this, &AutoSignQuoteProvider::autoSignQuoteAvailabilityChanged);
+   connect(walletsMgr.get(), &bs::sync::WalletsManager::walletsSynchronized, this, &AutoSignQuoteProvider::autoSignQuoteAvailabilityChanged);
+   connect(walletsMgr.get(), &bs::sync::WalletsManager::newWalletAdded, this, &AutoSignQuoteProvider::autoSignQuoteAvailabilityChanged);
+   connect(walletsMgr.get(), &bs::sync::WalletsManager::walletImportFinished, this, &AutoSignQuoteProvider::autoSignQuoteAvailabilityChanged);
 
-   emit autoSQAvailabilityChanged();
+   emit autoSignQuoteAvailabilityChanged();
 }
 
-QString AutoSQProvider::getDefaultScriptsDir()
+QString AutoSignQuoteProvider::getDefaultScriptsDir()
 {
 #if defined(Q_OS_WIN) || defined(Q_OS_MACOS)
    return QCoreApplication::applicationDirPath() + QStringLiteral("/scripts");
@@ -223,22 +223,22 @@ QString AutoSQProvider::getDefaultScriptsDir()
 #endif
 }
 
-QStringList AutoSQProvider::getAQScripts()
+QStringList AutoSignQuoteProvider::getAQScripts()
 {
    return appSettings_->get<QStringList>(ApplicationSettings::aqScripts);
 }
 
-QString AutoSQProvider::getAQLastScript()
+QString AutoSignQuoteProvider::getAQLastScript()
 {
    return appSettings_->get<QString>(ApplicationSettings::lastAqScript);
 }
 
-QString AutoSQProvider::getAQLastDir()
+QString AutoSignQuoteProvider::getAQLastDir()
 {
    return appSettings_->get<QString>(ApplicationSettings::LastAqDir);
 }
 
-void AutoSQProvider::setAQLastDir(const QString &path)
+void AutoSignQuoteProvider::setAQLastDir(const QString &path)
 {
    appSettings_->set(ApplicationSettings::LastAqDir, QFileInfo(path).dir().absolutePath());
 }

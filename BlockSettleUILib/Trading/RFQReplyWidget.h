@@ -8,7 +8,7 @@
 #include <unordered_set>
 #include <tuple>
 
-#include "AutoSQProvider.h"
+#include "AutoSignQuoteProvider.h"
 #include "TransactionData.h"
 #include "CoinControlModel.h"
 #include "CommonTypes.h"
@@ -60,7 +60,7 @@ public:
       , const std::shared_ptr<ArmoryConnection> &
       , const std::shared_ptr<ConnectionManager> &
       , const std::shared_ptr<bs::DealerUtxoResAdapter> &
-      , const std::shared_ptr<AutoSQProvider> &);
+      , const std::shared_ptr<AutoSignQuoteProvider> &);
 
    void setWalletsManager(const std::shared_ptr<bs::sync::WalletsManager> &);
 
@@ -116,7 +116,7 @@ private:
    std::shared_ptr<ArmoryConnection>      armory_;
    std::shared_ptr<ApplicationSettings>   appSettings_;
    std::shared_ptr<ConnectionManager>     connectionManager_;
-   std::shared_ptr<AutoSQProvider>        autoSQProvider_;
+   std::shared_ptr<AutoSignQuoteProvider>    autoSignQuoteProvider_;
    std::shared_ptr<bs::DealerUtxoResAdapter> dealerUtxoAdapter_;
 
    std::unordered_map<std::string, transaction_data_ptr>   sentXbtTransactionData_;
