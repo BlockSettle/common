@@ -1730,7 +1730,7 @@ bool HeadlessContainerListener::onSyncComment(const std::string &clientId, headl
    }
    else {
       rc = wallet->setTransactionComment(request.txhash(), request.comment());
-      logger_->debug("[{}] comment for TX {} is set: {}", __func__, request.txhash(), rc);
+      logger_->debug("[{}] comment for TX {} is set: {}", __func__, bs::toHex(request.txhash()), rc);
    }
    return rc;
 }
