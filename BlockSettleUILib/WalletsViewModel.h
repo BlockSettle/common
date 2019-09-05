@@ -101,7 +101,7 @@ public:
 
    void LoadWallets(bool keepSelection = false);
 
-   void setBitcoinLeafSelectionMode() { bitcoinLeafSelectionMode_ = true; }
+   void setBitcoinLeafSelectionMode(bool flag = true) { bitcoinLeafSelectionMode_ = flag; }
 
 public:
    int columnCount(const QModelIndex &parent = QModelIndex()) const override;
