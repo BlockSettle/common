@@ -401,19 +401,11 @@ void RFQDealerReply::updateUiWalletFor(const bs::network::QuoteReqNotification &
                   , this);
                errorMessage.exec();
             }
-         } else if (ccWallet != curWallet_) {
-            ui_->comboBoxWallet->clear();
-            ui_->comboBoxWallet->addItem(QString::fromStdString(ccWallet->name()));
-            ui_->comboBoxWallet->setItemData(0, QString::fromStdString(ccWallet->walletId()), UiUtils::WalletIdRole);
-            setCurrentWallet(ccWallet);
          }
       }
-      else {
-         if (!curWallet_ || (ccWallet_ && (ccWallet_ == curWallet_))) {
-            const bool skipWatchingOnly = false;
-            walletSelected(UiUtils::fillWalletsComboBox(ui_->comboBoxWallet, walletsManager_, skipWatchingOnly));
-         }
-      }
+
+      const bool skipWatchingOnly = (qrn.side == bs::network::Side::Sell);
+      walletSelected(UiUtils::fillWalletsComboBox(ui_->comboBoxWallet, walletsManager_, skipWatchingOnly));
    }
    else if (qrn.assetType == bs::network::Asset::SpotXBT) {
       const bool skipWatchingOnly = (currentQRN_.side != bs::network::Side::Sell);
