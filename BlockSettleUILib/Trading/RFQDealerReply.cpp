@@ -410,12 +410,14 @@ void RFQDealerReply::updateUiWalletFor(const bs::network::QuoteReqNotification &
       }
       else {
          if (!curWallet_ || (ccWallet_ && (ccWallet_ == curWallet_))) {
-            walletSelected(UiUtils::fillWalletsComboBox(ui_->comboBoxWallet, walletsManager_, signingContainer_));
+            const bool skipWatchingOnly = false;
+            walletSelected(UiUtils::fillWalletsComboBox(ui_->comboBoxWallet, walletsManager_, skipWatchingOnly));
          }
       }
    }
    else if (qrn.assetType == bs::network::Asset::SpotXBT) {
-      walletSelected(UiUtils::fillWalletsComboBox(ui_->comboBoxWallet, walletsManager_, signingContainer_));
+      const bool skipWatchingOnly = (currentQRN_.side != bs::network::Side::Sell);
+      walletSelected(UiUtils::fillWalletsComboBox(ui_->comboBoxWallet, walletsManager_, skipWatchingOnly));
    }
 }
 
@@ -502,7 +504,7 @@ bool RFQDealerReply::checkBalance() const
       return false;
    }
 
-   if ((currentQRN_.side == bs::network::Side::Buy) ^ (product_ == baseProduct_)) {
+   if ((currentQRN_.side == bs::network::Side::Buy) != (product_ == baseProduct_)) {
       const auto amount = getAmount();
       if ((currentQRN_.assetType == bs::network::Asset::SpotXBT) && transactionData_) {
          return (amount <= (transactionData_->GetTransactionSummary().availableBalance
