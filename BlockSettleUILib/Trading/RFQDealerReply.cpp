@@ -50,8 +50,8 @@ RFQDealerReply::RFQDealerReply(QWidget* parent)
    connect(ui_->pushButtonPull, &QPushButton::clicked, this, &RFQDealerReply::pullButtonClicked);
    connect(ui_->pushButtonAdvanced, &QPushButton::clicked, this, &RFQDealerReply::showCoinControl);
 
-   connect(ui_->comboBoxWallet, SIGNAL(currentIndexChanged(int)), this, SLOT(walletSelected(int)));
-   connect(ui_->authenticationAddressComboBox, SIGNAL(currentIndexChanged(int)), SLOT(onAuthAddrChanged(int)));
+   connect(ui_->comboBoxWallet, qOverload<int>(&QComboBox::currentIndexChanged), this, &RFQDealerReply::walletSelected);
+   connect(ui_->authenticationAddressComboBox, qOverload<int>(&QComboBox::currentIndexChanged), this, &RFQDealerReply::onAuthAddrChanged);
 
    ui_->responseTitle->hide();
 }
