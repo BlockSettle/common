@@ -10,8 +10,8 @@ namespace Chat
    class ServiceThread : public QThread
    {
    public:
-      explicit ServiceThread(TServiceWorker* worker, QObject* parent = nullptr)
-         : QThread(parent), worker_(worker)
+      explicit ServiceThread(std::unique_ptr<TServiceWorker> worker, QObject* parent = nullptr)
+         : QThread(parent), worker_(std::move(worker))
       {
          worker_->moveToThread(this);
          start();
@@ -25,18 +25,11 @@ namespace Chat
 
       TServiceWorker* worker() const
       {
-         return worker_;
-      }
-
-   protected:
-      void run() override
-      {
-         QThread::run();
-         delete worker_;
+         return worker_.get();
       }
 
    private:
-      TServiceWorker* worker_;
+      std::unique_ptr<TServiceWorker> worker_;
    };
 
 }

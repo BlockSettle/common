@@ -4,7 +4,7 @@ namespace Chat
 {
 
    ChatClientService::ChatClientService(QObject* parent /*= nullptr*/)
-      : ServiceThread<ChatClientLogic>(new ChatClientLogic, parent)
+      : ServiceThread<ChatClientLogic>(std::make_unique<ChatClientLogic>(), parent)
    {
       qRegisterMetaType<Chat::ConnectionManagerPtr>();
       qRegisterMetaType<Chat::ApplicationSettingsPtr>();

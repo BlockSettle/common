@@ -4,7 +4,7 @@ namespace Chat
 {
 
    ClientDBService::ClientDBService(QObject* parent /* = nullptr */)
-      : ServiceThread<ClientDBLogic>(new ClientDBLogic, parent)
+      : ServiceThread<ClientDBLogic>(std::make_unique<ClientDBLogic>(), parent)
    {
       qRegisterMetaType<Chat::ApplicationSettingsPtr>();
       qRegisterMetaType<Chat::CryptManagerPtr>();
