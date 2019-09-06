@@ -95,6 +95,7 @@ namespace bs {
          void onBestQuotePrice(const QString reqId, double price, bool own);
          void onCelerConnected();
          void onCelerDisconnected();
+         void onAutoSignStateChanged();
 
       private slots:
          void initUi();

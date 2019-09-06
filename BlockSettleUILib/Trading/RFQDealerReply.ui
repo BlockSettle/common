@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>300</width>
-    <height>459</height>
+    <height>411</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -77,6 +77,9 @@
          <string>RECEIVED RFQ</string>
         </property>
         <layout class="QVBoxLayout" name="verticalLayout_3">
+         <property name="topMargin">
+          <number>2</number>
+         </property>
          <item>
           <widget class="QWidget" name="horizontalWidget" native="true">
            <property name="sizePolicy">
@@ -475,6 +478,15 @@
          <string>QUOTE RESPONSE</string>
         </property>
         <layout class="QVBoxLayout" name="verticalLayout_5">
+         <property name="spacing">
+          <number>6</number>
+         </property>
+         <property name="topMargin">
+          <number>2</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
          <item>
           <widget class="QWidget" name="allDetails" native="true">
            <property name="sizePolicy">
@@ -1358,9 +1370,6 @@
              <height>16777215</height>
             </size>
            </property>
-           <property name="title" stdset="0">
-            <bool>false</bool>
-           </property>
            <layout class="QVBoxLayout" name="verticalLayout_7">
             <property name="spacing">
              <number>0</number>
@@ -1386,73 +1395,46 @@
                </size>
               </property>
               <property name="darkOverlay" stdset="0">
-               <bool>true</bool>
+               <bool>false</bool>
               </property>
-              <layout class="QVBoxLayout" name="verticalLayout_6">
-               <property name="spacing">
-                <number>10</number>
-               </property>
+              <layout class="QHBoxLayout" name="horizontalLayout_2">
                <property name="leftMargin">
                 <number>0</number>
                </property>
                <property name="topMargin">
-                <number>5</number>
+                <number>0</number>
                </property>
                <property name="rightMargin">
                 <number>0</number>
                </property>
                <property name="bottomMargin">
-                <number>10</number>
+                <number>0</number>
                </property>
                <item>
-                <widget class="QWidget" name="verticalWidget8" native="true">
-                 <layout class="QGridLayout" name="horizontalLayout_16" columnstretch="7,0">
-                  <property name="leftMargin">
-                   <number>0</number>
-                  </property>
-                  <property name="topMargin">
-                   <number>5</number>
-                  </property>
-                  <property name="rightMargin">
-                   <number>0</number>
-                  </property>
-                  <property name="bottomMargin">
-                   <number>0</number>
-                  </property>
-                  <property name="horizontalSpacing">
-                   <number>5</number>
-                  </property>
-                  <property name="verticalSpacing">
-                   <number>16</number>
-                  </property>
-                  <item row="0" column="1">
-                   <widget class="QComboBox" name="authenticationAddressComboBox"/>
-                  </item>
-                  <item row="0" column="0">
-                   <widget class="QLabel" name="authenticationAddressLabel">
-                    <property name="text">
-                     <string>Auth Address</string>
-                    </property>
-                    <property name="wordWrap">
-                     <bool>true</bool>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
+                <widget class="QLabel" name="authenticationAddressLabel">
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                 <property name="text">
+                  <string>Auth Address</string>
+                 </property>
+                 <property name="wordWrap">
+                  <bool>true</bool>
+                 </property>
                 </widget>
                </item>
                <item>
-                <spacer name="verticalSpacer">
-                 <property name="orientation">
-                  <enum>Qt::Vertical</enum>
+                <widget class="QComboBox" name="authenticationAddressComboBox">
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
                  </property>
-                 <property name="sizeHint" stdset="0">
-                  <size>
-                   <width>20</width>
-                   <height>0</height>
-                  </size>
-                 </property>
-                </spacer>
+                </widget>
                </item>
               </layout>
              </widget>
@@ -1462,6 +1444,19 @@
          </item>
         </layout>
        </widget>
+      </item>
+      <item>
+       <spacer name="verticalSpacer">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>20</width>
+          <height>40</height>
+         </size>
+        </property>
+       </spacer>
       </item>
       <item>
        <widget class="QWidget" name="buttonbar" native="true">

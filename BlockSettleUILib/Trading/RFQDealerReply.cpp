@@ -90,6 +90,8 @@ void RFQDealerReply::init(const std::shared_ptr<spdlog::logger> logger
    connect(autoSignQuoteProvider_->autoQuoter(), &UserScriptRunner::sendQuote, this, &RFQDealerReply::onAQReply, Qt::QueuedConnection);
    connect(autoSignQuoteProvider_->autoQuoter(), &UserScriptRunner::pullQuoteNotif, this, &RFQDealerReply::pullQuoteNotif, Qt::QueuedConnection);
 
+   connect(autoSignQuoteProvider_.get(), &AutoSignQuoteProvider::autoSignStateChanged, this, &RFQDealerReply::onAutoSignStateChanged, Qt::QueuedConnection);
+
    UtxoReservation::addAdapter(dealerUtxoAdapter_);
 }
 
@@ -1063,4 +1065,12 @@ void RFQDealerReply::onCelerDisconnected()
    logger_->info("Disabled auto-quoting due to Celer disconnection");
    celerConnected_ = false;
    validateGUI();
+}
+
+void RFQDealerReply::onAutoSignStateChanged()
+{
+   if (autoSignQuoteProvider_->autoSignState()) {
+      ui_->comboBoxWallet->setCurrentText(autoSignQuoteProvider_->getAutoSignWalletName());
+   }
+   ui_->comboBoxWallet->setEnabled(!autoSignQuoteProvider_->autoSignState());
 }

@@ -426,12 +426,10 @@ bool HeadlessContainerListener::onUpdateDialogData(const std::string &clientId, 
    auto it = deferredPasswordRequests_.begin();
    while (it != deferredPasswordRequests_.end()) {
       Internal::PasswordDialogDataWrapper otherDialogData = request.passworddialogdata();
-      try {
-         const auto &id = otherDialogData.value<std::string>("SettlementId");
-         if (!id.empty() && it->dialogData.value<std::string>("SettlementId") == id) {
-            it->dialogData.MergeFrom(request.passworddialogdata());
-         }
-      } catch (...) {}
+      const auto &id = otherDialogData.value<std::string>("SettlementId");
+      if (!id.empty() && it->dialogData.value<std::string>("SettlementId") == id) {
+         it->dialogData.MergeFrom(request.passworddialogdata());
+      }
 
       it++;
    }
@@ -625,27 +623,25 @@ bool HeadlessContainerListener::RequestPasswordIfNeeded(const std::string &clien
       needPassword = !hdWallet->encryptionTypes().empty();
    }
 
-   try {
-      auto auotSignCategory = static_cast<bs::signer::AutoSignCategory>(dialogData.value<int>("AutoSignCategory"));
-      // currently only dealer can use autosign
-      bool autoSignAllowed = (auotSignCategory == bs::signer::AutoSignCategory::SettlementDealer);
+   auto autoSignCategory = static_cast<bs::signer::AutoSignCategory>(dialogData.value<int>("AutoSignCategory"));
+   // currently only dealer can use autosign
+   bool autoSignAllowed = (autoSignCategory == bs::signer::AutoSignCategory::SettlementDealer);
 
-      SecureBinaryData password;
-      if (autoSignAllowed && needPassword) {
-         const auto passwordIt = passwords_.find(rootId);
-         if (passwordIt != passwords_.end()) {
-            needPassword = false;
-            password = passwordIt->second;
-         }
+   SecureBinaryData password;
+   if (autoSignAllowed && needPassword) {
+      const auto passwordIt = passwords_.find(rootId);
+      if (passwordIt != passwords_.end()) {
+         needPassword = false;
+         password = passwordIt->second;
       }
+   }
 
-      if (!needPassword) {
-         if (cb) {
-            cb(ErrorCode::NoError, password);
-         }
-         return true;
+   if (!needPassword) {
+      if (cb) {
+         cb(ErrorCode::NoError, password);
       }
-   } catch (...) {}
+      return true;
+   }
 
    return RequestPassword(rootId, txReq, reqType, dialogData, cb);
 }
@@ -1905,15 +1901,13 @@ bool HeadlessContainerListener::onExecCustomDialog(const std::string &clientId, 
 bool PasswordRequest::operator <(const PasswordRequest &other) const {
    seconds thisInterval, otherInterval;
 
-   try {
-      thisInterval = seconds(dialogData.value<int>("Duration"));
-   } catch (...) {
+   thisInterval = seconds(dialogData.value<int>("Duration"));
+   if (thisInterval == 0s) {
       thisInterval = kDefaultDuration;
    }
 
-   try {
-      otherInterval = seconds(other.dialogData.value<int>("Duration"));
-   } catch (...) {
+   otherInterval = seconds(other.dialogData.value<int>("Duration"));
+   if (otherInterval == 0s) {
       otherInterval = kDefaultDuration;
    }
 
