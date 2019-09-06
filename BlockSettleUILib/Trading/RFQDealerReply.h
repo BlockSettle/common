@@ -156,6 +156,7 @@ namespace bs {
          bool           celerConnected_{false};
 
          std::unordered_map<std::string, double>   bestQPrices_;
+         QFont invalidBalanceFont_;
 
          struct MDInfo {
             double   bidPrice{};
@@ -178,7 +179,6 @@ namespace bs {
          std::shared_ptr<bs::sync::Wallet> getXbtWallet();
          bs::Address getRecvAddress() const;
          void setBalanceOk(bool ok);
-         void updateRecvAddresses();
          bool checkBalance() const;
          QDoubleSpinBox *getActivePriceWidget() const;
          void updateUiWalletFor(const bs::network::QuoteReqNotification &qrn);

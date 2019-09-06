@@ -1311,7 +1311,7 @@
              </widget>
             </item>
             <item>
-             <widget class="QLabel" name="labelBalance">
+             <widget class="QLabel" name="labelBalanceValue">
               <property name="minimumSize">
                <size>
                 <width>0</width>
