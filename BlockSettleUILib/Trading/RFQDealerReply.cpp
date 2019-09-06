@@ -95,8 +95,6 @@ void RFQDealerReply::init(const std::shared_ptr<spdlog::logger> logger
 
 void RFQDealerReply::initUi()
 {
-   ui_->labelRecvAddr->hide();
-   ui_->comboBoxRecvAddr->hide();
    ui_->authenticationAddressLabel->hide();
    ui_->authenticationAddressComboBox->hide();
    ui_->pushButtonSubmit->setEnabled(false);
@@ -160,38 +158,33 @@ bs::Address RFQDealerReply::getRecvAddress() const
       return {};
    }
 
-   const auto index = ui_->comboBoxRecvAddr->currentIndex();
-   logger_->debug("[RFQDealerReply::getRecvAddress] obtaining addr #{} from wallet {}", index, curWallet_->name());
-   if (index <= 0) {
-      auto promAddr = std::make_shared<std::promise<bs::Address>>();
-      auto futAddr = promAddr->get_future();
-      const auto &cbAddr = [this, promAddr](const bs::Address &addr) {
-         promAddr->set_value(addr);
-         if (curWallet_->type() != bs::core::wallet::Type::ColorCoin) {
-            curWallet_->setAddressComment(addr
-               , bs::sync::wallet::Comment::toString(bs::sync::wallet::Comment::SettlementPayOut));
-         }
-      };
-      curWallet_->getNewIntAddress(cbAddr);
+   auto promAddr = std::make_shared<std::promise<bs::Address>>();
+   auto futAddr = promAddr->get_future();
+   const auto &cbAddr = [this, promAddr](const bs::Address &addr) {
+      promAddr->set_value(addr);
+      if (curWallet_->type() != bs::core::wallet::Type::ColorCoin) {
+         curWallet_->setAddressComment(addr
+            , bs::sync::wallet::Comment::toString(bs::sync::wallet::Comment::SettlementPayOut));
+      }
+   };
+   curWallet_->getNewIntAddress(cbAddr);
 //      curWallet_->RegisterWallet();  //TODO: invoke at address callback
-      return futAddr.get();
-   }
-   return curWallet_->getExtAddressList()[index - 1];
+   return futAddr.get();
 }
 
 void RFQDealerReply::updateRecvAddresses()
 {
-   if (prevWallet_ == curWallet_) {
-      return;
-   }
+//   if (prevWallet_ == curWallet_) {
+//      return;
+//   }
 
-   ui_->comboBoxRecvAddr->clear();
-   ui_->comboBoxRecvAddr->addItem(tr("Auto Create"));
-   if (curWallet_ != nullptr) {
-      for (const auto &addr : curWallet_->getExtAddressList()) {
-         ui_->comboBoxRecvAddr->addItem(QString::fromStdString(addr.display()));
-      }
-   }
+//   ui_->comboBoxRecvAddr->clear();
+//   ui_->comboBoxRecvAddr->addItem(tr("Auto Create"));
+//   if (curWallet_ != nullptr) {
+//      for (const auto &addr : curWallet_->getExtAddressList()) {
+//         ui_->comboBoxRecvAddr->addItem(QString::fromStdString(addr.display()));
+//      }
+//   }
 }
 
 void RFQDealerReply::updateRespQuantity()
@@ -332,8 +325,6 @@ void RFQDealerReply::updateQuoteReqNotification(const bs::network::QuoteReqNotif
    ui_->authenticationAddressComboBox->setVisible(isXBT);
    ui_->widgetWallet->setVisible(isXBT || isPrivMkt);
    ui_->pushButtonAdvanced->setVisible(isXBT && (qrn.side == bs::network::Side::Buy));
-   ui_->labelRecvAddr->setVisible(isXBT || isPrivMkt);
-   ui_->comboBoxRecvAddr->setVisible(isXBT || isPrivMkt);
 
    dealerSellXBT_ = (isXBT || isPrivMkt) && ((qrn.product == bs::network::XbtCurrency) != (qrn.side == bs::network::Side::Sell));
 

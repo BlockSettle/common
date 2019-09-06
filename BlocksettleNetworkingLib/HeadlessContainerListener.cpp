@@ -1123,10 +1123,11 @@ bool HeadlessContainerListener::onPromoteHDWallet(const std::string& clientId, h
 void HeadlessContainerListener::CreateHDLeafResponse(const std::string &clientId, unsigned int id
    , ErrorCode result, const std::shared_ptr<bs::core::hd::Leaf>& leaf)
 {
-   const std::string pathString = leaf->path().toString();
-   logger_->debug("[HeadlessContainerListener] CreateHDWalletResponse: {}", pathString);
    headless::CreateHDLeafResponse response;
-   if (leaf) {
+   if (result != bs::error::ErrorCode::NoError && leaf) {
+      const std::string pathString = leaf->path().toString();
+      logger_->debug("[HeadlessContainerListener] CreateHDWalletResponse: {}", pathString);
+
       auto leafResponse = response.mutable_leaf();
 
       leafResponse->set_path(pathString);
@@ -1144,8 +1145,8 @@ void HeadlessContainerListener::CreateHDLeafResponse(const std::string &clientId
    }
 }
 
-void HeadlessContainerListener::CreatePromoteHDWalletResponse(const std::string& clientId, unsigned int id,
-                                                        ErrorCode result, const std::string& walletId)
+void HeadlessContainerListener::CreatePromoteHDWalletResponse(const std::string& clientId, unsigned int id
+   , ErrorCode result, const std::string& walletId)
 {
    logger_->debug("[HeadlessContainerListener] PromoteHDWalletResponse: {}", id);
    headless::PromoteHDWalletResponse response;
