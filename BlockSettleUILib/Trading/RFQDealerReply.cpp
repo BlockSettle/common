@@ -405,11 +405,11 @@ void RFQDealerReply::updateUiWalletFor(const bs::network::QuoteReqNotification &
       }
 
       const bool skipWatchingOnly = (qrn.side == bs::network::Side::Sell);
-      walletSelected(UiUtils::fillWalletsComboBox(ui_->comboBoxWallet, walletsManager_, skipWatchingOnly));
+      updateWalletsList(skipWatchingOnly);
    }
    else if (qrn.assetType == bs::network::Asset::SpotXBT) {
-      const bool skipWatchingOnly = (currentQRN_.side != bs::network::Side::Sell);
-      walletSelected(UiUtils::fillWalletsComboBox(ui_->comboBoxWallet, walletsManager_, skipWatchingOnly));
+      const bool skipWatchingOnly = (currentQRN_.side == bs::network::Side::Buy);
+      updateWalletsList(skipWatchingOnly);
    }
 }
 
@@ -800,6 +800,14 @@ void RFQDealerReply::submitReply(const std::shared_ptr<TransactionData> transDat
       }
    }
    lbdQuoteNotif({});
+}
+
+void RFQDealerReply::updateWalletsList(bool skipWatchingOnly)
+{
+   auto oldWalletId = ui_->comboBoxWallet->currentData(UiUtils::WalletIdRole).toString().toStdString();
+   int defaultIndex = UiUtils::fillWalletsComboBox(ui_->comboBoxWallet, walletsManager_, skipWatchingOnly);
+   int oldIndex = UiUtils::selectWalletInCombobox(ui_->comboBoxWallet, oldWalletId);
+   walletSelected(oldIndex >= 0 ? oldIndex : defaultIndex);
 }
 
 void RFQDealerReply::onReservedUtxosChanged(const std::string &walletId, const std::vector<UTXO> &utxos)
