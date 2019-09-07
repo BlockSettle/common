@@ -1,5 +1,6 @@
 #include "ReqXBTSettlementContainer.h"
 
+#include <QApplication>
 #include <QPointer>
 #include <spdlog/spdlog.h>
 #include "AssetManager.h"
@@ -206,14 +207,15 @@ void ReqXBTSettlementContainer::activate()
 
    QPointer<ReqXBTSettlementContainer> thisPtr = this;
    addrVerificator_ = std::make_shared<AddressVerificator>(logger_, armory_
-      , [this, thisPtr](const bs::Address &address, AddressVerificationState state)
+      , [thisPtr](const bs::Address &address, AddressVerificationState state)
    {
-      if (!thisPtr) {
-         return;
-      }
-
-      dealerAuthAddress_ = address;
-      dealerVerifStateChanged(state);
+      QMetaObject::invokeMethod(qApp, [thisPtr, address, state] {
+         if (!thisPtr) {
+            return;
+         }
+         thisPtr->dealerAuthAddress_ = address;
+         thisPtr->dealerVerifStateChanged(state);
+      });
    });
    addrVerificator_->SetBSAddressList(authAddrMgr_->GetBSAddresses());
 
