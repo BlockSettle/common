@@ -1,4 +1,6 @@
 #include "ReqXBTSettlementContainer.h"
+
+#include <QPointer>
 #include <spdlog/spdlog.h>
 #include "AssetManager.h"
 #include "AuthAddressManager.h"
@@ -202,9 +204,14 @@ void ReqXBTSettlementContainer::activate()
 
    infoReqId_ = signContainer_->GetInfo(walletInfo_.rootId().toStdString());
 
+   QPointer<ReqXBTSettlementContainer> thisPtr = this;
    addrVerificator_ = std::make_shared<AddressVerificator>(logger_, armory_
-      , [this](const bs::Address &address, AddressVerificationState state)
+      , [this, thisPtr](const bs::Address &address, AddressVerificationState state)
    {
+      if (!thisPtr) {
+         return;
+      }
+
       dealerAuthAddress_ = address;
       dealerVerifStateChanged(state);
    });
@@ -232,7 +239,6 @@ void ReqXBTSettlementContainer::activate()
       return;
    }
 
-   QPointer<ReqXBTSettlementContainer> thisPtr = this;
    settlLeaf->setSettlementID(settlementId_, [thisPtr](bool success) {
       if (!thisPtr) {
          return;
