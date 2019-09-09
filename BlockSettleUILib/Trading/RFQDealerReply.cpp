@@ -763,7 +763,10 @@ void RFQDealerReply::updateWalletsList(bool skipWatchingOnly)
    auto oldWalletId = ui_->comboBoxWallet->currentData(UiUtils::WalletIdRole).toString().toStdString();
    int defaultIndex = UiUtils::fillWalletsComboBox(ui_->comboBoxWallet, walletsManager_, skipWatchingOnly);
    int oldIndex = UiUtils::selectWalletInCombobox(ui_->comboBoxWallet, oldWalletId);
-   walletSelected(oldIndex >= 0 ? oldIndex : defaultIndex);
+   if (oldIndex < 0) {
+      ui_->comboBoxWallet->setCurrentIndex(defaultIndex);
+   }
+   walletSelected(ui_->comboBoxWallet->currentIndex());
 }
 
 void RFQDealerReply::onReservedUtxosChanged(const std::string &walletId, const std::vector<UTXO> &utxos)
