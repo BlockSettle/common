@@ -247,14 +247,14 @@ bool Wallet::updateBalances(const std::function<void(void)> &cb)
             *unconfirmedBalance = unconfirmed;
             *addrCnt = addrCount;
 
-            decltype(cbBalances) cbCopy = std::make_shared<std::vector<std::function<void(void)>>>();
+            std::vector<std::function<void(void)>> cbCopy;
             {
                std::unique_lock<std::mutex> lock(*cbMutex);
 
-               cbCopy->swap(*cbBalances);
+               cbCopy.swap(*cbBalances);
             }
 
-            for (const auto &cb : *cbCopy) {
+            for (const auto &cb : cbCopy) {
                if (cb) {
                   cb();
                }
