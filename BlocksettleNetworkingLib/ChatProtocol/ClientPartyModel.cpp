@@ -52,9 +52,14 @@ ClientPartyPtr ClientPartyModel::getPartyByUserName(const std::string& userName)
    return nullptr;
 }
 
-void ClientPartyModel::handleLocalErrors(const Chat::ClientPartyModelError& errorCode, const std::string& what)
+void ClientPartyModel::handleLocalErrors(const Chat::ClientPartyModelError& errorCode, const std::string& what, bool displayAsWarning)
 {
-   loggerPtr_->debug("[ClientPartyModel::handleLocalErrors] Error: {}, what: {}", (int)errorCode, what);
+   std::string displayAs = ErrorDescription;
+   if (displayAsWarning)
+   {
+      displayAs = WarningDescription;
+   }
+   loggerPtr_->debug("[ClientPartyModel::handleLocalErrors] {}: {}, what: {}", displayAs, (int)errorCode, what);
 }
 
 void ClientPartyModel::handlePartyInserted(const PartyPtr& partyPtr)
@@ -186,4 +191,52 @@ void ClientPartyModel::handleDisplayNameChanged()
    }
 
    emit clientPartyDisplayNameChanged(clientParty->id());
+}
+
+ClientPartyPtr ClientPartyModel::getClientPartyByCreatorHash(const std::string& creatorHash)
+{
+   IdPartyList idPartyList = getIdPartyList();
+
+   for (const auto& partyId : idPartyList)
+   {
+      ClientPartyPtr clientPartyPtr = getClientPartyById(partyId);
+
+      if (nullptr == clientPartyPtr)
+      {
+         continue;
+      }
+
+      if (clientPartyPtr->partyCreatorHash() == creatorHash)
+      {
+         return clientPartyPtr;
+      }
+   }
+
+   emit error(ClientPartyModelError::PartyCreatorHashNotFound, creatorHash);
+
+   return nullptr;
+}
+
+ClientPartyPtr ClientPartyModel::getClientPartyByUserHash(const std::string& userHash)
+{
+   IdPartyList idPartyList = getIdPartyList();
+
+   for (const auto& partyId : idPartyList)
+   {
+      ClientPartyPtr clientPartyPtr = getClientPartyById(partyId);
+
+      if (nullptr == clientPartyPtr)
+      {
+         continue;
+      }
+
+      if (clientPartyPtr->userHash() == userHash)
+      {
+         return clientPartyPtr;
+      }
+   }
+
+   emit error(ClientPartyModelError::UserHashNotFound, userHash);
+
+   return nullptr;
 }
