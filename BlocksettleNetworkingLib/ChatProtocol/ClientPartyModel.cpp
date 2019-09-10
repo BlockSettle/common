@@ -30,11 +30,11 @@ IdPartyList ClientPartyModel::getIdPartyList() const
 
 ClientPartyPtr ClientPartyModel::getPartyByUserName(const std::string& userName)
 {
-   IdPartyList idPartyList = getIdPartyList();
+   const IdPartyList idPartyList = getIdPartyList();
 
    for (const auto& partyId : idPartyList)
    {
-      ClientPartyPtr clientPartyPtr = getClientPartyById(partyId);
+      const ClientPartyPtr clientPartyPtr = getClientPartyById(partyId);
 
       if (nullptr == clientPartyPtr)
       {
@@ -54,17 +54,14 @@ ClientPartyPtr ClientPartyModel::getPartyByUserName(const std::string& userName)
 
 void ClientPartyModel::handleLocalErrors(const Chat::ClientPartyModelError& errorCode, const std::string& what, bool displayAsWarning)
 {
-   std::string displayAs = ErrorDescription;
-   if (displayAsWarning)
-   {
-      displayAs = WarningDescription;
-   }
+   const std::string displayAs = displayAsWarning ? WarningDescription : ErrorDescription;
+
    loggerPtr_->debug("[ClientPartyModel::handleLocalErrors] {}: {}, what: {}", displayAs, (int)errorCode, what);
 }
 
 void ClientPartyModel::handlePartyInserted(const PartyPtr& partyPtr)
 {
-   ClientPartyPtr clientPartyPtr = getClientPartyById(partyPtr->id());
+   const ClientPartyPtr clientPartyPtr = getClientPartyById(partyPtr->id());
 
    if (nullptr == clientPartyPtr)
    {
@@ -78,7 +75,7 @@ void ClientPartyModel::handlePartyInserted(const PartyPtr& partyPtr)
 
 void ClientPartyModel::handlePartyRemoved(const PartyPtr& partyPtr)
 {
-   ClientPartyPtr clientPartyPtr = getClientPartyById(partyPtr->id());
+   const ClientPartyPtr clientPartyPtr = getClientPartyById(partyPtr->id());
 
    if (nullptr == clientPartyPtr)
    {
@@ -100,7 +97,7 @@ void ClientPartyModel::handlePartyStatusChanged(const ClientStatus&)
       return;
    }
 
-   ClientPartyPtr clientPartyPtr = getClientPartyById(clientParty->id());
+   const ClientPartyPtr clientPartyPtr = getClientPartyById(clientParty->id());
 
    if (!clientPartyPtr)
    {
@@ -112,7 +109,7 @@ void ClientPartyModel::handlePartyStatusChanged(const ClientStatus&)
 
 ClientPartyPtr ClientPartyModel::castToClientPartyPtr(const PartyPtr& partyPtr)
 {
-   ClientPartyPtr clientPartyPtr = std::dynamic_pointer_cast<ClientParty>(partyPtr);
+   const ClientPartyPtr clientPartyPtr = std::dynamic_pointer_cast<ClientParty>(partyPtr);
 
    if (!clientPartyPtr)
    {
@@ -125,7 +122,7 @@ ClientPartyPtr ClientPartyModel::castToClientPartyPtr(const PartyPtr& partyPtr)
 
 ClientPartyPtr ClientPartyModel::getClientPartyById(const std::string& party_id)
 {
-   PartyPtr partyPtr = getPartyById(party_id);
+   const PartyPtr partyPtr = getPartyById(party_id);
 
    if (nullptr == partyPtr)
    {
@@ -133,7 +130,7 @@ ClientPartyPtr ClientPartyModel::getClientPartyById(const std::string& party_id)
       return nullptr;
    }
 
-   ClientPartyPtr clientPartyPtr = castToClientPartyPtr(partyPtr);
+   const ClientPartyPtr clientPartyPtr = castToClientPartyPtr(partyPtr);
 
    return clientPartyPtr;
 }
@@ -146,14 +143,14 @@ void ClientPartyModel::handlePartyStateChanged(const std::string& partyId)
 
 PrivatePartyState ClientPartyModel::deducePrivatePartyStateForUser(const std::string& userName)
 {
-   ClientPartyPtr clientPartyPtr = getPartyByUserName(userName);
+   const ClientPartyPtr clientPartyPtr = getPartyByUserName(userName);
 
    if (!clientPartyPtr)
    {
       return PrivatePartyState::Unknown;
    }
 
-   PartyState partyState = clientPartyPtr->partyState();
+   const PartyState partyState = clientPartyPtr->partyState();
 
    if (PartyState::UNINITIALIZED == partyState)
    {
@@ -195,18 +192,13 @@ void ClientPartyModel::handleDisplayNameChanged()
 
 ClientPartyPtr ClientPartyModel::getClientPartyByCreatorHash(const std::string& creatorHash)
 {
-   IdPartyList idPartyList = getIdPartyList();
+   const IdPartyList idPartyList = getIdPartyList();
 
    for (const auto& partyId : idPartyList)
    {
-      ClientPartyPtr clientPartyPtr = getClientPartyById(partyId);
+      const ClientPartyPtr clientPartyPtr = getClientPartyById(partyId);
 
-      if (nullptr == clientPartyPtr)
-      {
-         continue;
-      }
-
-      if (clientPartyPtr->partyCreatorHash() == creatorHash)
+      if (clientPartyPtr && clientPartyPtr->partyCreatorHash() == creatorHash)
       {
          return clientPartyPtr;
       }
@@ -219,18 +211,13 @@ ClientPartyPtr ClientPartyModel::getClientPartyByCreatorHash(const std::string& 
 
 ClientPartyPtr ClientPartyModel::getClientPartyByUserHash(const std::string& userHash)
 {
-   IdPartyList idPartyList = getIdPartyList();
+   const IdPartyList idPartyList = getIdPartyList();
 
    for (const auto& partyId : idPartyList)
    {
-      ClientPartyPtr clientPartyPtr = getClientPartyById(partyId);
+      const ClientPartyPtr clientPartyPtr = getClientPartyById(partyId);
 
-      if (nullptr == clientPartyPtr)
-      {
-         continue;
-      }
-
-      if (clientPartyPtr->userHash() == userHash)
+      if (clientPartyPtr && clientPartyPtr->userHash() == userHash)
       {
          return clientPartyPtr;
       }

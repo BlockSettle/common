@@ -85,11 +85,7 @@ PrivateDirectMessagePartyPtr PartyModel::getPrivatePartyById(const std::string& 
 
 void PartyModel::handleLocalErrors(const Chat::PartyModelError& errorCode, const std::string& what, bool displayAsWarning)
 {
-   std::string displayAs = ErrorDescription;
-   if (displayAsWarning)
-   {
-      displayAs = WarningDescription;
-   }
+   const std::string displayAs = displayAsWarning ? WarningDescription : ErrorDescription;
 
    loggerPtr_->debug("[PartyModel::handleLocalErrors] {}: {}, what: {}", displayAs, (int)errorCode, what);
 }

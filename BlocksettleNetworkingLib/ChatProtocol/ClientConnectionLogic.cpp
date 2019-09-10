@@ -212,13 +212,9 @@ void ClientConnectionLogic::prepareAndSendPublicMessage(const ClientPartyPtr& cl
 
 void ClientConnectionLogic::handleLocalErrors(const Chat::ClientConnectionLogicError& errorCode, const std::string& what, bool displayAsWarning)
 {
-   std::string displayAs = ErrorDescription;
-   if (displayAsWarning)
-   {
-      displayAs = WarningDescription;
-   }
+   const std::string displayAs = displayAsWarning ? WarningDescription : ErrorDescription;
 
-   loggerPtr_->debug("[ClientConnectionLogic::handleLocalErrors] Error: {}, what: {}", static_cast<int>(errorCode), what);
+   loggerPtr_->debug("[ClientConnectionLogic::handleLocalErrors] {}: {}, what: {}", displayAs, static_cast<int>(errorCode), what);
 }
 
 void ClientConnectionLogic::handlePartyMessagePacket(PartyMessagePacket& partyMessagePacket)
