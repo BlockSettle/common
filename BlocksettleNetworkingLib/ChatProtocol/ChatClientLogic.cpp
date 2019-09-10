@@ -273,8 +273,8 @@ void ChatClientLogic::DeletePrivateParty(const std::string& partyId)
    clientConnectionLogicPtr_->rejectPrivateParty(partyId);
 
    // then delete local
-   ClientPartyModelPtr clientPartModelPtr = clientPartyLogicPtr_->clientPartyModelPtr();
-   PartyPtr partyPtr = clientPartModelPtr->getPartyById(partyId);
+   ClientPartyModelPtr clientPartyModelPtr = clientPartyLogicPtr_->clientPartyModelPtr();
+   PartyPtr partyPtr = clientPartyModelPtr->getPartyById(partyId);
 
    if (nullptr == partyPtr)
    {
@@ -282,7 +282,7 @@ void ChatClientLogic::DeletePrivateParty(const std::string& partyId)
       return;
    }
 
-   clientPartModelPtr->removeParty(partyPtr);
+   clientPartyModelPtr->removeParty(partyPtr);
 }
 
 void ChatClientLogic::SearchUser(const std::string& userHash, const std::string& searchId)
