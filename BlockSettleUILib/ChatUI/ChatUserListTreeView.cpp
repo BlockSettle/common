@@ -65,16 +65,14 @@ void ChatUserListTreeView::editContact(const QModelIndex& index)
 
          // do not allow display name to contains only whitespaces
          std::string newDisplayName = dialog.displayName().toStdString();
-         newDisplayName.erase(std::remove_if(newDisplayName.begin(), newDisplayName.end(), [l = std::locale{}](auto ch) {
-            return std::isspace(ch, l);
-         }), newDisplayName.end());
+         std::string::iterator it_first_nonspace = std::find_if(newDisplayName.begin(), newDisplayName.end(), [l = std::locale{}](auto ch) {
+            return !std::isspace(ch, l);
+         });
 
-         if (newDisplayName.empty())
+         if (it_first_nonspace != newDisplayName.end())
          {
-            return;
+            emit setDisplayName(clientPartyPtr->id(), newDisplayName);
          }
-
-         emit setDisplayName(clientPartyPtr->id(), dialog.displayName().toStdString());
       }
    }
 }
