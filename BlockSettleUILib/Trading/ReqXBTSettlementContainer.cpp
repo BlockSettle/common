@@ -81,9 +81,9 @@ unsigned int ReqXBTSettlementContainer::createPayoutTx(const BinaryData& payinHa
 
       bs::sync::PasswordDialogData dlgData = toPayOutTxDetailsPasswordDialogData(txReq);
       dlgData.setValue("SettlementId", QString::fromStdString(settlementId_.toHexStr()));
-      dlgData.setValue("SettlementPayOut", QStringLiteral("+ %2 %1")
-                  .arg(UiUtils::XbtCurrency)
-                  .arg(UiUtils::displayAmount(txReq.amount())));
+      dlgData.setValue("ResponderAuthAddressVerified", true);
+      dlgData.setValue("SigningAllowed", true);
+
 
       logger_->debug("[{}] pay-out fee={}, qty={} ({}), payin hash={}", __func__
          , txReq.fee, qty, qty * BTCNumericTypes::BalanceDivider, payinHash.toHexStr(true));
@@ -296,28 +296,10 @@ bs::sync::PasswordDialogData ReqXBTSettlementContainer::toPasswordDialogData() c
 
 
    // tx details
-   if (side() == bs::network::Side::Buy) {
-      dialogData.setValue("InputAmount", QStringLiteral("- %2 %1")
-                    .arg(QString::fromStdString(product()))
-                    .arg(UiUtils::displayAmount(payOutTxRequest_.inputAmount())));
-
-      dialogData.setValue("ReturnAmount", QStringLiteral("+ %2 %1")
-                    .arg(QString::fromStdString(product()))
-                    .arg(UiUtils::displayAmount(payOutTxRequest_.change.value)));
-   }
-   else {
-      dialogData.setValue("InputAmount", QStringLiteral("- %2 %1")
-                    .arg(UiUtils::XbtCurrency)
-                    .arg(UiUtils::displayAmount(payInTxRequest_.inputAmount())));
-
-      dialogData.setValue("ReturnAmount", QStringLiteral("+ %2 %1")
-                    .arg(UiUtils::XbtCurrency)
-                    .arg(UiUtils::displayAmount(payInTxRequest_.change.value)));
-   }
-
-   dialogData.setValue("NetworkFee", QStringLiteral("- %2 %1")
-                       .arg(UiUtils::XbtCurrency)
-                       .arg(UiUtils::displayAmount(fee())));
+   dialogData.setValue("InputAmountVisible", true);
+   dialogData.setValue("ReturnAmountVisible", true);
+   dialogData.setValue("NetworkFeeVisible", true);
+   dialogData.setValue("TxInputProduct", UiUtils::XbtCurrency);
 
    return dialogData;
 }

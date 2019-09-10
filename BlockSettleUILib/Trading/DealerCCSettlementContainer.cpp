@@ -68,35 +68,20 @@ bs::sync::PasswordDialogData DealerCCSettlementContainer::toPasswordDialogData()
    dialogData.setValue("TotalValue", UiUtils::displayAmount(quantity() * price()));
 
    // tx details
+   dialogData.setValue("InputAmountVisible", true);
+   dialogData.setValue("ReturnAmountVisible", true);
+
    if (side() == bs::network::Side::Buy) {
-      dialogData.setValue("InputAmount", QStringLiteral("- %2 %1")
-                    .arg(UiUtils::XbtCurrency)
-                    .arg(UiUtils::displayAmount(txReq_.inputAmount())));
-
-      dialogData.setValue("ReturnAmount", QStringLiteral("+ %2 %1")
-                    .arg(UiUtils::XbtCurrency)
-                    .arg(UiUtils::displayAmount(txReq_.change.value)));
-
-      dialogData.setValue("PaymentAmount", QStringLiteral("- %2 %1")
-                    .arg(UiUtils::XbtCurrency)
-                    .arg(UiUtils::displayAmount(txReq_.inputAmount() - txReq_.change.value)));
+      dialogData.setValue("TxInputProduct", UiUtils::XbtCurrency);
+      dialogData.setValue("PaymentAmountVisible", true);
 
       dialogData.setValue("DeliveryReceived", QStringLiteral("+ %2 %1")
                     .arg(QString::fromStdString(product()))
-                    .arg(UiUtils::displayCCAmount(txReq_.change.value / lotSize_)));
+                    .arg(UiUtils::displayCCAmount(quantity())));
    }
    else {
-      dialogData.setValue("InputAmount", QStringLiteral("- %2 %1")
-                    .arg(QString::fromStdString(product()))
-                    .arg(UiUtils::displayCCAmount(txReq_.inputAmount() / lotSize_)));
-
-      dialogData.setValue("ReturnAmount", QStringLiteral("+ %2 %1")
-                    .arg(QString::fromStdString(product()))
-                    .arg(UiUtils::displayCCAmount(txReq_.change.value / lotSize_)));
-
-      dialogData.setValue("DeliveryAmount", QStringLiteral("- %2 %1")
-                    .arg(QString::fromStdString(product()))
-                    .arg(UiUtils::displayCCAmount((txReq_.inputAmount() - txReq_.change.value) / lotSize_)));
+      dialogData.setValue("TxInputProduct", product());
+      dialogData.setValue("DeliveryAmountVisible", true);
 
       dialogData.setValue("PaymentReceived", QStringLiteral("+ %2 %1")
                     .arg(UiUtils::XbtCurrency)
@@ -107,8 +92,8 @@ bs::sync::PasswordDialogData DealerCCSettlementContainer::toPasswordDialogData()
    dialogData.setValue("DeliveryUTXOVerified", genAddrVerified_);
    dialogData.setValue("SigningAllowed", genAddrVerified_);
 
-   dialogData.setValue("RecipientsList", true);
-   dialogData.setValue("InputsList", true);
+   dialogData.setValue("RecipientsListVisible", true);
+   dialogData.setValue("InputsListVisible", true);
 
    return dialogData;
 }
