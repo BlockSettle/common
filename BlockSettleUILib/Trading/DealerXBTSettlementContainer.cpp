@@ -147,6 +147,7 @@ bs::sync::PasswordDialogData DealerXBTSettlementContainer::toPasswordDialogData(
 bool DealerXBTSettlementContainer::startPayInSigning()
 {
    try {
+      fee_ = transactionData_->totalFee();
       payInTxRequest_ = transactionData_->getSignTxRequest();
       bs::sync::PasswordDialogData dlgData = toPasswordDialogData();
       dlgData.setValue("SettlementPayInVisible", true);
