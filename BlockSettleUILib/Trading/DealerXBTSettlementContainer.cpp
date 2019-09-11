@@ -128,6 +128,7 @@ bs::sync::PasswordDialogData DealerXBTSettlementContainer::toPasswordDialogData(
    dialogData.setValue("InputAmountVisible", true);
    dialogData.setValue("ReturnAmountVisible", true);
    dialogData.setValue("NetworkFeeVisible", true);
+   dialogData.setValue("TxTotalAmountVisible", true);
    dialogData.setValue("TxInputProduct", UiUtils::XbtCurrency);
 
    // settlement details
@@ -148,10 +149,7 @@ bool DealerXBTSettlementContainer::startPayInSigning()
    try {
       payInTxRequest_ = transactionData_->getSignTxRequest();
       bs::sync::PasswordDialogData dlgData = toPasswordDialogData();
-      dlgData.setValue("SettlementPayIn", QStringLiteral("- %2 %1")
-                       .arg(UiUtils::XbtCurrency)
-                       .arg(UiUtils::displayAmount(amount())));
-
+      dlgData.setValue("SettlementPayInVisible", true);
 
       payinSignId_ = signContainer_->signSettlementTXRequest(payInTxRequest_, dlgData, SignContainer::TXSignMode::Full);
    }

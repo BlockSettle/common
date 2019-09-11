@@ -106,9 +106,7 @@ void ReqXBTSettlementContainer::acceptSpotXBT()
          payInTxRequest_ = transactionData_->createTXRequest(false, changeAddr);
 
          bs::sync::PasswordDialogData dlgData = toPasswordDialogData();
-         dlgData.setValue("SettlementPayIn", QStringLiteral("- %2 %1")
-                          .arg(UiUtils::XbtCurrency)
-                          .arg(UiUtils::displayAmount(amount())));
+         dlgData.setValue("SettlementPayInVisible", true);
 
          payinSignId_ = signContainer_->signSettlementTXRequest(payInTxRequest_, dlgData);
       };
@@ -299,6 +297,7 @@ bs::sync::PasswordDialogData ReqXBTSettlementContainer::toPasswordDialogData() c
    dialogData.setValue("InputAmountVisible", true);
    dialogData.setValue("ReturnAmountVisible", true);
    dialogData.setValue("NetworkFeeVisible", true);
+   dialogData.setValue("TxTotalAmountVisible", true);
    dialogData.setValue("TxInputProduct", UiUtils::XbtCurrency);
 
    return dialogData;
