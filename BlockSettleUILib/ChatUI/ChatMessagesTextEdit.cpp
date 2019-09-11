@@ -362,8 +362,8 @@ void ChatMessagesTextEdit::insertMessage(const Chat::MessagePtr& messagePtr)
    const int messageIndex = messages_[messagePtr->partyId()].size();
 
    // push new message if it doesn't exist in current chat
-   QVector<Chat::MessagePtr> messagesList = messages_[messagePtr->partyId()];
-   QVector<Chat::MessagePtr>::const_iterator messageIt = 
+   auto& messagesList = messages_[messagePtr->partyId()];
+   QVector<Chat::MessagePtr>::const_iterator messageIt =
    std::find_if(messagesList.begin(), messagesList.end(), [messagePtr](const Chat::MessagePtr& m)->bool
    {
       return m->messageId() == messagePtr->messageId();
@@ -371,7 +371,7 @@ void ChatMessagesTextEdit::insertMessage(const Chat::MessagePtr& messagePtr)
 
    if (messageIt == messagesList.cend())
    {
-      messages_[messagePtr->partyId()].push_back(messagePtr);
+      messagesList.push_back(messagePtr);
    }
 
    if (messagePtr->partyId() == currentPartyId_) {
