@@ -58,6 +58,9 @@ ReqCCSettlementContainer::~ReqCCSettlementContainer()
 bs::sync::PasswordDialogData ReqCCSettlementContainer::toPasswordDialogData() const
 {
    bs::sync::PasswordDialogData dialogData = SettlementContainer::toPasswordDialogData();
+   dialogData.setValue("Market", "CC");
+   dialogData.setValue("AutoSignCategory", static_cast<int>(bs::signer::AutoSignCategory::SettlementRequestor));
+   dialogData.setValue("LotSize", lotSize_);
 
    dialogData.remove("SettlementId");
 
@@ -77,9 +80,6 @@ bs::sync::PasswordDialogData ReqCCSettlementContainer::toPasswordDialogData() co
    dialogData.setValue("TotalValue", UiUtils::displayAmount(quantity() * price()));
 
    // tx details
-   dialogData.setValue("InputAmountVisible", true);
-   dialogData.setValue("ReturnAmountVisible", true);
-
    if (side() == bs::network::Side::Buy) {
       dialogData.setValue("TxInputProduct", UiUtils::XbtCurrency);
       dialogData.setValue("PaymentAmountVisible", true);

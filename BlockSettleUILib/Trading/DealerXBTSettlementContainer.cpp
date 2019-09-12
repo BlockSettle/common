@@ -108,6 +108,7 @@ DealerXBTSettlementContainer::~DealerXBTSettlementContainer() = default;
 bs::sync::PasswordDialogData DealerXBTSettlementContainer::toPasswordDialogData() const
 {
    bs::sync::PasswordDialogData dialogData = SettlementContainer::toPasswordDialogData();
+   dialogData.setValue("Market", "XBT");
    dialogData.setValue("AutoSignCategory", static_cast<int>(bs::signer::AutoSignCategory::SettlementDealer));
 
    // rfq details
@@ -125,10 +126,6 @@ bs::sync::PasswordDialogData DealerXBTSettlementContainer::toPasswordDialogData(
 
 
    // tx details
-   dialogData.setValue("InputAmountVisible", true);
-   dialogData.setValue("ReturnAmountVisible", true);
-   dialogData.setValue("NetworkFeeVisible", true);
-   dialogData.setValue("TxTotalAmountVisible", true);
    dialogData.setValue("TxInputProduct", UiUtils::XbtCurrency);
 
    // settlement details

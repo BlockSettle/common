@@ -44,6 +44,15 @@ Any toPbVariant(const QVariant& v)
    else if (v.type() == QVariant::Int) {
       msg.set_value_int32(v.toInt());
    }
+   else if (v.type() == QVariant::UInt) {
+      msg.set_value_uint32(v.toUInt());
+   }
+   else if (v.type() == QVariant::LongLong) {
+      msg.set_value_int64(v.toLongLong());
+   }
+   else if (v.type() == QVariant::ULongLong) {
+      msg.set_value_uint64(v.toULongLong());
+   }
    else if (v.type() == QVariant::Double) {
       msg.set_value_double(v.toDouble());
    }
@@ -100,6 +109,18 @@ QVariant fromPbVariant(const Any& v)
       }
       else if (msg.value_case() == Internal::AnyMessage::ValueCase::kValueInt32) {
          return QVariant(msg.value_int32());
+      }
+      else if (msg.value_case() == Internal::AnyMessage::ValueCase::kValueUint32) {
+         return QVariant(msg.value_uint32());
+      }
+      else if (msg.value_case() == Internal::AnyMessage::ValueCase::kValueInt64) {
+         return QVariant(msg.value_int64());
+      }
+      else if (msg.value_case() == Internal::AnyMessage::ValueCase::kValueUint64) {
+         return QVariant(msg.value_uint64());
+      }
+      else if (msg.value_case() == Internal::AnyMessage::ValueCase::kValueFloat) {
+         return QVariant(msg.value_float());
       }
       else if (msg.value_case() == Internal::AnyMessage::ValueCase::kValueDouble) {
          return QVariant(msg.value_double());

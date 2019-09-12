@@ -47,7 +47,9 @@ DealerCCSettlementContainer::~DealerCCSettlementContainer()
 bs::sync::PasswordDialogData DealerCCSettlementContainer::toPasswordDialogData() const
 {
    bs::sync::PasswordDialogData dialogData = SettlementContainer::toPasswordDialogData();
+   dialogData.setValue("Market", "CC");
    dialogData.setValue("AutoSignCategory", static_cast<int>(bs::signer::AutoSignCategory::SettlementDealer));
+   dialogData.setValue("LotSize", lotSize_);
 
    dialogData.remove("SettlementId");
 
@@ -68,9 +70,6 @@ bs::sync::PasswordDialogData DealerCCSettlementContainer::toPasswordDialogData()
    dialogData.setValue("TotalValue", UiUtils::displayAmount(quantity() * price()));
 
    // tx details
-   dialogData.setValue("InputAmountVisible", true);
-   dialogData.setValue("ReturnAmountVisible", true);
-
    if (side() == bs::network::Side::Buy) {
       dialogData.setValue("TxInputProduct", UiUtils::XbtCurrency);
       dialogData.setValue("PaymentAmountVisible", true);
@@ -201,6 +200,7 @@ void DealerCCSettlementContainer::onGenAddressVerified(bool addressVerified)
    bs::sync::PasswordDialogData pd;
    pd.setValue("DeliveryUTXOVerified", addressVerified);
    pd.setValue("SigningAllowed", addressVerified);
+
    signingContainer_->updateDialogData(pd);
 }
 

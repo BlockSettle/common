@@ -264,6 +264,8 @@ void ReqXBTSettlementContainer::deactivate()
 bs::sync::PasswordDialogData ReqXBTSettlementContainer::toPasswordDialogData() const
 {
    bs::sync::PasswordDialogData dialogData = SettlementContainer::toPasswordDialogData();
+   dialogData.setValue("Market", "XBT");
+   dialogData.setValue("AutoSignCategory", static_cast<int>(bs::signer::AutoSignCategory::SettlementRequestor));
 
    // rfq details
    QString qtyProd = UiUtils::XbtCurrency;
@@ -294,10 +296,6 @@ bs::sync::PasswordDialogData ReqXBTSettlementContainer::toPasswordDialogData() c
 
 
    // tx details
-   dialogData.setValue("InputAmountVisible", true);
-   dialogData.setValue("ReturnAmountVisible", true);
-   dialogData.setValue("NetworkFeeVisible", true);
-   dialogData.setValue("TxTotalAmountVisible", true);
    dialogData.setValue("TxInputProduct", UiUtils::XbtCurrency);
 
    return dialogData;
