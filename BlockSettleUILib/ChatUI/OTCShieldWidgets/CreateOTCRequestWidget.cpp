@@ -7,7 +7,7 @@
 #include <QPushButton>
 
 CreateOTCRequestWidget::CreateOTCRequestWidget(QWidget* parent)
-   : QWidget{parent}
+   : OTCWindowsAdapterBase{parent}
    , ui_{new Ui::CreateOTCRequestWidget{}}
 {
    ui_->setupUi(this);
@@ -24,6 +24,11 @@ CreateOTCRequestWidget::CreateOTCRequestWidget(QWidget* parent)
 }
 
 CreateOTCRequestWidget::~CreateOTCRequestWidget() = default;
+
+void CreateOTCRequestWidget::syncInterface()
+{
+
+}
 
 void CreateOTCRequestWidget::onSellClicked()
 {

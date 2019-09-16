@@ -3,7 +3,7 @@
 #include "ui_PullOwnOTCRequestWidget.h"
 
 PullOwnOTCRequestWidget::PullOwnOTCRequestWidget(QWidget* parent)
-   : QWidget(parent)
+   : OTCWindowsAdapterBase(parent)
    , ui_{new Ui::PullOwnOTCRequestWidget()}
 {
    ui_->setupUi(this);
@@ -20,4 +20,9 @@ void PullOwnOTCRequestWidget::setOffer(const bs::network::otc::Offer &offer)
    ui_->labelSide->setText(QString::fromStdString(bs::network::otc::toString(offer.ourSide)));
    ui_->labelPrice->setText(QString::number(offer.price));
    ui_->labelQuantity->setText(QString::number(offer.amount));
+}
+
+void PullOwnOTCRequestWidget::syncInterface()
+{
+
 }

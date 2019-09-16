@@ -5,12 +5,13 @@
 #include <QWidget>
 
 #include "OtcTypes.h"
+#include "OTCWindowsAdapterBase.h"
 
 namespace Ui {
     class PullOwnOTCRequestWidget;
 };
 
-class PullOwnOTCRequestWidget : public QWidget
+class PullOwnOTCRequestWidget : public OTCWindowsAdapterBase
 {
 Q_OBJECT
 
@@ -19,6 +20,9 @@ public:
    ~PullOwnOTCRequestWidget() override;
 
    void setOffer(const bs::network::otc::Offer &offer);
+
+protected:
+   void syncInterface() override;
 
 signals:
    void requestPulled();
