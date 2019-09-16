@@ -90,6 +90,7 @@ public:
    const bs::network::otc::Peer *peer(const std::string &peerId) const;
 
    void setCurrentUserId(const std::string &userId);
+   const std::string &getCurrentUser() const;
 
    bool sendOffer(const bs::network::otc::Offer &offer, const std::string &peerId);
    bool pullOrRejectOffer(const std::string &peerId);

@@ -201,6 +201,11 @@ void OtcClient::setCurrentUserId(const std::string &userId)
    currentUserId_ = userId;
 }
 
+const std::string &OtcClient::getCurrentUser() const
+{
+   return currentUserId_;
+}
+
 bool OtcClient::sendOffer(const Offer &offer, const std::string &peerId)
 {
    SPDLOG_LOGGER_DEBUG(logger_, "send offer to {} (price: {}, amount: {})", peerId, offer.price, offer.amount);

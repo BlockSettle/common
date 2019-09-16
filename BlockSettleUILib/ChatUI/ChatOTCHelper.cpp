@@ -141,7 +141,13 @@ void ChatOTCHelper::onOtcResponseReject(const std::string& partyId)
 void ChatOTCHelper::onMessageArrived(const Chat::MessagePtrList& messagePtr)
 {
    for (const auto &msg : messagePtr) {
-      if (msg->partyMessageState() == Chat::SENT) {
+      if (msg->partyMessageState() == Chat::SENT && msg->senderHash() != otcClient_->getCurrentUser()) {
+         
+         auto connIt = connectedPeers_.find(msg->partyId());
+         if (connIt == connectedPeers_.end()) {
+            continue;
+         }
+
          auto data = OtcUtils::deserializeMessage(msg->messageText());
          if (!data.isNull()) {
             otcClient_->processMessage(msg->partyId(), data);
