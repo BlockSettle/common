@@ -2,6 +2,7 @@
 #include "UiUtils.h"
 
 using namespace bs;
+using namespace bs::sync::dialog;
 
 SettlementContainer::SettlementContainer()
    : QObject(nullptr)
@@ -11,13 +12,13 @@ sync::PasswordDialogData SettlementContainer::toPasswordDialogData() const
 {
    bs::sync::PasswordDialogData info;
 
-   info.setValue("SettlementId", QString::fromStdString(id()));
-   info.setValue("Duration", durationMs());
+   info.setValue(keys::SettlementId, QString::fromStdString(id()));
+   info.setValue(keys::Duration, durationMs());
 
-   info.setValue("ProductGroup", tr(bs::network::Asset::toString(assetType())));
-   info.setValue("Security", QString::fromStdString(security()));
-   info.setValue("Product", QString::fromStdString(product()));
-   info.setValue("Side", tr(bs::network::Side::toString(side())));
+   info.setValue(keys::ProductGroup, tr(bs::network::Asset::toString(assetType())));
+   info.setValue(keys::Security, QString::fromStdString(security()));
+   info.setValue(keys::Product, QString::fromStdString(product()));
+   info.setValue(keys::Side, tr(bs::network::Side::toString(side())));
 
    return info;
 }
@@ -26,9 +27,9 @@ sync::PasswordDialogData SettlementContainer::toPayOutTxDetailsPasswordDialogDat
 {
    bs::sync::PasswordDialogData dialogData = toPasswordDialogData();
 
-   dialogData.setValue("Title", tr("Settlement Pay-Out"));
-   dialogData.setValue("Duration", 30000);
-   dialogData.setValue("SettlementPayOutVisible", true);
+   dialogData.setValue(keys::Title, tr("Settlement Pay-Out"));
+   dialogData.setValue(keys::Duration, 30000);
+   dialogData.setValue(keys::SettlementPayOutVisible, true);
 
    return dialogData;
 }

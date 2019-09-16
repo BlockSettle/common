@@ -7,6 +7,55 @@
 using namespace google::protobuf;
 using namespace Blocksettle::Communication;
 
+namespace bs {
+   namespace sync {
+      namespace dialog {
+         namespace keys {
+
+            Key AutoSignCategory("AutoSignCategory");
+            Key DeliveryAmount("DeliveryAmount");
+            Key DeliveryReceived("DeliveryReceived");
+            Key DeliveryUTXOVerified("DeliveryUTXOVerified");
+            Key DialogType("DialogType");
+            Key Duration("Duration");
+            Key InputAmount("InputAmount");
+            Key InputsListVisible("InputsListVisible");
+            Key LotSize("LotSize");
+            Key Market("Market");
+            Key NetworkFee("NetworkFee");
+            Key PaymentAmount("PaymentAmount");
+            Key PaymentReceived("PaymentReceived");
+            Key Price("Price");
+            Key Product("Product");
+            Key ProductGroup("ProductGroup");
+            Key Quantity("Quantity");
+            Key RecipientsListVisible("RecipientsListVisible");
+            Key RequesterAuthAddress("RequesterAuthAddress");
+            Key RequesterAuthAddressVerified("RequesterAuthAddressVerified");
+            Key ResponderAuthAddress("ResponderAuthAddress");
+            Key ResponderAuthAddressVerified("ResponderAuthAddressVerified");
+            Key ReturnAmount("ReturnAmount");
+            Key Security("Security");
+            Key SettlementAddress("SettlementAddress");
+            Key SettlementId("SettlementId");
+            Key SettlementPayInVisible("SettlementPayInVisible");
+            Key SettlementPayOutVisible("SettlementPayOutVisible");
+            Key Side("Side");
+            Key SigningAllowed("SigningAllowed");
+            Key Title("Title");
+            Key TotalReceived("TotalReceived");
+            Key TotalSpent("TotalSpent");
+            Key TotalValue("TotalValue");
+            Key TransactionAmount("TransactionAmount");
+            Key TxInputProduct("TxInputProduct");
+            Key WalletId("WalletId");
+            Key XBT("XBT");
+
+         } // keys
+      } // dialog
+   } // sync
+} // bs
+
 Any toPbVariant(const QVariant& v)
 {
    Any any;
@@ -189,17 +238,17 @@ void bs::sync::PasswordDialogData::setValue(const QString &key, const QVariant &
    emit dataChanged();
 }
 
-void bs::sync::PasswordDialogData::setValue(const char *key, const QVariant &value)
+void bs::sync::PasswordDialogData::setValue(const bs::sync::dialog::keys::Key &key, const QVariant &value)
 {
-   setValue(QString::fromLatin1(key), value);
+   setValue(key.toString(), value);
 }
 
-void bs::sync::PasswordDialogData::setValue(const char *key, const char *value)
+void bs::sync::PasswordDialogData::setValue(const bs::sync::dialog::keys::Key &key, const char *value)
 {
    setValue(key, QString::fromLatin1(value));
 }
 
-void bs::sync::PasswordDialogData::setValue(const char *key, const std::string &value)
+void bs::sync::PasswordDialogData::setValue(const bs::sync::dialog::keys::Key &key, const std::string &value)
 {
    setValue(key, QString::fromStdString(value));
 }
@@ -210,9 +259,9 @@ void bs::sync::PasswordDialogData::remove(const QString &key)
    emit dataChanged();
 }
 
-void bs::sync::PasswordDialogData::remove(const char *key)
+void bs::sync::PasswordDialogData::remove(const bs::sync::dialog::keys::Key &key)
 {
-   remove(QString::fromLatin1(key));
+   remove(key.toString());
 }
 
 bool bs::sync::PasswordDialogData::contains(const QString &key)

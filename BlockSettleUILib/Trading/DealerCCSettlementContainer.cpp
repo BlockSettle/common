@@ -11,6 +11,8 @@
 
 #include <QPointer>
 
+using namespace bs::sync::dialog;
+
 DealerCCSettlementContainer::DealerCCSettlementContainer(const std::shared_ptr<spdlog::logger> &logger
       , const bs::network::Order &order, const std::string &quoteReqId, uint64_t lotSize
       , const bs::Address &genAddr, const std::string &ownRecvAddr
@@ -47,48 +49,48 @@ DealerCCSettlementContainer::~DealerCCSettlementContainer()
 bs::sync::PasswordDialogData DealerCCSettlementContainer::toPasswordDialogData() const
 {
    bs::sync::PasswordDialogData dialogData = SettlementContainer::toPasswordDialogData();
-   dialogData.setValue("Market", "CC");
-   dialogData.setValue("AutoSignCategory", static_cast<int>(bs::signer::AutoSignCategory::SettlementDealer));
-   dialogData.setValue("LotSize", lotSize_);
+   dialogData.setValue(keys::Market, "CC");
+   dialogData.setValue(keys::AutoSignCategory, static_cast<int>(bs::signer::AutoSignCategory::SettlementDealer));
+   dialogData.setValue(keys::LotSize, lotSize_);
 
-   dialogData.remove("SettlementId");
+   dialogData.remove(keys::SettlementId);
 
    if (side() == bs::network::Side::Sell) {
-      dialogData.setValue("Title", tr("Settlement Delivery"));
+      dialogData.setValue(keys::Title, tr("Settlement Delivery"));
    }
    else {
-      dialogData.setValue("Title", tr("Settlement Payment"));
+      dialogData.setValue(keys::Title, tr("Settlement Payment"));
    }
 
    // rfq details
    QString qtyProd = UiUtils::XbtCurrency;
 
-   dialogData.setValue("Price", UiUtils::displayPriceCC(price()));
-   dialogData.setValue("Quantity", tr("%1 %2")
+   dialogData.setValue(keys::Price, UiUtils::displayPriceCC(price()));
+   dialogData.setValue(keys::Quantity, tr("%1 %2")
                  .arg(UiUtils::displayCCAmount(quantity()))
                  .arg(QString::fromStdString(product())));
-   dialogData.setValue("TotalValue", UiUtils::displayAmount(quantity() * price()));
+   dialogData.setValue(keys::TotalValue, UiUtils::displayAmount(quantity() * price()));
 
    // tx details
    if (side() == bs::network::Side::Buy) {
-      dialogData.setValue("TxInputProduct", UiUtils::XbtCurrency);
-      dialogData.setValue("DeliveryReceived", QStringLiteral("+ %2 %1")
-                    .arg(QString::fromStdString(product()))
-                    .arg(UiUtils::displayCCAmount(quantity())));
+      dialogData.setValue(keys::TxInputProduct, UiUtils::XbtCurrency);
+      dialogData.setValue(keys::DeliveryReceived, QStringLiteral("+ %2 %1")
+         .arg(QString::fromStdString(product()))
+         .arg(UiUtils::displayCCAmount(quantity())));
    }
    else {
-      dialogData.setValue("TxInputProduct", product());
-      dialogData.setValue("PaymentReceived", QStringLiteral("+ %2 %1")
-                    .arg(UiUtils::XbtCurrency)
-                    .arg(UiUtils::displayAmount(amount())));
+      dialogData.setValue(keys::TxInputProduct, product());
+      dialogData.setValue(keys::PaymentReceived, QStringLiteral("+ %2 %1")
+         .arg(UiUtils::XbtCurrency)
+         .arg(UiUtils::displayAmount(amount())));
    }
 
    // settlement details
-   dialogData.setValue("DeliveryUTXOVerified", genAddrVerified_);
-   dialogData.setValue("SigningAllowed", genAddrVerified_);
+   dialogData.setValue(keys::DeliveryUTXOVerified, genAddrVerified_);
+   dialogData.setValue(keys::SigningAllowed, genAddrVerified_);
 
-   dialogData.setValue("RecipientsListVisible", true);
-   dialogData.setValue("InputsListVisible", true);
+   dialogData.setValue(keys::RecipientsListVisible, true);
+   dialogData.setValue(keys::InputsListVisible, true);
 
    return dialogData;
 }
@@ -194,8 +196,8 @@ void DealerCCSettlementContainer::onGenAddressVerified(bool addressVerified)
    }
 
    bs::sync::PasswordDialogData pd;
-   pd.setValue("DeliveryUTXOVerified", addressVerified);
-   pd.setValue("SigningAllowed", addressVerified);
+   pd.setValue(keys::DeliveryUTXOVerified, addressVerified);
+   pd.setValue(keys::SigningAllowed, addressVerified);
 
    signingContainer_->updateDialogData(pd);
 }

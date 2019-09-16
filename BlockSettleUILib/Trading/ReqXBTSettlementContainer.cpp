@@ -18,6 +18,8 @@
 
 static const unsigned int kWaitTimeoutInSec = 30;
 
+using namespace bs::sync::dialog;
+
 Q_DECLARE_METATYPE(AddressVerificationState)
 
 ReqXBTSettlementContainer::ReqXBTSettlementContainer(const std::shared_ptr<spdlog::logger> &logger
@@ -80,10 +82,9 @@ unsigned int ReqXBTSettlementContainer::createPayoutTx(const BinaryData& payinHa
          , transactionData_->GetTransactionSummary().feePerByte, armory_->topBlock());
 
       bs::sync::PasswordDialogData dlgData = toPayOutTxDetailsPasswordDialogData(txReq);
-      dlgData.setValue("SettlementId", QString::fromStdString(settlementId_.toHexStr()));
-      dlgData.setValue("ResponderAuthAddressVerified", true);
-      dlgData.setValue("SigningAllowed", true);
-
+      dlgData.setValue(keys::SettlementId, QString::fromStdString(settlementId_.toHexStr()));
+      dlgData.setValue(keys::ResponderAuthAddressVerified, true);
+      dlgData.setValue(keys::SigningAllowed, true);
 
       logger_->debug("[{}] pay-out fee={}, qty={} ({}), payin hash={}", __func__
          , txReq.fee, qty, qty * BTCNumericTypes::BalanceDivider, payinHash.toHexStr(true));
@@ -106,7 +107,7 @@ void ReqXBTSettlementContainer::acceptSpotXBT()
          payInTxRequest_ = transactionData_->createTXRequest(false, changeAddr);
 
          bs::sync::PasswordDialogData dlgData = toPasswordDialogData();
-         dlgData.setValue("SettlementPayInVisible", true);
+         dlgData.setValue(keys::SettlementPayInVisible, true);
 
          payinSignId_ = signContainer_->signSettlementTXRequest(payInTxRequest_, dlgData);
       };
@@ -264,39 +265,39 @@ void ReqXBTSettlementContainer::deactivate()
 bs::sync::PasswordDialogData ReqXBTSettlementContainer::toPasswordDialogData() const
 {
    bs::sync::PasswordDialogData dialogData = SettlementContainer::toPasswordDialogData();
-   dialogData.setValue("Market", "XBT");
-   dialogData.setValue("AutoSignCategory", static_cast<int>(bs::signer::AutoSignCategory::SettlementRequestor));
+   dialogData.setValue(keys::Market, "XBT");
+   dialogData.setValue(keys::AutoSignCategory, static_cast<int>(bs::signer::AutoSignCategory::SettlementRequestor));
 
    // rfq details
    QString qtyProd = UiUtils::XbtCurrency;
    QString fxProd = QString::fromStdString(fxProduct());
 
-   dialogData.setValue("Title", tr("Settlement Pay-In"));
+   dialogData.setValue(keys::Title, tr("Settlement Pay-In"));
 
-   dialogData.setValue("Price", UiUtils::displayPriceXBT(price()));
-   dialogData.setValue("TransactionAmount", UiUtils::displayQuantity(amount(), UiUtils::XbtCurrency));
+   dialogData.setValue(keys::Price, UiUtils::displayPriceXBT(price()));
+   dialogData.setValue(keys::TransactionAmount, UiUtils::displayQuantity(amount(), UiUtils::XbtCurrency));
 
-   dialogData.setValue("Quantity", tr("%1 %2")
+   dialogData.setValue(keys::Quantity, tr("%1 %2")
                        .arg(UiUtils::displayAmountForProduct(amount(), qtyProd, bs::network::Asset::Type::SpotXBT))
                        .arg(qtyProd));
-   dialogData.setValue("TotalValue", tr("%1 %2")
+   dialogData.setValue(keys::TotalValue, tr("%1 %2")
                  .arg(UiUtils::displayAmountForProduct(amount() * price(), fxProd, bs::network::Asset::Type::SpotXBT))
                  .arg(fxProd));
 
 
    // settlement details
-   dialogData.setValue("SettlementId", settlementId_.toHexStr());
-   dialogData.setValue("SettlementAddress", settlAddr_.display());
+   dialogData.setValue(keys::SettlementId, settlementId_.toHexStr());
+   dialogData.setValue(keys::SettlementAddress, settlAddr_.display());
 
-   dialogData.setValue("RequesterAuthAddress", authAddr_.display());
-   dialogData.setValue("RequesterAuthAddressVerified", true);
+   dialogData.setValue(keys::RequesterAuthAddress, authAddr_.display());
+   dialogData.setValue(keys::RequesterAuthAddressVerified, true);
 
-   dialogData.setValue("ResponderAuthAddress", bs::Address::fromPubKey(dealerAuthKey_).display());
-   dialogData.setValue("ResponderAuthAddressVerified", false);
+   dialogData.setValue(keys::ResponderAuthAddress, bs::Address::fromPubKey(dealerAuthKey_).display());
+   dialogData.setValue(keys::ResponderAuthAddressVerified, false);
 
 
    // tx details
-   dialogData.setValue("TxInputProduct", UiUtils::XbtCurrency);
+   dialogData.setValue(keys::TxInputProduct, UiUtils::XbtCurrency);
 
    return dialogData;
 }
@@ -306,9 +307,9 @@ void ReqXBTSettlementContainer::dealerVerifStateChanged(AddressVerificationState
    dealerVerifState_ = state;
 
    bs::sync::PasswordDialogData pd;
-   pd.setValue("ResponderAuthAddress", dealerAuthAddress_.display());
-   pd.setValue("ResponderAuthAddressVerified", state == AddressVerificationState::Verified);
-   pd.setValue("SigningAllowed", state == AddressVerificationState::Verified);
+   pd.setValue(keys::ResponderAuthAddress, dealerAuthAddress_.display());
+   pd.setValue(keys::ResponderAuthAddressVerified, state == AddressVerificationState::Verified);
+   pd.setValue(keys::SigningAllowed, state == AddressVerificationState::Verified);
    signContainer_->updateDialogData(pd);
 }
 
