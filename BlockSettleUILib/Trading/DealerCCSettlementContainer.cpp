@@ -72,16 +72,12 @@ bs::sync::PasswordDialogData DealerCCSettlementContainer::toPasswordDialogData()
    // tx details
    if (side() == bs::network::Side::Buy) {
       dialogData.setValue("TxInputProduct", UiUtils::XbtCurrency);
-      dialogData.setValue("PaymentAmountVisible", true);
-
       dialogData.setValue("DeliveryReceived", QStringLiteral("+ %2 %1")
                     .arg(QString::fromStdString(product()))
                     .arg(UiUtils::displayCCAmount(quantity())));
    }
    else {
       dialogData.setValue("TxInputProduct", product());
-      dialogData.setValue("DeliveryAmountVisible", true);
-
       dialogData.setValue("PaymentReceived", QStringLiteral("+ %2 %1")
                     .arg(UiUtils::XbtCurrency)
                     .arg(UiUtils::displayAmount(amount())));

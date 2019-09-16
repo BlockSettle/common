@@ -245,22 +245,63 @@ size_t wallet::TXSignRequest::estimateTxVirtSize() const
    return 0;
 }
 
-uint64_t wallet::TXSignRequest::inputAmount() const
+uint64_t wallet::TXSignRequest::amount(const wallet::TXSignRequest::ContainsAddressCb &containsAddressCb) const
 {
-   uint64_t result = 0;
-   for (const auto &utxo: inputs) {
-      result += utxo.getValue();
+   uint64_t amount = 0;
+   for (const auto &recip : recipients) {
+      amount += recip->getValue();
    }
-   return result;
+
+   if (amount == 0 && !prevStates.empty() && containsAddressCb != nullptr) {
+      return totalSpent(containsAddressCb) - fee;
+   }
+
+   return amount;
 }
 
-uint64_t wallet::TXSignRequest::amount() const
+uint64_t wallet::TXSignRequest::inputAmount(const ContainsAddressCb &containsAddressCb) const
 {
-   uint64_t result = 0;
-   for (const auto &recip : recipients) {
-      result += recip->getValue();
+   uint64_t inputAmount = 0;
+   for (const auto &utxo: inputs) {
+      inputAmount += utxo.getValue();
    }
-   return result;
+
+   if (inputAmount == 0 && !prevStates.empty() && containsAddressCb != nullptr) {
+      bs::CheckRecipSigner signer(prevStates.front());
+
+      for (auto spender : signer.spenders()) {
+         const auto addr = bs::Address::fromUTXO(spender->getUtxo());
+         if (containsAddressCb(addr)) {
+            inputAmount += spender->getValue();
+         }
+      }
+
+   }
+
+   return inputAmount;
+}
+
+uint64_t wallet::TXSignRequest::totalSpent(const ContainsAddressCb &containsAddressCb) const
+{
+   return inputAmount(containsAddressCb) - changeAmount(containsAddressCb);
+}
+
+uint64_t wallet::TXSignRequest::changeAmount(const wallet::TXSignRequest::ContainsAddressCb &containsAddressCb) const
+{
+   uint64_t changeVal = change.value;
+   if (changeVal == 0 && !prevStates.empty() && containsAddressCb != nullptr) {
+      bs::CheckRecipSigner signer(prevStates.front());
+
+      for (auto recip : signer.recipients()) {
+         const auto addr = bs::Address::fromRecipient(recip);
+         if (containsAddressCb(addr)) {
+            uint64_t change = recip->getValue();
+            changeVal += change;
+         }
+      }
+   }
+
+   return changeVal;
 }
 
 bool wallet::TXMultiSignRequest::isValid() const noexcept
