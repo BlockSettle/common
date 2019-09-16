@@ -204,19 +204,6 @@ bool ReqCCSettlementContainer::createCCUnsignedTXdata()
       logger_->debug("[{}] {} CC inputs reserved ({} recipients)"
          , __func__, ccTxData_.inputs.size(), ccTxData_.recipients.size());
 
-
-      for (auto recip : signer_.recipients()) {
-         const auto addr = bs::Address::fromRecipient(recip);
-         if (wallet->containsAddress(addr)) {
-            logger_->debug("[{}] WALLET ID: {}, ADDR: {}", __func__, wallet->walletId(), addr.toHexStr());
-
-//            uint64_t change = recip->getValue();
-//            ccTxData_.change.value = change;
-//            ccTxData_.change.address = addr;
-//            ccTxData_.change.index = wallet->getAddressIndex(addr);
-         }
-      }
-
       // KLUDGE - in current implementation, we should sign first to have sell/buy process aligned
       startSigning();
    }
