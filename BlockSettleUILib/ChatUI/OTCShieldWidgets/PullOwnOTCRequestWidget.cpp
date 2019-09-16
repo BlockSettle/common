@@ -21,8 +21,3 @@ void PullOwnOTCRequestWidget::setOffer(const bs::network::otc::Offer &offer)
    ui_->labelPrice->setText(QString::number(offer.price));
    ui_->labelQuantity->setText(QString::number(offer.amount));
 }
-
-void PullOwnOTCRequestWidget::syncInterface()
-{
-
-}

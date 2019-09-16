@@ -26,7 +26,7 @@ signals:
    void chatRoomChanged();
 
 protected slots:
-   virtual void syncInterface() = 0;
+   virtual void syncInterface();
 
 protected:
    std::shared_ptr<OTCWindowsManager> otcManager_{};

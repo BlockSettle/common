@@ -18,9 +18,6 @@ public:
    CreateOTCRequestWidget(QWidget* parent = nullptr);
    ~CreateOTCRequestWidget() override;
 
-protected:
-   void syncInterface() override;
-
 private slots:
    void onSellClicked();
    void onBuyClicked();

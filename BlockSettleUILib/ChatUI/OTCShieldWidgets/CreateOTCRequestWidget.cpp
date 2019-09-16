@@ -25,11 +25,6 @@ CreateOTCRequestWidget::CreateOTCRequestWidget(QWidget* parent)
 
 CreateOTCRequestWidget::~CreateOTCRequestWidget() = default;
 
-void CreateOTCRequestWidget::syncInterface()
-{
-
-}
-
 void CreateOTCRequestWidget::onSellClicked()
 {
    ui_->pushButtonSell->setChecked(true);

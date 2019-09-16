@@ -24,3 +24,7 @@ std::shared_ptr<AuthAddressManager> OTCWindowsAdapterBase::getAuthManager() cons
    return otcManager_->getAuthManager();
 }
 
+void OTCWindowsAdapterBase::syncInterface()
+{
+}
+

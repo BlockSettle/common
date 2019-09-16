@@ -16,9 +16,6 @@ public:
    CreateOTCResponseWidget(QWidget* parent = nullptr);
    ~CreateOTCResponseWidget() override;
 
-protected:
-   void syncInterface() override;
-
 private:
    std::unique_ptr<Ui::CreateOTCResponseWidget>    ui_;
 };

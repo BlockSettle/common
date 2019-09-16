@@ -15,8 +15,3 @@ CreateOTCResponseWidget::CreateOTCResponseWidget(QWidget* parent)
 }
 
 CreateOTCResponseWidget::~CreateOTCResponseWidget() = default;
-
-void CreateOTCResponseWidget::syncInterface()
-{
-
-}

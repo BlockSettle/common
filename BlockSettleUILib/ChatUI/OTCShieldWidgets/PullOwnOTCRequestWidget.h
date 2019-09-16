@@ -21,9 +21,6 @@ public:
 
    void setOffer(const bs::network::otc::Offer &offer);
 
-protected:
-   void syncInterface() override;
-
 signals:
    void requestPulled();
 
