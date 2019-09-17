@@ -35,15 +35,12 @@ struct OtcClientDeal
    bs::Address settlementAddr;
 
    bs::core::wallet::TXSignRequest payin;
-   bs::core::wallet::TXSignRequest payoutFallback;
    bs::core::wallet::TXSignRequest payout;
 
    bs::signer::RequestId payinReqId{};
-   bs::signer::RequestId payoutFallbackReqId{};
    bs::signer::RequestId payoutReqId{};
 
    BinaryData payinSigned;
-   BinaryData payoutFallbackSigned;
    BinaryData payoutSigned;
 
    bs::Address ourAuthAddress;
@@ -506,32 +503,6 @@ void OtcClient::onTxSigned(unsigned reqId, BinaryData signedTX, bs::error::Error
    }
    OtcClientDeal *deal = dealIt->second.get();
 
-   if (deal->payoutFallbackReqId == reqId) {
-      SPDLOG_LOGGER_DEBUG(logger_, "fallback pay-out was succesfully signed, settlementId: {}", deal->settlementId.toHexStr());
-      deal->payoutFallbackSigned = signedTX;
-
-      if (deal->sellFromOffline) {
-         SPDLOG_LOGGER_DEBUG(logger_, "sell OTC from offline wallet...");
-
-         auto savePath = params_.offlineSavePathCb(deal->hdWalletId);
-         if (savePath.empty()) {
-            SPDLOG_LOGGER_DEBUG(logger_, "got empty path to save offline sign request, cancel OTC deal");
-            // TODO: Cancel deal
-            return;
-         }
-         deal->payin.offlineFilePath = std::move(savePath);
-         auto reqId = signContainer_->signTXRequest(deal->payin);
-         signRequestIds_[reqId] = settlementId;
-         deal->payinReqId = reqId;
-      } else {
-         auto payinInfo = toPasswordDialogDataPayin(*deal, deal->payin);
-         auto reqId = signContainer_->signSettlementTXRequest(deal->payin, payinInfo);
-         signRequestIds_[reqId] = settlementId;
-         deal->payinReqId = reqId;
-         verifyAuthAddresses(deal);
-      }
-   }
-
    if (deal->payinReqId == reqId) {
       if (deal->sellFromOffline) {
          auto loadPath = params_.offlineLoadPathCb();
@@ -895,17 +866,32 @@ void OtcClient::processPbVerifyOtc(const ProxyTerminalPb::Response_VerifyOtc &re
       }
       case otc::Side::Sell: {
          assert(deal->payin.isValid());
-         assert(deal->payoutFallback.isValid());
 
          bs::core::wallet::SettlementData settlData;
          settlData.settlementId = settlementId;
          settlData.cpPublicKey = deal->cpPubKey;
          settlData.ownKeyFirst = false;
-         auto payoutFallbackInfo = toPasswordDialogDataPayout(*deal, deal->payoutFallback);
-         auto reqId = signContainer_->signSettlementPayoutTXRequest(deal->payoutFallback, settlData, payoutFallbackInfo);
-         signRequestIds_[reqId] = settlementId;
-         deal->payoutFallbackReqId = reqId;
-         verifyAuthAddresses(deal);
+
+         if (deal->sellFromOffline) {
+            SPDLOG_LOGGER_DEBUG(logger_, "sell OTC from offline wallet...");
+
+            auto savePath = params_.offlineSavePathCb(deal->hdWalletId);
+            if (savePath.empty()) {
+               SPDLOG_LOGGER_DEBUG(logger_, "got empty path to save offline sign request, cancel OTC deal");
+               // TODO: Cancel deal
+               return;
+            }
+            deal->payin.offlineFilePath = std::move(savePath);
+            auto reqId = signContainer_->signTXRequest(deal->payin);
+            signRequestIds_[reqId] = settlementId;
+            deal->payinReqId = reqId;
+         } else {
+            auto payinInfo = toPasswordDialogDataPayin(*deal, deal->payin);
+            auto reqId = signContainer_->signSettlementTXRequest(deal->payin, payinInfo);
+            signRequestIds_[reqId] = settlementId;
+            deal->payinReqId = reqId;
+            verifyAuthAddresses(deal);
+         }
 
          break;
       }
@@ -1040,13 +1026,9 @@ void OtcClient::createRequests(const BinaryData &settlementId, const Peer &peer,
                      result.side = otc::Side::Sell;
                      result.payin = transaction->createTXRequest();
                      auto payinTxId = result.payin.txId();
-                     auto fallbackAddr = transaction->GetFallbackRecvAddress();
                      auto payinUTXO = bs::SettlementMonitor::getInputFromTX(settlAddr, payinTxId, amount);
-                     result.payoutFallback = bs::SettlementMonitor::createPayoutTXRequest(
-                        payinUTXO, fallbackAddr, feePerByte, armory_->topBlock());
                      result.fee = int64_t(result.payin.fee);
                      result.sellFromOffline = targetHdWallet->isOffline();
-
                      cb(std::move(result));
                      return;
                   }
@@ -1134,18 +1116,10 @@ void OtcClient::trySendSignedTxs(OtcClientDeal *deal)
 
    switch (deal->side) {
       case otc::Side::Buy:
-         if (deal->payoutSigned.isNull()) {
-            return;
-         }
          d->set_signed_payout(deal->payoutSigned.toBinStr());
          break;
       case otc::Side::Sell:
-         if (deal->payoutFallbackSigned.isNull() || deal->payinSigned.isNull()) {
-            // Need to wait when both TX are signed
-            return;
-         }
          d->set_signed_payin(deal->payinSigned.toBinStr());
-         d->set_signed_payout_fallback(deal->payoutFallbackSigned.toBinStr());
          break;
       default:
          assert(false);
