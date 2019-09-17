@@ -303,6 +303,8 @@ bool HeadlessContainerListener::onSignTxRequest(const std::string &clientId, con
 
    std::vector<std::shared_ptr<bs::core::hd::Leaf>> wallets;
    std::string rootWalletId;
+   uint64_t amount = 0;
+
    for (const auto &walletId : txSignReq.walletIds) {
       const auto wallet = walletsMgr_->getWalletById(walletId);
       if (!wallet) {
@@ -319,11 +321,22 @@ bool HeadlessContainerListener::onSignTxRequest(const std::string &clientId, con
       }
       rootWalletId = curRootWalletId;
 
-//      if ((wallet->type() == bs::core::wallet::Type::Bitcoin)
-//         && !CheckSpendLimit(value, rootWalletId)) {
-//         SignTXResponse(clientId, packet.id(), reqType, ErrorCode::TxSpendLimitExceed);
-//         return false;
-//      }
+      // get total spent
+      const std::function<bool(const bs::Address &)> &containsAddressCb = [this, walletId](const bs::Address &address){
+         const auto &wallet = walletsMgr_->getWalletById(walletId);
+         return wallet->containsAddress(address);
+      };
+
+      if ((wallet->type() == bs::core::wallet::Type::Bitcoin)) {
+         amount += txSignReq.amount(containsAddressCb);
+      }
+
+   }
+
+   // FIXME: review spend limits
+   if (!CheckSpendLimit(amount, rootWalletId)) {
+      SignTXResponse(clientId, packet.id(), reqType, ErrorCode::TxSpendLimitExceed);
+      return false;
    }
 
    if (wallets.empty()) {
@@ -333,7 +346,7 @@ bool HeadlessContainerListener::onSignTxRequest(const std::string &clientId, con
    }
 
    const auto onPassword = [this, wallets, txSignReq, rootWalletId, clientId, id = packet.id(), partial
-      , reqType/*, value*/
+      , reqType, amount
       , keepDuplicatedRecipients = request.keepduplicatedrecipients()]
       (bs::error::ErrorCode result, const SecureBinaryData &pass)
    {
@@ -344,11 +357,10 @@ bool HeadlessContainerListener::onSignTxRequest(const std::string &clientId, con
       }
 
       // check spend limits one more time after password received
-//      if ((wallets.front()->type() == bs::core::wallet::Type::Bitcoin)
-//         && !CheckSpendLimit(value, rootWalletId)) {
-//         SignTXResponse(clientId, id, reqType, ErrorCode::TxSpendLimitExceed);
-//         return;
-//      }
+      if (!CheckSpendLimit(amount, rootWalletId)) {
+         SignTXResponse(clientId, id, reqType, ErrorCode::TxSpendLimitExceed);
+         return;
+      }
 
       try {
          if (!wallets.front()->encryptionTypes().empty() && pass.isNull()) {
@@ -397,10 +409,10 @@ bool HeadlessContainerListener::onSignTxRequest(const std::string &clientId, con
             SignTXResponse(clientId, id, reqType, ErrorCode::NoError, tx);
          }
 
-//         onXbtSpent(value, isAutoSignActive(rootWalletId));
-//         if (callbacks_) {
-//            callbacks_->xbtSpent(value, false);
-//         }
+         onXbtSpent(amount, isAutoSignActive(rootWalletId));
+         if (callbacks_) {
+            callbacks_->xbtSpent(amount, false);
+         }
       }
       catch (const std::exception &e) {
          logger_->error("[HeadlessContainerListener] failed to sign {} TX request: {}", partial ? "partial" : "full", e.what());

@@ -247,18 +247,8 @@ size_t wallet::TXSignRequest::estimateTxVirtSize() const
 
 uint64_t wallet::TXSignRequest::amount(const wallet::TXSignRequest::ContainsAddressCb &containsAddressCb) const
 {
-   // calculate sent amount based on recipients and change
-
-   uint64_t amount = 0;
-   for (const auto &recip : recipients) {
-      amount += recip->getValue();
-   }
-
-   if (amount == 0 && !prevStates.empty() && containsAddressCb != nullptr) {
-      return totalSpent(containsAddressCb) - fee;
-   }
-
-   return amount;
+   // synonym for amountSent
+   return amountSent(containsAddressCb);
 }
 
 uint64_t wallet::TXSignRequest::inputAmount(const ContainsAddressCb &containsAddressCb) const
@@ -308,9 +298,17 @@ uint64_t wallet::TXSignRequest::changeAmount(const wallet::TXSignRequest::Contai
 uint64_t wallet::TXSignRequest::amountReceived(const wallet::TXSignRequest::ContainsAddressCb &containsAddressCb) const
 {
    // calculate received amount based on recipients
+   // containsAddressCb should return true if address is our
+
    uint64_t amount = 0;
 
-   if (prevStates.empty() || containsAddressCb == nullptr) {
+   for (const auto &recip: recipients) {
+      if (containsAddressCb(bs::Address::fromRecipient(recip))) {
+         amount += recip->getValue();
+      }
+   }
+
+   if (amount == 0 || prevStates.empty() || containsAddressCb == nullptr) {
       return 0;
    }
 
@@ -328,8 +326,21 @@ uint64_t wallet::TXSignRequest::amountReceived(const wallet::TXSignRequest::Cont
 
 uint64_t wallet::TXSignRequest::amountSent(const wallet::TXSignRequest::ContainsAddressCb &containsAddressCb) const
 {
-   // calculate amount based on our outputs and change
-   return amount(containsAddressCb);
+   // get sent amount directly from recipients
+   // or
+   // calculate sent amount based on inputs and change
+   // containsAddressCb should return true if change address is in our wallet
+
+   uint64_t amount = 0;
+   for (const auto &recip : recipients) {
+      amount += recip->getValue();
+   }
+
+   if (amount == 0 && !prevStates.empty() && containsAddressCb != nullptr) {
+      return totalSpent(containsAddressCb) - fee;
+   }
+
+   return amount;
 }
 
 bool wallet::TXMultiSignRequest::isValid() const noexcept
