@@ -102,7 +102,7 @@ public slots:
    void peerDisconnected(const std::string &peerId);
    void processMessage(const std::string &peerId, const BinaryData &data);
    void processPbMessage(const std::string &data);
-   void processPublicMessage(const BinaryData &data);
+   void processPublicMessage(const std::string &peerId, const BinaryData &data);
 
 signals:
    void sendMessage(const std::string &peerId, const BinaryData &data);

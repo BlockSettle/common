@@ -489,7 +489,7 @@ void OtcClient::processPbMessage(const std::string &data)
    SPDLOG_LOGGER_CRITICAL(logger_, "unknown response was detected!");
 }
 
-void OtcClient::processPublicMessage(const BinaryData &data)
+void OtcClient::processPublicMessage(const std::string &peerId, const BinaryData &data)
 {
 
 }
