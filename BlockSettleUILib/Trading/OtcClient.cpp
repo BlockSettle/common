@@ -366,10 +366,12 @@ bool OtcClient::updateOffer(const Offer &offer, const std::string &peerId)
       }
 
       // Only price could be updated, amount and side must be the same
+      assert(offer.price != peer->offer.price);
       assert(offer.amount == peer->offer.amount);
       assert(offer.ourSide == peer->offer.ourSide);
 
       peer->offer = offer;
+      peer->ourAuthPubKey = ourPubKey;
 
       Message msg;
       if (offer.ourSide == otc::Side::Buy) {
