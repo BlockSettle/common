@@ -124,6 +124,11 @@ bs::sync::PasswordDialogData DealerXBTSettlementContainer::toPasswordDialogData(
    dialogData.setValue(keys::Price, UiUtils::displayPriceXBT(price()));
    dialogData.setValue(keys::FxProduct, fxProd_);
 
+   dialogData.setValue(keys::Quantity, tr("%1 %2")
+                       .arg(UiUtils::displayAmountForProduct(amount(), qtyProd, bs::network::Asset::Type::SpotXBT))
+                       .arg(qtyProd));
+   dialogData.setValue(keys::TotalValue, UiUtils::displayCurrencyAmount(amount() * price()));
+
    // tx details
    dialogData.setValue(keys::TxInputProduct, UiUtils::XbtCurrency);
 

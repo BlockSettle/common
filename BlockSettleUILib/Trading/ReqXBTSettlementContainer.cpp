@@ -276,6 +276,28 @@ bs::sync::PasswordDialogData ReqXBTSettlementContainer::toPasswordDialogData() c
    dialogData.setValue(keys::Price, UiUtils::displayPriceXBT(price()));
    dialogData.setValue(keys::FxProduct, fxProd);
 
+
+
+   bool isFxProd = (quote_.product != bs::network::XbtCurrency);
+   bool isSell = (side() == bs::network::Side::Type::Sell);
+
+   if (isFxProd) {
+      dialogData.setValue(keys::Quantity, tr("%1 %2")
+                    .arg(UiUtils::displayAmountForProduct(quantity(), fxProd, bs::network::Asset::Type::SpotXBT))
+                    .arg(fxProd));
+
+      dialogData.setValue(keys::TotalValue, tr("%1 XBT")
+                    .arg(UiUtils::displayAmount(quantity() / price())));
+   }
+   else {
+      dialogData.setValue(keys::Quantity, tr("%1 XBT")
+                    .arg(UiUtils::displayAmount(amount())));
+
+      dialogData.setValue(keys::TotalValue, tr("%1 %2")
+                    .arg(UiUtils::displayAmountForProduct(amount() * price(), fxProd, bs::network::Asset::Type::SpotXBT))
+                    .arg(fxProd));
+   }
+
    // settlement details
    dialogData.setValue(keys::SettlementId, settlementId_.toHexStr());
    dialogData.setValue(keys::SettlementAddress, settlAddr_.display());
@@ -289,6 +311,7 @@ bs::sync::PasswordDialogData ReqXBTSettlementContainer::toPasswordDialogData() c
 
    // tx details
    dialogData.setValue(keys::TxInputProduct, UiUtils::XbtCurrency);
+   dialogData.setValue(keys::TotalSpentVisible, true);
 
    return dialogData;
 }

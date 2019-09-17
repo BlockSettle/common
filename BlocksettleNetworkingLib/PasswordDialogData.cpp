@@ -25,7 +25,7 @@ namespace bs {
             Key Product("Product");
             Key FxProduct("FxProduct");
             Key ProductGroup("ProductGroup");
-            //Key Quantity("Quantity");
+            Key Quantity("Quantity");
             Key RecipientsListVisible("RecipientsListVisible");
             Key RequesterAuthAddress("RequesterAuthAddress");
             Key RequesterAuthAddressVerified("RequesterAuthAddressVerified");
@@ -40,7 +40,8 @@ namespace bs {
             Key Side("Side");
             Key SigningAllowed("SigningAllowed");
             Key Title("Title");
-            //Key TotalValue("TotalValue");
+            Key TotalSpentVisible("TotalSpentVisible");
+            Key TotalValue("TotalValue");
             Key TransactionAmount("TransactionAmount");
             Key TxInputProduct("TxInputProduct");
             Key WalletId("WalletId");

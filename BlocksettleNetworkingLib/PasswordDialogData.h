@@ -34,7 +34,7 @@ namespace keys {
    extern Key Product;
    extern Key FxProduct;
    extern Key ProductGroup;
-   //extern Key Quantity;
+   extern Key Quantity;
    extern Key RecipientsListVisible;
    extern Key RequesterAuthAddress;
    extern Key RequesterAuthAddressVerified;
@@ -49,7 +49,8 @@ namespace keys {
    extern Key Side;
    extern Key SigningAllowed;
    extern Key Title;
-   //extern Key TotalValue;
+   extern Key TotalSpentVisible;
+   extern Key TotalValue;
    extern Key TransactionAmount;
    extern Key TxInputProduct;
    extern Key WalletId;
