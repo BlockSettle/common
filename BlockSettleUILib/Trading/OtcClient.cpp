@@ -1127,6 +1127,8 @@ void OtcClient::trySendSignedTxs(OtcClientDeal *deal)
 
    d->set_settlement_id(deal->settlementId.toBinStr());
    emit sendPbMessage(request.SerializeAsString());
+
+   setComments(deal);
 }
 
 void OtcClient::verifyAuthAddresses(OtcClientDeal *deal)
@@ -1152,4 +1154,18 @@ void OtcClient::verifyAuthAddresses(OtcClientDeal *deal)
    // Verify only peer's auth address
    deal->addressVerificator->addAddress(deal->isRequestor() ? deal->responderAuthAddress() : deal->requestorAuthAddress());
    deal->addressVerificator->startAddressVerification();
+}
+
+void OtcClient::setComments(OtcClientDeal *deal)
+{
+   const auto &signedTx = (deal->side == bs::network::otc::Side::Sell) ? deal->payinSigned : deal->payoutSigned;
+
+   auto hdWallet = walletsMgr_->getHDWalletById(deal->hdWalletId);
+   auto group = hdWallet ? hdWallet->getGroup(hdWallet->getXBTGroupType()) : nullptr;
+   auto leaves = group ? group->getAllLeaves() : std::vector<std::shared_ptr<bs::sync::Wallet>>();
+   for (const auto & leaf : leaves) {
+      auto comment = fmt::format("{} XBT/EUR @ {} (OTC)"
+         , bs::network::otc::toString(deal->side), UiUtils::displayPriceXBT(bs::network::otc::fromCents(deal->price)).toStdString());
+      leaf->setTransactionComment(signedTx, comment);
+   }
 }
