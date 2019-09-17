@@ -17,6 +17,8 @@ std::string bs::network::otc::toString(bs::network::otc::Side side)
 std::string bs::network::otc::toString(bs::network::otc::RangeType range)
 {
    switch(range) {
+      case RangeType::Range0_1:
+         return "0-1";
       case RangeType::Range1_5:
          return "1-5";
       case RangeType::Range5_10:
@@ -40,6 +42,8 @@ std::string bs::network::otc::toString(bs::network::otc::RangeType range)
 bs::network::otc::Range bs::network::otc::getRange(bs::network::otc::RangeType range)
 {
    switch(range) {
+      case RangeType::Range0_1:
+         return Range{0, 1};
       case RangeType::Range1_5:
          return Range{1, 5};
       case RangeType::Range5_10:

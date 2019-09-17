@@ -38,6 +38,20 @@ BinaryData OtcUtils::deserializeMessage(const std::string &data)
    }
 }
 
+std::string OtcUtils::serializePublicMessage(const BinaryData &data)
+{
+   return data.toHexStr();
+}
+
+BinaryData OtcUtils::deserializePublicMessage(const std::string &data)
+{
+   try {
+      return BinaryData::CreateFromHex(data);
+   } catch(...) {
+      return {};
+   }
+}
+
 QString OtcUtils::toReadableString(const QString &text)
 {
    auto msgData = OtcUtils::deserializeMessage(text.toStdString());

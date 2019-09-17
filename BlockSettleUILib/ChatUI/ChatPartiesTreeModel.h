@@ -10,7 +10,7 @@ class ChatPartiesTreeModel : public QAbstractItemModel
    Q_OBJECT
 public:
    ChatPartiesTreeModel(const Chat::ChatClientServicePtr& chatClientServicePtr, QObject* parent = nullptr);
-   ~ChatPartiesTreeModel();
+   ~ChatPartiesTreeModel() override;
 
    QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
    QModelIndex index(int row, int column, const QModelIndex& parent = QModelIndex()) const override;

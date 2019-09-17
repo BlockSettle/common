@@ -1,7 +1,6 @@
 #ifndef CHATCLIENTLOGIC_H
 #define CHATCLIENTLOGIC_H
 
-#include <QThread>
 #include <google/protobuf/message.h>
 
 #include "ChatProtocol/ChatUser.h"

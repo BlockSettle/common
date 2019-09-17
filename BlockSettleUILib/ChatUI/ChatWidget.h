@@ -53,6 +53,7 @@ protected:
 public slots:
    void onProcessOtcPbMessage(const std::string& data);
    void onSendOtcMessage(const std::string& partyId, const BinaryData& data);
+   void onSendOtcPublicMessage(const BinaryData& data);
 
    void onNewChatMessageTrayNotificationClicked(const QString& partyId);
 
@@ -89,6 +90,7 @@ private slots:
    void onOtcResponseAccept();
    void onOtcResponseUpdate();
    void onOtcResponseReject();
+   void onOtcQuoteRequestSubmit();
 
 signals:
    // OTC

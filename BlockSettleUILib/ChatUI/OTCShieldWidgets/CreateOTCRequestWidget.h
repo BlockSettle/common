@@ -18,6 +18,11 @@ public:
    CreateOTCRequestWidget(QWidget* parent = nullptr);
    ~CreateOTCRequestWidget() override;
 
+   bs::network::otc::QuoteRequest request() const;
+
+signals:
+   void requestCreated();
+
 private slots:
    void onSellClicked();
    void onBuyClicked();

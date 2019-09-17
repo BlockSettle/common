@@ -58,6 +58,7 @@ namespace bs {
          // Keep in sync with Chat.OtcRangeType
          enum class RangeType
          {
+            Range0_1,
             Range1_5,
             Range5_10,
             Range10_50,
@@ -75,7 +76,7 @@ namespace bs {
          struct QuoteRequest
          {
             Side ourSide{};
-            RangeType range{};
+            RangeType rangeType{};
          };
 
          struct Offer

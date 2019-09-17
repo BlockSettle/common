@@ -31,6 +31,11 @@ using namespace bs::network;
 ChatWidget::ChatWidget(QWidget* parent)
    : QWidget(parent), ui_(new Ui::ChatWidget)
 {
+   qRegisterMetaType<std::vector<std::string>>();
+   qRegisterMetaType<Chat::UserPublicKeyInfoPtr>();
+   qRegisterMetaType<Chat::UserPublicKeyInfoList>();
+   qRegisterMetaType<Chat::PartyModelError>();
+
    ui_->setupUi(this);
 
 #ifndef Q_OS_WIN
@@ -51,11 +56,6 @@ ChatWidget::ChatWidget(QWidget* parent)
    ui_->textEditMessages->viewport()->installEventFilter(this);
    ui_->input_textEdit->viewport()->installEventFilter(this);
    ui_->treeViewUsers->viewport()->installEventFilter(this);
-
-   qRegisterMetaType<std::vector<std::string>>();
-   qRegisterMetaType<Chat::UserPublicKeyInfoPtr>();
-   qRegisterMetaType<Chat::UserPublicKeyInfoList>();
-
 
    otcWindowsManager_ = std::make_shared<OTCWindowsManager>();
    auto* sWidget = ui_->stackedWidgetOTC;
@@ -151,6 +151,7 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
    
    connect(otcHelper_->getClient(), &OtcClient::sendPbMessage, this, &ChatWidget::sendOtcPbMessage);
    connect(otcHelper_->getClient(), &OtcClient::sendMessage, this, &ChatWidget::onSendOtcMessage);
+   connect(otcHelper_->getClient(), &OtcClient::sendPublicMessage, this, &ChatWidget::onSendOtcPublicMessage);
    connect(otcHelper_->getClient(), &OtcClient::peerUpdated, this, &ChatWidget::onOtcUpdated);
 
    connect(ui_->widgetNegotiateRequest, &OTCNegotiationRequestWidget::requestCreated, this, &ChatWidget::onOtcRequestSubmit);
@@ -158,6 +159,7 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
    connect(ui_->widgetNegotiateResponse, &OTCNegotiationResponseWidget::responseAccepted, this, &ChatWidget::onOtcResponseAccept);
    connect(ui_->widgetNegotiateResponse, &OTCNegotiationResponseWidget::responseUpdated, this, &ChatWidget::onOtcResponseUpdate);
    connect(ui_->widgetNegotiateResponse, &OTCNegotiationResponseWidget::responseRejected, this, &ChatWidget::onOtcResponseReject);
+   connect(ui_->widgetCreateOTCRequest, &CreateOTCRequestWidget::requestCreated, this, &ChatWidget::onOtcQuoteRequestSubmit);
 }
 
 void acceptPartyRequest(const std::string& partyId) {}
@@ -279,6 +281,11 @@ void ChatWidget::onProcessOtcPbMessage(const std::string& data)
 void ChatWidget::onSendOtcMessage(const std::string& partyId, const BinaryData& data)
 {
    stateCurrent_->onSendOtcMessage(partyId, OtcUtils::serializeMessage(data));
+}
+
+void ChatWidget::onSendOtcPublicMessage(const BinaryData &data)
+{
+   stateCurrent_->onSendOtcPublicMessage(OtcUtils::serializePublicMessage(data));
 }
 
 void ChatWidget::onNewChatMessageTrayNotificationClicked(const QString& partyId)
@@ -433,6 +440,11 @@ void ChatWidget::onOtcResponseUpdate()
 void ChatWidget::onOtcResponseReject()
 {
    stateCurrent_->onOtcResponseReject();
+}
+
+void ChatWidget::onOtcQuoteRequestSubmit()
+{
+   stateCurrent_->onOtcQuoteRequestSubmit();
 }
 
 void ChatWidget::onUserPublicKeyChanged(const Chat::UserPublicKeyInfoList& userPublicKeyInfoList)

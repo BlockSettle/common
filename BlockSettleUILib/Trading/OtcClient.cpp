@@ -393,7 +393,12 @@ bool OtcClient::updateOffer(const Offer &offer, const std::string &peerId)
 
 bool OtcClient::sendQuoteRequest(const QuoteRequest &request)
 {
-
+   Otc::PublicMessage msg;
+   auto d = msg.mutable_request();
+   d->set_side(Otc::Side(request.ourSide));
+   d->set_range(Otc::RangeType(request.rangeType));
+   emit sendPublicMessage(msg.SerializeAsString());
+   return true;
 }
 
 void OtcClient::peerConnected(const std::string &peerId)
@@ -491,7 +496,6 @@ void OtcClient::processPbMessage(const std::string &data)
 
 void OtcClient::processPublicMessage(const std::string &peerId, const BinaryData &data)
 {
-
 }
 
 void OtcClient::onTxSigned(unsigned reqId, BinaryData signedTX, bs::error::ErrorCode result, const std::string &errorReason)
