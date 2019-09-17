@@ -279,7 +279,6 @@ bs::sync::PasswordDialogData ReqXBTSettlementContainer::toPasswordDialogData() c
 
 
    bool isFxProd = (quote_.product != bs::network::XbtCurrency);
-   bool isSell = (side() == bs::network::Side::Type::Sell);
 
    if (isFxProd) {
       dialogData.setValue(keys::Quantity, tr("%1 %2")

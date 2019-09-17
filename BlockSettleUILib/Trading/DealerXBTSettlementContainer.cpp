@@ -124,13 +124,29 @@ bs::sync::PasswordDialogData DealerXBTSettlementContainer::toPasswordDialogData(
    dialogData.setValue(keys::Price, UiUtils::displayPriceXBT(price()));
    dialogData.setValue(keys::FxProduct, fxProd_);
 
-   dialogData.setValue(keys::Quantity, tr("%1 %2")
-                       .arg(UiUtils::displayAmountForProduct(amount(), qtyProd, bs::network::Asset::Type::SpotXBT))
-                       .arg(qtyProd));
-   dialogData.setValue(keys::TotalValue, UiUtils::displayCurrencyAmount(amount() * price()));
+//   dialogData.setValue(keys::Quantity, tr("%1 %2")
+//                       .arg(UiUtils::displayAmountForProduct(amount(), qtyProd, bs::network::Asset::Type::SpotXBT))
+//                       .arg(qtyProd));
+//   dialogData.setValue(keys::TotalValue, UiUtils::displayCurrencyAmount(amount() * price()));
 
-   // tx details
-   dialogData.setValue(keys::TxInputProduct, UiUtils::XbtCurrency);
+   bool isFxProd = (product() != bs::network::XbtCurrency);
+
+   if (isFxProd) {
+      dialogData.setValue(keys::Quantity, tr("%1 %2")
+                    .arg(UiUtils::displayAmountForProduct(quantity(), QString::fromStdString(fxProd_), bs::network::Asset::Type::SpotXBT))
+                    .arg(QString::fromStdString(fxProd_)));
+
+      dialogData.setValue(keys::TotalValue, tr("%1 XBT")
+                    .arg(UiUtils::displayAmount(quantity() / price())));
+   }
+   else {
+      dialogData.setValue(keys::Quantity, tr("%1 XBT")
+                    .arg(UiUtils::displayAmount(amount())));
+
+      dialogData.setValue(keys::TotalValue, tr("%1 %2")
+                    .arg(UiUtils::displayAmountForProduct(amount() * price(), QString::fromStdString(fxProd_), bs::network::Asset::Type::SpotXBT))
+                    .arg(QString::fromStdString(fxProd_)));
+   }
 
    // settlement details
    dialogData.setValue(keys::SettlementId, settlementId_.toHexStr());
@@ -141,6 +157,10 @@ bs::sync::PasswordDialogData DealerXBTSettlementContainer::toPasswordDialogData(
 
    dialogData.setValue(keys::ResponderAuthAddress, bs::Address::fromPubKey(authKey_).display());
    dialogData.setValue(keys::ResponderAuthAddressVerified, true);
+
+   // tx details
+   dialogData.setValue(keys::TxInputProduct, UiUtils::XbtCurrency);
+   dialogData.setValue(keys::TotalSpentVisible, true);
 
    return dialogData;
 }
