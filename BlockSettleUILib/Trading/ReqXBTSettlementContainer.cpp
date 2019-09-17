@@ -86,6 +86,14 @@ unsigned int ReqXBTSettlementContainer::createPayoutTx(const BinaryData& payinHa
       dlgData.setValue(keys::ResponderAuthAddressVerified, true);
       dlgData.setValue(keys::SigningAllowed, true);
 
+      // mark revoke tx
+      if ((side() == bs::network::Side::Type::Sell && product() == bs::network::XbtCurrency)
+          || (side() == bs::network::Side::Type::Buy && product() != bs::network::XbtCurrency)) {
+         dlgData.setValue(keys::PayOutRevokeType, true);
+         dlgData.setValue(keys::Title, tr("Settlement Pay-Out (For Revoke)"));
+         dlgData.setValue(keys::Duration, 30000 - (QDateTime::currentMSecsSinceEpoch() - payinSignedTs_));
+      }
+
       logger_->debug("[{}] pay-out fee={}, qty={} ({}), payin hash={}", __func__
          , txReq.fee, qty, qty * BTCNumericTypes::BalanceDivider, payinHash.toHexStr(true));
       return signContainer_->signSettlementPayoutTXRequest(txReq
@@ -109,6 +117,7 @@ void ReqXBTSettlementContainer::acceptSpotXBT()
          bs::sync::PasswordDialogData dlgData = toPasswordDialogData();
          dlgData.setValue(keys::SettlementPayInVisible, true);
 
+         payinSignedTs_ = QDateTime::currentMSecsSinceEpoch();
          payinSignId_ = signContainer_->signSettlementTXRequest(payInTxRequest_, dlgData);
       };
       if (transactionData_->GetTransactionSummary().hasChange) {

@@ -21,6 +21,7 @@ namespace bs {
             Key LotSize("LotSize");
             Key Market("Market");
             Key NetworkFee("NetworkFee");
+            Key PayOutRevokeType("PayOutRevokeType");
             Key Price("Price");
             Key Product("Product");
             Key FxProduct("FxProduct");

@@ -120,7 +120,7 @@ bs::sync::PasswordDialogData DealerXBTSettlementContainer::toPasswordDialogData(
    // rfq details
    QString qtyProd = UiUtils::XbtCurrency;
 
-   dialogData.setValue(keys::Title, tr("Settlement Transaction"));
+   dialogData.setValue(keys::Title, tr("Settlement Pay-In"));
    dialogData.setValue(keys::Price, UiUtils::displayPriceXBT(price()));
    dialogData.setValue(keys::FxProduct, fxProd_);
 

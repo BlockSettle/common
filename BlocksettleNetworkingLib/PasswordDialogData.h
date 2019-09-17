@@ -30,6 +30,7 @@ namespace keys {
    extern Key LotSize;
    extern Key Market;
    extern Key NetworkFee;
+   extern Key PayOutRevokeType;
    extern Key Price;
    extern Key Product;
    extern Key FxProduct;

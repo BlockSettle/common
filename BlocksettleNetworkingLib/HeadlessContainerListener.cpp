@@ -323,8 +323,21 @@ bool HeadlessContainerListener::onSignTxRequest(const std::string &clientId, con
 
       // get total spent
       const std::function<bool(const bs::Address &)> &containsAddressCb = [this, walletId](const bs::Address &address){
-         const auto &wallet = walletsMgr_->getWalletById(walletId);
-         return wallet->containsAddress(address);
+         const auto &hdWallet = walletsMgr_->getHDWalletById(walletId);
+         if (hdWallet) {
+            for (auto leaf : hdWallet->getLeaves()) {
+               if (leaf->containsAddress(address)) {
+                  return true;
+               }
+            }
+         }
+         else {
+            const auto &wallet = walletsMgr_->getWalletById(walletId);
+            if (wallet) {
+               return wallet->containsAddress(address);
+            }
+         }
+         return false;
       };
 
       if ((wallet->type() == bs::core::wallet::Type::Bitcoin)) {
@@ -522,6 +535,7 @@ bool HeadlessContainerListener::onSignSettlementPayoutTxRequest(const std::strin
    }
 
    Internal::PasswordDialogDataWrapper dialogData = request.passworddialogdata();
+   dialogData.insert("PayOutType", true);
 
    bs::core::wallet::TXSignRequest txSignReq;
    txSignReq.walletIds = { walletsMgr_->getPrimaryWallet()->walletId() };

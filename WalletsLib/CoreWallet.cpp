@@ -253,18 +253,33 @@ uint64_t wallet::TXSignRequest::amount(const wallet::TXSignRequest::ContainsAddr
 
 uint64_t wallet::TXSignRequest::inputAmount(const ContainsAddressCb &containsAddressCb) const
 {
-   uint64_t inputAmount = 0;
-   for (const auto &utxo: inputs) {
-      inputAmount += utxo.getValue();
-   }
+   // calculate total input amount based on inputs
+   // prevStates inputs parsed first
+   // duplicated inputs skipped
 
-   if (inputAmount == 0 && !prevStates.empty() && containsAddressCb != nullptr) {
+   std::set<bs::Address> addresses;
+   uint64_t inputAmount = 0;
+
+   if (!prevStates.empty() && containsAddressCb != nullptr) {
       bs::CheckRecipSigner signer(prevStates.front());
 
       for (auto spender : signer.spenders()) {
          const auto addr = bs::Address::fromUTXO(spender->getUtxo());
+         if (addresses.find(addr) == addresses.cend()) {
+            if (containsAddressCb(addr)) {
+               addresses.insert(addr);
+               inputAmount += spender->getValue();
+            }
+         }
+      }
+   }
+
+   for (const auto &utxo: inputs) {     
+      const auto addr = bs::Address::fromUTXO(utxo);
+      if (addresses.find(addr) == addresses.cend()) {
          if (containsAddressCb(addr)) {
-            inputAmount += spender->getValue();
+            addresses.insert(addr);
+            inputAmount += utxo.getValue();
          }
       }
    }
@@ -279,6 +294,9 @@ uint64_t wallet::TXSignRequest::totalSpent(const ContainsAddressCb &containsAddr
 
 uint64_t wallet::TXSignRequest::changeAmount(const wallet::TXSignRequest::ContainsAddressCb &containsAddressCb) const
 {
+   // calculate change amount
+   // if change is not explicitly set, calculate change using prevStates for provided containsAddressCb
+
    uint64_t changeVal = change.value;
    if (changeVal == 0 && !prevStates.empty() && containsAddressCb != nullptr) {
       bs::CheckRecipSigner signer(prevStates.front());
@@ -299,25 +317,32 @@ uint64_t wallet::TXSignRequest::amountReceived(const wallet::TXSignRequest::Cont
 {
    // calculate received amount based on recipients
    // containsAddressCb should return true if address is our
+   // prevStates recipients parsed first
+   // duplicated recipients skipped
 
+   std::set<bs::Address> addresses;
    uint64_t amount = 0;
 
-   for (const auto &recip: recipients) {
-      if (containsAddressCb(bs::Address::fromRecipient(recip))) {
-         amount += recip->getValue();
+   if (!prevStates.empty() && containsAddressCb != nullptr) {
+      bs::CheckRecipSigner signer(prevStates.front());
+      for (auto recip : signer.recipients()) {
+         const auto addr = bs::Address::fromRecipient(recip);
+         if (addresses.find(addr) == addresses.cend()) {
+            if (containsAddressCb(addr)) {
+               addresses.insert(addr);
+               amount += recip->getValue();
+            }
+         }
       }
    }
 
-   if (amount == 0 || prevStates.empty() || containsAddressCb == nullptr) {
-      return 0;
-   }
-
-   bs::CheckRecipSigner signer(prevStates.front());
-
-   for (auto recip : signer.recipients()) {
+   for (const auto &recip: recipients) {
       const auto addr = bs::Address::fromRecipient(recip);
-      if (containsAddressCb(addr)) {
-         amount += recip->getValue();
+      if (addresses.find(addr) == addresses.cend()) {
+         if (containsAddressCb(addr)) {
+            addresses.insert(addr);
+            amount += recip->getValue();
+         }
       }
    }
 
