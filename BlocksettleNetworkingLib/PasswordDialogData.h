@@ -22,8 +22,6 @@ namespace keys {
    };
 
    extern Key AutoSignCategory;
-   extern Key DeliveryAmount;
-   extern Key DeliveryReceived;
    extern Key DeliveryUTXOVerified;
    extern Key DialogType;
    extern Key Duration;
@@ -32,12 +30,11 @@ namespace keys {
    extern Key LotSize;
    extern Key Market;
    extern Key NetworkFee;
-   extern Key PaymentAmount;
-   extern Key PaymentReceived;
    extern Key Price;
    extern Key Product;
+   extern Key FxProduct;
    extern Key ProductGroup;
-   extern Key Quantity;
+   //extern Key Quantity;
    extern Key RecipientsListVisible;
    extern Key RequesterAuthAddress;
    extern Key RequesterAuthAddressVerified;
@@ -52,7 +49,7 @@ namespace keys {
    extern Key Side;
    extern Key SigningAllowed;
    extern Key Title;
-   extern Key TotalValue;
+   //extern Key TotalValue;
    extern Key TransactionAmount;
    extern Key TxInputProduct;
    extern Key WalletId;

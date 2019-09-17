@@ -194,6 +194,10 @@ namespace bs {
             uint64_t inputAmount(const ContainsAddressCb &containsAddressCb) const;
             uint64_t totalSpent(const ContainsAddressCb &containsAddressCb) const;
             uint64_t changeAmount(const ContainsAddressCb &containsAddressCb) const;
+
+            uint64_t amountReceived(const ContainsAddressCb &containsAddressCb) const;
+            uint64_t amountSent(const ContainsAddressCb &containsAddressCb) const;
+
          private:
             Signer getSigner() const;
          };

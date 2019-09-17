@@ -76,25 +76,12 @@ bs::sync::PasswordDialogData ReqCCSettlementContainer::toPasswordDialogData() co
    // rfq details
    dialogData.setValue(keys::Price, UiUtils::displayPriceCC(price()));
 
-   dialogData.setValue(keys::Quantity, tr("%1 %2")
-                 .arg(UiUtils::displayCCAmount(quantity()))
-                 .arg(QString::fromStdString(product())));
-   dialogData.setValue(keys::TotalValue, UiUtils::displayAmount(quantity() * price()));
-
    // tx details
    if (side() == bs::network::Side::Buy) {
       dialogData.setValue(keys::TxInputProduct, UiUtils::XbtCurrency);
-
-      dialogData.setValue(keys::DeliveryReceived, QStringLiteral("+ %2 %1")
-                    .arg(QString::fromStdString(product()))
-                    .arg(UiUtils::displayCCAmount(quantity())));
    }
    else {
       dialogData.setValue(keys::TxInputProduct, product());
-
-      dialogData.setValue(keys::PaymentReceived, QStringLiteral("+ %2 %1")
-                    .arg(UiUtils::XbtCurrency)
-                    .arg(UiUtils::displayAmount(amount())));
    }
 
 

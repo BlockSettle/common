@@ -273,16 +273,8 @@ bs::sync::PasswordDialogData ReqXBTSettlementContainer::toPasswordDialogData() c
    QString fxProd = QString::fromStdString(fxProduct());
 
    dialogData.setValue(keys::Title, tr("Settlement Pay-In"));
-
    dialogData.setValue(keys::Price, UiUtils::displayPriceXBT(price()));
-
-   dialogData.setValue(keys::Quantity, tr("%1 %2")
-                       .arg(UiUtils::displayAmountForProduct(amount(), qtyProd, bs::network::Asset::Type::SpotXBT))
-                       .arg(qtyProd));
-   dialogData.setValue(keys::TotalValue, tr("%1 %2")
-                 .arg(UiUtils::displayAmountForProduct(amount() * price(), fxProd, bs::network::Asset::Type::SpotXBT))
-                 .arg(fxProd));
-
+   dialogData.setValue(keys::FxProduct, fxProd);
 
    // settlement details
    dialogData.setValue(keys::SettlementId, settlementId_.toHexStr());

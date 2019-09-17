@@ -1,6 +1,7 @@
 #include "DealerXBTSettlementContainer.h"
 #include <spdlog/spdlog.h>
 #include "CheckRecipSigner.h"
+#include "CurrencyPair.h"
 #include "SignContainer.h"
 #include "QuoteProvider.h"
 #include "TransactionData.h"
@@ -24,6 +25,9 @@ DealerXBTSettlementContainer::DealerXBTSettlementContainer(const std::shared_ptr
    , logger_(logger), transactionData_(txData), signContainer_(container)
 {
    qRegisterMetaType<AddressVerificationState>();
+
+   CurrencyPair cp(security());
+   fxProd_ = cp.ContraCurrency(bs::network::XbtCurrency);
 
    if (weSell_ && !transactionData_->GetRecipientsCount()) {
       throw std::runtime_error("no recipient[s]");
@@ -117,14 +121,8 @@ bs::sync::PasswordDialogData DealerXBTSettlementContainer::toPasswordDialogData(
    QString qtyProd = UiUtils::XbtCurrency;
 
    dialogData.setValue(keys::Title, tr("Settlement Transaction"));
-
    dialogData.setValue(keys::Price, UiUtils::displayPriceXBT(price()));
-
-   dialogData.setValue(keys::Quantity, tr("%1 %2")
-                       .arg(UiUtils::displayAmountForProduct(amount(), qtyProd, bs::network::Asset::Type::SpotXBT))
-                       .arg(qtyProd));
-   dialogData.setValue(keys::TotalValue, UiUtils::displayCurrencyAmount(amount() * price()));
-
+   dialogData.setValue(keys::FxProduct, fxProd_);
 
    // tx details
    dialogData.setValue(keys::TxInputProduct, UiUtils::XbtCurrency);

@@ -13,8 +13,6 @@ namespace bs {
          namespace keys {
 
             Key AutoSignCategory("AutoSignCategory");
-            Key DeliveryAmount("DeliveryAmount");
-            Key DeliveryReceived("DeliveryReceived");
             Key DeliveryUTXOVerified("DeliveryUTXOVerified");
             Key DialogType("DialogType");
             Key Duration("Duration");
@@ -23,12 +21,11 @@ namespace bs {
             Key LotSize("LotSize");
             Key Market("Market");
             Key NetworkFee("NetworkFee");
-            Key PaymentAmount("PaymentAmount");
-            Key PaymentReceived("PaymentReceived");
             Key Price("Price");
             Key Product("Product");
+            Key FxProduct("FxProduct");
             Key ProductGroup("ProductGroup");
-            Key Quantity("Quantity");
+            //Key Quantity("Quantity");
             Key RecipientsListVisible("RecipientsListVisible");
             Key RequesterAuthAddress("RequesterAuthAddress");
             Key RequesterAuthAddressVerified("RequesterAuthAddressVerified");
@@ -43,7 +40,7 @@ namespace bs {
             Key Side("Side");
             Key SigningAllowed("SigningAllowed");
             Key Title("Title");
-            Key TotalValue("TotalValue");
+            //Key TotalValue("TotalValue");
             Key TransactionAmount("TransactionAmount");
             Key TxInputProduct("TxInputProduct");
             Key WalletId("WalletId");
