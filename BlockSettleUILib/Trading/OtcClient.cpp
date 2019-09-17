@@ -391,6 +391,11 @@ bool OtcClient::updateOffer(const Offer &offer, const std::string &peerId)
    return true;
 }
 
+bool OtcClient::sendQuoteRequest(const QuoteRequest &request)
+{
+
+}
+
 void OtcClient::peerConnected(const std::string &peerId)
 {
    Peer *oldPeer = findPeer(peerId);
@@ -482,6 +487,11 @@ void OtcClient::processPbMessage(const std::string &data)
    }
 
    SPDLOG_LOGGER_CRITICAL(logger_, "unknown response was detected!");
+}
+
+void OtcClient::processPublicMessage(const BinaryData &data)
+{
+
 }
 
 void OtcClient::onTxSigned(unsigned reqId, BinaryData signedTX, bs::error::ErrorCode result, const std::string &errorReason)

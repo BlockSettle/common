@@ -95,15 +95,19 @@ public:
    bool acceptOffer(const bs::network::otc::Offer &offer, const std::string &peerId);
    bool updateOffer(const bs::network::otc::Offer &offer, const std::string &peerId);
 
+   bool sendQuoteRequest(const bs::network::otc::QuoteRequest &request);
+
 public slots:
    void peerConnected(const std::string &peerId);
    void peerDisconnected(const std::string &peerId);
    void processMessage(const std::string &peerId, const BinaryData &data);
    void processPbMessage(const std::string &data);
+   void processPublicMessage(const BinaryData &data);
 
 signals:
    void sendMessage(const std::string &peerId, const BinaryData &data);
    void sendPbMessage(const std::string &data);
+   void sendPublicMessage(const BinaryData &data);
 
    void peerUpdated(const std::string &peerId);
 

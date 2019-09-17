@@ -72,6 +72,12 @@ namespace bs {
 
          Range getRange(RangeType range);
 
+         struct QuoteRequest
+         {
+            Side ourSide{};
+            RangeType range{};
+         };
+
          struct Offer
          {
             Side ourSide{};
