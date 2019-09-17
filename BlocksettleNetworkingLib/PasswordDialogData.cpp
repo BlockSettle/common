@@ -43,8 +43,6 @@ namespace bs {
             Key Side("Side");
             Key SigningAllowed("SigningAllowed");
             Key Title("Title");
-            Key TotalReceived("TotalReceived");
-            Key TotalSpent("TotalSpent");
             Key TotalValue("TotalValue");
             Key TransactionAmount("TransactionAmount");
             Key TxInputProduct("TxInputProduct");
