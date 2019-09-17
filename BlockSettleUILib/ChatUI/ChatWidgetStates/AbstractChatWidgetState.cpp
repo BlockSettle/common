@@ -8,8 +8,6 @@ namespace {
 
    const int kMaxMessageNotifLength = 20;
 
-   const auto kGlobalOtcPartyId = "OTC";
-
 } // namespace
 
 AbstractChatWidgetState::AbstractChatWidgetState(ChatWidget* chat)
@@ -78,11 +76,9 @@ void AbstractChatWidgetState::onProcessMessageArrived(const Chat::MessagePtrList
 
    chat_->ui_->textEditMessages->onMessageUpdate(messagePtr);
 
-   if (!canPerformOTCOperations()) {
-      return;
+   if (canPerformOTCOperations()) {
+      chat_->otcHelper_->onMessageArrived(messagePtr);
    }
-
-   chat_->otcHelper_->onMessageArrived(messagePtr);
 }
 
 void AbstractChatWidgetState::onChangePartyStatus(const Chat::ClientPartyPtr& clientPartyPtr)
@@ -199,7 +195,7 @@ void AbstractChatWidgetState::onSendOtcMessage(const std::string &partyId, const
 void AbstractChatWidgetState::onSendOtcPublicMessage(const std::string &data)
 {
    if (canPerformOTCOperations()) {
-      chat_->chatClientServicePtr_->SendPartyMessage(kGlobalOtcPartyId, data);
+      chat_->chatClientServicePtr_->SendPartyMessage(Chat::OtcRoomName, data);
    }
 }
 
@@ -284,7 +280,7 @@ void AbstractChatWidgetState::restoreDraftMessage()
 
 void AbstractChatWidgetState::updateOtc()
 {
-   if (chat_->currentPartyId_ == kGlobalOtcPartyId) {
+   if (chat_->currentPartyId_ == Chat::OtcRoomName) {
       chat_->ui_->stackedWidgetOTC->setCurrentIndex(static_cast<int>(OTCPages::OTCCreateRequestPage));
       return;
    }

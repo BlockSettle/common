@@ -10,6 +10,7 @@
 #include "CommonTypes.h"
 #include "EncryptionUtils.h"
 #include "OfflineSigner.h"
+#include "ProtobufUtils.h"
 #include "SelectedTransactionInputs.h"
 #include "SettlementMonitor.h"
 #include "TransactionData.h"
@@ -496,6 +497,14 @@ void OtcClient::processPbMessage(const std::string &data)
 
 void OtcClient::processPublicMessage(const std::string &peerId, const BinaryData &data)
 {
+   Otc::PublicMessage msg;
+   bool result = msg.ParseFromArray(data.getPtr(), int(data.getSize()));
+   if (!result) {
+      SPDLOG_LOGGER_ERROR(logger_, "parse public OTC message failed");
+      return;
+   }
+
+   SPDLOG_LOGGER_DEBUG(logger_, "{}", ProtobufUtils::toJsonReadable(msg));
 }
 
 void OtcClient::onTxSigned(unsigned reqId, BinaryData signedTX, bs::error::ErrorCode result, const std::string &errorReason)

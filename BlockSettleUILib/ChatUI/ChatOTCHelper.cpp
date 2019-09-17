@@ -150,6 +150,13 @@ void ChatOTCHelper::onOtcQuoteRequestSubmit(const bs::network::otc::QuoteRequest
 void ChatOTCHelper::onMessageArrived(const Chat::MessagePtrList& messagePtr)
 {
    for (const auto &msg : messagePtr) {
+      if (msg->partyId() == Chat::OtcRoomName) {
+         auto data = OtcUtils::deserializePublicMessage(msg->messageText());
+         if (!data.isNull()) {
+            otcClient_->processPublicMessage(msg->senderHash(), data);
+         }
+      }
+
       if (msg->partyMessageState() == Chat::SENT && msg->senderHash() != otcClient_->getCurrentUser()) {
          auto connIt = connectedPeers_.find(msg->partyId());
          if (connIt == connectedPeers_.end()) {

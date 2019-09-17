@@ -9,11 +9,11 @@
 namespace spdlog {
    class logger;
 }
+
 namespace bs {
    namespace sync {
       class WalletsManager;
    }
-
    namespace network {
       namespace otc {
          struct Offer;
