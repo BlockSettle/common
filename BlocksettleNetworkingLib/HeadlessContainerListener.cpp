@@ -1029,6 +1029,10 @@ bool HeadlessContainerListener::onCreateHDLeaf(const std::string &clientId
                return;
             }
 
+            if (callbacks_) {
+               callbacks_->walletChanged(leaf->walletId());
+            }
+
             if ((path.get(1) | bs::hd::hardFlag) == bs::hd::CoinType::BlockSettle_Auth) {
                createSettlementLeaves(hdWallet, leaf->getPooledAddressList());
             }
@@ -1068,6 +1072,9 @@ bool HeadlessContainerListener::createSettlementLeaves(const std::shared_ptr<bs:
             logger_->error("[{}] failed to create settlement leaf for {}"
                , __func__, authAddr.display());
             return false;
+         }
+         if (callbacks_) {
+            callbacks_->walletChanged(leaf->walletId());
          }
       }
       catch (const std::exception &e) {
@@ -1329,6 +1336,9 @@ bool HeadlessContainerListener::onCreateSettlWallet(const std::string &clientId,
          response.set_wallet_id(leaf->walletId());
          response.set_public_key(getPubKey(leaf).toBinStr());
       }
+      if (callbacks_) {
+         callbacks_->walletChanged(response.wallet_id());
+      }
       sendAllIds(response.SerializeAsString(), itReqs->second);
       settlLeafReqs_.erase(itReqs);
    };
@@ -1365,6 +1375,9 @@ bool HeadlessContainerListener::onSetSettlementId(const std::string &clientId
    if (settlLeaf->getIndexForSettlementID(request.settlement_id()) == UINT32_MAX) {
       settlLeaf->addSettlementID(request.settlement_id());
       settlLeaf->getNewExtAddress();
+      if (callbacks_) {
+         callbacks_->walletChanged(settlLeaf->walletId());
+      }
    }
 
    response.set_success(true);
@@ -1890,6 +1903,9 @@ bool HeadlessContainerListener::onSyncAddresses(const std::string &clientId, hea
    }
 
    if (update) {
+      if (callbacks_) {
+         callbacks_->walletChanged(wallet->walletId());
+      }
       SyncAddrsResponse(clientId, packet.id(), request.wallet_id(), bs::sync::SyncState::Success);
    }
    else {
@@ -1917,6 +1933,11 @@ bool HeadlessContainerListener::onExtAddrChain(const std::string &clientId, head
 
       try {
          auto&& newAddrVec = wallet->extendAddressChain(request.count(), request.ext_int());
+
+         if (callbacks_) {
+            callbacks_->walletChanged(wallet->walletId());
+         }
+
          for (const auto &addr : newAddrVec) {
             auto &&index = wallet->getAddressIndex(addr);
             auto addrData = response.add_addresses();
@@ -1960,6 +1981,10 @@ bool HeadlessContainerListener::onSyncNewAddr(const std::string &clientId, headl
       const auto addr = wallet->synchronizeUsedAddressChain(inData.index()).first.display();
       outData->set_address(addr);
       outData->set_index(inData.index());
+   }
+
+   if (callbacks_) {
+      callbacks_->walletChanged(wallet->walletId());
    }
 
    packet.set_data(response.SerializeAsString());
