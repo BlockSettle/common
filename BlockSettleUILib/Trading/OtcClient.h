@@ -151,6 +151,8 @@ private:
    void verifyAuthAddresses(OtcClientDeal *deal);
    void setComments(OtcClientDeal *deal);
 
+   void updateRequests();
+
    std::shared_ptr<spdlog::logger> logger_;
    std::unordered_map<std::string, bs::network::otc::Peer> peers_;
 
@@ -170,6 +172,7 @@ private:
    std::map<unsigned, BinaryData> signRequestIds_;
 
    bs::network::otc::Requests requests_;
+   std::map<std::string, bs::network::otc::Request> requestMap_;
 
    OtcClientParams params_;
 

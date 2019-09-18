@@ -517,9 +517,9 @@ void OtcClient::processPublicMessage(QDateTime timestamp, const std::string &pee
    request.peerId = peerId;
    request.timestamp = timestamp;
    request.rangeType = range;
-   requests_.push_back(request);
+   requestMap_[request.peerId] = request;
 
-   emit publicUpdated();
+   updateRequests();
 }
 
 void OtcClient::onTxSigned(unsigned reqId, BinaryData signedTX, bs::error::ErrorCode result, const std::string &errorReason)
@@ -1208,4 +1208,13 @@ void OtcClient::setComments(OtcClientDeal *deal)
          , bs::network::otc::toString(deal->side), UiUtils::displayPriceFX(bs::network::otc::fromCents(deal->price)).toStdString());
       leaf->setTransactionComment(signedTx, comment);
    }
+}
+
+void OtcClient::updateRequests()
+{
+   requests_.clear();
+   for (const auto &item : requestMap_) {
+      requests_.push_back(&item.second);
+   }
+   emit publicUpdated();
 }

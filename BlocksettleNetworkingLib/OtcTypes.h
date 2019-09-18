@@ -126,7 +126,7 @@ namespace bs {
             QDateTime timestamp;
          };
 
-         using Requests = std::vector<Request>;
+         using Requests = std::vector<const Request*>;
 
          double satToBtc(int64_t value);
          double satToBtc(uint64_t value);
