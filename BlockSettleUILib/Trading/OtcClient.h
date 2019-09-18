@@ -181,7 +181,6 @@ private:
    std::map<std::string, bs::network::otc::Request> requestMap_;
 
    OtcClientParams params_;
-
 };
 
 #endif
