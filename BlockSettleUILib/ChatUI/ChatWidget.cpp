@@ -157,6 +157,7 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
    connect(otcHelper_->getClient(), &OtcClient::sendMessage, this, &ChatWidget::onSendOtcMessage);
    connect(otcHelper_->getClient(), &OtcClient::sendPublicMessage, this, &ChatWidget::onSendOtcPublicMessage);
    connect(otcHelper_->getClient(), &OtcClient::peerUpdated, this, &ChatWidget::onOtcUpdated);
+   connect(otcHelper_->getClient(), &OtcClient::publicUpdated, this, &ChatWidget::onOtcPublicUpdated);
 
    connect(ui_->widgetNegotiateRequest, &OTCNegotiationRequestWidget::requestCreated, this, &ChatWidget::onOtcRequestSubmit);
    connect(ui_->widgetPullOwnOTCRequest, &PullOwnOTCRequestWidget::requestPulled, this, &ChatWidget::onOtcRequestPull);

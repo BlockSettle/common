@@ -215,7 +215,7 @@ void AbstractChatWidgetState::onOtcUpdated(const std::string &partyId)
 
 void AbstractChatWidgetState::onOtcPublicUpdated()
 {
-   if (canPerformOTCOperations() && chat_->currentPartyId_ != Chat::OtcRoomName) {
+   if (canPerformOTCOperations() && chat_->currentPartyId_ == Chat::OtcRoomName) {
       updateOtc();
    }
 }
@@ -294,18 +294,19 @@ void AbstractChatWidgetState::restoreDraftMessage()
 
 void AbstractChatWidgetState::updateOtc()
 {
-   if (chat_->currentPartyId_ == Chat::OtcRoomName) {
-      auto ownRequest = chat_->otcHelper_->getClient()->ownRequest();
-      if (ownRequest) {
-         chat_->ui_->stackedWidgetOTC->setCurrentIndex(static_cast<int>(OTCPages::OTCCreateRequestPage));
-      } else {
-         chat_->ui_->stackedWidgetOTC->setCurrentIndex(static_cast<int>(OTCPages::OTCPullOwnOTCRequestPage));
-      }
+   if (!canPerformOTCOperations()) {
+      chat_->ui_->stackedWidgetOTC->setCurrentIndex(static_cast<int>(OTCPages::OTCLoginRequiredShieldPage));
       return;
    }
 
-   if (!canPerformOTCOperations()) {
-      chat_->ui_->stackedWidgetOTC->setCurrentIndex(static_cast<int>(OTCPages::OTCLoginRequiredShieldPage));
+   if (chat_->currentPartyId_ == Chat::OtcRoomName) {
+      auto ownRequest = chat_->otcHelper_->getClient()->ownRequest();
+      if (ownRequest) {
+         chat_->ui_->widgetPullOwnOTCRequest->setRequest(*ownRequest);
+         chat_->ui_->stackedWidgetOTC->setCurrentIndex(static_cast<int>(OTCPages::OTCPullOwnOTCRequestPage));
+      } else {
+         chat_->ui_->stackedWidgetOTC->setCurrentIndex(static_cast<int>(OTCPages::OTCCreateRequestPage));
+      }
       return;
    }
 
