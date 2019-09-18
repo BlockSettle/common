@@ -152,6 +152,7 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
 
    otcRequestViewModel_ = new OTCRequestViewModel(otcHelper_->getClient(), this);
    ui_->treeViewOTCRequests->setModel(otcRequestViewModel_);
+   connect(ui_->treeViewOTCRequests->selectionModel(), &QItemSelectionModel::currentChanged, this, &ChatWidget::onOtcRequestCurrentChanged);
 
    connect(otcHelper_->getClient(), &OtcClient::sendPbMessage, this, &ChatWidget::sendOtcPbMessage);
    connect(otcHelper_->getClient(), &OtcClient::sendMessage, this, &ChatWidget::onSendOtcMessage);
@@ -511,4 +512,9 @@ void ChatWidget::onConfirmContactNewKeyData(const Chat::UserPublicKeyInfoList& u
    {
       chatClientServicePtr_->DeclineNewPublicKeys(declineList);
    }
+}
+
+void ChatWidget::onOtcRequestCurrentChanged(const QModelIndex &current, const QModelIndex &previous)
+{
+   onOtcPublicUpdated();
 }

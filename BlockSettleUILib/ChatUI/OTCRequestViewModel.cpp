@@ -36,13 +36,12 @@ int OTCRequestViewModel::columnCount(const QModelIndex &parent) const
    return int(Columns::Latest) + 1;
 }
 
-QVariant OTCRequestViewModel::data(const QModelIndex & index, int role) const
+QVariant OTCRequestViewModel::data(const QModelIndex &index, int role) const
 {
-   if (!index.isValid() || index.row() >= int(otcClient_->requests().size())) {
+   auto request = this->request(index);
+   if (!request) {
       return {};
    }
-
-   const auto &request = otcClient_->requests().at(size_t(index.row()));
    const auto column = Columns(index.column());
 
    switch (role) {
@@ -82,6 +81,14 @@ QVariant OTCRequestViewModel::headerData(int section, Qt::Orientation orientatio
    }
 
    return QVariant{};
+}
+
+const otc::Request *OTCRequestViewModel::request(const QModelIndex &index) const
+{
+   if (!index.isValid() || index.row() >= int(otcClient_->requests().size())) {
+      return nullptr;
+   }
+   return otcClient_->requests().at(size_t(index.row()));
 }
 
 void OTCRequestViewModel::onRequestsUpdated()

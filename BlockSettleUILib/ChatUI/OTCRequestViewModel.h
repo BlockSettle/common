@@ -2,13 +2,8 @@
 #define __OTC_REQUEST_VIEW_MODEL_H__
 
 #include <QAbstractTableModel>
-#include <QString>
-#include <QTimer>
 
-#include <vector>
-
-#include "CommonTypes.h"
-#include "chat.pb.h"
+#include "OtcTypes.h"
 
 class OtcClient;
 
@@ -20,10 +15,12 @@ public:
    OTCRequestViewModel(OtcClient *otcClient, QObject* parent = nullptr);
    ~OTCRequestViewModel() override = default;
 
-   int rowCount(const QModelIndex & parent) const override;
-   int columnCount(const QModelIndex & parent) const override;
-   QVariant data(const QModelIndex & index, int role = Qt::DisplayRole) const override;
+   int rowCount(const QModelIndex &parent) const override;
+   int columnCount(const QModelIndex &parent) const override;
+   QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
    QVariant headerData(int section, Qt::Orientation orientation, int role) const override;
+
+   const bs::network::otc::Request *request(const QModelIndex &index) const;
 
 private slots:
    void onRequestsUpdated();

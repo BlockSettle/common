@@ -1,7 +1,9 @@
 #include "AbstractChatWidgetState.h"
-#include "NotificationCenter.h"
-#include "ChatUI/ChatPartiesTreeModel.h"
+
 #include "ChatUI/ChatOTCHelper.h"
+#include "ChatUI/ChatPartiesTreeModel.h"
+#include "ChatUI/OTCRequestViewModel.cpp"
+#include "NotificationCenter.h"
 #include "OtcClient.h"
 
 namespace {
@@ -300,8 +302,13 @@ void AbstractChatWidgetState::updateOtc()
    }
 
    if (chat_->currentPartyId_ == Chat::OtcRoomName) {
+      auto currentIndex = chat_->ui_->treeViewOTCRequests->currentIndex();
+      auto selectedRequest = chat_->otcRequestViewModel_->request(currentIndex);
       auto ownRequest = chat_->otcHelper_->getClient()->ownRequest();
-      if (ownRequest) {
+
+      if (selectedRequest && selectedRequest != ownRequest) {
+         chat_->ui_->stackedWidgetOTC->setCurrentIndex(static_cast<int>(OTCPages::OTCCreateResponsePage));
+      } else if (ownRequest) {
          chat_->ui_->widgetPullOwnOTCRequest->setRequest(*ownRequest);
          chat_->ui_->stackedWidgetOTC->setCurrentIndex(static_cast<int>(OTCPages::OTCPullOwnOTCRequestPage));
       } else {

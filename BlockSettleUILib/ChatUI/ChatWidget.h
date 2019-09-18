@@ -7,6 +7,8 @@
 #include "ChatProtocol/ChatClientService.h"
 #include "ChatProtocol/ClientParty.h"
 
+class QItemSelection;
+
 class AbstractChatWidgetState;
 class AuthAddressManager;
 class ArmoryConnection;
@@ -74,6 +76,8 @@ private slots:
    void onSetDisplayName(const std::string& partyId, const std::string& contactName);
    void onUserPublicKeyChanged(const Chat::UserPublicKeyInfoList& userPublicKeyInfoList);
    void onConfirmContactNewKeyData(const Chat::UserPublicKeyInfoList& userPublicKeyInfoList, bool bForceUpdateAllUsers);
+
+   void onOtcRequestCurrentChanged(const QModelIndex &current, const QModelIndex &previous);
 
    void onContactRequestAcceptClicked(const std::string& partyId);
    void onContactRequestRejectClicked(const std::string& partyId);
