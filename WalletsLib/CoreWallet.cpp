@@ -257,7 +257,7 @@ uint64_t wallet::TXSignRequest::inputAmount(const ContainsAddressCb &containsAdd
    // prevStates inputs parsed first
    // duplicated inputs skipped
 
-   std::set<bs::Address> addresses;
+   std::set<UTXO> utxoSet;
    uint64_t inputAmount = 0;
 
    if (!prevStates.empty() && containsAddressCb != nullptr) {
@@ -265,9 +265,9 @@ uint64_t wallet::TXSignRequest::inputAmount(const ContainsAddressCb &containsAdd
 
       for (auto spender : signer.spenders()) {
          const auto addr = bs::Address::fromUTXO(spender->getUtxo());
-         if (addresses.find(addr) == addresses.cend()) {
+         if (utxoSet.find(spender->getUtxo()) == utxoSet.cend()) {
             if (containsAddressCb(addr)) {
-               addresses.insert(addr);
+               utxoSet.insert(spender->getUtxo());
                inputAmount += spender->getValue();
             }
          }
@@ -276,9 +276,10 @@ uint64_t wallet::TXSignRequest::inputAmount(const ContainsAddressCb &containsAdd
 
    for (const auto &utxo: inputs) {     
       const auto addr = bs::Address::fromUTXO(utxo);
-      if (addresses.find(addr) == addresses.cend()) {
+
+      if (utxoSet.find(utxo) == utxoSet.cend()) {
          if (containsAddressCb(addr)) {
-            addresses.insert(addr);
+            utxoSet.insert(utxo);
             inputAmount += utxo.getValue();
          }
       }
@@ -320,16 +321,18 @@ uint64_t wallet::TXSignRequest::amountReceived(const wallet::TXSignRequest::Cont
    // prevStates recipients parsed first
    // duplicated recipients skipped
 
-   std::set<bs::Address> addresses;
+   std::set<BinaryData> txSet;
    uint64_t amount = 0;
 
    if (!prevStates.empty() && containsAddressCb != nullptr) {
       bs::CheckRecipSigner signer(prevStates.front());
       for (auto recip : signer.recipients()) {
          const auto addr = bs::Address::fromRecipient(recip);
-         if (addresses.find(addr) == addresses.cend()) {
+         const auto hash = recip->getSerializedScript();
+
+         if (txSet.find(hash) == txSet.cend()) {
             if (containsAddressCb(addr)) {
-               addresses.insert(addr);
+               txSet.insert(hash);
                amount += recip->getValue();
             }
          }
@@ -338,9 +341,11 @@ uint64_t wallet::TXSignRequest::amountReceived(const wallet::TXSignRequest::Cont
 
    for (const auto &recip: recipients) {
       const auto addr = bs::Address::fromRecipient(recip);
-      if (addresses.find(addr) == addresses.cend()) {
+      const auto hash = recip->getSerializedScript();
+
+      if (txSet.find(hash) == txSet.cend()) {
          if (containsAddressCb(addr)) {
-            addresses.insert(addr);
+            txSet.insert(hash);
             amount += recip->getValue();
          }
       }
