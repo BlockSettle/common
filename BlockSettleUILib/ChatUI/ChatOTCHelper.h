@@ -16,6 +16,7 @@ namespace bs {
    }
    namespace network {
       namespace otc {
+         enum class Env : int;
          struct Offer;
          struct Peer;
          struct QuoteRequest;
@@ -35,7 +36,8 @@ public:
    ChatOTCHelper(QObject* parent = nullptr);
    ~ChatOTCHelper() override = default;
 
-   void init(const std::shared_ptr<spdlog::logger>& loggerPtr
+   void init(bs::network::otc::Env env
+      , const std::shared_ptr<spdlog::logger>& loggerPtr
       , const std::shared_ptr<bs::sync::WalletsManager>& walletsMgr
       , const std::shared_ptr<ArmoryConnection>& armory
       , const std::shared_ptr<SignContainer>& signContainer

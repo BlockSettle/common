@@ -6,11 +6,17 @@
 
 #include "BinaryData.h"
 #include "TxClasses.h"
-
+#include <QDateTime>
 
 namespace bs {
    namespace network {
       namespace otc {
+
+         enum class Env : int
+         {
+            Prod,
+            Test,
+         };
 
          enum class State
          {
@@ -65,9 +71,10 @@ namespace bs {
             Range50_100,
             Range100_250,
             Range250plus,
-
-            Count
          };
+
+         RangeType firstRangeValue(Env env);
+         RangeType lastRangeValue(Env env);
 
          std::string toString(RangeType range);
 
@@ -108,10 +115,18 @@ namespace bs {
             BinaryData ourAuthPubKey;
 
             Peer(const std::string &peerId)
-               : peerId(peerId)
-            {
-            }
+               : peerId(peerId) {}
          };
+
+         struct Request
+         {
+            std::string peerId;
+            Side side{};
+            RangeType rangeType{};
+            QDateTime timestamp;
+         };
+
+         using Requests = std::vector<Request>;
 
          double satToBtc(int64_t value);
          double satToBtc(uint64_t value);

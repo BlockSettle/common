@@ -51,8 +51,6 @@ ChatWidget::ChatWidget(QWidget* parent)
    ui_->frameContactActions->setVisible(false);
    ui_->stackedWidget->setCurrentIndex(1); //Basically stackedWidget should be removed
 
-   otcRequestViewModel_ = new OTCRequestViewModel(this);
-   ui_->treeViewOTCRequests->setModel(otcRequestViewModel_);
    ui_->textEditMessages->viewport()->installEventFilter(this);
    ui_->input_textEdit->viewport()->installEventFilter(this);
    ui_->treeViewUsers->viewport()->installEventFilter(this);
@@ -144,11 +142,17 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
 
    ui_->textEditMessages->onSetClientPartyModel(clientPartyModelPtr);
 
+   bool isProd = appSettings->get<int>(ApplicationSettings::envConfiguration) == ApplicationSettings::PROD;
+   auto env = isProd ? otc::Env::Prod : otc::Env::Test;
+
    // OTC
    otcHelper_ = new ChatOTCHelper(this);
-   otcHelper_->init(loggerPtr_, walletsMgr, armory, signContainer, authManager, appSettings);
+   otcHelper_->init(env, loggerPtr_, walletsMgr, armory, signContainer, authManager, appSettings);
    otcWindowsManager_->init(walletsMgr, authManager);
-   
+
+   otcRequestViewModel_ = new OTCRequestViewModel(otcHelper_->getClient(), this);
+   ui_->treeViewOTCRequests->setModel(otcRequestViewModel_);
+
    connect(otcHelper_->getClient(), &OtcClient::sendPbMessage, this, &ChatWidget::sendOtcPbMessage);
    connect(otcHelper_->getClient(), &OtcClient::sendMessage, this, &ChatWidget::onSendOtcMessage);
    connect(otcHelper_->getClient(), &OtcClient::sendPublicMessage, this, &ChatWidget::onSendOtcPublicMessage);
@@ -160,6 +164,8 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
    connect(ui_->widgetNegotiateResponse, &OTCNegotiationResponseWidget::responseUpdated, this, &ChatWidget::onOtcResponseUpdate);
    connect(ui_->widgetNegotiateResponse, &OTCNegotiationResponseWidget::responseRejected, this, &ChatWidget::onOtcResponseReject);
    connect(ui_->widgetCreateOTCRequest, &CreateOTCRequestWidget::requestCreated, this, &ChatWidget::onOtcQuoteRequestSubmit);
+
+   ui_->widgetCreateOTCRequest->init(env);
 }
 
 void acceptPartyRequest(const std::string& partyId) {}

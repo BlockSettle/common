@@ -495,16 +495,31 @@ void OtcClient::processPbMessage(const std::string &data)
    SPDLOG_LOGGER_CRITICAL(logger_, "unknown response was detected!");
 }
 
-void OtcClient::processPublicMessage(const std::string &peerId, const BinaryData &data)
+void OtcClient::processPublicMessage(QDateTime timestamp, const std::string &peerId, const BinaryData &data)
 {
    Otc::PublicMessage msg;
    bool result = msg.ParseFromArray(data.getPtr(), int(data.getSize()));
    if (!result) {
-      SPDLOG_LOGGER_ERROR(logger_, "parse public OTC message failed");
+      SPDLOG_LOGGER_ERROR(logger_, "parsing public OTC message failed");
       return;
    }
 
    SPDLOG_LOGGER_DEBUG(logger_, "{}", ProtobufUtils::toJsonReadable(msg));
+
+   auto range = otc::RangeType(msg.request().range());
+   if (range < otc::firstRangeValue(params_.env) || range > otc::lastRangeValue(params_.env)) {
+      SPDLOG_LOGGER_ERROR(logger_, "invalid range");
+      return;
+   }
+
+   Request request;
+   request.side = otc::Side(msg.request().side());
+   request.peerId = peerId;
+   request.timestamp = timestamp;
+   request.rangeType = range;
+   requests_.push_back(request);
+
+   emit publicUpdated();
 }
 
 void OtcClient::onTxSigned(unsigned reqId, BinaryData signedTX, bs::error::ErrorCode result, const std::string &errorReason)

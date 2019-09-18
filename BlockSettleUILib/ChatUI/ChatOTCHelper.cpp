@@ -15,7 +15,8 @@ ChatOTCHelper::ChatOTCHelper(QObject* parent /*= nullptr*/)
 {
 }
 
-void ChatOTCHelper::init(const std::shared_ptr<spdlog::logger>& loggerPtr
+void ChatOTCHelper::init(bs::network::otc::Env env
+   , const std::shared_ptr<spdlog::logger>& loggerPtr
    , const std::shared_ptr<bs::sync::WalletsManager>& walletsMgr
    , const std::shared_ptr<ArmoryConnection>& armory
    , const std::shared_ptr<SignContainer>& signContainer
@@ -25,6 +26,8 @@ void ChatOTCHelper::init(const std::shared_ptr<spdlog::logger>& loggerPtr
    loggerPtr_ = loggerPtr;
 
    OtcClientParams params;
+
+   params.env = env;
 
    params.offlineLoadPathCb = [applicationSettings]() -> std::string {
       QString signerOfflineDir = applicationSettings->get<QString>(ApplicationSettings::signerOfflineDir);
@@ -153,11 +156,9 @@ void ChatOTCHelper::onMessageArrived(const Chat::MessagePtrList& messagePtr)
       if (msg->partyId() == Chat::OtcRoomName) {
          auto data = OtcUtils::deserializePublicMessage(msg->messageText());
          if (!data.isNull()) {
-            otcClient_->processPublicMessage(msg->senderHash(), data);
+            otcClient_->processPublicMessage(msg->timestamp(), msg->senderHash(), data);
          }
-      }
-
-      if (msg->partyMessageState() == Chat::SENT && msg->senderHash() != otcClient_->getCurrentUser()) {
+      } else if (msg->partyMessageState() == Chat::SENT && msg->senderHash() != otcClient_->getCurrentUser()) {
          auto connIt = connectedPeers_.find(msg->partyId());
          if (connIt == connectedPeers_.end()) {
             continue;

@@ -68,13 +68,15 @@ struct OtcClientParams
    // Return path that will be used to load signed offline request.
    // Must be set if offline wallet will be used for sell.
    std::function<std::string()> offlineLoadPathCb;
+
+   bs::network::otc::Env env{};
 };
 
 class OtcClient : public QObject
 {
    Q_OBJECT
-public:
 
+public:
    // authAddressManager could be null. If not set peer's auth address won't be verified (and verification affects only signer UI for now).
    OtcClient(const std::shared_ptr<spdlog::logger> &logger
       , const std::shared_ptr<bs::sync::WalletsManager> &walletsMgr
@@ -97,12 +99,14 @@ public:
 
    bool sendQuoteRequest(const bs::network::otc::QuoteRequest &request);
 
+   const bs::network::otc::Requests &requests() const { return requests_; }
+
 public slots:
    void peerConnected(const std::string &peerId);
    void peerDisconnected(const std::string &peerId);
    void processMessage(const std::string &peerId, const BinaryData &data);
    void processPbMessage(const std::string &data);
-   void processPublicMessage(const std::string &peerId, const BinaryData &data);
+   void processPublicMessage(QDateTime timestamp, const std::string &peerId, const BinaryData &data);
 
 signals:
    void sendMessage(const std::string &peerId, const BinaryData &data);
@@ -110,6 +114,8 @@ signals:
    void sendPublicMessage(const BinaryData &data);
 
    void peerUpdated(const std::string &peerId);
+
+   void publicUpdated();
 
 private slots:
    void onTxSigned(unsigned reqId, BinaryData signedTX, bs::error::ErrorCode result, const std::string &errorReason);
@@ -162,6 +168,8 @@ private:
 
    // Maps sign requests to settlementId
    std::map<unsigned, BinaryData> signRequestIds_;
+
+   bs::network::otc::Requests requests_;
 
    OtcClientParams params_;
 

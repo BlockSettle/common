@@ -31,8 +31,6 @@ std::string bs::network::otc::toString(bs::network::otc::RangeType range)
          return "100-250";
       case RangeType::Range250plus:
          return "250+";
-      case RangeType::Count:
-         break;
    }
 
    assert(false);
@@ -56,8 +54,6 @@ bs::network::otc::Range bs::network::otc::getRange(bs::network::otc::RangeType r
          return Range{100, 250};
       case RangeType::Range250plus:
          return Range{250, 1000000};
-      case RangeType::Count:
-         break;
    }
 
    assert(false);
@@ -134,4 +130,17 @@ double bs::network::otc::fromCents(int64_t value)
 int64_t bs::network::otc::toCents(double value)
 {
    return std::llround(value * 100);
+}
+
+bs::network::otc::RangeType bs::network::otc::firstRangeValue(bs::network::otc::Env env)
+{
+   switch (env) {
+      case Env::Prod: return RangeType::Range5_10;
+      case Env::Test: return RangeType::Range0_1;
+   }
+}
+
+bs::network::otc::RangeType bs::network::otc::lastRangeValue(bs::network::otc::Env env)
+{
+   return RangeType::Range250plus;
 }

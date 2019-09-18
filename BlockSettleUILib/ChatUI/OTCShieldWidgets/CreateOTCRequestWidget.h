@@ -14,9 +14,12 @@ namespace Ui {
 class CreateOTCRequestWidget : public OTCWindowsAdapterBase
 {
    Q_OBJECT
+
 public:
    CreateOTCRequestWidget(QWidget* parent = nullptr);
    ~CreateOTCRequestWidget() override;
+
+   void init(bs::network::otc::Env env);
 
    bs::network::otc::QuoteRequest request() const;
 
