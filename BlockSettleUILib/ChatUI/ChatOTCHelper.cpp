@@ -107,6 +107,15 @@ void ChatOTCHelper::onOtcRequestSubmit(const std::string& partyId, const bs::net
 
 void ChatOTCHelper::onOtcRequestPull(const std::string& partyId)
 {
+   if (partyId == Chat::OtcRoomName) {
+      bool result = otcClient_->pullOwnRequest();
+      if (!result) {
+         SPDLOG_LOGGER_ERROR(loggerPtr_, "pull own request failed");
+         return;
+      }
+      return;
+   }
+
    bool result = otcClient_->pullOrRejectOffer(partyId);
    if (!result) {
       SPDLOG_LOGGER_ERROR(loggerPtr_, "pull offer failed");
@@ -146,6 +155,15 @@ void ChatOTCHelper::onOtcQuoteRequestSubmit(const bs::network::otc::QuoteRequest
    bool result = otcClient_->sendQuoteRequest(request);
    if (!result) {
       SPDLOG_LOGGER_ERROR(loggerPtr_, "sending quote request failed");
+      return;
+   }
+}
+
+void ChatOTCHelper::onOtcPullOwnRequest()
+{
+   bool result = otcClient_->pullOwnRequest();
+   if (!result) {
+      SPDLOG_LOGGER_ERROR(loggerPtr_, "pulling own request failed");
       return;
    }
 }

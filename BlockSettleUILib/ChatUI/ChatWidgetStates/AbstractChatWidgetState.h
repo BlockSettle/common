@@ -59,13 +59,18 @@ public:
    void onSendOtcMessage(const std::string &partyId, const std::string& data);
    void onSendOtcPublicMessage(const std::string& data);
    void onProcessOtcPbMessage(const std::string& data);
+
    void onOtcUpdated(const std::string &partyId);
+   void onOtcPublicUpdated();
+
    void onOtcRequestSubmit();
    void onOtcRequestPull();
    void onOtcResponseAccept();
    void onOtcResponseUpdate();
    void onOtcResponseReject();
+
    void onOtcQuoteRequestSubmit();
+   void onOtcPullOwnRequest();
 
 protected:
 

@@ -208,6 +208,11 @@ void ChatWidget::onOtcUpdated(const std::string& partyId)
    stateCurrent_->onOtcUpdated(partyId);
 }
 
+void ChatWidget::onOtcPublicUpdated()
+{
+   stateCurrent_->onOtcPublicUpdated();
+}
+
 void ChatWidget::onPartyModelChanged()
 {
    stateCurrent_->onResetPartyModel();

@@ -24,6 +24,8 @@ namespace Blocksettle {
          class Message_SellerAccepts;
          class Message_BuyerAcks;
          class Message_Close;
+         class PublicMessage_Request;
+         class PublicMessage_Close;
       }
    }
 }
@@ -98,8 +100,10 @@ public:
    bool updateOffer(const bs::network::otc::Offer &offer, const std::string &peerId);
 
    bool sendQuoteRequest(const bs::network::otc::QuoteRequest &request);
+   bool pullOwnRequest();
 
    const bs::network::otc::Requests &requests() const { return requests_; }
+   const bs::network::otc::Request *ownRequest() const;
 
 public slots:
    void peerConnected(const std::string &peerId);
@@ -114,7 +118,6 @@ signals:
    void sendPublicMessage(const BinaryData &data);
 
    void peerUpdated(const std::string &peerId);
-
    void publicUpdated();
 
 private slots:
@@ -129,6 +132,9 @@ private:
    void processSellerAccepts(bs::network::otc::Peer *peer, const Blocksettle::Communication::Otc::Message_SellerAccepts &msg);
    void processBuyerAcks(bs::network::otc::Peer *peer, const Blocksettle::Communication::Otc::Message_BuyerAcks &msg);
    void processClose(bs::network::otc::Peer *peer, const Blocksettle::Communication::Otc::Message_Close &msg);
+
+   void processPublicRequest(QDateTime timestamp, const std::string &peerId, const Blocksettle::Communication::Otc::PublicMessage_Request &msg);
+   void processPublicClose(QDateTime timestamp, const std::string &peerId, const Blocksettle::Communication::Otc::PublicMessage_Close &msg);
 
    void processPbStartOtc(const Blocksettle::Communication::ProxyTerminalPb::Response_StartOtc &response);
    void processPbVerifyOtc(const Blocksettle::Communication::ProxyTerminalPb::Response_VerifyOtc &response);

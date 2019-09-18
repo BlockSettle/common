@@ -84,6 +84,7 @@ private slots:
    void onRemovePartyRequest(const std::string& partyId);
 
    void onOtcUpdated(const std::string& partyId);
+   void onOtcPublicUpdated();
 
    void onOtcRequestSubmit();
    void onOtcRequestPull();

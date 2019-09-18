@@ -213,6 +213,13 @@ void AbstractChatWidgetState::onOtcUpdated(const std::string &partyId)
    }
 }
 
+void AbstractChatWidgetState::onOtcPublicUpdated()
+{
+   if (canPerformOTCOperations() && chat_->currentPartyId_ != Chat::OtcRoomName) {
+      updateOtc();
+   }
+}
+
 void AbstractChatWidgetState::onOtcRequestSubmit()
 {
    if (canPerformOTCOperations()) {
@@ -255,6 +262,13 @@ void AbstractChatWidgetState::onOtcQuoteRequestSubmit()
    }
 }
 
+void AbstractChatWidgetState::onOtcPullOwnRequest()
+{
+   if (canPerformOTCOperations()) {
+      chat_->otcHelper_->onOtcPullOwnRequest();
+   }
+}
+
 void AbstractChatWidgetState::saveDraftMessage()
 {
    const auto draft = chat_->ui_->input_textEdit->toPlainText();
@@ -281,7 +295,12 @@ void AbstractChatWidgetState::restoreDraftMessage()
 void AbstractChatWidgetState::updateOtc()
 {
    if (chat_->currentPartyId_ == Chat::OtcRoomName) {
-      chat_->ui_->stackedWidgetOTC->setCurrentIndex(static_cast<int>(OTCPages::OTCCreateRequestPage));
+      auto ownRequest = chat_->otcHelper_->getClient()->ownRequest();
+      if (ownRequest) {
+         chat_->ui_->stackedWidgetOTC->setCurrentIndex(static_cast<int>(OTCPages::OTCCreateRequestPage));
+      } else {
+         chat_->ui_->stackedWidgetOTC->setCurrentIndex(static_cast<int>(OTCPages::OTCPullOwnOTCRequestPage));
+      }
       return;
    }
 

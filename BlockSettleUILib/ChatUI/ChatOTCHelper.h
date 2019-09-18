@@ -57,7 +57,9 @@ public slots:
    void onOtcResponseAccept(const std::string& partyId, const bs::network::otc::Offer& offer);
    void onOtcResponseUpdate(const std::string& partyId, const bs::network::otc::Offer& offer);
    void onOtcResponseReject(const std::string& partyId);
+
    void onOtcQuoteRequestSubmit(const bs::network::otc::QuoteRequest &request);
+   void onOtcPullOwnRequest();
 
    void onMessageArrived(const Chat::MessagePtrList& messagePtr);
    void onPartyStateChanged(const Chat::ClientPartyPtr& clientPartyPtr);

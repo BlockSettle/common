@@ -402,6 +402,23 @@ bool OtcClient::sendQuoteRequest(const QuoteRequest &request)
    return true;
 }
 
+bool OtcClient::pullOwnRequest()
+{
+   Otc::PublicMessage msg;
+   msg.mutable_close();
+   emit sendPublicMessage(msg.SerializeAsString());
+   return true;
+}
+
+const Request *OtcClient::ownRequest() const
+{
+   auto it = requestMap_.find(currentUserId_);
+   if (it == requestMap_.end()) {
+      return nullptr;
+   }
+   return &it->second;
+}
+
 void OtcClient::peerConnected(const std::string &peerId)
 {
    Peer *oldPeer = findPeer(peerId);
@@ -504,22 +521,19 @@ void OtcClient::processPublicMessage(QDateTime timestamp, const std::string &pee
       return;
    }
 
-   SPDLOG_LOGGER_DEBUG(logger_, "{}", ProtobufUtils::toJsonReadable(msg));
-
-   auto range = otc::RangeType(msg.request().range());
-   if (range < otc::firstRangeValue(params_.env) || range > otc::lastRangeValue(params_.env)) {
-      SPDLOG_LOGGER_ERROR(logger_, "invalid range");
-      return;
+   switch (msg.data_case()) {
+      case Otc::PublicMessage::kRequest:
+         processPublicRequest(timestamp, peerId, msg.request());
+         return;
+      case Otc::PublicMessage::kClose:
+         processPublicClose(timestamp, peerId, msg.close());
+         return;
+      case Otc::PublicMessage::DATA_NOT_SET:
+         SPDLOG_LOGGER_ERROR(logger_, "invalid public request detected");
+         return;
    }
 
-   Request request;
-   request.side = otc::Side(msg.request().side());
-   request.peerId = peerId;
-   request.timestamp = timestamp;
-   request.rangeType = range;
-   requestMap_[request.peerId] = request;
-
-   updateRequests();
+   SPDLOG_LOGGER_CRITICAL(logger_, "unknown public message was detected!");
 }
 
 void OtcClient::onTxSigned(unsigned reqId, BinaryData signedTX, bs::error::ErrorCode result, const std::string &errorReason)
@@ -824,6 +838,30 @@ void OtcClient::processClose(Peer *peer, const Message_Close &msg)
          assert(false);
          break;
    }
+}
+
+void OtcClient::processPublicRequest(QDateTime timestamp, const std::string &peerId, const PublicMessage_Request &msg)
+{
+   auto range = otc::RangeType(msg.range());
+   if (range < otc::firstRangeValue(params_.env) || range > otc::lastRangeValue(params_.env)) {
+      SPDLOG_LOGGER_ERROR(logger_, "invalid range");
+      return;
+   }
+
+   Request request;
+   request.side = otc::Side(msg.side());
+   request.peerId = peerId;
+   request.timestamp = timestamp;
+   request.rangeType = range;
+   requestMap_[request.peerId] = request;
+
+   updateRequests();
+}
+
+void OtcClient::processPublicClose(QDateTime timestamp, const std::string &peerId, const PublicMessage_Close &msg)
+{
+   requestMap_.erase(peerId);
+   updateRequests();
 }
 
 void OtcClient::processPbStartOtc(const ProxyTerminalPb::Response_StartOtc &response)
