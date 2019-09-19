@@ -1,51 +1,80 @@
 #include "ValidityFlag.h"
 
+#include <cassert>
+#include <mutex>
 
-ValidityHandle::ValidityHandle(ValidityFlag *parent)
+struct ValidityFlagData
 {
-   setParent(parent);
+   std::mutex mutex;
+   bool isValid{true};
+};
+
+ValidityHandle::ValidityHandle(const std::shared_ptr<ValidityFlagData> &data)
+   : data_(data)
+{
 }
 
-ValidityHandle::~ValidityHandle()
+ValidityHandle::~ValidityHandle() = default;
+
+ValidityHandle::ValidityHandle(const ValidityHandle &other) = default;
+
+ValidityHandle::ValidityHandle(ValidityHandle &&other)
+   : data_(std::move(other.data_))
 {
-   setParent(nullptr);
 }
 
-ValidityHandle::ValidityHandle(const ValidityHandle &other)
+ValidityHandle &ValidityHandle::operator=(ValidityHandle &&other)
 {
-   setParent(other.parent_);
+   data_ = std::move(other.data_);
+   return *this;
 }
 
-void ValidityHandle::setParent(ValidityFlag *parent)
+void ValidityHandle::lock()
 {
-   if (parent_) {
-      parent_->handles_.erase(this);
-   }
-
-   parent_ = parent;
-
-   if (parent_) {
-      parent_->handles_.insert(this);
-   }
+   data_->mutex.lock();
 }
 
-ValidityHandle::operator bool() const
+void ValidityHandle::unlock()
 {
-   return (parent_ != nullptr);
+   data_->mutex.unlock();
 }
 
+bool ValidityHandle::isValid() const
+{
+   return data_->isValid;
+}
 
-ValidityFlag::ValidityFlag() = default;
+ValidityFlag::ValidityFlag()
+   : data_(std::make_shared<ValidityFlagData>())
+{
+}
 
 ValidityFlag::~ValidityFlag()
 {
-   for (auto &child : handles_) {
-      child->parent_ = nullptr;
-   }
-   handles_.clear();
+   reset();
+}
+
+ValidityFlag::ValidityFlag(ValidityFlag &&other)
+   : data_(std::move(other.data_))
+{
+}
+
+ValidityFlag &ValidityFlag::operator=(ValidityFlag &&other)
+{
+   data_ = std::move(other.data_);
+   return *this;
 }
 
 ValidityHandle ValidityFlag::handle()
 {
-   return ValidityHandle(this);
+   assert(data_);
+   return ValidityHandle(data_);
+}
+
+void ValidityFlag::reset()
+{
+   if (data_) {
+      std::lock_guard<std::mutex> lock(data_->mutex);
+      data_->isValid = false;
+   }
 }

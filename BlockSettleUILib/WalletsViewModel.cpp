@@ -201,7 +201,7 @@ public:
       , wallet_(wallet)
    {
       wallet->onBalanceAvailable([this, wallet, handle = validityFlag_.handle()] {
-         if (!handle) {
+         if (!handle.isValid()) {
             return;
          }
          balTotal_ = wallet->getTotalBalance();
