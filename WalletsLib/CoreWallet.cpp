@@ -375,18 +375,18 @@ uint64_t wallet::TXSignRequest::amountSent(const wallet::TXSignRequest::Contains
 
 std::vector<UTXO> wallet::TXSignRequest::getInputs(const wallet::TXSignRequest::ContainsAddressCb &containsAddressCb) const
 {
-   std::vector<UTXO> recipients;
-   std::set<UTXO> txSet;
+   std::vector<UTXO> inputs;
+   std::set<UTXO> inputsSet;
 
    if (!prevStates.empty() && containsAddressCb != nullptr) {
       bs::CheckRecipSigner signer(prevStates.front());
       for (auto spender : signer.spenders()) {
          const auto &addr = bs::Address::fromUTXO(spender->getUtxo());
 
-         if (txSet.find(spender->getUtxo()) == txSet.cend()) {
+         if (inputsSet.find(spender->getUtxo()) == inputsSet.cend()) {
             if (containsAddressCb(addr)) {
-               txSet.insert(spender->getUtxo());
-               recipients.push_back(spender->getUtxo());
+               inputsSet.insert(spender->getUtxo());
+               inputs.push_back(spender->getUtxo());
             }
          }
       }
@@ -395,21 +395,21 @@ std::vector<UTXO> wallet::TXSignRequest::getInputs(const wallet::TXSignRequest::
    for (const auto &utxo : inputs) {
       const auto &addr = bs::Address::fromUTXO(utxo);
 
-      if (txSet.find(utxo) == txSet.cend()) {
+      if (inputsSet.find(utxo) == inputsSet.cend()) {
          if (containsAddressCb(addr)) {
-            txSet.insert(utxo);
-            recipients.push_back(utxo);
+            inputsSet.insert(utxo);
+            inputs.push_back(utxo);
          }
       }
    }
 
-   return recipients;
+   return inputs;
 }
 
 std::vector<std::shared_ptr<ScriptRecipient>> wallet::TXSignRequest::getRecipients(const wallet::TXSignRequest::ContainsAddressCb &containsAddressCb) const
 {
    std::vector<std::shared_ptr<ScriptRecipient>> recipients;
-   std::set<BinaryData> txSet;
+   std::set<BinaryData> recipientsSet;
 
    if (!prevStates.empty() && containsAddressCb != nullptr) {
       bs::CheckRecipSigner signer(prevStates.front());
@@ -417,9 +417,9 @@ std::vector<std::shared_ptr<ScriptRecipient>> wallet::TXSignRequest::getRecipien
          const auto &addr = bs::Address::fromRecipient(recip);
          const auto &hash = recip->getSerializedScript();
 
-         if (txSet.find(hash) == txSet.cend()) {
+         if (recipientsSet.find(hash) == recipientsSet.cend()) {
             if (containsAddressCb(addr)) {
-               txSet.insert(hash);
+               recipientsSet.insert(hash);
                recipients.push_back(recip);
             }
          }
@@ -430,9 +430,9 @@ std::vector<std::shared_ptr<ScriptRecipient>> wallet::TXSignRequest::getRecipien
       const auto &addr = bs::Address::fromRecipient(recip);
       const auto &hash = recip->getSerializedScript();
 
-      if (txSet.find(hash) == txSet.cend()) {
+      if (recipientsSet.find(hash) == recipientsSet.cend()) {
          if (containsAddressCb(addr)) {
-            txSet.insert(hash);
+            recipientsSet.insert(hash);
             recipients.push_back(recip);
          }
       }
