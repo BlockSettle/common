@@ -26,8 +26,6 @@ signals:
    void requestPulled();
 
 private:
-   void updateVisibility(bool isPublic);
-
    std::unique_ptr<Ui::PullOwnOTCRequestWidget> ui_;
 
 };

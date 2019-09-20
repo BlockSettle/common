@@ -1,5 +1,7 @@
 #include "PullOwnOTCRequestWidget.h"
 
+#include "OtcTypes.h"
+#include "UiUtils.h"
 #include "ui_PullOwnOTCRequestWidget.h"
 
 using namespace bs::network;
@@ -10,28 +12,20 @@ PullOwnOTCRequestWidget::PullOwnOTCRequestWidget(QWidget* parent)
 {
    ui_->setupUi(this);
 
-   connect(ui_->pushButtonPull, &QPushButton::clicked, this, &PullOwnOTCRequestWidget::requestPulled);
+   connect(ui_->pullPushButton, &QPushButton::clicked, this, &PullOwnOTCRequestWidget::requestPulled);
 }
 
 PullOwnOTCRequestWidget::~PullOwnOTCRequestWidget() = default;
 
 void PullOwnOTCRequestWidget::setOffer(const bs::network::otc::Offer &offer)
 {
-   ui_->labelSide->setText(QString::fromStdString(otc::toString(offer.ourSide)));
-   ui_->labelPrice->setText(QString::number(offer.price));
-   ui_->labelQuantity->setText(QString::number(offer.amount));
-   updateVisibility(false);
+   // #new_logic : fix security & product checking
+   ui_->sideValue->setText(QString::fromStdString(bs::network::otc::toString(offer.ourSide)));
+   ui_->priceValue->setText(UiUtils::displayCurrencyAmount(bs::network::otc::fromCents(offer.price)));
+   ui_->quantityValue->setText(UiUtils::displayAmount(bs::network::otc::satToBtc(offer.amount)));
 }
 
-void PullOwnOTCRequestWidget::setRequest(const bs::network::otc::Request &request)
+void PullOwnOTCRequestWidget::setRequest(const otc::Request &request)
 {
-   ui_->labelSide->setText(QString::fromStdString(otc::toString(request.requestorSide)));
-   ui_->labelRange->setText(QString::fromStdString(otc::toString(request.rangeType)));
-   updateVisibility(true);
-}
-
-void PullOwnOTCRequestWidget::updateVisibility(bool isPublic)
-{
-   ui_->widgetQuantity->setVisible(!isPublic);
-   ui_->widgetPrice->setVisible(!isPublic);
+   // FIXME:
 }

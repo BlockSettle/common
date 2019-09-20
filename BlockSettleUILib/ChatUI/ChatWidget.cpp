@@ -24,6 +24,8 @@
 #include "OTCRequestViewModel.h"
 #include "OTCShieldWidgets/OTCWindowsManager.h"
 #include "AuthAddressManager.h"
+#include "MarketDataProvider.h"
+#include "AssetManager.h"
 #include "ui_ChatWidget.h"
 
 using namespace bs::network;
@@ -81,7 +83,9 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
    , const std::shared_ptr<bs::sync::WalletsManager>& walletsMgr
    , const std::shared_ptr<AuthAddressManager> &authManager
    , const std::shared_ptr<ArmoryConnection>& armory
-   , const std::shared_ptr<SignContainer>& signContainer)
+   , const std::shared_ptr<SignContainer>& signContainer
+   , const std::shared_ptr<MarketDataProvider>& mdProvider
+   , const std::shared_ptr<AssetManager>& assetManager)
 {
    loggerPtr_ = loggerPtr;
 
@@ -91,7 +95,7 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
    // OTC
    otcHelper_ = new ChatOTCHelper(this);
    otcHelper_->init(env, loggerPtr, walletsMgr, armory, signContainer, authManager, appSettings);
-   otcWindowsManager_->init(walletsMgr, authManager);
+   otcWindowsManager_->init(walletsMgr, authManager, mdProvider, assetManager);
 
    chatClientServicePtr_ = chatClientServicePtr;
 
