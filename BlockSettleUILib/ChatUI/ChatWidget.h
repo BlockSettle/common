@@ -96,6 +96,7 @@ private slots:
    void onOtcResponseUpdate();
    void onOtcResponseReject();
    void onOtcQuoteRequestSubmit();
+   void onOtcQuoteResponseSubmit();
 
 signals:
    // OTC

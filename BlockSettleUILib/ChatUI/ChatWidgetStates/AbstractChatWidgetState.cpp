@@ -210,7 +210,7 @@ void AbstractChatWidgetState::onProcessOtcPbMessage(const std::string& data)
 
 void AbstractChatWidgetState::onOtcUpdated(const std::string &partyId)
 {
-   if (canPerformOTCOperations() && chat_->currentPartyId_ != partyId) {
+   if (canPerformOTCOperations() && chat_->currentPartyId_ == partyId) {
       updateOtc();
    }
 }
@@ -271,6 +271,13 @@ void AbstractChatWidgetState::onOtcPullOwnRequest()
    }
 }
 
+void AbstractChatWidgetState::onOtcQuoteResponseSubmit()
+{
+   if (canPerformOTCOperations()) {
+      chat_->otcHelper_->onOtcQuoteResponseSubmit(chat_->ui_->widgetCreateOTCResponse->response());
+   }
+}
+
 void AbstractChatWidgetState::saveDraftMessage()
 {
    const auto draft = chat_->ui_->input_textEdit->toPlainText();
@@ -307,6 +314,7 @@ void AbstractChatWidgetState::updateOtc()
       auto ownRequest = chat_->otcHelper_->getClient()->ownRequest();
 
       if (selectedRequest && selectedRequest != ownRequest) {
+         chat_->ui_->widgetCreateOTCResponse->setRequest(*selectedRequest);
          chat_->ui_->stackedWidgetOTC->setCurrentIndex(static_cast<int>(OTCPages::OTCCreateResponsePage));
       } else if (ownRequest) {
          chat_->ui_->widgetPullOwnOTCRequest->setRequest(*ownRequest);

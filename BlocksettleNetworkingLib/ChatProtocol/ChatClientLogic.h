@@ -49,7 +49,7 @@ namespace Chat
 
    public:
       ChatClientLogic();
-      ~ChatClientLogic();
+      ~ChatClientLogic() override;
 
       void OnDataReceived(const std::string&) override;
       void OnConnected(void) override;

@@ -20,6 +20,7 @@ namespace bs {
          struct Offer;
          struct Peer;
          struct QuoteRequest;
+         struct QuoteResponse;
       }
    }
 }
@@ -60,6 +61,7 @@ public slots:
 
    void onOtcQuoteRequestSubmit(const bs::network::otc::QuoteRequest &request);
    void onOtcPullOwnRequest();
+   void onOtcQuoteResponseSubmit(const bs::network::otc::QuoteResponse &response);
 
    void onMessageArrived(const Chat::MessagePtrList& messagePtr);
    void onPartyStateChanged(const Chat::ClientPartyPtr& clientPartyPtr);

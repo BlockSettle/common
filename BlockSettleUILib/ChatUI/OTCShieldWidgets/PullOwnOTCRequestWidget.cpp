@@ -25,7 +25,7 @@ void PullOwnOTCRequestWidget::setOffer(const bs::network::otc::Offer &offer)
 
 void PullOwnOTCRequestWidget::setRequest(const bs::network::otc::Request &request)
 {
-   ui_->labelSide->setText(QString::fromStdString(otc::toString(request.side)));
+   ui_->labelSide->setText(QString::fromStdString(otc::toString(request.requestorSide)));
    ui_->labelRange->setText(QString::fromStdString(otc::toString(request.rangeType)));
    updateVisibility(true);
 }

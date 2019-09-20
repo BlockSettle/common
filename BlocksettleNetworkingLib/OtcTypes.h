@@ -86,6 +86,14 @@ namespace bs {
             RangeType rangeType{};
          };
 
+         struct QuoteResponse
+         {
+            Side ourSide{};
+            Range amount{};
+            Range price{};
+            std::string peerId;
+         };
+
          struct Offer
          {
             Side ourSide{};
@@ -121,12 +129,22 @@ namespace bs {
          struct Request
          {
             std::string peerId;
-            Side side{};
+            Side requestorSide{};
             RangeType rangeType{};
             QDateTime timestamp;
          };
 
+         struct Response
+         {
+            std::string peerId;
+            Side responderSide{};
+            Range amount{};
+            Range price{};
+            QDateTime timestamp;
+         };
+
          using Requests = std::vector<const Request*>;
+         using Responses = std::vector<const Response*>;
 
          double satToBtc(int64_t value);
          double satToBtc(uint64_t value);

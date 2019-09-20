@@ -53,7 +53,7 @@ bs::network::otc::Range bs::network::otc::getRange(bs::network::otc::RangeType r
       case RangeType::Range100_250:
          return Range{100, 250};
       case RangeType::Range250plus:
-         return Range{250, 1000000};
+         return Range{250, 10000};
    }
 
    assert(false);

@@ -85,6 +85,14 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
 {
    loggerPtr_ = loggerPtr;
 
+   bool isProd = appSettings->get<int>(ApplicationSettings::envConfiguration) == ApplicationSettings::PROD;
+   auto env = isProd ? otc::Env::Prod : otc::Env::Test;
+
+   // OTC
+   otcHelper_ = new ChatOTCHelper(this);
+   otcHelper_->init(env, loggerPtr, walletsMgr, armory, signContainer, authManager, appSettings);
+   otcWindowsManager_->init(walletsMgr, authManager);
+
    chatClientServicePtr_ = chatClientServicePtr;
 
    installEventFilter(this);
@@ -95,7 +103,7 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
    connect(ui_->searchWidget, &SearchWidget::showUserRoom, this, &ChatWidget::onShowUserRoom);
    connect(ui_->searchWidget, &SearchWidget::contactFriendRequest, this, &ChatWidget::onContactFriendRequest);
 
-   chatPartiesTreeModel_ = std::make_shared<ChatPartiesTreeModel>(chatClientServicePtr_);
+   chatPartiesTreeModel_ = std::make_shared<ChatPartiesTreeModel>(chatClientServicePtr_, otcHelper_->getClient());
 
    ChatPartiesSortProxyModelPtr charTreeSortModel = std::make_shared<ChatPartiesSortProxyModel>(chatPartiesTreeModel_);
    ui_->treeViewUsers->setModel(charTreeSortModel.get());
@@ -142,20 +150,13 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
 
    ui_->textEditMessages->onSetClientPartyModel(clientPartyModelPtr);
 
-   bool isProd = appSettings->get<int>(ApplicationSettings::envConfiguration) == ApplicationSettings::PROD;
-   auto env = isProd ? otc::Env::Prod : otc::Env::Test;
-
-   // OTC
-   otcHelper_ = new ChatOTCHelper(this);
-   otcHelper_->init(env, loggerPtr_, walletsMgr, armory, signContainer, authManager, appSettings);
-   otcWindowsManager_->init(walletsMgr, authManager);
-
    otcRequestViewModel_ = new OTCRequestViewModel(otcHelper_->getClient(), this);
    ui_->treeViewOTCRequests->setModel(otcRequestViewModel_);
-   connect(ui_->treeViewOTCRequests->selectionModel(), &QItemSelectionModel::currentChanged, this, &ChatWidget::onOtcRequestCurrentChanged);
+   // Use Qt::QueuedConnection to prevent crash when stateCurrent_ is null
+   connect(ui_->treeViewOTCRequests->selectionModel(), &QItemSelectionModel::currentChanged, this, &ChatWidget::onOtcRequestCurrentChanged, Qt::QueuedConnection);
 
    connect(otcHelper_->getClient(), &OtcClient::sendPbMessage, this, &ChatWidget::sendOtcPbMessage);
-   connect(otcHelper_->getClient(), &OtcClient::sendMessage, this, &ChatWidget::onSendOtcMessage);
+   connect(otcHelper_->getClient(), &OtcClient::sendContactMessage, this, &ChatWidget::onSendOtcMessage);
    connect(otcHelper_->getClient(), &OtcClient::sendPublicMessage, this, &ChatWidget::onSendOtcPublicMessage);
    connect(otcHelper_->getClient(), &OtcClient::peerUpdated, this, &ChatWidget::onOtcUpdated);
    connect(otcHelper_->getClient(), &OtcClient::publicUpdated, this, &ChatWidget::onOtcPublicUpdated);
@@ -166,6 +167,7 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
    connect(ui_->widgetNegotiateResponse, &OTCNegotiationResponseWidget::responseUpdated, this, &ChatWidget::onOtcResponseUpdate);
    connect(ui_->widgetNegotiateResponse, &OTCNegotiationResponseWidget::responseRejected, this, &ChatWidget::onOtcResponseReject);
    connect(ui_->widgetCreateOTCRequest, &CreateOTCRequestWidget::requestCreated, this, &ChatWidget::onOtcQuoteRequestSubmit);
+   connect(ui_->widgetCreateOTCResponse, &CreateOTCResponseWidget::responseCreated, this, &ChatWidget::onOtcQuoteResponseSubmit);
 
    ui_->widgetCreateOTCRequest->init(env);
 }
@@ -458,6 +460,11 @@ void ChatWidget::onOtcResponseReject()
 void ChatWidget::onOtcQuoteRequestSubmit()
 {
    stateCurrent_->onOtcQuoteRequestSubmit();
+}
+
+void ChatWidget::onOtcQuoteResponseSubmit()
+{
+   stateCurrent_->onOtcQuoteResponseSubmit();
 }
 
 void ChatWidget::onUserPublicKeyChanged(const Chat::UserPublicKeyInfoList& userPublicKeyInfoList)

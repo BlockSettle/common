@@ -168,6 +168,15 @@ void ChatOTCHelper::onOtcPullOwnRequest()
    }
 }
 
+void ChatOTCHelper::onOtcQuoteResponseSubmit(const bs::network::otc::QuoteResponse &response)
+{
+   bool result = otcClient_->sendQuoteResponse(response);
+   if (!result) {
+      SPDLOG_LOGGER_ERROR(loggerPtr_, "sending response failed");
+      return;
+   }
+}
+
 void ChatOTCHelper::onMessageArrived(const Chat::MessagePtrList& messagePtr)
 {
    for (const auto &msg : messagePtr) {
@@ -184,7 +193,7 @@ void ChatOTCHelper::onMessageArrived(const Chat::MessagePtrList& messagePtr)
 
          auto data = OtcUtils::deserializeMessage(msg->messageText());
          if (!data.isNull()) {
-            otcClient_->processMessage(msg->partyId(), data);
+            otcClient_->processContactMessage(msg->partyId(), data);
          }
       }
    }

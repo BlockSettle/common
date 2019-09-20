@@ -5,11 +5,14 @@
 #include "ChatProtocol/ChatClientService.h"
 #include "PartyTreeItem.h"
 
+class OtcClient;
+
 class ChatPartiesTreeModel : public QAbstractItemModel
 {
    Q_OBJECT
 public:
-   ChatPartiesTreeModel(const Chat::ChatClientServicePtr& chatClientServicePtr, QObject* parent = nullptr);
+   ChatPartiesTreeModel(const Chat::ChatClientServicePtr& chatClientServicePtr, OtcClient *otcClient
+      , QObject* parent = nullptr);
    ~ChatPartiesTreeModel() override;
 
    QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
@@ -32,7 +35,8 @@ private:
    PartyTreeItem* getItem(const QModelIndex& index) const;
 
    Chat::ChatClientServicePtr chatClientServicePtr_;
-   PartyTreeItem* rootItem_;
+   PartyTreeItem* rootItem_{};
+   OtcClient *otcClient_{};
 };
 
 using ChatPartiesTreeModelPtr = std::shared_ptr<ChatPartiesTreeModel>;

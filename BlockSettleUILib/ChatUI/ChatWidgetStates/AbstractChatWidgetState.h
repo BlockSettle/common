@@ -71,6 +71,7 @@ public:
 
    void onOtcQuoteRequestSubmit();
    void onOtcPullOwnRequest();
+   void onOtcQuoteResponseSubmit();
 
 protected:
 

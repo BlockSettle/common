@@ -1,15 +1,18 @@
 #include "ChatPartiesTreeModel.h"
 
-ChatPartiesTreeModel::ChatPartiesTreeModel(const Chat::ChatClientServicePtr& chatClientServicePtr, QObject* parent)
-   : QAbstractItemModel(parent),
-   chatClientServicePtr_(chatClientServicePtr)
+#include "OtcClient.h"
+
+ChatPartiesTreeModel::ChatPartiesTreeModel(const Chat::ChatClientServicePtr& chatClientServicePtr, OtcClient *otcClient, QObject* parent)
+   : QAbstractItemModel(parent)
+   , chatClientServicePtr_(chatClientServicePtr)
+   , otcClient_(otcClient)
 {
    rootItem_ = new PartyTreeItem({}, UI::ElementType::Root);
+
+
 }
 
-ChatPartiesTreeModel::~ChatPartiesTreeModel()
-{
-}
+ChatPartiesTreeModel::~ChatPartiesTreeModel() = default;
 
 void ChatPartiesTreeModel::onPartyModelChanged()
 {

@@ -53,7 +53,7 @@ QVariant OTCRequestViewModel::data(const QModelIndex &index, int role) const
             case Columns::Security:    return QStringLiteral("EUR/XBT");
             case Columns::Type:        return QStringLiteral("OTC");
             case Columns::Product:     return QStringLiteral("XBT");
-            case Columns::Side:        return QString::fromStdString(otc::toString(request->side));
+            case Columns::Side:        return QString::fromStdString(otc::toString(request->requestorSide));
             case Columns::Quantity:    return QString::fromStdString(otc::toString(request->rangeType));
             case Columns::Duration:    return duration(request->timestamp);
          }

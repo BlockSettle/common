@@ -17,15 +17,17 @@ namespace spdlog {
 namespace Blocksettle {
    namespace Communication {
       namespace Otc {
-         class Message;
-         class Message_BuyerOffers;
-         class Message_SellerOffers;
-         class Message_BuyerAccepts;
-         class Message_SellerAccepts;
-         class Message_BuyerAcks;
-         class Message_Close;
+         class ContactMessage;
+         class ContactMessage_BuyerOffers;
+         class ContactMessage_SellerOffers;
+         class ContactMessage_BuyerAccepts;
+         class ContactMessage_SellerAccepts;
+         class ContactMessage_BuyerAcks;
+         class ContactMessage_Close;
+         class ContactMessage_QuoteResponse;
          class PublicMessage_Request;
          class PublicMessage_Close;
+         class PublicMessage_PrivateMessage;
       }
    }
 }
@@ -101,19 +103,24 @@ public:
 
    bool sendQuoteRequest(const bs::network::otc::QuoteRequest &request);
    bool pullOwnRequest();
+   bool sendQuoteResponse(const bs::network::otc::QuoteResponse &quoteResponse);
+   bool pullQuoteResponse(const std::string &peerId);
 
-   const bs::network::otc::Requests &requests() const { return requests_; }
+   const bs::network::otc::Requests &requests() const { return allRequests_; }
    const bs::network::otc::Request *ownRequest() const;
+   const bs::network::otc::Responses &recvResponses() const { return recvResponses_; }
+   const bs::network::otc::Responses &sentResponses() const { return sentResponses_; }
 
 public slots:
    void peerConnected(const std::string &peerId);
    void peerDisconnected(const std::string &peerId);
-   void processMessage(const std::string &peerId, const BinaryData &data);
+   void processContactMessage(const std::string &peerId, const BinaryData &data);
    void processPbMessage(const std::string &data);
    void processPublicMessage(QDateTime timestamp, const std::string &peerId, const BinaryData &data);
+   void processPrivateMessage(QDateTime timestamp, const std::string &peerId, const BinaryData &data);
 
 signals:
-   void sendMessage(const std::string &peerId, const BinaryData &data);
+   void sendContactMessage(const std::string &peerId, const BinaryData &data);
    void sendPbMessage(const std::string &data);
    void sendPublicMessage(const BinaryData &data);
 
@@ -126,15 +133,17 @@ private slots:
 private:
    using OtcClientDealCb = std::function<void(OtcClientDeal &&deal)>;
 
-   void processBuyerOffers(bs::network::otc::Peer *peer, const Blocksettle::Communication::Otc::Message_BuyerOffers &msg);
-   void processSellerOffers(bs::network::otc::Peer *peer, const Blocksettle::Communication::Otc::Message_SellerOffers &msg);
-   void processBuyerAccepts(bs::network::otc::Peer *peer, const Blocksettle::Communication::Otc::Message_BuyerAccepts &msg);
-   void processSellerAccepts(bs::network::otc::Peer *peer, const Blocksettle::Communication::Otc::Message_SellerAccepts &msg);
-   void processBuyerAcks(bs::network::otc::Peer *peer, const Blocksettle::Communication::Otc::Message_BuyerAcks &msg);
-   void processClose(bs::network::otc::Peer *peer, const Blocksettle::Communication::Otc::Message_Close &msg);
+   void processBuyerOffers(bs::network::otc::Peer *peer, const Blocksettle::Communication::Otc::ContactMessage_BuyerOffers &msg);
+   void processSellerOffers(bs::network::otc::Peer *peer, const Blocksettle::Communication::Otc::ContactMessage_SellerOffers &msg);
+   void processBuyerAccepts(bs::network::otc::Peer *peer, const Blocksettle::Communication::Otc::ContactMessage_BuyerAccepts &msg);
+   void processSellerAccepts(bs::network::otc::Peer *peer, const Blocksettle::Communication::Otc::ContactMessage_SellerAccepts &msg);
+   void processBuyerAcks(bs::network::otc::Peer *peer, const Blocksettle::Communication::Otc::ContactMessage_BuyerAcks &msg);
+   void processClose(bs::network::otc::Peer *peer, const Blocksettle::Communication::Otc::ContactMessage_Close &msg);
+   void processQuoteResponse(bs::network::otc::Peer *peer, const Blocksettle::Communication::Otc::ContactMessage_QuoteResponse &msg);
 
    void processPublicRequest(QDateTime timestamp, const std::string &peerId, const Blocksettle::Communication::Otc::PublicMessage_Request &msg);
    void processPublicClose(QDateTime timestamp, const std::string &peerId, const Blocksettle::Communication::Otc::PublicMessage_Close &msg);
+   void processPublicPrivateMessage(QDateTime timestamp, const std::string &peerId, const Blocksettle::Communication::Otc::PublicMessage_PrivateMessage &msg);
 
    void processPbStartOtc(const Blocksettle::Communication::ProxyTerminalPb::Response_StartOtc &response);
    void processPbVerifyOtc(const Blocksettle::Communication::ProxyTerminalPb::Response_VerifyOtc &response);
@@ -144,7 +153,7 @@ private:
    void blockPeer(const std::string &reason, bs::network::otc::Peer *peer);
    bs::network::otc::Peer *findPeer(const std::string &peerId);
 
-   void send(bs::network::otc::Peer *peer, const Blocksettle::Communication::Otc::Message &msg);
+   void send(bs::network::otc::Peer *peer, const Blocksettle::Communication::Otc::ContactMessage &msg);
 
    void createRequests(const BinaryData &settlementId, const bs::network::otc::Peer &peer, const OtcClientDealCb &cb);
    void sendSellerAccepts(bs::network::otc::Peer *peer);
@@ -157,7 +166,9 @@ private:
    void verifyAuthAddresses(OtcClientDeal *deal);
    void setComments(OtcClientDeal *deal);
 
-   void updateRequests();
+   void updatePublicLists();
+
+   void sendPrivateMessage(const std::string &peerId, const BinaryData &data);
 
    std::shared_ptr<spdlog::logger> logger_;
    std::unordered_map<std::string, bs::network::otc::Peer> peers_;
@@ -177,8 +188,13 @@ private:
    // Maps sign requests to settlementId
    std::map<unsigned, BinaryData> signRequestIds_;
 
-   bs::network::otc::Requests requests_;
-   std::map<std::string, bs::network::otc::Request> requestMap_;
+   std::map<std::string, bs::network::otc::Request> allRequestMap_;
+   std::map<std::string, bs::network::otc::Response> sentResponseMap_;
+   std::map<std::string, bs::network::otc::Response> recvResponseMap_;
+
+   bs::network::otc::Requests allRequests_;
+   bs::network::otc::Responses sentResponses_;
+   bs::network::otc::Responses recvResponses_;
 
    OtcClientParams params_;
 };
