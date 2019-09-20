@@ -2,7 +2,7 @@
 
 #include "ChatUI/ChatOTCHelper.h"
 #include "ChatUI/ChatPartiesTreeModel.h"
-#include "ChatUI/OTCRequestViewModel.cpp"
+#include "ChatUI/OTCRequestViewModel.h"
 #include "NotificationCenter.h"
 #include "OtcClient.h"
 
