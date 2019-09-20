@@ -219,6 +219,7 @@ void AbstractChatWidgetState::onOtcPublicUpdated()
 {
    if (canPerformOTCOperations() && chat_->currentPartyId_ == Chat::OtcRoomName) {
       updateOtc();
+      chat_->chatPartiesTreeModel_->onGlobalOTCChanged();
    }
 }
 

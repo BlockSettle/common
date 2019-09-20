@@ -8,8 +8,6 @@ ChatPartiesTreeModel::ChatPartiesTreeModel(const Chat::ChatClientServicePtr& cha
    , otcClient_(otcClient)
 {
    rootItem_ = new PartyTreeItem({}, UI::ElementType::Root);
-
-
 }
 
 ChatPartiesTreeModel::~ChatPartiesTreeModel() = default;
@@ -54,6 +52,54 @@ void ChatPartiesTreeModel::onPartyModelChanged()
    rootItem_->insertChildren(std::move(requestSection));
 
    endResetModel();
+
+   onGlobalOTCChanged();
+}
+
+void ChatPartiesTreeModel::onGlobalOTCChanged()
+{
+   QModelIndex otcModelIndex = getOTCGlobalRoot();
+   if (!otcModelIndex.isValid()) {
+      return;
+   }
+   PartyTreeItem* otcParty = static_cast<PartyTreeItem*>(otcModelIndex.internalPointer());
+
+   if (otcParty->childCount() != 0) {
+      beginRemoveRows(otcModelIndex, 0, otcParty->childCount() - 1);
+      otcParty->removeAll();
+      endRemoveRows();
+   }
+
+   auto fAddOtcParty = [](const bs::network::otc::Response* resp, std::unique_ptr<PartyTreeItem>& section) {
+      Chat::ClientPartyPtr otcPartyPtr = std::make_shared<Chat::ClientParty>(resp->peerId,
+         Chat::PartyType::PRIVATE_DIRECT_MESSAGE,
+         Chat::PartySubType::OTC,
+         Chat::PartyState::INITIALIZED);
+      otcPartyPtr->setDisplayName(otcPartyPtr->id());
+
+      QVariant stored;
+      stored.setValue(otcPartyPtr);
+
+      std::unique_ptr<PartyTreeItem> otcItem = std::make_unique<PartyTreeItem>(stored, UI::ElementType::Party, section.get());
+      section->insertChildren(std::move(otcItem));
+   };
+
+   beginInsertRows(otcModelIndex, 0, 1);
+
+   std::unique_ptr<PartyTreeItem> sentSection = std::make_unique<PartyTreeItem>(ChatModelNames::TabOTCSentRequest, UI::ElementType::Container, otcParty);
+   for (const auto* sent : otcClient_->sentResponses()) {
+      fAddOtcParty(sent, sentSection);
+   }
+
+   std::unique_ptr<PartyTreeItem> responseSection = std::make_unique<PartyTreeItem>(ChatModelNames::TabOTCReceivedResponse, UI::ElementType::Container, otcParty);
+   for (const auto* recv : otcClient_->recvResponses()) {
+      fAddOtcParty(recv, responseSection);
+   }
+
+   otcParty->insertChildren(std::move(sentSection));
+   otcParty->insertChildren(std::move(responseSection));
+
+   endInsertRows();
 }
 
 void ChatPartiesTreeModel::onCleanModel()
@@ -130,6 +176,32 @@ PartyTreeItem* ChatPartiesTreeModel::getItem(const QModelIndex& index) const
    }
 
    return rootItem_;
+}
+
+QModelIndex ChatPartiesTreeModel::getOTCGlobalRoot()
+{
+   for (int iContainer = 0; iContainer < rootItem_->childCount(); ++iContainer) {
+      auto* container = rootItem_->child(iContainer);
+
+      Q_ASSERT(container->data().canConvert<QString>());
+      if (container->data().toString() != ChatModelNames::ContainerTabGlobal) {
+         continue;
+      }
+
+      for (int iParty = 0; iParty < container->childCount(); ++iParty) {
+         const PartyTreeItem* party = container->child(iParty);
+         if (party->data().canConvert<Chat::ClientPartyPtr>()) {
+            const Chat::ClientPartyPtr clientPtr = party->data().value<Chat::ClientPartyPtr>();
+            if (clientPtr->displayName() == Chat::OtcRoomName) {
+               return index(iParty, 0, index(iContainer, 0));
+            }
+         }
+      }
+
+      return {};
+   }
+
+   return {};
 }
 
 QVariant ChatPartiesTreeModel::data(const QModelIndex& index, int role) const

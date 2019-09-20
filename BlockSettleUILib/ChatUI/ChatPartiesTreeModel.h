@@ -6,7 +6,6 @@
 #include "PartyTreeItem.h"
 
 class OtcClient;
-
 class ChatPartiesTreeModel : public QAbstractItemModel
 {
    Q_OBJECT
@@ -24,6 +23,7 @@ public:
 
 public slots:
    void onPartyModelChanged();
+   void onGlobalOTCChanged();
    void onCleanModel();
    void onPartyStatusChanged(const Chat::ClientPartyPtr& clientPartyPtr);
    void onIncreaseUnseenCounter(const std::string& partyId, int newMessageCount);
@@ -33,10 +33,12 @@ public slots:
 
 private:
    PartyTreeItem* getItem(const QModelIndex& index) const;
+   QModelIndex getOTCGlobalRoot();
+
+   PartyTreeItem* rootItem_{};
 
    Chat::ChatClientServicePtr chatClientServicePtr_;
-   PartyTreeItem* rootItem_{};
-   OtcClient *otcClient_{};
+   OtcClient* otcClient_{};
 };
 
 using ChatPartiesTreeModelPtr = std::shared_ptr<ChatPartiesTreeModel>;
@@ -45,7 +47,10 @@ namespace ChatModelNames {
    const QString ContainerTabGlobal = QObject::tr("Public");
    const QString ContainerTabPrivate = QObject::tr("Private");
    const QString ContainerTabContactRequest = QObject::tr("Contact request");
-   const QString PrivateTabGlobal = QObject::tr("Global");
+
+   // OTC
+   const QString TabOTCSentRequest = QObject::tr("Send request");
+   const QString TabOTCReceivedResponse = QObject::tr("Received response");
 }
 
 #endif // CHATPARTYLISTMODEL_H

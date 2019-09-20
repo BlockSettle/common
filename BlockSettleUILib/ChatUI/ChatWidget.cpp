@@ -238,7 +238,7 @@ void ChatWidget::onLogin()
    stateCurrent_->onResetPartyModel();
    ui_->treeViewUsers->expandAll();
 
-   onActivatePartyId(ChatModelNames::PrivateTabGlobal);
+   onActivatePartyId(QString::fromLatin1(Chat::GlobalRoomName));
 }
 
 void ChatWidget::onLogout()
@@ -397,8 +397,8 @@ void ChatWidget::onActivatePartyId(const QString& partyId)
          changeState<ChatLogOutState>();
       }
       else {
-         Q_ASSERT(partyId != ChatModelNames::PrivateTabGlobal);
-         onActivatePartyId(ChatModelNames::PrivateTabGlobal);
+         Q_ASSERT(partyId != QString::fromLatin1(Chat::GlobalRoomName));
+         onActivatePartyId(QString::fromLatin1(Chat::GlobalRoomName));
       }
       return;
    }
