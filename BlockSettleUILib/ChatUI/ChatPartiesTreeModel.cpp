@@ -178,7 +178,7 @@ PartyTreeItem* ChatPartiesTreeModel::getItem(const QModelIndex& index) const
    return rootItem_;
 }
 
-QModelIndex ChatPartiesTreeModel::getOTCGlobalRoot()
+QModelIndex ChatPartiesTreeModel::getOTCGlobalRoot() const
 {
    for (int iContainer = 0; iContainer < rootItem_->childCount(); ++iContainer) {
       auto* container = rootItem_->child(iContainer);

@@ -21,6 +21,9 @@ public:
    int columnCount(const QModelIndex& parent = QModelIndex()) const override;
    const std::string& currentUser() const;
 
+   QModelIndex getOTCGlobalRoot() const;
+   const QModelIndex getPartyIndexById(const std::string& partyId) const;
+
 public slots:
    void onPartyModelChanged();
    void onGlobalOTCChanged();
@@ -29,11 +32,9 @@ public slots:
    void onIncreaseUnseenCounter(const std::string& partyId, int newMessageCount);
    void onDecreaseUnseenCounter(const std::string& partyId, int seenMessageCount);
 
-   const QModelIndex getPartyIndexById(const std::string& partyId) const;
-
 private:
    PartyTreeItem* getItem(const QModelIndex& index) const;
-   QModelIndex getOTCGlobalRoot();
+   
 
    PartyTreeItem* rootItem_{};
 
