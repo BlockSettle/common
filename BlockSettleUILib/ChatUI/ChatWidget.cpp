@@ -225,7 +225,7 @@ void ChatWidget::onOtcUpdated(const bs::network::otc::PeerId& peerId)
 void ChatWidget::onOtcPublicUpdated()
 {
    stateCurrent_->onOtcPublicUpdated();
-   ui_->treeViewUsers->expandAll();
+   ui_->treeViewUsers->onExpandGlobalOTC();
 }
 
 void ChatWidget::onPartyModelChanged()
