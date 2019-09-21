@@ -60,18 +60,18 @@ public:
    void onSendOtcPublicMessage(const std::string& data);
    void onProcessOtcPbMessage(const std::string& data);
 
-   void onOtcUpdated(const std::string &partyId);
+   void onOtcUpdated(const bs::network::otc::PeerId& peerId);
    void onOtcPublicUpdated();
 
    void onOtcRequestSubmit();
-   void onOtcRequestPull();
    void onOtcResponseAccept();
    void onOtcResponseUpdate();
-   void onOtcResponseReject();
 
    void onOtcQuoteRequestSubmit();
    void onOtcPullOwnRequest();
    void onOtcQuoteResponseSubmit();
+
+   void onOtcPullOrRejectCurrent();
 
 protected:
 

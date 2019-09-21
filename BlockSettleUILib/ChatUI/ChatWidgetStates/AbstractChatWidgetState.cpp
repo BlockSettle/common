@@ -12,6 +12,8 @@ namespace {
 
 } // namespace
 
+using namespace bs::network;
+
 AbstractChatWidgetState::AbstractChatWidgetState(ChatWidget* chat)
    : chat_(chat)
 {
@@ -208,9 +210,9 @@ void AbstractChatWidgetState::onProcessOtcPbMessage(const std::string& data)
    }
 }
 
-void AbstractChatWidgetState::onOtcUpdated(const std::string &partyId)
+void AbstractChatWidgetState::onOtcUpdated(const bs::network::otc::PeerId& peerId)
 {
-   if (canPerformOTCOperations() && chat_->currentPartyId_ == partyId) {
+   if (canPerformOTCOperations() && chat_->currentPeerId() == peerId) {
       updateOtc();
    }
 }
@@ -225,35 +227,21 @@ void AbstractChatWidgetState::onOtcPublicUpdated()
 void AbstractChatWidgetState::onOtcRequestSubmit()
 {
    if (canPerformOTCOperations()) {
-      chat_->otcHelper_->onOtcRequestSubmit(chat_->currentPartyId_, chat_->ui_->widgetNegotiateRequest->offer());
-   }
-}
-
-void AbstractChatWidgetState::onOtcRequestPull()
-{
-   if (canPerformOTCOperations()) {
-      chat_->otcHelper_->onOtcRequestPull(chat_->currentPartyId_);
+      chat_->otcHelper_->onOtcRequestSubmit(chat_->currentPeerId(), chat_->ui_->widgetNegotiateRequest->offer());
    }
 }
 
 void AbstractChatWidgetState::onOtcResponseAccept()
 {
    if (canPerformOTCOperations()) {
-      chat_->otcHelper_->onOtcResponseAccept(chat_->currentPartyId_, chat_->ui_->widgetNegotiateResponse->offer());
+      chat_->otcHelper_->onOtcResponseAccept(chat_->currentPeerId(), chat_->ui_->widgetNegotiateResponse->offer());
    }
 }
 
 void AbstractChatWidgetState::onOtcResponseUpdate()
 {
    if (canPerformOTCOperations()) {
-      chat_->otcHelper_->onOtcResponseUpdate(chat_->currentPartyId_, chat_->ui_->widgetNegotiateResponse->offer());
-   }
-}
-
-void AbstractChatWidgetState::onOtcResponseReject()
-{
-   if (canPerformOTCOperations()) {
-      chat_->otcHelper_->onOtcResponseReject(chat_->currentPartyId_);
+      chat_->otcHelper_->onOtcResponseUpdate(chat_->currentPeerId(), chat_->ui_->widgetNegotiateResponse->offer());
    }
 }
 
@@ -275,6 +263,13 @@ void AbstractChatWidgetState::onOtcQuoteResponseSubmit()
 {
    if (canPerformOTCOperations()) {
       chat_->otcHelper_->onOtcQuoteResponseSubmit(chat_->ui_->widgetCreateOTCResponse->response());
+   }
+}
+
+void AbstractChatWidgetState::onOtcPullOrRejectCurrent()
+{
+   if (canPerformOTCOperations()) {
+      chat_->otcHelper_->onOtcPullOrReject(chat_->currentPeerId());
    }
 }
 
@@ -311,7 +306,7 @@ void AbstractChatWidgetState::updateOtc()
    if (chat_->currentPartyId_ == Chat::OtcRoomName) {
       auto currentIndex = chat_->ui_->treeViewOTCRequests->currentIndex();
       auto selectedRequest = chat_->otcRequestViewModel_->request(currentIndex);
-      auto ownRequest = chat_->otcHelper_->getClient()->ownRequest();
+      auto ownRequest = chat_->otcHelper_->client()->ownRequest();
 
       if (selectedRequest && selectedRequest != ownRequest) {
          chat_->ui_->widgetCreateOTCResponse->setRequest(*selectedRequest);
@@ -325,7 +320,7 @@ void AbstractChatWidgetState::updateOtc()
       return;
    }
 
-   const bs::network::otc::Peer* peer = chat_->otcHelper_->getPeer(chat_->currentPartyId_);
+   const bs::network::otc::Peer* peer = chat_->otcHelper_->peer(otc::PeerId{otc::PeerType::Private, chat_->currentPartyId_});
    if (!peer) {
       chat_->ui_->stackedWidgetOTC->setCurrentIndex(static_cast<int>(OTCPages::OTCLoginRequiredShieldPage));
       return;

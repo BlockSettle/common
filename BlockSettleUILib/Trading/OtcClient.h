@@ -91,20 +91,20 @@ public:
       , QObject *parent = nullptr);
    ~OtcClient() override;
 
-   const bs::network::otc::Peer *peer(const std::string &peerId) const;
+   const bs::network::otc::Peer *peer(const bs::network::otc::PeerId &peerId) const;
 
-   void setCurrentUserId(const std::string &userId);
-   const std::string &getCurrentUser() const;
+   void setOwnContactId(const std::string &contactId);
+   const std::string &ownContactId() const;
 
-   bool sendOffer(const bs::network::otc::Offer &offer, const std::string &peerId);
-   bool pullOrRejectOffer(const std::string &peerId);
-   bool acceptOffer(const bs::network::otc::Offer &offer, const std::string &peerId);
-   bool updateOffer(const bs::network::otc::Offer &offer, const std::string &peerId);
+   bool sendOffer(const bs::network::otc::Offer &offer, const bs::network::otc::PeerId &peerId);
+   bool acceptOffer(const bs::network::otc::Offer &offer, const bs::network::otc::PeerId &peerId);
+   bool updateOffer(const bs::network::otc::Offer &offer, const bs::network::otc::PeerId &peerId);
+   bool pullOrReject(const bs::network::otc::PeerId &peerId);
 
    bool sendQuoteRequest(const bs::network::otc::QuoteRequest &request);
    bool pullOwnRequest();
    bool sendQuoteResponse(const bs::network::otc::QuoteResponse &quoteResponse);
-   bool pullQuoteResponse(const std::string &peerId);
+   bool pullQuoteResponse(const bs::network::otc::PeerId &peerId);
 
    const bs::network::otc::Requests &requests() const { return allRequests_; }
    const bs::network::otc::Request *ownRequest() const;
@@ -112,19 +112,19 @@ public:
    const bs::network::otc::Responses &sentResponses() const { return sentResponses_; }
 
 public slots:
-   void peerConnected(const std::string &peerId);
-   void peerDisconnected(const std::string &peerId);
-   void processContactMessage(const std::string &peerId, const BinaryData &data);
+   void peerConnected(const std::string &contactId);
+   void peerDisconnected(const std::string &contactId);
+   void processContactMessage(const std::string &contactId, const BinaryData &data);
    void processPbMessage(const std::string &data);
-   void processPublicMessage(QDateTime timestamp, const std::string &peerId, const BinaryData &data);
-   void processPrivateMessage(QDateTime timestamp, const std::string &peerId, const BinaryData &data);
+   void processPublicMessage(QDateTime timestamp, const std::string &contactId, const BinaryData &data);
+   void processPrivateMessage(QDateTime timestamp, const std::string &contactId, const BinaryData &data);
 
 signals:
-   void sendContactMessage(const std::string &peerId, const BinaryData &data);
+   void sendContactMessage(const std::string &contactId, const BinaryData &data);
    void sendPbMessage(const std::string &data);
    void sendPublicMessage(const BinaryData &data);
 
-   void peerUpdated(const std::string &peerId);
+   void peerUpdated(const bs::network::otc::PeerId &peerId);
    void publicUpdated();
 
 private slots:
@@ -151,7 +151,7 @@ private:
    // Checks that hdWallet, auth address and recv address (is set) are valid
    bool verifyOffer(const bs::network::otc::Offer &offer) const;
    void blockPeer(const std::string &reason, bs::network::otc::Peer *peer);
-   bs::network::otc::Peer *findPeer(const std::string &peerId);
+   bs::network::otc::Peer *findPeer(const bs::network::otc::PeerId &peerId);
 
    void send(bs::network::otc::Peer *peer, const Blocksettle::Communication::Otc::ContactMessage &msg);
 
@@ -171,14 +171,14 @@ private:
    void sendPrivateMessage(const std::string &peerId, const BinaryData &data);
 
    std::shared_ptr<spdlog::logger> logger_;
-   std::unordered_map<std::string, bs::network::otc::Peer> peers_;
+   std::unordered_map<bs::network::otc::PeerId, bs::network::otc::Peer, bs::network::otc::PeerIdHash> peers_;
 
    std::shared_ptr<bs::sync::WalletsManager> walletsMgr_;
    std::shared_ptr<ArmoryConnection> armory_;
    std::shared_ptr<SignContainer> signContainer_;
    std::shared_ptr<AuthAddressManager> authAddressManager_;
 
-   std::string currentUserId_;
+   std::string ownContactId_;
 
    std::map<BinaryData, std::unique_ptr<OtcClientDeal>> deals_;
 

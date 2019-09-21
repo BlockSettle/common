@@ -19,6 +19,7 @@ namespace bs {
          enum class Env : int;
          struct Offer;
          struct Peer;
+         struct PeerId;
          struct QuoteRequest;
          struct QuoteResponse;
       }
@@ -45,19 +46,20 @@ public:
       , const std::shared_ptr<AuthAddressManager> &authAddressManager
       , const std::shared_ptr<ApplicationSettings> &applicationSettings);
 
-   OtcClient* getClient() const;
+   OtcClient* client() const;
+   const bs::network::otc::Peer* peer(const bs::network::otc::PeerId &peerId) const;
+
    void setCurrentUserId(const std::string& ownUserId);
-   const bs::network::otc::Peer* getPeer(const std::string& partyId) const;
 
 public slots:
    void onLogout();
    void onProcessOtcPbMessage(const std::string& data);
 
-   void onOtcRequestSubmit(const std::string& partyId, const bs::network::otc::Offer& offer);
-   void onOtcRequestPull(const std::string& partyId);
-   void onOtcResponseAccept(const std::string& partyId, const bs::network::otc::Offer& offer);
-   void onOtcResponseUpdate(const std::string& partyId, const bs::network::otc::Offer& offer);
-   void onOtcResponseReject(const std::string& partyId);
+   void onOtcRequestSubmit(const bs::network::otc::PeerId &peerId, const bs::network::otc::Offer& offer);
+   void onOtcPullOrReject(const bs::network::otc::PeerId &peerId);
+   void onOtcResponseAccept(const bs::network::otc::PeerId &peerId, const bs::network::otc::Offer& offer);
+   void onOtcResponseUpdate(const bs::network::otc::PeerId &peerId, const bs::network::otc::Offer& offer);
+   void onOtcResponseReject(const bs::network::otc::PeerId &peerId);
 
    void onOtcQuoteRequestSubmit(const bs::network::otc::QuoteRequest &request);
    void onOtcPullOwnRequest();

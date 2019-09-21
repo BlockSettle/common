@@ -68,19 +68,19 @@ void ChatOTCHelper::init(bs::network::otc::Env env
    otcClient_ = new OtcClient(loggerPtr, walletsMgr, armory, signContainer, authAddressManager, std::move(params), this);
 }
 
-OtcClient* ChatOTCHelper::getClient() const
+OtcClient* ChatOTCHelper::client() const
 {
    return otcClient_;
 }
 
-void ChatOTCHelper::setCurrentUserId(const std::string& ownUserId)
+const bs::network::otc::Peer *ChatOTCHelper::peer(const bs::network::otc::PeerId &peerId) const
 {
-   otcClient_->setCurrentUserId(ownUserId);
+   return otcClient_->peer(peerId);
 }
 
-const bs::network::otc::Peer* ChatOTCHelper::getPeer(const std::string& partyId) const
+void ChatOTCHelper::setCurrentUserId(const std::string& ownUserId)
 {
-   return otcClient_->peer(partyId);
+   otcClient_->setOwnContactId(ownUserId);
 }
 
 void ChatOTCHelper::onLogout()
@@ -96,54 +96,45 @@ void ChatOTCHelper::onProcessOtcPbMessage(const std::string& data)
    otcClient_->processPbMessage(data);
 }
 
-void ChatOTCHelper::onOtcRequestSubmit(const std::string& partyId, const bs::network::otc::Offer& offer)
+void ChatOTCHelper::onOtcRequestSubmit(const bs::network::otc::PeerId &peerId, const bs::network::otc::Offer& offer)
 {
-   bool result = otcClient_->sendOffer(offer, partyId);
+   bool result = otcClient_->sendOffer(offer, peerId);
    if (!result) {
       SPDLOG_LOGGER_ERROR(loggerPtr_, "send offer failed");
       return;
    }
 }
 
-void ChatOTCHelper::onOtcRequestPull(const std::string& partyId)
+void ChatOTCHelper::onOtcPullOrReject(const bs::network::otc::PeerId &peerId)
 {
-   if (partyId == Chat::OtcRoomName) {
-      bool result = otcClient_->pullOwnRequest();
-      if (!result) {
-         SPDLOG_LOGGER_ERROR(loggerPtr_, "pull own request failed");
-         return;
-      }
-      return;
-   }
-
-   bool result = otcClient_->pullOrRejectOffer(partyId);
+   bool result = otcClient_->pullOrReject(peerId);
    if (!result) {
-      SPDLOG_LOGGER_ERROR(loggerPtr_, "pull offer failed");
+      SPDLOG_LOGGER_ERROR(loggerPtr_, "pull or reject failed");
       return;
    }
 }
 
-void ChatOTCHelper::onOtcResponseAccept(const std::string& partyId, const bs::network::otc::Offer& offer)
+void ChatOTCHelper::onOtcResponseAccept(const bs::network::otc::PeerId &peerId, const bs::network::otc::Offer& offer)
 {
-   bool result = otcClient_->acceptOffer(offer, partyId);
+   bool result = otcClient_->acceptOffer(offer, peerId);
    if (!result) {
       SPDLOG_LOGGER_ERROR(loggerPtr_, "accept offer failed");
       return;
    }
 }
 
-void ChatOTCHelper::onOtcResponseUpdate(const std::string& partyId, const bs::network::otc::Offer& offer)
+void ChatOTCHelper::onOtcResponseUpdate(const bs::network::otc::PeerId &peerId, const bs::network::otc::Offer& offer)
 {
-   bool result = otcClient_->updateOffer(offer, partyId);
+   bool result = otcClient_->updateOffer(offer, peerId);
    if (!result) {
       SPDLOG_LOGGER_ERROR(loggerPtr_, "update offer failed");
       return;
    }
 }
 
-void ChatOTCHelper::onOtcResponseReject(const std::string& partyId)
+void ChatOTCHelper::onOtcResponseReject(const bs::network::otc::PeerId &peerId)
 {
-   bool result = otcClient_->pullOrRejectOffer(partyId);
+   bool result = otcClient_->pullOrReject(peerId);
    if (!result) {
       SPDLOG_LOGGER_ERROR(loggerPtr_, "reject offer failed");
       return;
@@ -185,7 +176,7 @@ void ChatOTCHelper::onMessageArrived(const Chat::MessagePtrList& messagePtr)
          if (!data.isNull()) {
             otcClient_->processPublicMessage(msg->timestamp(), msg->senderHash(), data);
          }
-      } else if (msg->partyMessageState() == Chat::SENT && msg->senderHash() != otcClient_->getCurrentUser()) {
+      } else if (msg->partyMessageState() == Chat::SENT && msg->senderHash() != otcClient_->ownContactId()) {
          auto connIt = connectedPeers_.find(msg->partyId());
          if (connIt == connectedPeers_.end()) {
             continue;

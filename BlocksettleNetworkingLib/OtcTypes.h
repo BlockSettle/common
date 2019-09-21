@@ -18,6 +18,31 @@ namespace bs {
             Test,
          };
 
+         enum class PeerType
+         {
+            Private,
+            PublicSent,
+            PublicRecv,
+         };
+
+         std::string toString(PeerType peerType);
+
+         struct PeerId
+         {
+            PeerType type{};
+            std::string contactId;
+
+            std::string toString() const;
+
+            bool operator==(const PeerId &other) const;
+            bool operator!=(const PeerId &other) const;
+         };
+
+         struct PeerIdHash
+         {
+            std::size_t operator()(const PeerId &key) const;
+         };
+
          enum class State
          {
             // No data received
@@ -115,14 +140,14 @@ namespace bs {
 
          struct Peer
          {
-            std::string peerId;
+            PeerId peerId;
             bs::network::otc::Offer offer;
             bs::network::otc::State state{bs::network::otc::State::Idle};
             BinaryData payinTxIdFromSeller;
             BinaryData authPubKey;
             BinaryData ourAuthPubKey;
 
-            Peer(const std::string &peerId)
+            Peer(const PeerId &peerId)
                : peerId(peerId) {}
          };
 

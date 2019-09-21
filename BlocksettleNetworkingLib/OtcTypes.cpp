@@ -2,8 +2,11 @@
 
 #include <cassert>
 #include <cmath>
+#include <spdlog/spdlog.h>
 
 #include "BTCNumericTypes.h"
+
+using namespace bs::network;
 
 std::string bs::network::otc::toString(bs::network::otc::Side side)
 {
@@ -138,9 +141,45 @@ bs::network::otc::RangeType bs::network::otc::firstRangeValue(bs::network::otc::
       case Env::Prod: return RangeType::Range5_10;
       case Env::Test: return RangeType::Range0_1;
    }
+   assert(false);
+   return {};
 }
 
 bs::network::otc::RangeType bs::network::otc::lastRangeValue(bs::network::otc::Env env)
 {
    return RangeType::Range250plus;
+}
+
+std::string bs::network::otc::PeerId::toString() const
+{
+   return fmt::format("{}/{}", contactId, otc::toString(type));
+}
+
+bool bs::network::otc::PeerId::operator==(const bs::network::otc::PeerId &other) const
+{
+   return type == other.type && contactId == other.contactId;
+}
+
+bool bs::network::otc::PeerId::operator!=(const bs::network::otc::PeerId &other) const
+{
+   return !this->operator==(other);
+}
+
+std::size_t bs::network::otc::PeerIdHash::operator()(const bs::network::otc::PeerId &key) const
+{
+   size_t res = 17;
+   res = res * 31 + std::hash<std::string>()(key.contactId);
+   res = res * 31 + std::hash<int>()(int(key.type));
+   return res;
+}
+
+std::string bs::network::otc::toString(bs::network::otc::PeerType peerType)
+{
+   switch (peerType) {
+      case PeerType::Private:    return "Private";
+      case PeerType::PublicSent: return "PublicSent";
+      case PeerType::PublicRecv: return "PublicRecv";
+   }
+   assert(false);
+   return {};
 }

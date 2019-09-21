@@ -107,7 +107,7 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
    connect(ui_->searchWidget, &SearchWidget::showUserRoom, this, &ChatWidget::onShowUserRoom);
    connect(ui_->searchWidget, &SearchWidget::contactFriendRequest, this, &ChatWidget::onContactFriendRequest);
 
-   chatPartiesTreeModel_ = std::make_shared<ChatPartiesTreeModel>(chatClientServicePtr_, otcHelper_->getClient());
+   chatPartiesTreeModel_ = std::make_shared<ChatPartiesTreeModel>(chatClientServicePtr_, otcHelper_->client());
 
    ChatPartiesSortProxyModelPtr charTreeSortModel = std::make_shared<ChatPartiesSortProxyModel>(chatPartiesTreeModel_);
    ui_->treeViewUsers->setModel(charTreeSortModel.get());
@@ -154,26 +154,32 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
 
    ui_->textEditMessages->onSetClientPartyModel(clientPartyModelPtr);
 
-   otcRequestViewModel_ = new OTCRequestViewModel(otcHelper_->getClient(), this);
+   otcRequestViewModel_ = new OTCRequestViewModel(otcHelper_->client(), this);
    ui_->treeViewOTCRequests->setModel(otcRequestViewModel_);
    // Use Qt::QueuedConnection to prevent crash when stateCurrent_ is null
    connect(ui_->treeViewOTCRequests->selectionModel(), &QItemSelectionModel::currentChanged, this, &ChatWidget::onOtcRequestCurrentChanged, Qt::QueuedConnection);
 
-   connect(otcHelper_->getClient(), &OtcClient::sendPbMessage, this, &ChatWidget::sendOtcPbMessage);
-   connect(otcHelper_->getClient(), &OtcClient::sendContactMessage, this, &ChatWidget::onSendOtcMessage);
-   connect(otcHelper_->getClient(), &OtcClient::sendPublicMessage, this, &ChatWidget::onSendOtcPublicMessage);
-   connect(otcHelper_->getClient(), &OtcClient::peerUpdated, this, &ChatWidget::onOtcUpdated);
-   connect(otcHelper_->getClient(), &OtcClient::publicUpdated, this, &ChatWidget::onOtcPublicUpdated);
+   connect(otcHelper_->client(), &OtcClient::sendPbMessage, this, &ChatWidget::sendOtcPbMessage);
+   connect(otcHelper_->client(), &OtcClient::sendContactMessage, this, &ChatWidget::onSendOtcMessage);
+   connect(otcHelper_->client(), &OtcClient::sendPublicMessage, this, &ChatWidget::onSendOtcPublicMessage);
+   connect(otcHelper_->client(), &OtcClient::peerUpdated, this, &ChatWidget::onOtcUpdated);
+   connect(otcHelper_->client(), &OtcClient::publicUpdated, this, &ChatWidget::onOtcPublicUpdated);
 
    connect(ui_->widgetNegotiateRequest, &OTCNegotiationRequestWidget::requestCreated, this, &ChatWidget::onOtcRequestSubmit);
-   connect(ui_->widgetPullOwnOTCRequest, &PullOwnOTCRequestWidget::requestPulled, this, &ChatWidget::onOtcRequestPull);
+   connect(ui_->widgetPullOwnOTCRequest, &PullOwnOTCRequestWidget::requestPulled, this, &ChatWidget::onOtcPullOwnRequest);
    connect(ui_->widgetNegotiateResponse, &OTCNegotiationResponseWidget::responseAccepted, this, &ChatWidget::onOtcResponseAccept);
    connect(ui_->widgetNegotiateResponse, &OTCNegotiationResponseWidget::responseUpdated, this, &ChatWidget::onOtcResponseUpdate);
-   connect(ui_->widgetNegotiateResponse, &OTCNegotiationResponseWidget::responseRejected, this, &ChatWidget::onOtcResponseReject);
+   connect(ui_->widgetNegotiateResponse, &OTCNegotiationResponseWidget::responseRejected, this, &ChatWidget::onOtcPullOrRejectCurrent);
    connect(ui_->widgetCreateOTCRequest, &CreateOTCRequestWidget::requestCreated, this, &ChatWidget::onOtcQuoteRequestSubmit);
    connect(ui_->widgetCreateOTCResponse, &CreateOTCResponseWidget::responseCreated, this, &ChatWidget::onOtcQuoteResponseSubmit);
 
    ui_->widgetCreateOTCRequest->init(env);
+}
+
+otc::PeerId ChatWidget::currentPeerId() const
+{
+   // FIXME: Use correct peer type
+   return otc::PeerId{otc::PeerType::Private, currentPartyId_};
 }
 
 void acceptPartyRequest(const std::string& partyId) {}
@@ -211,9 +217,9 @@ void ChatWidget::onRemovePartyRequest(const std::string& partyId)
    stateCurrent_->onRemovePartyRequest(partyId);
 }
 
-void ChatWidget::onOtcUpdated(const std::string& partyId)
+void ChatWidget::onOtcUpdated(const bs::network::otc::PeerId& peerId)
 {
-   stateCurrent_->onOtcUpdated(partyId);
+   stateCurrent_->onOtcUpdated(peerId);
 }
 
 void ChatWidget::onOtcPublicUpdated()
@@ -441,9 +447,9 @@ void ChatWidget::onOtcRequestSubmit()
    stateCurrent_->onOtcRequestSubmit();
 }
 
-void ChatWidget::onOtcRequestPull()
+void ChatWidget::onOtcPullOwnRequest()
 {
-   stateCurrent_->onOtcRequestPull();
+   stateCurrent_->onOtcPullOwnRequest();
 }
 
 void ChatWidget::onOtcResponseAccept()
@@ -456,11 +462,6 @@ void ChatWidget::onOtcResponseUpdate()
    stateCurrent_->onOtcResponseUpdate();
 }
 
-void ChatWidget::onOtcResponseReject()
-{
-   stateCurrent_->onOtcResponseReject();
-}
-
 void ChatWidget::onOtcQuoteRequestSubmit()
 {
    stateCurrent_->onOtcQuoteRequestSubmit();
@@ -469,6 +470,11 @@ void ChatWidget::onOtcQuoteRequestSubmit()
 void ChatWidget::onOtcQuoteResponseSubmit()
 {
    stateCurrent_->onOtcQuoteResponseSubmit();
+}
+
+void ChatWidget::onOtcPullOrRejectCurrent()
+{
+   stateCurrent_->onOtcPullOrRejectCurrent();
 }
 
 void ChatWidget::onUserPublicKeyChanged(const Chat::UserPublicKeyInfoList& userPublicKeyInfoList)

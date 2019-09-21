@@ -6,6 +6,7 @@
 #include <QWidget>
 #include "ChatProtocol/ChatClientService.h"
 #include "ChatProtocol/ClientParty.h"
+#include "OtcTypes.h"
 
 class QItemSelection;
 
@@ -53,6 +54,8 @@ public:
 
    std::string login(const std::string& email, const std::string& jwt, const ZmqBipNewKeyCb&);
 
+   bs::network::otc::PeerId currentPeerId() const;
+
 protected:
    void showEvent(QShowEvent* e) override;
    bool eventFilter(QObject* sender, QEvent* event) override;
@@ -92,16 +95,16 @@ private slots:
    void onNewPartyRequest(const std::string& userName);
    void onRemovePartyRequest(const std::string& partyId);
 
-   void onOtcUpdated(const std::string& partyId);
+   void onOtcUpdated(const bs::network::otc::PeerId& peerId);
    void onOtcPublicUpdated();
 
    void onOtcRequestSubmit();
-   void onOtcRequestPull();
+   void onOtcPullOwnRequest();
    void onOtcResponseAccept();
    void onOtcResponseUpdate();
-   void onOtcResponseReject();
    void onOtcQuoteRequestSubmit();
    void onOtcQuoteResponseSubmit();
+   void onOtcPullOrRejectCurrent();
 
 signals:
    // OTC
