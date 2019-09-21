@@ -153,7 +153,7 @@ namespace bs {
 
          struct Request
          {
-            std::string peerId;
+            std::string contactId;
             Side requestorSide{};
             RangeType rangeType{};
             QDateTime timestamp;

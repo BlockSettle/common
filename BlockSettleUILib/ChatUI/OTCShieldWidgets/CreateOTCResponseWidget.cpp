@@ -32,7 +32,7 @@ void CreateOTCResponseWidget::setRequest(const bs::network::otc::Request &reques
    ui_->widgetAmountRange->SetUpperValue(int(range.upper));
 
    ourSide_ = otc::switchSide(request.requestorSide);
-   peerId_ = request.peerId;
+   peerId_ = request.contactId;
 
    ui_->pushButtonPull->hide();
 }

@@ -141,9 +141,9 @@ private:
    void processClose(bs::network::otc::Peer *peer, const Blocksettle::Communication::Otc::ContactMessage_Close &msg);
    void processQuoteResponse(bs::network::otc::Peer *peer, const Blocksettle::Communication::Otc::ContactMessage_QuoteResponse &msg);
 
-   void processPublicRequest(QDateTime timestamp, const std::string &peerId, const Blocksettle::Communication::Otc::PublicMessage_Request &msg);
-   void processPublicClose(QDateTime timestamp, const std::string &peerId, const Blocksettle::Communication::Otc::PublicMessage_Close &msg);
-   void processPublicPrivateMessage(QDateTime timestamp, const std::string &peerId, const Blocksettle::Communication::Otc::PublicMessage_PrivateMessage &msg);
+   void processPublicRequest(QDateTime timestamp, const std::string &contactId, const Blocksettle::Communication::Otc::PublicMessage_Request &msg);
+   void processPublicClose(QDateTime timestamp, const std::string &contactId, const Blocksettle::Communication::Otc::PublicMessage_Close &msg);
+   void processPublicPrivateMessage(QDateTime timestamp, const std::string &contactId, const Blocksettle::Communication::Otc::PublicMessage_PrivateMessage &msg);
 
    void processPbStartOtc(const Blocksettle::Communication::ProxyTerminalPb::Response_StartOtc &response);
    void processPbVerifyOtc(const Blocksettle::Communication::ProxyTerminalPb::Response_VerifyOtc &response);
@@ -188,7 +188,9 @@ private:
    // Maps sign requests to settlementId
    std::map<unsigned, BinaryData> signRequestIds_;
 
-   std::map<std::string, bs::network::otc::Request> allRequestMap_;
+   std::map<std::string, bs::network::otc::Request> recvRequestMap_;
+   std::unique_ptr<bs::network::otc::Request> ownRequest_;
+
    std::map<std::string, bs::network::otc::Response> sentResponseMap_;
    std::map<std::string, bs::network::otc::Response> recvResponseMap_;
 

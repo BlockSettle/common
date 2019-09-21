@@ -387,16 +387,37 @@ bool OtcClient::updateOffer(const Offer &offer, const bs::network::otc::PeerId &
 
 bool OtcClient::sendQuoteRequest(const QuoteRequest &request)
 {
+   assert(!ownRequest_);
+   assert(!ownContactId_.empty());
+
+   ownRequest_ = std::make_unique<otc::Request>();
+   ownRequest_->contactId = ownContactId_;
+   ownRequest_->requestorSide = request.ourSide;
+   ownRequest_->rangeType = request.rangeType;
+   ownRequest_->timestamp = QDateTime::currentDateTimeUtc();
+
    Otc::PublicMessage msg;
    auto d = msg.mutable_request();
    d->set_sender_side(Otc::Side(request.ourSide));
    d->set_range(Otc::RangeType(request.rangeType));
    emit sendPublicMessage(msg.SerializeAsString());
+
+   updatePublicLists();
+
    return true;
 }
 
 bool OtcClient::pullOwnRequest()
 {
+   assert(ownRequest_);
+   ownRequest_.reset();
+
+   // This will remove everything when we pull public request.
+   // We could keep current shield and show that our public request was pulled instead.
+   recvResponseMap_.clear();
+
+   updatePublicLists();
+
    Otc::PublicMessage msg;
    msg.mutable_close();
    emit sendPublicMessage(msg.SerializeAsString());
@@ -410,7 +431,7 @@ bool OtcClient::sendQuoteResponse(const QuoteResponse &quoteResponse)
    response.responderSide = quoteResponse.ourSide;
    response.price = quoteResponse.price;
    response.amount = quoteResponse.amount;
-   response.timestamp = QDateTime::currentDateTime();
+   response.timestamp = QDateTime::currentDateTimeUtc();
 
    Otc::ContactMessage msg;
    auto d = msg.mutable_quote_response();
@@ -429,11 +450,7 @@ bool OtcClient::pullQuoteResponse(const bs::network::otc::PeerId &peerId)
 
 const Request *OtcClient::ownRequest() const
 {
-   auto it = allRequestMap_.find(ownContactId_);
-   if (it == allRequestMap_.end()) {
-      return nullptr;
-   }
-   return &it->second;
+   return ownRequest_.get();
 }
 
 void OtcClient::peerConnected(const std::string &contactId)
@@ -540,8 +557,13 @@ void OtcClient::processPbMessage(const std::string &data)
    SPDLOG_LOGGER_CRITICAL(logger_, "unknown response was detected!");
 }
 
-void OtcClient::processPublicMessage(QDateTime timestamp, const std::string &peerId, const BinaryData &data)
+void OtcClient::processPublicMessage(QDateTime timestamp, const std::string &contactId, const BinaryData &data)
 {
+   assert(!ownContactId_.empty());
+   if (contactId == ownContactId_) {
+      return;
+   }
+
    Otc::PublicMessage msg;
    bool result = msg.ParseFromArray(data.getPtr(), int(data.getSize()));
    if (!result) {
@@ -551,13 +573,13 @@ void OtcClient::processPublicMessage(QDateTime timestamp, const std::string &pee
 
    switch (msg.data_case()) {
       case Otc::PublicMessage::kRequest:
-         processPublicRequest(timestamp, peerId, msg.request());
+         processPublicRequest(timestamp, contactId, msg.request());
          return;
       case Otc::PublicMessage::kClose:
-         processPublicClose(timestamp, peerId, msg.close());
+         processPublicClose(timestamp, contactId, msg.close());
          return;
       case Otc::PublicMessage::kPrivateMessage:
-         processPublicPrivateMessage(timestamp, peerId, msg.private_message());
+         processPublicPrivateMessage(timestamp, contactId, msg.private_message());
          return;
       case Otc::PublicMessage::DATA_NOT_SET:
          SPDLOG_LOGGER_ERROR(logger_, "invalid public request detected");
@@ -567,7 +589,7 @@ void OtcClient::processPublicMessage(QDateTime timestamp, const std::string &pee
    SPDLOG_LOGGER_CRITICAL(logger_, "unknown public message was detected!");
 }
 
-void OtcClient::processPrivateMessage(QDateTime timestamp, const std::string &peerId, const BinaryData &data)
+void OtcClient::processPrivateMessage(QDateTime timestamp, const std::string &contactId, const BinaryData &data)
 {
    Otc::ContactMessage msg;
    bool result = msg.ParseFromArray(data.getPtr(), int(data.getSize()));
@@ -578,8 +600,8 @@ void OtcClient::processPrivateMessage(QDateTime timestamp, const std::string &pe
 
    switch (msg.data_case()) {
       case Otc::ContactMessage::kQuoteResponse:
-         auto &response = recvResponseMap_[peerId];
-         response.peerId = peerId;
+         auto &response = recvResponseMap_[contactId];
+         response.peerId = contactId;
          response.responderSide = otc::switchSide(otc::Side(msg.quote_response().sender_side()));
          copyRange(msg.quote_response().price(), &response.price);
          copyRange(msg.quote_response().amount(), &response.amount);
@@ -899,7 +921,7 @@ void OtcClient::processQuoteResponse(Peer *peer, const ContactMessage_QuoteRespo
 
 }
 
-void OtcClient::processPublicRequest(QDateTime timestamp, const std::string &peerId, const PublicMessage_Request &msg)
+void OtcClient::processPublicRequest(QDateTime timestamp, const std::string &contactId, const PublicMessage_Request &msg)
 {
    auto range = otc::RangeType(msg.range());
    if (range < otc::firstRangeValue(params_.env) || range > otc::lastRangeValue(params_.env)) {
@@ -909,24 +931,29 @@ void OtcClient::processPublicRequest(QDateTime timestamp, const std::string &pee
 
    Request request;
    request.requestorSide = otc::Side(msg.sender_side());
-   request.peerId = peerId;
+   request.contactId = contactId;
    request.timestamp = timestamp;
    request.rangeType = range;
-   allRequestMap_[request.peerId] = request;
+   recvRequestMap_[request.contactId] = request;
 
    updatePublicLists();
 }
 
-void OtcClient::processPublicClose(QDateTime timestamp, const std::string &peerId, const PublicMessage_Close &msg)
+void OtcClient::processPublicClose(QDateTime timestamp, const std::string &contactId, const PublicMessage_Close &msg)
 {
-   allRequestMap_.erase(peerId);
+   recvRequestMap_.erase(contactId);
+
+   // This will remove everything when remote peer pulls public request.
+   // We could keep current shield and show that public request was pulled instead.
+   sentResponseMap_.erase(contactId);
+
    updatePublicLists();
 }
 
-void OtcClient::processPublicPrivateMessage(QDateTime timestamp, const std::string &peerId, const PublicMessage_PrivateMessage &msg)
+void OtcClient::processPublicPrivateMessage(QDateTime timestamp, const std::string &contactId, const PublicMessage_PrivateMessage &msg)
 {
    // FIXME: Remove this and send messages using directly
-   processPrivateMessage(timestamp, peerId, msg.data());
+   processPrivateMessage(timestamp, contactId, msg.data());
 }
 
 void OtcClient::processPbStartOtc(const ProxyTerminalPb::Response_StartOtc &response)
@@ -1321,12 +1348,15 @@ void OtcClient::setComments(OtcClientDeal *deal)
 void OtcClient::updatePublicLists()
 {
    allRequests_.clear();
-   for (const auto &item : allRequestMap_) {
+   if (ownRequest_) {
+      allRequests_.push_back(ownRequest_.get());
+   }
+   for (const auto &item : recvRequestMap_) {
       allRequests_.push_back(&item.second);
    }
 
    sentResponses_.clear();
-   for (const auto &item : recvResponseMap_) {
+   for (const auto &item : sentResponseMap_) {
       sentResponses_.push_back(&item.second);
    }
 
