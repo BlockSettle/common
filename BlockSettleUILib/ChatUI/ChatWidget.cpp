@@ -181,12 +181,29 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
 
 otc::Peer *ChatWidget::currentPeer() const
 {
-   // FIXME: Use correct value for responses
+   ChatPartiesSortProxyModel* chartProxyModel = static_cast<ChatPartiesSortProxyModel*>(ui_->treeViewUsers->model());
+   PartyTreeItem* partyTreeItem = chartProxyModel->getInternalData(ui_->treeViewUsers->currentIndex());
+   if (!partyTreeItem || partyTreeItem->modelType() == UI::ElementType::Container) {
+      return nullptr;
+   }
+
    if (currentPartyId_ == Chat::OtcRoomName) {
       return otcRequestViewModel_->peer(ui_->treeViewOTCRequests->currentIndex());
-   } else {
-      return otcHelper_->client()->contact(currentContactId_);
    }
+
+   const auto clientPartyPtr = partyTreeItem->data().value<Chat::ClientPartyPtr>();
+   if (!clientPartyPtr) {
+      return nullptr;
+   }
+
+   switch (partyTreeItem->peerType) {
+      case otc::PeerType::Contact:     return otcHelper_->client()->contact(clientPartyPtr->userHash());
+      case otc::PeerType::Request:     return otcHelper_->client()->request(clientPartyPtr->id());
+      case otc::PeerType::Response:    return otcHelper_->client()->response(clientPartyPtr->id());
+   }
+
+   assert(false);
+   return nullptr;
 }
 
 void acceptPartyRequest(const std::string& partyId) {}
@@ -370,10 +387,8 @@ void ChatWidget::onUserListClicked(const QModelIndex& index)
 
 void ChatWidget::chatTransition(const Chat::ClientPartyPtr& clientPartyPtr)
 {
-   auto transitionChange = [this, clientPartyPtr]()
-   {
+   auto transitionChange = [this, clientPartyPtr]() {
       currentPartyId_ = clientPartyPtr->id();
-      currentContactId_ = clientPartyPtr->userHash();
    };
 
    switch (clientPartyPtr->partyState())
@@ -409,7 +424,6 @@ void ChatWidget::onActivatePartyId(const QString& partyId)
    if (!partyProxyIndex.isValid()) {
       if (ownUserId_.empty()) {
          currentPartyId_.clear();
-         currentContactId_.clear();
          changeState<ChatLogOutState>();
       }
       else {

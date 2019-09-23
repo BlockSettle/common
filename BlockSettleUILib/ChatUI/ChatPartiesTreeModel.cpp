@@ -72,7 +72,7 @@ void ChatPartiesTreeModel::onGlobalOTCChanged()
       endRemoveRows();
    }
 
-   auto fAddOtcParty = [](const bs::network::otc::Peer* peer, std::unique_ptr<PartyTreeItem>& section) {
+   auto fAddOtcParty = [](const bs::network::otc::Peer* peer, std::unique_ptr<PartyTreeItem>& section, otc::PeerType peerType) {
       Chat::ClientPartyPtr otcPartyPtr = std::make_shared<Chat::ClientParty>(peer->contactId,
          Chat::PartyType::PRIVATE_DIRECT_MESSAGE,
          Chat::PartySubType::OTC,
@@ -83,6 +83,7 @@ void ChatPartiesTreeModel::onGlobalOTCChanged()
       stored.setValue(otcPartyPtr);
 
       std::unique_ptr<PartyTreeItem> otcItem = std::make_unique<PartyTreeItem>(stored, UI::ElementType::Party, section.get());
+      otcItem->peerType = peerType;
       section->insertChildren(std::move(otcItem));
    };
 
@@ -92,7 +93,7 @@ void ChatPartiesTreeModel::onGlobalOTCChanged()
    for (const auto &peer : otcClient_->requests()) {
       // Show only responded requests here
       if (peer->state != otc::State::Idle) {
-         fAddOtcParty(peer, sentSection);
+         fAddOtcParty(peer, sentSection, otc::PeerType::Request);
       }
    }
    if (sentSection->childCount() != 0) {
@@ -101,7 +102,7 @@ void ChatPartiesTreeModel::onGlobalOTCChanged()
 
    std::unique_ptr<PartyTreeItem> responseSection = std::make_unique<PartyTreeItem>(ChatModelNames::TabOTCReceivedResponse, UI::ElementType::Container, otcParty);
    for (const auto &peer : otcClient_->responses()) {
-      fAddOtcParty(peer, responseSection);
+      fAddOtcParty(peer, responseSection, otc::PeerType::Response);
    }
    if (responseSection->childCount() != 0) {
       otcParty->insertChildren(std::move(responseSection));

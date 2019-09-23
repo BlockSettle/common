@@ -339,7 +339,7 @@ void AbstractChatWidgetState::updateOtc()
          }
          break;
       case State::QuoteSent:
-         pageNumber = OTCPages::OTCNegotiateResponsePage;
+         pageNumber = OTCPages::OTCPullOwnOTCRequestPage;
          break;
       case State::QuoteRecv:
          pageNumber = OTCPages::OTCNegotiateRequestPage;

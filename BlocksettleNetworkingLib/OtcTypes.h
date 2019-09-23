@@ -19,7 +19,7 @@ namespace bs {
             Test,
          };
 
-         enum class PeerType
+         enum class PeerType : int
          {
             Contact,
             Request,

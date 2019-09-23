@@ -151,7 +151,6 @@ private:
 
    std::string ownUserId_;
    std::string currentPartyId_;
-   std::string currentContactId_;
    QMap<std::string, QString> draftMessages_;
    bool bNeedRefresh_ = false;
 };
