@@ -1460,9 +1460,5 @@ void OtcClient::updatePublicLists()
       responses_.push_back(&item.second);
    }
 
-   std::cerr << "contacts: " << contacts_.size() << std::endl;
-   std::cerr << "requests: " << requests_.size() << std::endl;
-   std::cerr << "responses: " << responses_.size() << std::endl;
-
    emit publicUpdated();
 }

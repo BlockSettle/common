@@ -329,6 +329,7 @@ void AbstractChatWidgetState::updateOtc()
          }
          break;
       case State::QuoteSent:
+         chat_->ui_->widgetPullOwnOTCRequest->setResponse(peer->response);
          pageNumber = OTCPages::OTCPullOwnOTCRequestPage;
          break;
       case State::QuoteRecv:

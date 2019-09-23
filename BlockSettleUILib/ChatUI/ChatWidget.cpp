@@ -198,6 +198,7 @@ otc::Peer *ChatWidget::currentPeer() const
 
    switch (partyTreeItem->peerType) {
       case otc::PeerType::Contact:     return otcHelper_->client()->contact(clientPartyPtr->userHash());
+      // We should use userHash here too, but for some reasons it's not set here
       case otc::PeerType::Request:     return otcHelper_->client()->request(clientPartyPtr->id());
       case otc::PeerType::Response:    return otcHelper_->client()->response(clientPartyPtr->id());
    }
