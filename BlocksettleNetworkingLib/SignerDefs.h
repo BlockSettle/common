@@ -6,6 +6,10 @@
 #include "HDPath.h"
 #include "WalletEncryption.h"
 
+#include "headless.pb.h"
+
+using namespace Blocksettle::Communication;
+
 namespace bs {
 namespace signer {
 
@@ -61,12 +65,18 @@ namespace sync {
 
    struct WalletInfo
    {
+      static std::vector<bs::sync::WalletInfo> fromPbMessage(const headless::SyncWalletInfoResponse &response);
+
       WalletFormat   format;
       std::string id;
       std::string name;
       std::string description;
       NetworkType netType;
       bool        watchOnly;
+
+      std::vector<bs::wallet::EncryptionType>   encryptionTypes;
+      std::vector<BinaryData> encryptionKeys;
+      bs::wallet::KeyRank     encryptionRank{ 0,0 };
    };
 
    struct HDWalletData
@@ -101,10 +111,7 @@ namespace sync {
 
    struct WalletData
    {
-      std::vector<bs::wallet::EncryptionType>   encryptionTypes;
-      std::vector<BinaryData> encryptionKeys;
-      bs::wallet::KeyRank     encryptionRank{ 0,0 };
-      NetworkType netType = NetworkType::Invalid;
+      static WalletData fromPbMessage(const headless::SyncWalletResponse &response);
 
       //flag value, signifies the higest index entries are unset if not changed from UINT32_MAX
       unsigned int highestExtIndex = UINT32_MAX; 
@@ -140,6 +147,9 @@ namespace sync {
       std::vector<Group>   groups;
    };
 
+   bs::wallet::EncryptionType mapFrom(headless::EncryptionType encType);
+   NetworkType mapFrom(headless::NetworkType netType);
+   bs::sync::WalletFormat mapFrom(headless::WalletFormat format);
 }  //namespace sync
 
 } // bs
