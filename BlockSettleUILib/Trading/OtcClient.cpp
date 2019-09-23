@@ -211,6 +211,34 @@ const std::string &OtcClient::ownContactId() const
    return ownContactId_;
 }
 
+
+bool OtcClient::sendQuoteRequest(const QuoteRequest &request)
+{
+   if (ownRequest_) {
+      SPDLOG_LOGGER_ERROR(logger_, "own quote request was already sent");
+      return false;
+   }
+
+   if (ownContactId_.empty()) {
+      SPDLOG_LOGGER_ERROR(logger_, "own contact id is not set");
+      return false;
+   }
+
+   ownRequest_ = std::make_unique<Peer>(ownContactId_, PeerType::Request);
+   ownRequest_->request = request;
+   ownRequest_->isOwnRequest = true;
+
+   Otc::PublicMessage msg;
+   auto d = msg.mutable_request();
+   d->set_sender_side(Otc::Side(request.ourSide));
+   d->set_range(Otc::RangeType(request.rangeType));
+   emit sendPublicMessage(msg.SerializeAsString());
+
+   updatePublicLists();
+
+   return true;
+}
+
 bool OtcClient::sendQuoteResponse(Peer *peer, const QuoteResponse &quoteResponse)
 {
    if (peer->state != State::Idle) {
@@ -293,6 +321,22 @@ bool OtcClient::sendOffer(Peer *peer, const Offer &offer)
 
 bool OtcClient::pullOrReject(Peer *peer)
 {
+   if (peer == ownRequest_.get()) {
+      SPDLOG_LOGGER_DEBUG(logger_, "pull own quote request");
+      ownRequest_.reset();
+
+      // This will remove everything when we pull public request.
+      // We could keep current shield and show that our public request was pulled instead.
+      responseMap_.clear();
+
+      Otc::PublicMessage msg;
+      msg.mutable_close();
+      emit sendPublicMessage(msg.SerializeAsString());
+
+      updatePublicLists();
+      return true;
+   }
+
    SPDLOG_LOGGER_DEBUG(logger_, "pull of reject offer from {}", peer->toString());
 
    if (peer->state != State::OfferSent && peer->state != State::OfferRecv) {
@@ -420,42 +464,7 @@ bool OtcClient::updateOffer(Peer *peer, const Offer &offer)
    return true;
 }
 
-bool OtcClient::sendQuoteRequest(const QuoteRequest &request)
-{
-   assert(!ownRequest_);
-   assert(!ownContactId_.empty());
-
-   ownRequest_ = std::make_unique<QuoteRequest>(request);
-
-   Otc::PublicMessage msg;
-   auto d = msg.mutable_request();
-   d->set_sender_side(Otc::Side(request.ourSide));
-   d->set_range(Otc::RangeType(request.rangeType));
-   emit sendPublicMessage(msg.SerializeAsString());
-
-   updatePublicLists();
-
-   return true;
-}
-
-bool OtcClient::pullOwnRequest()
-{
-   assert(ownRequest_);
-   ownRequest_.reset();
-
-   // This will remove everything when we pull public request.
-   // We could keep current shield and show that our public request was pulled instead.
-   responseMap_.clear();
-
-   updatePublicLists();
-
-   Otc::PublicMessage msg;
-   msg.mutable_close();
-   emit sendPublicMessage(msg.SerializeAsString());
-   return true;
-}
-
-const QuoteRequest *OtcClient::ownRequest() const
+Peer *OtcClient::ownRequest() const
 {
    return ownRequest_.get();
 }
@@ -1412,6 +1421,9 @@ void OtcClient::updatePublicLists()
    }
 
    requests_.clear();
+   if (ownRequest_) {
+      requests_.push_back(ownRequest_.get());
+   }
    for (auto &item : requestMap_) {
       requests_.push_back(&item.second);
    }

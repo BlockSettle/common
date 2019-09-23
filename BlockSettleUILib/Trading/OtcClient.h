@@ -98,18 +98,16 @@ public:
    void setOwnContactId(const std::string &contactId);
    const std::string &ownContactId() const;
 
+   bool sendQuoteRequest(const bs::network::otc::QuoteRequest &request);
    bool sendQuoteResponse(bs::network::otc::Peer *peer, const bs::network::otc::QuoteResponse &quoteResponse);
    bool sendOffer(bs::network::otc::Peer *peer, const bs::network::otc::Offer &offer);
    bool acceptOffer(bs::network::otc::Peer *peer, const bs::network::otc::Offer &offer);
    bool updateOffer(bs::network::otc::Peer *peer, const bs::network::otc::Offer &offer);
    bool pullOrReject(bs::network::otc::Peer *peer);
 
-   bool sendQuoteRequest(const bs::network::otc::QuoteRequest &request);
-   bool pullOwnRequest();
-
    const bs::network::otc::Peers &requests() { return requests_; }
    const bs::network::otc::Peers &responses() { return responses_; }
-   const bs::network::otc::QuoteRequest *ownRequest() const;
+   bs::network::otc::Peer *ownRequest() const;
 
 public slots:
    void contactConnected(const std::string &contactId);
@@ -192,8 +190,7 @@ private:
    // Maps sign requests to settlementId
    std::map<unsigned, BinaryData> signRequestIds_;
 
-   std::unique_ptr<bs::network::otc::QuoteRequest> ownRequest_;
-
+   std::unique_ptr<bs::network::otc::Peer> ownRequest_;
    std::unordered_map<std::string, bs::network::otc::Peer> contactMap_;
    std::unordered_map<std::string, bs::network::otc::Peer> requestMap_;
    std::unordered_map<std::string, bs::network::otc::Peer> responseMap_;

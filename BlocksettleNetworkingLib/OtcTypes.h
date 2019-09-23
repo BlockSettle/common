@@ -133,6 +133,7 @@ namespace bs {
          {
             std::string contactId;
             PeerType type;
+            bool isOwnRequest{};
 
             State state{State::Idle};
 

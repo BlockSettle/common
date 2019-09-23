@@ -255,13 +255,6 @@ void AbstractChatWidgetState::onOtcQuoteRequestSubmit()
    }
 }
 
-void AbstractChatWidgetState::onOtcPullOwnRequest()
-{
-   if (canPerformOTCOperations()) {
-      chat_->otcHelper_->onOtcPullOwnRequest();
-   }
-}
-
 void AbstractChatWidgetState::onOtcQuoteResponseSubmit()
 {
    if (canPerformOTCOperations()) {
@@ -272,6 +265,11 @@ void AbstractChatWidgetState::onOtcQuoteResponseSubmit()
 void AbstractChatWidgetState::onOtcPullOrRejectCurrent()
 {
    if (canPerformOTCOperations()) {
+      auto peer = chat_->currentPeer();
+      if (!peer) {
+         assert(false);
+         return;
+      }
       chat_->otcHelper_->onOtcPullOrReject(chat_->currentPeer());
    }
 }
@@ -306,24 +304,13 @@ void AbstractChatWidgetState::updateOtc()
       return;
    }
 
-   if (chat_->currentPartyId_ == Chat::OtcRoomName) {
-      auto currentIndex = chat_->ui_->treeViewOTCRequests->currentIndex();
-      auto peer = chat_->otcRequestViewModel_->peer(currentIndex);
-      if (!peer) {
-         auto ownRequest = chat_->otcHelper_->client()->ownRequest();
-         if (ownRequest) {
-            chat_->ui_->widgetPullOwnOTCRequest->setRequest(*ownRequest);
-            chat_->ui_->stackedWidgetOTC->setCurrentIndex(static_cast<int>(OTCPages::OTCPullOwnOTCRequestPage));
-         } else {
-            chat_->ui_->stackedWidgetOTC->setCurrentIndex(static_cast<int>(OTCPages::OTCCreateRequestPage));
-         }
-         return;
-      }
-   }
-
    const bs::network::otc::Peer* peer = chat_->currentPeer();
    if (!peer) {
-      chat_->ui_->widgetOTCShield->showContactIsOffline();
+      if (chat_->currentPartyId_ == Chat::OtcRoomName) {
+         chat_->ui_->stackedWidgetOTC->setCurrentIndex(static_cast<int>(OTCPages::OTCCreateRequestPage));
+      } else {
+         chat_->ui_->widgetOTCShield->showContactIsOffline();
+      }
       return;
    }
 
@@ -333,7 +320,10 @@ void AbstractChatWidgetState::updateOtc()
       case State::Idle:
          if (peer->type == otc::PeerType::Contact) {
             pageNumber = OTCPages::OTCNegotiateRequestPage;
-         } else {
+         } else if (peer->isOwnRequest) {
+            chat_->ui_->widgetPullOwnOTCRequest->setRequest(peer->request);
+            pageNumber = OTCPages::OTCPullOwnOTCRequestPage;
+         } else if (peer->type == otc::PeerType::Request) {
             chat_->ui_->widgetCreateOTCResponse->setRequest(peer->request);
             pageNumber = OTCPages::OTCCreateResponsePage;
          }

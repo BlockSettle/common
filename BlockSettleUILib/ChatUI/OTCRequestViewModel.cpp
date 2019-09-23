@@ -86,7 +86,8 @@ QVariant OTCRequestViewModel::headerData(int section, Qt::Orientation orientatio
 otc::Peer *OTCRequestViewModel::peer(const QModelIndex &index) const
 {
    if (!index.isValid() || index.row() >= int(otcClient_->requests().size())) {
-      return nullptr;
+      // Show by default own request (if available)
+      return otcClient_->ownRequest();
    }
    return otcClient_->requests().at(size_t(index.row()));
 }

@@ -101,7 +101,6 @@ private slots:
    void onOtcPublicUpdated();
 
    void onOtcRequestSubmit();
-   void onOtcPullOwnRequest();
    void onOtcResponseAccept();
    void onOtcResponseUpdate();
    void onOtcQuoteRequestSubmit();

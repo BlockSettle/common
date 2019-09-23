@@ -61,7 +61,6 @@ public slots:
    void onOtcResponseReject(bs::network::otc::Peer *peer);
 
    void onOtcQuoteRequestSubmit(const bs::network::otc::QuoteRequest &request);
-   void onOtcPullOwnRequest();
    void onOtcQuoteResponseSubmit(bs::network::otc::Peer *peer, const bs::network::otc::QuoteResponse &response);
 
    void onMessageArrived(const Chat::MessagePtrList& messagePtr);

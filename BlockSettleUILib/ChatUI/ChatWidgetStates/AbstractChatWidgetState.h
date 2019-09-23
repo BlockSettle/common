@@ -62,7 +62,6 @@ public:
    void onOtcResponseUpdate();
 
    void onOtcQuoteRequestSubmit();
-   void onOtcPullOwnRequest();
    void onOtcQuoteResponseSubmit();
 
    void onOtcPullOrRejectCurrent();

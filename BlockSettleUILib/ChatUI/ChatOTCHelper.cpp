@@ -5,6 +5,7 @@
 
 #include "ApplicationSettings.h"
 #include "ArmoryConnection.h"
+#include "ChatProtocol/ClientParty.h"
 #include "OtcClient.h"
 #include "OtcUtils.h"
 #include "SignContainer.h"
@@ -170,15 +171,6 @@ void ChatOTCHelper::onOtcQuoteRequestSubmit(const bs::network::otc::QuoteRequest
    }
 }
 
-void ChatOTCHelper::onOtcPullOwnRequest()
-{
-   bool result = otcClient_->pullOwnRequest();
-   if (!result) {
-      SPDLOG_LOGGER_ERROR(loggerPtr_, "pulling own request failed");
-      return;
-   }
-}
-
 void ChatOTCHelper::onOtcQuoteResponseSubmit(bs::network::otc::Peer *peer, const bs::network::otc::QuoteResponse &response)
 {
    if (!peer) {
@@ -217,11 +209,12 @@ void ChatOTCHelper::onMessageArrived(const Chat::MessagePtrList& messagePtr)
 
 void ChatOTCHelper::onPartyStateChanged(const Chat::ClientPartyPtr& clientPartyPtr)
 {
-   if (clientPartyPtr->partyType() != Chat::PRIVATE_DIRECT_MESSAGE) {
+   auto client = std::dynamic_pointer_cast<Chat::ClientParty>(clientPartyPtr);
+   if (!client) {
       return;
    }
-   
-   const std::string& contactId = clientPartyPtr->partyCreatorHash();
+
+   const std::string& contactId = client->userHash();
    auto connIt = connectedContacts_.find(contactId);
    if (clientPartyPtr->clientStatus() == Chat::ONLINE && connIt == connectedContacts_.end()) {
       otcClient_->contactConnected(contactId);
