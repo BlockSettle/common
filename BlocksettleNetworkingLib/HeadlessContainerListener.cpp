@@ -6,7 +6,6 @@
 #include "CoreHDWallet.h"
 #include "CoreWalletsManager.h"
 #include "DispatchQueue.h"
-#include "HeadlessDefs.h"
 #include "ProtobufHeadlessUtils.h"
 #include "ServerConnection.h"
 #include "StringUtils.h"
@@ -1673,7 +1672,7 @@ void HeadlessContainerListener::resetConnection(ServerConnection *connection)
 
 bool HeadlessContainerListener::onSyncWalletInfo(const std::string &clientId, headless::RequestPacket packet)
 {
-   headless::SyncWalletInfoResponse response = bs::sync::hd::exportHDWalletsInfoToPbMessage(walletsMgr_);
+   headless::SyncWalletInfoResponse response = bs::sync::exportHDWalletsInfoToPbMessage(walletsMgr_);
 
    packet.set_data(response.SerializeAsString());
    return sendData(packet.SerializeAsString(), clientId);
@@ -1751,7 +1750,7 @@ bool HeadlessContainerListener::onSyncWallet(const std::string &clientId, headle
 
    const auto &lbdSend = [this, wallet, id=packet.id(), clientId]
    {
-      headless::SyncWalletResponse response = bs::sync::hd::exportHDLeafToPbMessage(wallet);
+      headless::SyncWalletResponse response = bs::sync::exportHDLeafToPbMessage(wallet);
 
       headless::RequestPacket packet;
       packet.set_id(id);

@@ -2,7 +2,6 @@
 
 #include "BSErrorCodeStrings.h"
 #include "ConnectionManager.h"
-#include "HeadlessDefs.h"
 #include "ProtobufHeadlessUtils.h"
 #include "Wallets/SyncHDWallet.h"
 #include "Wallets/SyncWalletsManager.h"

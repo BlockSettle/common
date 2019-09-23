@@ -11,6 +11,15 @@
 using namespace Blocksettle::Communication;
 
 namespace bs {
+   namespace core {
+      class WalletsManager;
+      namespace hd {
+         class Leaf;
+      }
+   }
+}
+
+namespace bs {
 namespace signer {
 
    using RequestId = unsigned int;
@@ -147,9 +156,16 @@ namespace sync {
       std::vector<Group>   groups;
    };
 
+   headless::SyncWalletInfoResponse exportHDWalletsInfoToPbMessage(const std::shared_ptr<bs::core::WalletsManager> &walletsMgr);
+   headless::SyncWalletResponse     exportHDLeafToPbMessage(const std::shared_ptr<bs::core::hd::Leaf> &leaf);
+
    bs::wallet::EncryptionType mapFrom(headless::EncryptionType encType);
    NetworkType mapFrom(headless::NetworkType netType);
    bs::sync::WalletFormat mapFrom(headless::WalletFormat format);
+
+   headless::EncryptionType mapFrom(bs::wallet::EncryptionType encType);
+   headless::NetworkType mapFrom(NetworkType netType);
+
 }  //namespace sync
 
 } // bs
