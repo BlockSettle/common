@@ -20,7 +20,7 @@ public:
    ~PullOwnOTCRequestWidget() override;
 
    void setOffer(const bs::network::otc::Offer &offer);
-   void setRequest(const bs::network::otc::Request &request);
+   void setRequest(const bs::network::otc::QuoteRequest &request);
 
 signals:
    void requestPulled();

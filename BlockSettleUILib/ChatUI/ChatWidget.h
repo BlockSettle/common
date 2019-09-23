@@ -54,7 +54,7 @@ public:
 
    std::string login(const std::string& email, const std::string& jwt, const ZmqBipNewKeyCb&);
 
-   bs::network::otc::PeerId currentPeerId() const;
+   bs::network::otc::Peer *currentPeer() const;
 
 protected:
    void showEvent(QShowEvent* e) override;
@@ -95,7 +95,7 @@ private slots:
    void onNewPartyRequest(const std::string& userName);
    void onRemovePartyRequest(const std::string& partyId);
 
-   void onOtcUpdated(const bs::network::otc::PeerId& peerId);
+   void onOtcUpdated(const bs::network::otc::Peer *peer);
    void onOtcPublicUpdated();
 
    void onOtcRequestSubmit();
@@ -147,7 +147,8 @@ private:
    std::shared_ptr<OTCWindowsManager> otcWindowsManager_{};
 
    std::string ownUserId_;
-   std::string  currentPartyId_;
+   std::string currentPartyId_;
+   std::string currentContactId_;
    QMap<std::string, QString> draftMessages_;
    bool bNeedRefresh_ = false;
 };

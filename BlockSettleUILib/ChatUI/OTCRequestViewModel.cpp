@@ -38,8 +38,8 @@ int OTCRequestViewModel::columnCount(const QModelIndex &parent) const
 
 QVariant OTCRequestViewModel::data(const QModelIndex &index, int role) const
 {
-   auto request = this->request(index);
-   if (!request) {
+   auto peer = this->peer(index);
+   if (!peer) {
       return {};
    }
    const auto column = Columns(index.column());
@@ -53,9 +53,9 @@ QVariant OTCRequestViewModel::data(const QModelIndex &index, int role) const
             case Columns::Security:    return QStringLiteral("EUR/XBT");
             case Columns::Type:        return QStringLiteral("OTC");
             case Columns::Product:     return QStringLiteral("XBT");
-            case Columns::Side:        return QString::fromStdString(otc::toString(request->requestorSide));
-            case Columns::Quantity:    return QString::fromStdString(otc::toString(request->rangeType));
-            case Columns::Duration:    return duration(request->timestamp);
+            case Columns::Side:        return QString::fromStdString(otc::toString(otc::switchSide(peer->request.ourSide)));
+            case Columns::Quantity:    return QString::fromStdString(otc::toString(peer->request.rangeType));
+            case Columns::Duration:    return duration(peer->request.timestamp);
          }
          assert(false);
          return {};
@@ -83,7 +83,7 @@ QVariant OTCRequestViewModel::headerData(int section, Qt::Orientation orientatio
    return QVariant{};
 }
 
-const otc::Request *OTCRequestViewModel::request(const QModelIndex &index) const
+otc::Peer *OTCRequestViewModel::peer(const QModelIndex &index) const
 {
    if (!index.isValid() || index.row() >= int(otcClient_->requests().size())) {
       return nullptr;

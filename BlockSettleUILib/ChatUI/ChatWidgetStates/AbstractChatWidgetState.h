@@ -60,7 +60,7 @@ public:
    void onSendOtcPublicMessage(const std::string& data);
    void onProcessOtcPbMessage(const std::string& data);
 
-   void onOtcUpdated(const bs::network::otc::PeerId& peerId);
+   void onOtcUpdated(const bs::network::otc::Peer *peer);
    void onOtcPublicUpdated();
 
    void onOtcRequestSubmit();

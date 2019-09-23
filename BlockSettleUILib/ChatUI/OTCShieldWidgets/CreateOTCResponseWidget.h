@@ -17,7 +17,7 @@ public:
    CreateOTCResponseWidget(QWidget* parent = nullptr);
    ~CreateOTCResponseWidget() override;
 
-   void setRequest(const bs::network::otc::Request &request);
+   void setRequest(const bs::network::otc::QuoteRequest &request);
 
    bs::network::otc::QuoteResponse response() const;
 
@@ -25,10 +25,9 @@ signals:
    void responseCreated();
 
 private:
-   std::unique_ptr<Ui::CreateOTCResponseWidget>    ui_;
+   std::unique_ptr<Ui::CreateOTCResponseWidget> ui_;
 
    bs::network::otc::Side ourSide_{};
-   std::string peerId_;
 
 };
 

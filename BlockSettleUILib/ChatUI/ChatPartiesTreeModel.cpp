@@ -2,6 +2,8 @@
 
 #include "OtcClient.h"
 
+using namespace bs::network;
+
 ChatPartiesTreeModel::ChatPartiesTreeModel(const Chat::ChatClientServicePtr& chatClientServicePtr, OtcClient *otcClient, QObject* parent)
    : QAbstractItemModel(parent)
    , chatClientServicePtr_(chatClientServicePtr)
@@ -70,8 +72,8 @@ void ChatPartiesTreeModel::onGlobalOTCChanged()
       endRemoveRows();
    }
 
-   auto fAddOtcParty = [](const bs::network::otc::Response* resp, std::unique_ptr<PartyTreeItem>& section) {
-      Chat::ClientPartyPtr otcPartyPtr = std::make_shared<Chat::ClientParty>(resp->peerId,
+   auto fAddOtcParty = [](const bs::network::otc::Peer* peer, std::unique_ptr<PartyTreeItem>& section) {
+      Chat::ClientPartyPtr otcPartyPtr = std::make_shared<Chat::ClientParty>(peer->contactId,
          Chat::PartyType::PRIVATE_DIRECT_MESSAGE,
          Chat::PartySubType::OTC,
          Chat::PartyState::INITIALIZED);
@@ -87,17 +89,23 @@ void ChatPartiesTreeModel::onGlobalOTCChanged()
    beginInsertRows(otcModelIndex, 0, 1);
 
    std::unique_ptr<PartyTreeItem> sentSection = std::make_unique<PartyTreeItem>(ChatModelNames::TabOTCSentRequest, UI::ElementType::Container, otcParty);
-   for (const auto* sent : otcClient_->sentResponses()) {
-      fAddOtcParty(sent, sentSection);
+   for (const auto &peer : otcClient_->requests()) {
+      // Show only responded requests here
+      if (peer->state != otc::State::Idle) {
+         fAddOtcParty(peer, sentSection);
+      }
+   }
+   if (sentSection->childCount() != 0) {
+      otcParty->insertChildren(std::move(sentSection));
    }
 
    std::unique_ptr<PartyTreeItem> responseSection = std::make_unique<PartyTreeItem>(ChatModelNames::TabOTCReceivedResponse, UI::ElementType::Container, otcParty);
-   for (const auto* recv : otcClient_->recvResponses()) {
-      fAddOtcParty(recv, responseSection);
+   for (const auto &peer : otcClient_->responses()) {
+      fAddOtcParty(peer, responseSection);
    }
-
-   otcParty->insertChildren(std::move(sentSection));
-   otcParty->insertChildren(std::move(responseSection));
+   if (responseSection->childCount() != 0) {
+      otcParty->insertChildren(std::move(responseSection));
+   }
 
    endInsertRows();
 }

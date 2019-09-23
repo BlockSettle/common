@@ -86,11 +86,13 @@ bs::network::otc::Side bs::network::otc::switchSide(bs::network::otc::Side side)
 std::string bs::network::otc::toString(bs::network::otc::State state)
 {
    switch (state) {
+      case State::Idle:             return "Idle";
+      case State::QuoteSent:        return "QuoteSent";
+      case State::QuoteRecv:        return "QuoteRecv";
       case State::OfferSent:        return "OfferSent";
       case State::OfferRecv:        return "OfferRecv";
       case State::WaitPayinInfo:    return "WaitPayinInfo";
       case State::SentPayinInfo:    return "SentPayinInfo";
-      case State::Idle:             return "Idle";
       case State::Blacklisted:      return "Blacklisted";
    }
 
@@ -150,36 +152,29 @@ bs::network::otc::RangeType bs::network::otc::lastRangeValue(bs::network::otc::E
    return RangeType::Range250plus;
 }
 
-std::string bs::network::otc::PeerId::toString() const
-{
-   return fmt::format("{}/{}", contactId, otc::toString(type));
-}
-
-bool bs::network::otc::PeerId::operator==(const bs::network::otc::PeerId &other) const
-{
-   return type == other.type && contactId == other.contactId;
-}
-
-bool bs::network::otc::PeerId::operator!=(const bs::network::otc::PeerId &other) const
-{
-   return !this->operator==(other);
-}
-
-std::size_t bs::network::otc::PeerIdHash::operator()(const bs::network::otc::PeerId &key) const
-{
-   size_t res = 17;
-   res = res * 31 + std::hash<std::string>()(key.contactId);
-   res = res * 31 + std::hash<int>()(int(key.type));
-   return res;
-}
-
 std::string bs::network::otc::toString(bs::network::otc::PeerType peerType)
 {
    switch (peerType) {
-      case PeerType::Private:    return "Private";
-      case PeerType::PublicSent: return "PublicSent";
-      case PeerType::PublicRecv: return "PublicRecv";
+      case PeerType::Contact:    return "Private";
+      case PeerType::Request:    return "Request";
+      case PeerType::Response:   return "Response";
    }
    assert(false);
    return {};
+}
+
+bool otc::isSubRange(otc::Range range, otc::Range subRange)
+{
+   return (range.lower <= subRange.lower) && (subRange.upper <= range.upper);
+}
+
+otc::Peer::Peer(const std::string &contactId, otc::PeerType type)
+   : contactId(contactId)
+   , type(type)
+{
+}
+
+std::string otc::Peer::toString() const
+{
+   return fmt::format("{}/{}", contactId, otc::toString(type));
 }

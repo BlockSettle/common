@@ -176,10 +176,14 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
    ui_->widgetCreateOTCRequest->init(env);
 }
 
-otc::PeerId ChatWidget::currentPeerId() const
+otc::Peer *ChatWidget::currentPeer() const
 {
-   // FIXME: Use correct peer type
-   return otc::PeerId{otc::PeerType::Private, currentPartyId_};
+   // FIXME: Use correct value for responses
+   if (currentPartyId_ == Chat::OtcRoomName) {
+      return otcRequestViewModel_->peer(ui_->treeViewOTCRequests->currentIndex());
+   } else {
+      return otcHelper_->client()->contact(currentContactId_);
+   }
 }
 
 void acceptPartyRequest(const std::string& partyId) {}
@@ -217,9 +221,9 @@ void ChatWidget::onRemovePartyRequest(const std::string& partyId)
    stateCurrent_->onRemovePartyRequest(partyId);
 }
 
-void ChatWidget::onOtcUpdated(const bs::network::otc::PeerId& peerId)
+void ChatWidget::onOtcUpdated(const otc::Peer *peer)
 {
-   stateCurrent_->onOtcUpdated(peerId);
+   stateCurrent_->onOtcUpdated(peer);
 }
 
 void ChatWidget::onOtcPublicUpdated()
@@ -366,6 +370,7 @@ void ChatWidget::chatTransition(const Chat::ClientPartyPtr& clientPartyPtr)
    auto transitionChange = [this, clientPartyPtr]()
    {
       currentPartyId_ = clientPartyPtr->id();
+      currentContactId_ = clientPartyPtr->userHash();
    };
 
    switch (clientPartyPtr->partyState())
@@ -401,6 +406,7 @@ void ChatWidget::onActivatePartyId(const QString& partyId)
    if (!partyProxyIndex.isValid()) {
       if (ownUserId_.empty()) {
          currentPartyId_.clear();
+         currentContactId_.clear();
          changeState<ChatLogOutState>();
       }
       else {

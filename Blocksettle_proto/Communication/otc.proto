@@ -113,6 +113,7 @@ message PublicMessage
     {
         string receiver_id = 1;
         bytes data = 2;
+        bool is_response = 3;
     }
 
     oneof data

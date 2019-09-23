@@ -25,7 +25,7 @@ void PullOwnOTCRequestWidget::setOffer(const bs::network::otc::Offer &offer)
    ui_->quantityValue->setText(UiUtils::displayAmount(bs::network::otc::satToBtc(offer.amount)));
 }
 
-void PullOwnOTCRequestWidget::setRequest(const otc::Request &request)
+void PullOwnOTCRequestWidget::setRequest(const otc::QuoteRequest &request)
 {
    // FIXME:
 }

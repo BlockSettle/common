@@ -3,10 +3,11 @@
 
 #include <cstdint>
 #include <string>
+#include <QDateTime>
 
 #include "BinaryData.h"
 #include "TxClasses.h"
-#include <QDateTime>
+#include "ValidityFlag.h"
 
 namespace bs {
    namespace network {
@@ -20,33 +21,21 @@ namespace bs {
 
          enum class PeerType
          {
-            Private,
-            PublicSent,
-            PublicRecv,
+            Contact,
+            Request,
+            Response,
          };
 
          std::string toString(PeerType peerType);
-
-         struct PeerId
-         {
-            PeerType type{};
-            std::string contactId;
-
-            std::string toString() const;
-
-            bool operator==(const PeerId &other) const;
-            bool operator!=(const PeerId &other) const;
-         };
-
-         struct PeerIdHash
-         {
-            std::size_t operator()(const PeerId &key) const;
-         };
 
          enum class State
          {
             // No data received
             Idle,
+
+            QuoteSent,
+
+            QuoteRecv,
 
             // We sent offer
             OfferSent,
@@ -86,6 +75,8 @@ namespace bs {
             int64_t upper;
          };
 
+         bool isSubRange(Range range, Range subRange);
+
          // Keep in sync with Chat.OtcRangeType
          enum class RangeType
          {
@@ -109,6 +100,7 @@ namespace bs {
          {
             Side ourSide{};
             RangeType rangeType{};
+            QDateTime timestamp;
          };
 
          struct QuoteResponse
@@ -116,7 +108,6 @@ namespace bs {
             Side ourSide{};
             Range amount{};
             Range price{};
-            std::string peerId;
          };
 
          struct Offer
@@ -140,36 +131,27 @@ namespace bs {
 
          struct Peer
          {
-            PeerId peerId;
-            bs::network::otc::Offer offer;
-            bs::network::otc::State state{bs::network::otc::State::Idle};
+            std::string contactId;
+            PeerType type;
+
+            State state{State::Idle};
+
+            QuoteRequest request;
+            QuoteResponse response;
+            Offer offer;
+
             BinaryData payinTxIdFromSeller;
             BinaryData authPubKey;
             BinaryData ourAuthPubKey;
 
-            Peer(const PeerId &peerId)
-               : peerId(peerId) {}
+            ValidityFlag validityFlag;
+
+            Peer(const std::string &contactId, PeerType type);
+
+            std::string toString() const;
          };
 
-         struct Request
-         {
-            std::string contactId;
-            Side requestorSide{};
-            RangeType rangeType{};
-            QDateTime timestamp;
-         };
-
-         struct Response
-         {
-            std::string peerId;
-            Side responderSide{};
-            Range amount{};
-            Range price{};
-            QDateTime timestamp;
-         };
-
-         using Requests = std::vector<const Request*>;
-         using Responses = std::vector<const Response*>;
+         using Peers = std::vector<Peer*>;
 
          double satToBtc(int64_t value);
          double satToBtc(uint64_t value);

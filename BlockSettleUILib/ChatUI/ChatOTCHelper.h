@@ -47,7 +47,6 @@ public:
       , const std::shared_ptr<ApplicationSettings> &applicationSettings);
 
    OtcClient* client() const;
-   const bs::network::otc::Peer* peer(const bs::network::otc::PeerId &peerId) const;
 
    void setCurrentUserId(const std::string& ownUserId);
 
@@ -55,22 +54,22 @@ public slots:
    void onLogout();
    void onProcessOtcPbMessage(const std::string& data);
 
-   void onOtcRequestSubmit(const bs::network::otc::PeerId &peerId, const bs::network::otc::Offer& offer);
-   void onOtcPullOrReject(const bs::network::otc::PeerId &peerId);
-   void onOtcResponseAccept(const bs::network::otc::PeerId &peerId, const bs::network::otc::Offer& offer);
-   void onOtcResponseUpdate(const bs::network::otc::PeerId &peerId, const bs::network::otc::Offer& offer);
-   void onOtcResponseReject(const bs::network::otc::PeerId &peerId);
+   void onOtcRequestSubmit(bs::network::otc::Peer *peer, const bs::network::otc::Offer& offer);
+   void onOtcPullOrReject(bs::network::otc::Peer *peer);
+   void onOtcResponseAccept(bs::network::otc::Peer *peer, const bs::network::otc::Offer& offer);
+   void onOtcResponseUpdate(bs::network::otc::Peer *peer, const bs::network::otc::Offer& offer);
+   void onOtcResponseReject(bs::network::otc::Peer *peer);
 
    void onOtcQuoteRequestSubmit(const bs::network::otc::QuoteRequest &request);
    void onOtcPullOwnRequest();
-   void onOtcQuoteResponseSubmit(const bs::network::otc::QuoteResponse &response);
+   void onOtcQuoteResponseSubmit(bs::network::otc::Peer *peer, const bs::network::otc::QuoteResponse &response);
 
    void onMessageArrived(const Chat::MessagePtrList& messagePtr);
    void onPartyStateChanged(const Chat::ClientPartyPtr& clientPartyPtr);
 
 private:
    OtcClient* otcClient_{};
-   std::set<std::string> connectedPeers_;
+   std::set<std::string> connectedContacts_;
    std::shared_ptr<spdlog::logger> loggerPtr_;
 };
 
