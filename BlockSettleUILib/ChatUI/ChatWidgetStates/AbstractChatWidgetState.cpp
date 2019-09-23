@@ -302,7 +302,7 @@ void AbstractChatWidgetState::restoreDraftMessage()
 void AbstractChatWidgetState::updateOtc()
 {
    if (!canPerformOTCOperations()) {
-      chat_->ui_->stackedWidgetOTC->setCurrentIndex(static_cast<int>(OTCPages::OTCLoginRequiredShieldPage));
+      chat_->ui_->widgetOTCShield->showOtcAvailableToTradingParticipants();
       return;
    }
 
@@ -323,12 +323,12 @@ void AbstractChatWidgetState::updateOtc()
 
    const bs::network::otc::Peer* peer = chat_->currentPeer();
    if (!peer) {
-      chat_->ui_->stackedWidgetOTC->setCurrentIndex(static_cast<int>(OTCPages::OTCLoginRequiredShieldPage));
+      chat_->ui_->widgetOTCShield->showContactIsOffline();
       return;
    }
 
    using bs::network::otc::State;
-   OTCPages pageNumber = OTCPages::OTCLoginRequiredShieldPage;
+   OTCPages pageNumber = OTCPages::OTCShield;
    switch (peer->state) {
       case State::Idle:
          if (peer->type == otc::PeerType::Contact) {
@@ -354,10 +354,10 @@ void AbstractChatWidgetState::updateOtc()
          break;
       case State::SentPayinInfo:
       case State::WaitPayinInfo:
-         pageNumber = OTCPages::OTCContactNetStatusShieldPage;
+         chat_->ui_->widgetOTCShield->showContactIsOffline();
          break;
       case State::Blacklisted:
-         pageNumber = OTCPages::OTCContactNetStatusShieldPage;
+         chat_->ui_->widgetOTCShield->showContactIsOffline();
          break;
    }
 
