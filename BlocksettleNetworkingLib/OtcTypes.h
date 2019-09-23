@@ -33,8 +33,10 @@ namespace bs {
             // No data received
             Idle,
 
+            // Quote response was sent
             QuoteSent,
 
+            // Quote response was received
             QuoteRecv,
 
             // We sent offer

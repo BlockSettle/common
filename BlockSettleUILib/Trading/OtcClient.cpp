@@ -256,7 +256,7 @@ bool OtcClient::sendQuoteResponse(Peer *peer, const QuoteResponse &quoteResponse
       return false;
    }
 
-   peer->state = State::QuoteSent;
+   changePeerState(peer, State::QuoteSent);
    peer->response = quoteResponse;
 
    Otc::ContactMessage msg;
@@ -321,7 +321,9 @@ bool OtcClient::sendOffer(Peer *peer, const Offer &offer)
 
 bool OtcClient::pullOrReject(Peer *peer)
 {
-   if (peer == ownRequest_.get()) {
+   if (peer->isOwnRequest) {
+      assert(peer == ownRequest_.get());
+
       SPDLOG_LOGGER_DEBUG(logger_, "pull own quote request");
       ownRequest_.reset();
 
@@ -337,18 +339,28 @@ bool OtcClient::pullOrReject(Peer *peer)
       return true;
    }
 
-   SPDLOG_LOGGER_DEBUG(logger_, "pull of reject offer from {}", peer->toString());
-
-   if (peer->state != State::OfferSent && peer->state != State::OfferRecv) {
-      SPDLOG_LOGGER_ERROR(logger_, "can't pull offer from '{}', we should be in OfferSent or OfferRecv state", peer->toString());
-      return false;
+   switch (peer->state) {
+      case State::QuoteSent:
+      case State::OfferSent:
+      case State::OfferRecv:
+         break;
+      default:
+         SPDLOG_LOGGER_ERROR(logger_, "can't pull offer from '{}'", peer->toString());
+         return false;
    }
+
+   SPDLOG_LOGGER_DEBUG(logger_, "pull of reject offer from {}", peer->toString());
 
    ContactMessage msg;
    msg.mutable_close();
    send(peer, msg);
 
    changePeerState(peer, State::Idle);
+
+   if (peer->type == PeerType::Request) {
+      updatePublicLists();
+   }
+
    return true;
 }
 
@@ -474,7 +486,7 @@ void OtcClient::contactConnected(const std::string &contactId)
    Peer *oldPeer = contact(contactId);
    assert(!oldPeer);
    if (oldPeer) {
-      oldPeer->state = State::Blacklisted;
+      changePeerState(oldPeer, State::Blacklisted);
       return;
    }
 
@@ -919,11 +931,27 @@ void OtcClient::processBuyerAcks(Peer *peer, const ContactMessage_BuyerAcks &msg
 void OtcClient::processClose(Peer *peer, const ContactMessage_Close &msg)
 {
    switch (peer->state) {
+      case State::QuoteSent:
+      case State::QuoteRecv:
       case State::OfferSent:
-      case State::OfferRecv:
-         *peer = Peer(peer->contactId, peer->type);
+      case State::OfferRecv: {
+         if (peer->type == PeerType::Response) {
+            SPDLOG_LOGGER_DEBUG(logger_, "remove active response because peer have sent close message");
+            responseMap_.erase(peer->contactId);
+            updatePublicLists();
+            return;
+         }
+
+         Peer newPeer(peer->contactId, peer->type);
+         // preserve original request for quote requests (required only for public OTC)
+         newPeer.request = std::move(peer->request);
+         *peer = std::move(newPeer);
+         if (peer->type != PeerType::Contact) {
+            updatePublicLists();
+         }
          emit peerUpdated(peer);
          break;
+      }
 
       case State::Idle:
       case State::WaitPayinInfo:
@@ -944,7 +972,7 @@ void OtcClient::processQuoteResponse(Peer *peer, const ContactMessage_QuoteRespo
       return;
    }
 
-   peer->state = State::QuoteRecv;
+   changePeerState(peer, State::QuoteRecv);
    peer->response.ourSide = otc::switchSide(otc::Side(msg.sender_side()));
    copyRange(msg.price(), &peer->response.price);
    copyRange(msg.amount(), &peer->response.amount);
@@ -1144,9 +1172,8 @@ bool OtcClient::verifyOffer(const Offer &offer) const
 
 void OtcClient::blockPeer(const std::string &reason, Peer *peer)
 {
-   SPDLOG_LOGGER_ERROR(logger_, "block broken peer '{}': {}, current state: {}"
-      , peer->toString(), reason, toString(peer->state));
-   peer->state = State::Blacklisted;
+   SPDLOG_LOGGER_ERROR(logger_, "block broken peer '{}': {}", peer->toString(), reason);
+   changePeerState(peer, State::Blacklisted);
    emit peerUpdated(peer);
 }
 
