@@ -55,6 +55,12 @@ protected:
          return true;
       };
 
+      // #new_logic : update ClientPartyModel to receive public OTC requests/responses (clientPartyPtr should be set)
+      if (!clientPartyPtr) {
+         updateOtc();
+         return;
+      }
+
       // #new_logic : change name after merge with global_otc
       if (clientPartyPtr->isGlobal()) {
          if (clientPartyPtr->displayName() == QObject::tr("Global").toStdString()) {
