@@ -483,13 +483,7 @@ Peer *OtcClient::ownRequest() const
 
 void OtcClient::contactConnected(const std::string &contactId)
 {
-   Peer *oldPeer = contact(contactId);
-   assert(!oldPeer);
-   if (oldPeer) {
-      changePeerState(oldPeer, State::Blacklisted);
-      return;
-   }
-
+   assert(!contact(contactId));
    contactMap_.emplace(contactId, otc::Peer(contactId, PeerType::Contact));
    emit publicUpdated();
 }
@@ -505,9 +499,8 @@ void OtcClient::contactDisconnected(const std::string &contactId)
 void OtcClient::processContactMessage(const std::string &contactId, const BinaryData &data)
 {
    Peer *peer = contact(contactId);
-   assert(peer);
    if (!peer) {
-      SPDLOG_LOGGER_CRITICAL(logger_, "can't find peer '{}'", contactId);
+      SPDLOG_LOGGER_ERROR(logger_, "can't find peer '{}'", contactId);
       return;
    }
 
@@ -1443,11 +1436,13 @@ void OtcClient::setComments(OtcClientDeal *deal)
 void OtcClient::updatePublicLists()
 {
    contacts_.clear();
+   contacts_.reserve(contactMap_.size());
    for (auto &item : contactMap_) {
       contacts_.push_back(&item.second);
    }
 
    requests_.clear();
+   requests_.reserve(requestMap_.size() + (ownRequest_ ? 1 : 0));
    if (ownRequest_) {
       requests_.push_back(ownRequest_.get());
    }
@@ -1456,6 +1451,7 @@ void OtcClient::updatePublicLists()
    }
 
    responses_.clear();
+   responses_.reserve(responseMap_.size());
    for (auto &item : responseMap_) {
       responses_.push_back(&item.second);
    }

@@ -270,7 +270,7 @@ void AbstractChatWidgetState::onOtcPullOrRejectCurrent()
          assert(false);
          return;
       }
-      chat_->otcHelper_->onOtcPullOrReject(chat_->currentPeer());
+      chat_->otcHelper_->onOtcPullOrReject(peer);
    }
 }
 

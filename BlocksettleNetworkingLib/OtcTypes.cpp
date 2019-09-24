@@ -176,5 +176,5 @@ otc::Peer::Peer(const std::string &contactId, otc::PeerType type)
 
 std::string otc::Peer::toString() const
 {
-   return fmt::format("{}/{}", contactId, otc::toString(type));
+   return contactId + "/" + otc::toString(type);
 }
