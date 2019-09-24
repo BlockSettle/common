@@ -81,8 +81,8 @@ void ChatOTCHelper::setCurrentUserId(const std::string& ownUserId)
 
 void ChatOTCHelper::onLogout()
 {
-   for (const auto &partyId : connectedContacts_) {
-      otcClient_->contactDisconnected(partyId);
+   for (const auto &contactId : connectedContacts_) {
+      otcClient_->contactDisconnected(contactId);
    }
    connectedContacts_.clear();
 }
@@ -209,12 +209,7 @@ void ChatOTCHelper::onMessageArrived(const Chat::MessagePtrList& messagePtr)
 
 void ChatOTCHelper::onPartyStateChanged(const Chat::ClientPartyPtr& clientPartyPtr)
 {
-   auto client = std::dynamic_pointer_cast<Chat::ClientParty>(clientPartyPtr);
-   if (!client) {
-      return;
-   }
-
-   const std::string& contactId = client->userHash();
+   const std::string& contactId = clientPartyPtr->userHash();
    auto connIt = connectedContacts_.find(contactId);
    if (clientPartyPtr->clientStatus() == Chat::ONLINE && connIt == connectedContacts_.end()) {
       otcClient_->contactConnected(contactId);

@@ -20,8 +20,6 @@ public:
    QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
    QVariant headerData(int section, Qt::Orientation orientation, int role) const override;
 
-   bs::network::otc::Peer *peer(const QModelIndex &index) const;
-
 private slots:
    void onRequestsUpdated();
 
@@ -37,6 +35,8 @@ private:
 
       Latest = Duration,
    };
+
+   std::vector<bs::network::otc::QuoteRequest> request_;
 
    OtcClient *otcClient_{};
 

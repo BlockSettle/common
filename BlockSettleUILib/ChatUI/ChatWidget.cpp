@@ -188,7 +188,12 @@ otc::Peer *ChatWidget::currentPeer() const
    }
 
    if (currentPartyId_ == Chat::OtcRoomName) {
-      return otcRequestViewModel_->peer(ui_->treeViewOTCRequests->currentIndex());
+      const auto &currentIndex = ui_->treeViewOTCRequests->currentIndex();
+      if (!currentIndex.isValid() || currentIndex.row() < 0 || currentIndex.row() >= int(otcHelper_->client()->requests().size())) {
+         // Show by default own request (if available)
+         return otcHelper_->client()->ownRequest();
+      }
+      return otcHelper_->client()->requests().at(size_t(currentIndex.row()));
    }
 
    const auto clientPartyPtr = partyTreeItem->data().value<Chat::ClientPartyPtr>();
@@ -198,6 +203,7 @@ otc::Peer *ChatWidget::currentPeer() const
 
    switch (partyTreeItem->peerType) {
       case otc::PeerType::Contact:     return otcHelper_->client()->contact(clientPartyPtr->userHash());
+      // #new_logic : ???
       // We should use userHash here too, but for some reasons it's not set here
       case otc::PeerType::Request:     return otcHelper_->client()->request(clientPartyPtr->id());
       case otc::PeerType::Response:    return otcHelper_->client()->response(clientPartyPtr->id());
