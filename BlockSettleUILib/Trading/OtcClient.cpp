@@ -499,9 +499,8 @@ void OtcClient::contactDisconnected(const std::string &contactId)
 void OtcClient::processContactMessage(const std::string &contactId, const BinaryData &data)
 {
    Peer *peer = contact(contactId);
-   assert(peer);
    if (!peer) {
-      SPDLOG_LOGGER_CRITICAL(logger_, "can't find peer '{}'", contactId);
+      SPDLOG_LOGGER_ERROR(logger_, "can't find peer '{}'", contactId);
       return;
    }
 
