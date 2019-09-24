@@ -28,7 +28,7 @@ OTCRequestViewModel::OTCRequestViewModel(OtcClient *otcClient, QObject* parent)
 
 int OTCRequestViewModel::rowCount(const QModelIndex &parent) const
 {
-   return int(otcClient_->requests().size());
+   return int(request_.size());
 }
 
 int OTCRequestViewModel::columnCount(const QModelIndex &parent) const
