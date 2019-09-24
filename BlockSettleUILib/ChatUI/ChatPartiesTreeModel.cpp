@@ -96,17 +96,13 @@ void ChatPartiesTreeModel::onGlobalOTCChanged()
          fAddOtcParty(peer, sentSection, otc::PeerType::Request);
       }
    }
-   if (sentSection->childCount() != 0) {
-      otcParty->insertChildren(std::move(sentSection));
-   }
+   otcParty->insertChildren(std::move(sentSection));
 
    std::unique_ptr<PartyTreeItem> responseSection = std::make_unique<PartyTreeItem>(ChatModelNames::TabOTCReceivedResponse, UI::ElementType::Container, otcParty);
    for (const auto &peer : otcClient_->responses()) {
       fAddOtcParty(peer, responseSection, otc::PeerType::Response);
    }
-   if (responseSection->childCount() != 0) {
-      otcParty->insertChildren(std::move(responseSection));
-   }
+   otcParty->insertChildren(std::move(responseSection));
 
    endInsertRows();
 }
