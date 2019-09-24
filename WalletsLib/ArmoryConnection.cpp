@@ -1207,7 +1207,7 @@ void ArmoryCallback::run(BdmNotification bdmNotif)
    }
 
    if (bdmNotif.action_ == BDMAction_Ready || bdmNotif.action_ == BDMAction_NewBlock) {
-      // height_ is set only in this events
+      // height_ is set only in these events
       connection_->setTopBlock(bdmNotif.height_, bdmNotif.branchHeight_);
    }
 
