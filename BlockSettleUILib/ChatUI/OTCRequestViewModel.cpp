@@ -12,7 +12,7 @@ namespace {
    {
       int minutes = std::max(0, int(QDateTime::currentDateTime().secsTo(timestamp) / 60));
       if (minutes > kMaxPeriodMinutes) {
-         return QObject::tr("> 10 min");
+         return QObject::tr("> %1 min").arg(kMaxPeriodMinutes);
       }
       return QObject::tr("%1 min").arg(minutes);
    }
