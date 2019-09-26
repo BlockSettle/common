@@ -41,6 +41,8 @@ struct OtcClientDeal
    bs::signer::RequestId payinReqId{};
    bs::signer::RequestId payoutReqId{};
 
+   BinaryData payinTxId;
+
    BinaryData payinSigned;
    BinaryData payoutSigned;
 
@@ -771,6 +773,11 @@ void OtcClient::processSellerOffers(Peer *peer, const ContactMessage_SellerOffer
          changePeerState(peer, State::OfferRecv);
          break;
 
+      case State::QuoteSent:
+      case State::QuoteRecv:
+         // FIXME: Implement for public OTC
+         break;
+
       case State::OfferSent:
          if (peer->offer.ourSide != otc::Side::Buy) {
             blockPeer("unexpected side in counter-offer", peer);
@@ -1052,14 +1059,12 @@ void OtcClient::processPbStartOtc(const ProxyTerminalPb::Response_StartOtc &resp
          return;
       }
 
-      auto payinTxId = deal.payin.txId();
-
       ContactMessage msg;
       auto d = msg.mutable_seller_accepts();
       copyOffer(peer->offer, d->mutable_offer());
       d->set_settlement_id(settlementId.toBinStr());
       d->set_auth_address_seller(peer->ourAuthPubKey.toBinStr());
-      d->set_payin_tx_id(payinTxId.toBinStr());
+      d->set_payin_tx_id(deal.payinTxId.toBinStr());
       send(peer, msg);
 
       changePeerState(peer, State::SentPayinInfo);
@@ -1263,22 +1268,13 @@ void OtcClient::createRequests(const BinaryData &settlementId, Peer *peer, const
 
             auto resetInputsCb = [this, cb, peer, transaction, settlAddr, feePerByte, settlementId, targetHdWallet, handle]() {
                // resetInputsCb will be destroyed when returns, create one more callback to hold variables
-               QMetaObject::invokeMethod(this, [this, cb, peer, transaction, settlAddr, feePerByte, settlementId, targetHdWallet, handle] {
+               QMetaObject::invokeMethod(this, [this, cb, peer, transaction, settlAddr, feePerByte, settlementId, targetHdWallet, handle, logger = logger_] {
                   if (!handle.isValid()) {
-                     SPDLOG_LOGGER_ERROR(logger_, "peer was destroyed");
+                     SPDLOG_LOGGER_ERROR(logger, "peer was destroyed");
                      return;
                   }
 
                   const double amount = peer->offer.amount / BTCNumericTypes::BalanceDivider;
-
-                  OtcClientDeal result;
-                  result.settlementId = settlementId;
-                  result.settlementAddr = settlAddr;
-                  result.ourAuthAddress = peer->offer.authAddress;
-                  result.cpPubKey = peer->authPubKey;
-                  result.amount = peer->offer.amount;
-                  result.price = peer->offer.price;
-                  result.hdWalletId = targetHdWallet->walletId();
 
                   if (peer->offer.ourSide == bs::network::otc::Side::Sell) {
                      // Seller
@@ -1291,18 +1287,48 @@ void OtcClient::createRequests(const BinaryData &settlementId, Peer *peer, const
                         return;
                      }
 
-                     result.success = true;
-                     result.side = otc::Side::Sell;
-                     result.payin = transaction->createTXRequest();
-                     auto payinTxId = result.payin.txId();
-                     auto payinUTXO = bs::SettlementMonitor::getInputFromTX(settlAddr, payinTxId, amount);
-                     result.fee = int64_t(result.payin.fee);
-                     result.sellFromOffline = targetHdWallet->isOffline();
-                     cb(std::move(result));
+                     const auto cbPreimage = [cb, peer, transaction, settlAddr, settlementId, targetHdWallet, handle, amount, logger = logger_]
+                        (const std::map<bs::Address, BinaryData> &preimages)
+                     {
+                        if (!handle.isValid()) {
+                           SPDLOG_LOGGER_ERROR(logger, "peer was destroyed");
+                           return;
+                        }
+
+                        const auto resolver = bs::sync::WalletsManager::getPublicResolver(preimages);
+
+                        OtcClientDeal result;
+                        result.settlementId = settlementId;
+                        result.settlementAddr = settlAddr;
+                        result.ourAuthAddress = peer->offer.authAddress;
+                        result.cpPubKey = peer->authPubKey;
+                        result.amount = peer->offer.amount;
+                        result.price = peer->offer.price;
+                        result.hdWalletId = targetHdWallet->walletId();
+                        result.success = true;
+                        result.side = otc::Side::Sell;
+                        result.payin = transaction->createTXRequest();
+                        result.payinTxId = result.payin.txId(resolver);
+                        auto payinUTXO = bs::SettlementMonitor::getInputFromTX(settlAddr, result.payinTxId, amount);
+                        result.fee = int64_t(result.payin.fee);
+                        result.sellFromOffline = targetHdWallet->isOffline();
+                        cb(std::move(result));
+                     };
+
+                     const auto addrMapping = walletsMgr_->getAddressToWalletsMapping(transaction->inputs());
+                     signContainer_->getAddressPreimage(addrMapping, cbPreimage);
                      return;
                   }
 
                   // Buyer
+                  OtcClientDeal result;
+                  result.settlementId = settlementId;
+                  result.settlementAddr = settlAddr;
+                  result.ourAuthAddress = peer->offer.authAddress;
+                  result.cpPubKey = peer->authPubKey;
+                  result.amount = peer->offer.amount;
+                  result.price = peer->offer.price;
+                  result.hdWalletId = targetHdWallet->walletId();
                   result.success = true;
                   result.side = otc::Side::Buy;
                   auto outputAddr = peer->offer.recvAddress.empty() ? transaction->GetFallbackRecvAddress() : bs::Address(peer->offer.recvAddress);
