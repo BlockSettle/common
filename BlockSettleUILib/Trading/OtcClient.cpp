@@ -284,9 +284,11 @@ bool OtcClient::sendOffer(Peer *peer, const Offer &offer)
       return false;
    }
 
-   settlementLeaf->getRootPubkey([this, peer, offer, handle = peer->validityFlag.handle()](const SecureBinaryData &ourPubKey) {
+   settlementLeaf->getRootPubkey([this, logger = logger_, peer, offer, handle = peer->validityFlag.handle()]
+      (const SecureBinaryData &ourPubKey)
+   {
       if (!handle.isValid()) {
-         SPDLOG_LOGGER_ERROR(logger_, "peer was destroyed");
+         SPDLOG_LOGGER_ERROR(logger, "peer was destroyed");
          return;
       }
 
@@ -379,9 +381,11 @@ bool OtcClient::acceptOffer(Peer *peer, const bs::network::otc::Offer &offer)
       return false;
    }
 
-   settlementLeaf->getRootPubkey([this, offer, peer, handle = peer->validityFlag.handle()](const SecureBinaryData &ourPubKey) {
+   settlementLeaf->getRootPubkey([this, offer, peer, handle = peer->validityFlag.handle(), logger = logger_]
+      (const SecureBinaryData &ourPubKey)
+   {
       if (!handle.isValid()) {
-         SPDLOG_LOGGER_ERROR(logger_, "peer was destroyed");
+         SPDLOG_LOGGER_ERROR(logger, "peer was destroyed");
          return;
       }
 
@@ -434,9 +438,11 @@ bool OtcClient::updateOffer(Peer *peer, const Offer &offer)
       return false;
    }
 
-   settlementLeaf->getRootPubkey([this, offer, peer, handle = peer->validityFlag.handle()](const SecureBinaryData &ourPubKey) {
+   settlementLeaf->getRootPubkey([this, offer, peer, handle = peer->validityFlag.handle(), logger = logger_]
+      (const SecureBinaryData &ourPubKey)
+   {
       if (!handle.isValid()) {
-         SPDLOG_LOGGER_ERROR(logger_, "peer was destroyed");
+         SPDLOG_LOGGER_ERROR(logger, "peer was destroyed");
          return;
       }
 
@@ -838,10 +844,10 @@ void OtcClient::processSellerAccepts(Peer *peer, const ContactMessage_SellerAcce
    peer->payinTxIdFromSeller = BinaryData(msg.payin_tx_id());
 
    createRequests(settlementId, peer, [this, peer, settlementId, offer = peer->offer
-      , handle = peer->validityFlag.handle()] (OtcClientDeal &&deal)
+      , handle = peer->validityFlag.handle(), logger = logger_] (OtcClientDeal &&deal)
    {
       if (!handle.isValid()) {
-         SPDLOG_LOGGER_ERROR(logger_, "peer was destroyed");
+         SPDLOG_LOGGER_ERROR(logger, "peer was destroyed");
          return;
       }
 
@@ -1024,10 +1030,10 @@ void OtcClient::processPbStartOtc(const ProxyTerminalPb::Response_StartOtc &resp
    }
 
    createRequests(settlementId, peer, [this, peer, settlementId, offer = peer->offer
-      , handle = peer->validityFlag.handle()](OtcClientDeal &&deal)
+      , handle = peer->validityFlag.handle(), logger = logger_](OtcClientDeal &&deal)
    {
       if (!handle.isValid()) {
-         SPDLOG_LOGGER_ERROR(logger_, "peer was destroyed");
+         SPDLOG_LOGGER_ERROR(logger, "peer was destroyed");
          return;
       }
 
@@ -1201,9 +1207,11 @@ void OtcClient::createRequests(const BinaryData &settlementId, Peer *peer, const
       return;
    }
 
-   leaf->setSettlementID(settlementId, [this, settlementId, peer, cb, handle = peer->validityFlag.handle()](bool result) {
+   leaf->setSettlementID(settlementId, [this, settlementId, peer, cb, handle = peer->validityFlag.handle()
+      , logger = logger_](bool result)
+   {
       if (!handle.isValid()) {
-         SPDLOG_LOGGER_ERROR(logger_, "peer was destroyed");
+         SPDLOG_LOGGER_ERROR(logger, "peer was destroyed");
          return;
       }
 
@@ -1212,9 +1220,9 @@ void OtcClient::createRequests(const BinaryData &settlementId, Peer *peer, const
          return;
       }
 
-      auto cbFee = [this, cb, peer, settlementId, handle](float feePerByte) {
+      auto cbFee = [this, cb, peer, settlementId, handle, logger = logger_](float feePerByte) {
          if (!handle.isValid()) {
-            SPDLOG_LOGGER_ERROR(logger_, "peer was destroyed");
+            SPDLOG_LOGGER_ERROR(logger, "peer was destroyed");
             return;
          }
 
@@ -1235,9 +1243,11 @@ void OtcClient::createRequests(const BinaryData &settlementId, Peer *peer, const
             return;
          }
 
-         auto cbSettlAddr = [this, cb, peer, feePerByte, settlementId, targetHdWallet, handle](const bs::Address &settlAddr) {
+         auto cbSettlAddr = [this, cb, peer, feePerByte, settlementId, targetHdWallet, handle, logger = logger_]
+            (const bs::Address &settlAddr)
+         {
             if (!handle.isValid()) {
-               SPDLOG_LOGGER_ERROR(logger_, "peer was destroyed");
+               SPDLOG_LOGGER_ERROR(logger, "peer was destroyed");
                return;
             }
 
