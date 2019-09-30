@@ -60,12 +60,12 @@ message Request
 
     oneof data
     {
-        // Requests
+        // OTC
         StartOtc  start_otc     = 1;
         VerifyOtc verify_otc    = 2;
-
-        // Messages
         BroadcastXBT        broadcast_xbt   = 30;
+
+        // Trades
         XBTUnsignedPayin    unsigned_payin  = 31;
         XBTSignedPayin      signed_payin    = 32;
         XBTSignedPayout     signed_payout   = 33;
@@ -85,6 +85,11 @@ message Response
         bool    success         = 1;
         string  error_msg       = 2;
         bytes   settlement_id   = 3;
+    }
+
+    message SignOtcPayin
+    {
+        bytes   settlement_id   = 1;
     }
 
     message UnsignedPayinRequest
@@ -107,9 +112,12 @@ message Response
 
     oneof data
     {
-        // Requests
+        // OTC
         StartOtc              start_otc            = 1;
         VerifyOtc             verify_otc           = 2;
+        SignOtcPayin          sign_otc_payin       = 6;
+
+        // Trades
         UnsignedPayinRequest  send_unsigned_payin  = 3;
         SignPayoutRequest     sign_payout          = 4;
         SignPayinRequest      sign_payin           = 5;
