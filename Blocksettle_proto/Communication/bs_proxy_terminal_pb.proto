@@ -89,7 +89,9 @@ message Response
 
     message SignOtcPayin
     {
-        bytes   settlement_id   = 1;
+        bool    success         = 1;
+        string  error_msg       = 2;
+        bytes   settlement_id   = 3;
     }
 
     message UnsignedPayinRequest
