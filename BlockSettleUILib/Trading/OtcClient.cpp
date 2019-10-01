@@ -104,6 +104,8 @@ namespace {
       dialogData.setValue(PasswordDialogData::ProductGroup, QObject::tr(bs::network::Asset::toString(bs::network::Asset::SpotXBT)));
       dialogData.setValue(PasswordDialogData::Security, "XBT/EUR");
       dialogData.setValue(PasswordDialogData::Product, "XBT");
+      dialogData.setValue(PasswordDialogData::FxProduct, fxProd);
+
       dialogData.setValue(PasswordDialogData::Side, QObject::tr(bs::network::Side::toString(bs::network::Side::Type(deal.side))));
 
       dialogData.setValue(PasswordDialogData::Title, QObject::tr("Settlement Transaction"));
