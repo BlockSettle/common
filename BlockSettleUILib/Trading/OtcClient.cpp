@@ -355,26 +355,41 @@ bool OtcClient::pullOrReject(Peer *peer)
    switch (peer->state) {
       case State::QuoteSent:
       case State::OfferSent:
-      case State::OfferRecv:
-         break;
-      default:
+      case State::OfferRecv: {
+         SPDLOG_LOGGER_DEBUG(logger_, "pull of reject offer from {}", peer->toString());
+
+         ContactMessage msg;
+         msg.mutable_close();
+         send(peer, msg);
+
+         changePeerState(peer, State::Idle);
+
+         if (peer->type == PeerType::Request) {
+            updatePublicLists();
+         }
+
+         return true;
+      }
+
+      case State::WaitBuyerSign:
+      case State::WaitSellerSeal: {
+         auto it = deals_.find(peer->settlementId);
+         assert(it != deals_.end());
+         auto deal = it->second.get();
+
+         ProxyTerminalPb::Request request;
+         auto d = request.mutable_cancel();
+         d->set_settlement_id(deal->settlementId);
+         emit sendPbMessage(request.SerializeAsString());
+
+         return true;
+      }
+
+      default: {
          SPDLOG_LOGGER_ERROR(logger_, "can't pull offer from '{}'", peer->toString());
          return false;
+      }
    }
-
-   SPDLOG_LOGGER_DEBUG(logger_, "pull of reject offer from {}", peer->toString());
-
-   ContactMessage msg;
-   msg.mutable_close();
-   send(peer, msg);
-
-   changePeerState(peer, State::Idle);
-
-   if (peer->type == PeerType::Request) {
-      updatePublicLists();
-   }
-
-   return true;
 }
 
 bool OtcClient::acceptOffer(Peer *peer, const bs::network::otc::Offer &offer)
@@ -1237,7 +1252,6 @@ void OtcClient::processPbUpdateOtcState(const ProxyTerminalPb::Response_UpdateOt
          }
 
          // TODO: Add timeout detection
-
          changePeerState(peer, State::WaitSellerSeal);
          break;
       }
@@ -1251,9 +1265,7 @@ void OtcClient::processPbUpdateOtcState(const ProxyTerminalPb::Response_UpdateOt
          if (deal->side == otc::Side::Sell) {
             trySendSignedTx(deal);
          }
-
          changePeerState(peer, State::WaitSellerSign);
-
          break;
       }
 
@@ -1264,7 +1276,7 @@ void OtcClient::processPbUpdateOtcState(const ProxyTerminalPb::Response_UpdateOt
          }
 
          // TODO: Print status update
-
+         resetPeerStateToIdle(peer);
          break;
       }
 
@@ -1275,7 +1287,6 @@ void OtcClient::processPbUpdateOtcState(const ProxyTerminalPb::Response_UpdateOt
          }
 
          resetPeerStateToIdle(peer);
-
          break;
       }
 
@@ -1440,6 +1451,8 @@ void OtcClient::createRequests(const std::string &settlementId, Peer *peer, cons
 
                         const auto resolver = bs::sync::WalletsManager::getPublicResolver(preimages);
 
+                        peer->settlementId = settlementId;
+
                         OtcClientDeal result;
                         result.settlementId = settlementId;
                         result.settlementAddr = settlAddr;
@@ -1464,6 +1477,9 @@ void OtcClient::createRequests(const std::string &settlementId, Peer *peer, cons
                   }
 
                   // Buyer
+
+                  peer->settlementId = settlementId;
+
                   OtcClientDeal result;
                   result.settlementId = settlementId;
                   result.settlementAddr = settlAddr;

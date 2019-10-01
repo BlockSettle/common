@@ -156,6 +156,8 @@ namespace bs {
             BinaryData authPubKey;
             BinaryData ourAuthPubKey;
 
+            std::string settlementId;
+
             ValidityFlag validityFlag;
 
             Peer(const std::string &contactId, PeerType type);

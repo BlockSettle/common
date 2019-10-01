@@ -189,6 +189,7 @@ private:
 
    std::string ownContactId_;
 
+   // Maps settlementId to OtcClientDeal
    std::map<std::string, std::unique_ptr<OtcClientDeal>> deals_;
 
    int latestUniqueId_{};
@@ -197,11 +198,15 @@ private:
    // Maps sign requests to settlementId
    std::map<unsigned, std::string> signRequestIds_;
 
+   // Own public request if exists
    std::unique_ptr<bs::network::otc::Peer> ownRequest_;
+
+   // Maps contactId to corresponding Peer
    std::unordered_map<std::string, bs::network::otc::Peer> contactMap_;
    std::unordered_map<std::string, bs::network::otc::Peer> requestMap_;
    std::unordered_map<std::string, bs::network::otc::Peer> responseMap_;
 
+   // Cached pointer lists from the above
    bs::network::otc::Peers contacts_;
    bs::network::otc::Peers requests_;
    bs::network::otc::Peers responses_;
