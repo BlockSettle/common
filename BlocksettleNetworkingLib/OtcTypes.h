@@ -53,6 +53,15 @@ namespace bs {
             // Payin TX will be signed after confirmation from PB.
             SentPayinInfo,
 
+            // VerifyOtc request was sent
+            WaitVerification,
+
+            WaitBuyerSign,
+
+            WaitSellerSign,
+
+            SellerSignSealed,
+
             // Peer does not comply to protocol, block it
             Blacklisted,
          };
