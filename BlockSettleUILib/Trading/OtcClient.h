@@ -174,7 +174,7 @@ private:
    void resetPeerStateToIdle(bs::network::otc::Peer *peer);
 
    int genLocalUniqueId() { return ++latestUniqueId_; }
-   void trySendSignedTxs(OtcClientDeal *deal);
+   void trySendSignedTx(OtcClientDeal *deal);
    void verifyAuthAddresses(OtcClientDeal *deal);
    void setComments(OtcClientDeal *deal);
 

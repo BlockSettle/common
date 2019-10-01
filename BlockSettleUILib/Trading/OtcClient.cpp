@@ -660,7 +660,18 @@ void OtcClient::onTxSigned(unsigned reqId, BinaryData signedTX, bs::error::Error
    }
    OtcClientDeal *deal = dealIt->second.get();
 
+   if (!deal->peerHandle.isValid()) {
+      SPDLOG_LOGGER_ERROR(logger_, "peer was destroyed");
+      return;
+   }
+   auto peer = deal->peer;
+
    if (deal->payinReqId == reqId) {
+      if (peer->state != State::WaitSellerSeal) {
+         SPDLOG_LOGGER_ERROR(logger_, "unexpected pay-in sign");
+         return;
+      }
+
       if (deal->sellFromOffline) {
          auto loadPath = params_.offlineLoadPathCb();
          if (loadPath.empty()) {
@@ -695,13 +706,17 @@ void OtcClient::onTxSigned(unsigned reqId, BinaryData signedTX, bs::error::Error
          SPDLOG_LOGGER_DEBUG(logger_, "pay-in was succesfully signed, settlementId: {}", deal->settlementId);
          deal->signedTx = signedTX;
       }
-      trySendSignedTxs(deal);
+
+      ProxyTerminalPb::Request request;
+      auto d = request.mutable_seal_payin_valididy();
+      d->set_settlement_id(deal->settlementId);
+      emit sendPbMessage(request.SerializeAsString());
    }
 
    if (deal->payoutReqId == reqId) {
       SPDLOG_LOGGER_DEBUG(logger_, "pay-out was succesfully signed, settlementId: {}", deal->settlementId);
       deal->signedTx = signedTX;
-      trySendSignedTxs(deal);
+      trySendSignedTx(deal);
    }
 }
 
@@ -1223,7 +1238,7 @@ void OtcClient::processPbUpdateOtcState(const ProxyTerminalPb::Response_UpdateOt
 
          // TODO: Add timeout detection
 
-         changePeerState(peer, State::WaitSellerSign);
+         changePeerState(peer, State::WaitSellerSeal);
          break;
       }
 
@@ -1234,8 +1249,10 @@ void OtcClient::processPbUpdateOtcState(const ProxyTerminalPb::Response_UpdateOt
          }
 
          if (deal->side == otc::Side::Sell) {
-            // TODO: Send signed pay-in
+            trySendSignedTx(deal);
          }
+
+         changePeerState(peer, State::WaitSellerSign);
 
          break;
       }
@@ -1252,6 +1269,13 @@ void OtcClient::processPbUpdateOtcState(const ProxyTerminalPb::Response_UpdateOt
       }
 
       case ProxyTerminalPb::OTC_STATE_SUCCEED: {
+         if (peer->state != State::WaitSellerSign) {
+            SPDLOG_LOGGER_ERROR(logger_, "unexpected state update request");
+            return;
+         }
+
+         resetPeerStateToIdle(peer);
+
          break;
       }
 
@@ -1331,7 +1355,7 @@ void OtcClient::createRequests(const std::string &settlementId, Peer *peer, cons
       return;
    }
 
-   leaf->setSettlementID(settlementId, [this, settlementId, peer, cb, handle = peer->validityFlag.handle()
+   leaf->setSettlementID(SecureBinaryData::CreateFromHex(settlementId), [this, settlementId, peer, cb, handle = peer->validityFlag.handle()
       , logger = logger_](bool result)
    {
       if (!handle.isValid()) {
@@ -1471,7 +1495,7 @@ void OtcClient::createRequests(const std::string &settlementId, Peer *peer, cons
          };
 
          const bool myKeyFirst = (peer->offer.ourSide == bs::network::otc::Side::Buy);
-         primaryHdWallet->getSettlementPayinAddress(settlementId, peer->authPubKey, cbSettlAddr, myKeyFirst);
+         primaryHdWallet->getSettlementPayinAddress(SecureBinaryData::CreateFromHex(settlementId), peer->authPubKey, cbSettlAddr, myKeyFirst);
       };
       walletsMgr_->estimatedFeePerByte(2, cbFee, this);
    });
@@ -1537,7 +1561,7 @@ void OtcClient::resetPeerStateToIdle(Peer *peer)
    emit peerUpdated(peer);
 }
 
-void OtcClient::trySendSignedTxs(OtcClientDeal *deal)
+void OtcClient::trySendSignedTx(OtcClientDeal *deal)
 {
    ProxyTerminalPb::Request request;
    auto d = request.mutable_process_tx();
