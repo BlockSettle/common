@@ -139,8 +139,8 @@ message Response
         StartOtc              start_otc            = 1;
         UpdateOtcState        update_otc_state     = 2;
 
-        UnsignedPayinRequest  send_unsigned_payin  = 31;
-        SignPayoutRequest     sign_payout          = 32;
-        SignPayinRequest      sign_payin           = 33;
+        UnsignedPayinRequest  send_unsigned_payin  = 3;
+        SignPayoutRequest     sign_payout          = 4;
+        SignPayinRequest      sign_payin           = 5;
     }
 }
