@@ -1185,7 +1185,7 @@ void OtcClient::processPbUpdateOtcState(const ProxyTerminalPb::Response_UpdateOt
          break;
       }
 
-      case ProxyTerminalPb::OTC_STATE_WAIT_SELLER_SIGN: {
+      case ProxyTerminalPb::OTC_STATE_WAIT_SELLER_SEAL: {
          if (peer->state != State::WaitBuyerSign) {
             SPDLOG_LOGGER_ERROR(logger_, "unexpected state update request");
             return;
@@ -1227,8 +1227,8 @@ void OtcClient::processPbUpdateOtcState(const ProxyTerminalPb::Response_UpdateOt
          break;
       }
 
-      case ProxyTerminalPb::OTC_STATE_SELLER_SIGN_SEALED: {
-         if (peer->state != State::WaitSellerSign) {
+      case ProxyTerminalPb::OTC_STATE_WAIT_SELLER_SIGN: {
+         if (peer->state != State::WaitSellerSeal) {
             SPDLOG_LOGGER_ERROR(logger_, "unexpected state update request");
             return;
          }

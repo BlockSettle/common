@@ -58,9 +58,9 @@ namespace bs {
 
             WaitBuyerSign,
 
-            WaitSellerSign,
+            WaitSellerSeal,
 
-            SellerSignSealed,
+            WaitSellerSign,
 
             // Peer does not comply to protocol, block it
             Blacklisted,
