@@ -109,7 +109,7 @@ bs::sync::PasswordDialogData DealerXBTSettlementContainer::toPasswordDialogData(
 
    dialogData.setValue(PasswordDialogData::Title, tr("Settlement Pay-In"));
    dialogData.setValue(PasswordDialogData::Price, UiUtils::displayPriceXBT(price()));
-
+   dialogData.setValue(PasswordDialogData::FxProduct, fxProd_);
 
    bool isFxProd = (product() != bs::network::XbtCurrency);
 
