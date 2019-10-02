@@ -1224,11 +1224,6 @@ void OtcClient::processPbUpdateOtcState(const ProxyTerminalPb::Response_UpdateOt
          if (deal->side == otc::Side::Sell) {
             assert(deal->payin.isValid());
 
-            bs::core::wallet::SettlementData settlData;
-            settlData.settlementId = BinaryData::CreateFromHex(deal->settlementId);
-            settlData.cpPublicKey = deal->cpPubKey;
-            settlData.ownKeyFirst = false;
-
             if (deal->sellFromOffline) {
                SPDLOG_LOGGER_DEBUG(logger_, "sell OTC from offline wallet...");
 
