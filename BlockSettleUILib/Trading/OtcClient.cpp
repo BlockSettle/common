@@ -373,10 +373,7 @@ bool OtcClient::pullOrReject(Peer *peer)
 
       case State::WaitBuyerSign:
       case State::WaitSellerSeal: {
-         auto it = deals_.find(peer->settlementId);
-         assert(it != deals_.end());
-         auto deal = it->second.get();
-
+         auto deal = deals_.at(peer->settlementId).get();
          ProxyTerminalPb::Request request;
          auto d = request.mutable_cancel();
          d->set_settlement_id(deal->settlementId);
@@ -547,9 +544,23 @@ void OtcClient::contactConnected(const std::string &contactId)
 
 void OtcClient::contactDisconnected(const std::string &contactId)
 {
+   const auto peer = &contactMap_.at(contactId);
+
+   switch (peer->state) {
+      case State::WaitBuyerSign:
+      case State::WaitSellerSeal:
+         // Notify PB that contact was disconnected and deal could be canceled
+         pullOrReject(peer);
+         break;
+      default:
+         // No need to notify PB in other cases:
+         // WaitVerification - temporary state (perhaps about 5 seconds) and PB would detect pay-out timeout
+         // WaitSellerSign - temporary state (about 10 seconds) and PB would detect pay-in timeout
+         break;
+   }
+
    contactMap_.erase(contactId);
 
-   // TODO: Close tradings
    emit publicUpdated();
 }
 
@@ -663,11 +674,6 @@ void OtcClient::onTxSigned(unsigned reqId, BinaryData signedTX, bs::error::Error
    const auto settlementId = std::move(it->second);
    signRequestIds_.erase(it);
 
-   if (result != bs::error::ErrorCode::NoError) {
-      // TODO: Cancel deal
-      return;
-   }
-
    auto dealIt = deals_.find(settlementId);
    if (dealIt == deals_.end()) {
       SPDLOG_LOGGER_ERROR(logger_, "unknown sign request");
@@ -680,6 +686,11 @@ void OtcClient::onTxSigned(unsigned reqId, BinaryData signedTX, bs::error::Error
       return;
    }
    auto peer = deal->peer;
+
+   if (result != bs::error::ErrorCode::NoError) {
+      pullOrReject(peer);
+      return;
+   }
 
    if (deal->payinReqId == reqId) {
       if (peer->state != State::WaitSellerSeal) {
@@ -1265,7 +1276,7 @@ void OtcClient::processPbUpdateOtcState(const ProxyTerminalPb::Response_UpdateOt
       }
 
       case ProxyTerminalPb::OTC_STATE_CANCELLED: {
-         if (peer->state != State::WaitBuyerSign && peer->state != State::WaitSellerSign) {
+         if (peer->state != State::WaitBuyerSign && peer->state != State::WaitSellerSeal) {
             SPDLOG_LOGGER_ERROR(logger_, "unexpected state update request");
             return;
          }
