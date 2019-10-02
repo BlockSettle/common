@@ -38,6 +38,7 @@
 //   };
 
 #include <memory>
+#include <mutex>
 
 struct ValidityFlagData;
 
@@ -66,6 +67,8 @@ private:
    std::shared_ptr<ValidityFlagData> data_;
 
 };
+
+using ValidityGuard = std::lock_guard<ValidityHandle>;
 
 class ValidityFlag
 {
