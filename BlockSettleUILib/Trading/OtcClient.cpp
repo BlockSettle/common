@@ -1193,7 +1193,7 @@ void OtcClient::processPbUpdateOtcState(const ProxyTerminalPb::Response_UpdateOt
          }
 
          SPDLOG_LOGGER_ERROR(logger_, "OTC trade failed: {}", response.error_msg());
-         // TODO: Print status message in the chat window
+         emit peerError(peer, response.error_msg());
 
          changePeerStateWithoutUpdate(peer, State::Idle);
          *peer = Peer(peer->contactId, peer->type);
