@@ -687,6 +687,8 @@ void OtcClient::onTxSigned(unsigned reqId, BinaryData signedTX, bs::error::Error
    }
    auto peer = deal->peer;
 
+   peer->activeSignRequest.clear();
+
    if (result != bs::error::ErrorCode::NoError) {
       pullOrReject(peer);
       return;
@@ -1218,6 +1220,7 @@ void OtcClient::processPbUpdateOtcState(const ProxyTerminalPb::Response_UpdateOt
             signRequestIds_[reqId] = deal->settlementId;
             deal->payoutReqId = reqId;
             verifyAuthAddresses(deal);
+            peer->activeSignRequest = deal->payout.serializeState();
          }
 
          // TODO: Add timeout detection
@@ -1254,6 +1257,7 @@ void OtcClient::processPbUpdateOtcState(const ProxyTerminalPb::Response_UpdateOt
                signRequestIds_[reqId] = deal->settlementId;
                deal->payinReqId = reqId;
                verifyAuthAddresses(deal);
+               peer->activeSignRequest = deal->payin.serializeState();
             }
          }
 
@@ -1566,6 +1570,7 @@ void OtcClient::changePeerStateWithoutUpdate(Peer *peer, State state)
    SPDLOG_LOGGER_DEBUG(logger_, "changing peer '{}' state from {} to {}"
       , peer->toString(), toString(peer->state), toString(state));
    peer->state = state;
+   peer->stateTimestamp = QDateTime::currentDateTime();
 }
 
 void OtcClient::changePeerState(Peer *peer, bs::network::otc::State state)
@@ -1576,6 +1581,11 @@ void OtcClient::changePeerState(Peer *peer, bs::network::otc::State state)
 
 void OtcClient::resetPeerStateToIdle(Peer *peer)
 {
+   if (!peer->activeSignRequest.isNull()) {
+      signContainer_->CancelSignTx(peer->activeSignRequest);
+      peer->activeSignRequest.clear();
+   }
+
    changePeerStateWithoutUpdate(peer, State::Idle);
    auto request = std::move(peer->request);
    *peer = Peer(peer->contactId, peer->type);
