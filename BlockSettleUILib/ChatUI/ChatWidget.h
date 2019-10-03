@@ -4,13 +4,14 @@
 #include <memory>
 #include <QPointer>
 #include <QWidget>
+
+#include "ChatWidgetStates/AbstractChatWidgetState.h"
 #include "ChatProtocol/ChatClientService.h"
 #include "ChatProtocol/ClientParty.h"
 #include "OtcTypes.h"
 
 class QItemSelection;
 
-class AbstractChatWidgetState;
 class AuthAddressManager;
 class ArmoryConnection;
 class ChatPartiesTreeModel;
@@ -81,6 +82,8 @@ private slots:
    void onMessageStateChanged(const std::string& partyId, const std::string& message_id, const int party_message_state);
    void onUserListClicked(const QModelIndex& index);
    void onActivatePartyId(const QString& partyId);
+   void onActivateGlobalPartyId();
+   void onActivateCurrentPartyId();
    void onRegisterNewChangingRefresh();
    void onShowUserRoom(const QString& userHash);
    void onContactFriendRequest(const QString& userHash);
@@ -134,6 +137,7 @@ private:
          // Enter new state
          transitionChanges();
          stateCurrent_ = std::make_unique<stateType>(this);
+         stateCurrent_->applyState();
       }
 
 protected:

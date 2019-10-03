@@ -1,6 +1,7 @@
 #ifndef OTC_TYPES_H
 #define OTC_TYPES_H
 
+#include <chrono>
 #include <cstdint>
 #include <string>
 #include <QDateTime>
@@ -52,6 +53,15 @@ namespace bs {
             // Wait for confirmation from peer now.
             // Payin TX will be signed after confirmation from PB.
             SentPayinInfo,
+
+            // VerifyOtc request was sent
+            WaitVerification,
+
+            WaitBuyerSign,
+
+            WaitSellerSeal,
+
+            WaitSellerSign,
 
             // Peer does not comply to protocol, block it
             Blacklisted,
@@ -138,6 +148,8 @@ namespace bs {
             bool isOwnRequest{};
 
             State state{State::Idle};
+            // timestamp of the latest status change (it's always valid)
+            QDateTime stateTimestamp;
 
             QuoteRequest request;
             QuoteResponse response;
@@ -147,7 +159,11 @@ namespace bs {
             BinaryData authPubKey;
             BinaryData ourAuthPubKey;
 
+            std::string settlementId;
+
             ValidityFlag validityFlag;
+
+            BinaryData activeSignRequest;
 
             Peer(const std::string &contactId, PeerType type);
 
@@ -162,6 +178,9 @@ namespace bs {
 
          double fromCents(int64_t value);
          int64_t toCents(double value);
+
+         std::chrono::milliseconds payoutTimeout();
+         std::chrono::milliseconds payinTimeout();
       }
    }
 }
