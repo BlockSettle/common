@@ -241,20 +241,20 @@ unsigned ValidationAddressManager::goOnline()
 unsigned ValidationAddressManager::update()
 {
    std::vector<bs::Address> addrVec;
-   for (auto& addrPair : validationAddresses_) {
+   for (auto& addrPair : validationAddresses_)
       addrVec.push_back(addrPair.first);
-   }
+
    //keep track of txout changes in validation addresses since last seen block
    auto promPtr = std::make_shared<std::promise<unsigned>>();
    auto futPtr = promPtr->get_future();
    auto opLbd = [this, promPtr](const OutpointBatch &batch)->void
    {
       unsigned opCount = 0;
-      for (auto& outpointPair : batch.outpoints_) {
+      for (auto& outpointPair : batch.outpoints_) 
+      {
          auto& outpointVec = outpointPair.second;
-         if (outpointVec.size() == 0) {
+         if (outpointVec.size() == 0) 
             continue;
-         }
          opCount += outpointVec.size();
 
          //create copy of validation address struct
@@ -262,33 +262,36 @@ unsigned ValidationAddressManager::update()
 
          //get existing address struct
          auto maIter = validationAddresses_.find(outpointPair.first);
-         if (maIter != validationAddresses_.end()) {
+         if (maIter != validationAddresses_.end()) 
+         {
             /*
             Copy the existing struct over to the new one.
 
-            While all notification
-            based caller of update() come from the same thread, it is called by
-            goOnline() once, from a thread we don't control, therefor the copy
-            of the existing struct into the new one is preceded by an acquire
-            operation.
+            While all notification based callers of update() come from the 
+            same thread, it is called by goOnline() once, from a thread we 
+            don't control, therefor the copy of the existing struct into 
+            the new one is preceded by an acquire operation.
             */
             auto maStruct = std::atomic_load_explicit(
                &maIter->second, std::memory_order_acquire);
             *updateValidationAddrStruct = *maStruct;
          }
-         else {
+         else 
+         {
             //can't be missing a validation address
             throw std::runtime_error("missing validation address");
          }
 
          //populate new outpoints
-         for (auto& op : outpointVec) {
+         for (auto& op : outpointVec) 
+         {
             auto aop = std::make_shared<AuthOutpoint>(
                op.txHeight_, op.txIndex_, op.txOutIndex_,
                op.value_, op.isSpent_, op.spenderHash_);
 
             auto hashIter = updateValidationAddrStruct->outpoints_.find(op.txHash_);
-            if (hashIter == updateValidationAddrStruct->outpoints_.end()) {
+            if (hashIter == updateValidationAddrStruct->outpoints_.end()) 
+            {
                hashIter = updateValidationAddrStruct->outpoints_.insert(std::make_pair(
                   op.txHash_,
                   std::map<unsigned, std::shared_ptr<AuthOutpoint>>())).first;
@@ -296,14 +299,17 @@ unsigned ValidationAddressManager::update()
 
             //update existing outpoints if the spent flag is set
             auto fIter = hashIter->second.find(aop->txOutIndex());
-            if (fIter != hashIter->second.end()) {
+            if (fIter != hashIter->second.end()) 
+            {
                aop->updateFrom(*fIter->second);
 
                //remove spender hash entry as the ref will die after this swap
-               if (fIter->second->isSpent()) {
+               if (fIter->second->isSpent()) 
+               {
                   updateValidationAddrStruct->spenderHashes_.erase(
                      fIter->second->spenderHash().getRef());
                }
+
                fIter->second = aop;
                if (op.isSpent_) {
                   //set valid spender hash ref
@@ -314,7 +320,8 @@ unsigned ValidationAddressManager::update()
             }
 
             hashIter->second.emplace(std::make_pair(aop->txOutIndex(), aop));
-            if (op.isSpent_) {
+            if (op.isSpent_) 
+            {
                //we can just insert the spender hash without worry, as it wont fail to
                //replace an expiring reference
                updateValidationAddrStruct->spenderHashes_.insert(aop->spenderHash().getRef());
@@ -327,7 +334,7 @@ unsigned ValidationAddressManager::update()
       }
 
       //update cutoffs
-      topBlock_ = batch.heightCutoff_;
+      topBlock_ = batch.heightCutoff_ + 1;
       zcIndex_ = batch.zcIndexCutoff_;
 
       promPtr->set_value(opCount);
@@ -1033,22 +1040,9 @@ BinaryData AuthAddressLogic::revoke(const bs::Address &addr
    , const std::shared_ptr<ResolverFeed> &feedPtr
    , const bs::Address &validationAddr, const UTXO &revokeUtxo)
 {
-   //construct revocation utxo
+   //User side revoke: burn the validation UTXO as an OP_RETURN
    Signer signer;
-
-   /*
-   We should have passed the feed that can resolve private keys
-   for this auth address, i.e. the auth wallet's HD leaf resolver.
-   Obviously, the leaf should also be locked for decryption.
-   */
    signer.setFeed(feedPtr);
-
-   /*
-   We're only spending from the revoke utxo in this scenario. A more
-   realistic case is where another utxo is provided to cover for an
-   ample fee, as you want revocations to take places quickly. This
-   edge case needs to be addressed.
-   */
    signer.addSpender(std::make_shared<ScriptSpender>(revokeUtxo));
 
    const std::string opReturnMsg = "BlockSettle Terminal revoke";
