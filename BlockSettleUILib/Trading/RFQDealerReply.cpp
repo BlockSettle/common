@@ -322,23 +322,21 @@ std::shared_ptr<bs::sync::Wallet> RFQDealerReply::getCCWallet(const bs::network:
    return getCCWallet(qrn.product);
 }
 
-bs::Address RFQDealerReply::getRecvAddress(const std::shared_ptr<bs::sync::Wallet> &wallet) const
+void RFQDealerReply::getRecvAddress(const std::shared_ptr<bs::sync::Wallet> &wallet, std::function<void(bs::Address)> cb) const
 {
    if (!wallet) {
-      return {};
+      cb({});
+      return;
    }
 
-   auto promAddr = std::make_shared<std::promise<bs::Address>>();
-   auto futAddr = promAddr->get_future();
-   const auto &cbAddr = [promAddr, wallet](const bs::Address &addr) {
-      promAddr->set_value(addr);
+   auto cbWrap = [wallet, cb = std::move(cb)](const bs::Address &addr) {
       if (wallet->type() != bs::core::wallet::Type::ColorCoin) {
          wallet->setAddressComment(addr, bs::sync::wallet::Comment::toString(bs::sync::wallet::Comment::SettlementPayOut));
       }
+      cb(addr);
    };
-   wallet->getNewIntAddress(cbAddr);
+   wallet->getNewIntAddress(cbWrap);
    //curWallet_->RegisterWallet();  //TODO: invoke at address callback
-   return futAddr.get();
 }
 
 void RFQDealerReply::updateUiWalletFor(const bs::network::QuoteReqNotification &qrn)
@@ -588,12 +586,8 @@ void RFQDealerReply::submitReply(const std::shared_ptr<TransactionData> transDat
       logger_->debug("[RFQDealerReply::submitReply] txData={}", txData);
       auto qn = std::make_shared<bs::network::QuoteNotification>(qrn, authKey_, price, txData);
 
-      if (qrn.assetType == bs::network::Asset::PrivateMarket) {
-         if (qrn.side == bs::network::Side::Sell) {
-            qn->receiptAddress = getRecvAddress(getCCWallet(qrn)).display();
-         } else {
-            qn->receiptAddress = getRecvAddress(xbtWallet).display();
-         }
+      auto addrCb = [this, cb, qn, qrn, price, transData, xbtWallet](const bs::Address &addr) {
+         qn->receiptAddress = addr.display();
          qn->reqAuthKey = qrn.requestorRecvAddress;
 
          auto wallet = transData->getSigningWallet();
@@ -653,6 +647,14 @@ void RFQDealerReply::submitReply(const std::shared_ptr<TransactionData> transDat
             *spendVal = qrn.quantity * price * BTCNumericTypes::BalanceDivider;
             walletsManager_->estimatedFeePerByte(2, cbFee, this);
             return;
+         }
+      };
+
+      if (qrn.assetType == bs::network::Asset::PrivateMarket) {
+         if (qrn.side == bs::network::Side::Sell) {
+            getRecvAddress(getCCWallet(qrn), addrCb);
+         } else {
+            getRecvAddress(xbtWallet, addrCb);
          }
       }
       cb(*qn);
@@ -759,7 +761,10 @@ void RFQDealerReply::submitReply(const std::shared_ptr<TransactionData> transDat
          return;
       } else {
          settlLeaf->setSettlementID(settlementId, [](bool) {});
-         transData->SetFallbackRecvAddress(getRecvAddress(xbtWallet));
+         auto addrCb = [transData](const bs::Address &addr) {
+            transData->SetFallbackRecvAddress(addr);
+         };
+         getRecvAddress(xbtWallet, addrCb);
       }
    }
    lbdQuoteNotif({});
