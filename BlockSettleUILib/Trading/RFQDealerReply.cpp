@@ -604,36 +604,34 @@ void RFQDealerReply::submitReply(const std::shared_ptr<TransactionData> transDat
                   return;
                }
             }
-            try {
-               auto promAddr = std::make_shared<std::promise<bs::Address>>();
-               auto futAddr = promAddr->get_future();
-               const auto &cbAddr = [promAddr](const bs::Address &addr) {
-                  promAddr->set_value(addr);
-               };
-               wallet->getNewChangeAddress(cbAddr);
-               logger_->debug("[cbFee] {} input[s], fpb={}, recip={}, prevPart={}", inputs.size(), feePerByte
-                  , bs::Address(qrn.requestorRecvAddress).display(), qrn.requestorAuthPublicKey);
+
+            const auto &cbAddr = [this, inputs, feePerByte, qrn, qn, spendVal, wallet, recipient, transData, cb](const bs::Address &changeAddress) {
                try {
-                  Signer signer;
-                  signer.deserializeState(BinaryData::CreateFromHex(qrn.requestorAuthPublicKey));
-                  logger_->debug("[cbFee] deserialized state");
+                  logger_->debug("[cbFee] {} input[s], fpb={}, recip={}, prevPart={}", inputs.size(), feePerByte
+                     , bs::Address(qrn.requestorRecvAddress).display(), qrn.requestorAuthPublicKey);
+                  try {
+                     Signer signer;
+                     signer.deserializeState(BinaryData::CreateFromHex(qrn.requestorAuthPublicKey));
+                     logger_->debug("[cbFee] deserialized state");
+                  } catch (const std::exception &e) {
+                     logger_->error("[cbFee] state deser failed: {}", e.what());
+                  }
+                  const auto txReq = wallet->createPartialTXRequest(*spendVal, inputs, changeAddress, feePerByte
+                     , { recipient }, BinaryData::CreateFromHex(qrn.requestorAuthPublicKey));
+                  qn->transactionData = txReq.serializeState().toHexStr();
+                  logger_->debug("[cbFee] txData={}", qn->transactionData);
+                  dealerUtxoAdapter_->reserve(txReq, qn->quoteRequestId);
                } catch (const std::exception &e) {
-                  logger_->error("[cbFee] state deser failed: {}", e.what());
+                  logger_->error("[RFQDealerReply::submit] error creating own unsigned half: {}", e.what());
+                  cb({});
+                  return;
                }
-               const auto txReq = wallet->createPartialTXRequest(*spendVal, inputs, futAddr.get(), feePerByte
-                  , { recipient }, BinaryData::CreateFromHex(qrn.requestorAuthPublicKey));
-               qn->transactionData = txReq.serializeState().toHexStr();
-               logger_->debug("[cbFee] txData={}", qn->transactionData);
-               dealerUtxoAdapter_->reserve(txReq, qn->quoteRequestId);
-            } catch (const std::exception &e) {
-               logger_->error("[RFQDealerReply::submit] error creating own unsigned half: {}", e.what());
-               cb({});
-               return;
-            }
-            if (!transData->getSigningWallet()) {
-               transData->setSigningWallet(wallet);
-            }
-            cb(*qn);
+               if (!transData->getSigningWallet()) {
+                  transData->setSigningWallet(wallet);
+               }
+               cb(*qn);
+            };
+            wallet->getNewChangeAddress(cbAddr);
          };
 
          if (qrn.side == bs::network::Side::Buy) {
