@@ -570,7 +570,7 @@ void RFQDealerReply::submitReply(const std::shared_ptr<TransactionData> transDat
    , const bs::network::QuoteReqNotification &qrn, double price
    , std::function<void(bs::network::QuoteNotification)> cb
    , const std::shared_ptr<bs::sync::Wallet> &xbtWallet)
-{  //TODO: refactor to properly support asynchronicity of getChangeAddress
+{
    if (qFuzzyIsNull(price)) {
       cb({});
       return;
@@ -697,32 +697,31 @@ void RFQDealerReply::submitReply(const std::shared_ptr<TransactionData> transDat
          const auto &lbdUnsignedTx = [this, qrn, transData, lbdQuoteNotif, cb] {
             try {
                if (transData->IsTransactionValid()) {
-                  bs::core::wallet::TXSignRequest unsignedTxReq;
+                  auto unsignedTxReqCb = [this, transData, qrn, lbdQuoteNotif](const bs::core::wallet::TXSignRequest &unsignedTxReq) {
+                     const auto cbPreimage = [this, unsignedTxReq, qrn, lbdQuoteNotif]
+                        (const std::map<bs::Address, BinaryData> &preimages)
+                     {
+                        const auto resolver = bs::sync::WalletsManager::getPublicResolver(preimages);
+                        dealerUtxoAdapter_->reserve(unsignedTxReq, qrn.settlementId);
+
+                        const auto txData = unsignedTxReq.txId(resolver).toHexStr();
+                        lbdQuoteNotif(txData);
+                     };
+                     const auto addrMapping = walletsManager_->getAddressToWalletsMapping(transData->inputs());
+                     signingContainer_->getAddressPreimage(addrMapping, cbPreimage);
+                  };
                   if (transData->GetTransactionSummary().hasChange) {
-                     auto promAddr = std::make_shared<std::promise<bs::Address>>();
-                     auto futAddr = promAddr->get_future();
-                     const auto &cbAddr = [promAddr, transData](const bs::Address &addr) {
-                        promAddr->set_value(addr);
+                     auto cbAddr = [unsignedTxReqCb, transData](const bs::Address &addr) {
                         transData->getWallet()->setAddressComment(addr, bs::sync::wallet::Comment::toString(
                            bs::sync::wallet::Comment::ChangeAddress));
+                        auto unsignedTxReq = transData->createUnsignedTransaction(false, addr);
+                        unsignedTxReqCb(unsignedTxReq);
                      };
                      transData->getWallet()->getNewChangeAddress(cbAddr);
-                     unsignedTxReq = transData->createUnsignedTransaction(false, futAddr.get());
                   } else {
-                     unsignedTxReq = transData->createUnsignedTransaction();
+                     auto unsignedTxReq = transData->createUnsignedTransaction();
+                     unsignedTxReqCb(unsignedTxReq);
                   }
-
-                  const auto cbPreimage = [this, unsignedTxReq, qrn, lbdQuoteNotif]
-                     (const std::map<bs::Address, BinaryData> &preimages)
-                  {
-                     const auto resolver = bs::sync::WalletsManager::getPublicResolver(preimages);
-                     dealerUtxoAdapter_->reserve(unsignedTxReq, qrn.settlementId);
-
-                     const auto txData = unsignedTxReq.txId(resolver).toHexStr();
-                     lbdQuoteNotif(txData);
-                  };
-                  const auto addrMapping = walletsManager_->getAddressToWalletsMapping(transData->inputs());
-                  signingContainer_->getAddressPreimage(addrMapping, cbPreimage);
                } else {
                   logger_->warn("[RFQDealerReply::submit] pay-in transaction is invalid!");
                }
