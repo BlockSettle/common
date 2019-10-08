@@ -256,7 +256,10 @@ void ReqXBTSettlementContainer::activateProceed()
 {
    const auto &cbSettlAddr = [this](const bs::Address &addr) {
       settlAddr_ = addr;
-      auto fallbackRecvAddressCb = [this](const bs::Address &addr) {
+      auto fallbackRecvAddressCb = [this, thisPtr = QPointer<ReqXBTSettlementContainer>(this)](const bs::Address &addr) {
+         if (!thisPtr) {
+            return;
+         }
          recvAddr_ = addr;
 
          const auto recipient = transactionData_->RegisterNewRecipient();
