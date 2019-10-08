@@ -55,27 +55,26 @@ DealerXBTSettlementContainer::DealerXBTSettlementContainer(const std::shared_ptr
    settlementIdString_ = qn.settlementId;
    settlementId_ = BinaryData::CreateFromHex(qn.settlementId);
 
-   QPointer<DealerXBTSettlementContainer> thisPtr = this;
    addrVerificator_ = std::make_shared<AddressVerificator>(logger, armory
-      , [logger, thisPtr](const bs::Address &address, AddressVerificationState state)
+      , [logger, this, handle = validityFlag_.handle()](const bs::Address &address, AddressVerificationState state)
    {
-      QMetaObject::invokeMethod(qApp, [thisPtr, address, state] {
-         if (!thisPtr) {
+      QMetaObject::invokeMethod(qApp, [this, handle, address, state] {
+         if (!handle.isValid()) {
             return;
          }
 
-         thisPtr->logger_->info("Counterparty's address verification {} for {}"
+         logger_->info("Counterparty's address verification {} for {}"
             , to_string(state), address.display());
-         thisPtr->requestorAddressState_ = state;
+         requestorAddressState_ = state;
 
          if (state == AddressVerificationState::Verified) {
             // we verify only requester's auth address
             bs::sync::PasswordDialogData dialogData;
             dialogData.setValue(PasswordDialogData::RequesterAuthAddressVerified, true);
-            dialogData.setValue(PasswordDialogData::SettlementId, QString::fromStdString(thisPtr->id()));
+            dialogData.setValue(PasswordDialogData::SettlementId, QString::fromStdString(id()));
             dialogData.setValue(PasswordDialogData::SigningAllowed, true);
 
-            thisPtr->signContainer_->updateDialogData(dialogData);
+            signContainer_->updateDialogData(dialogData);
          }
       });
    });
@@ -184,10 +183,9 @@ bool DealerXBTSettlementContainer::startPayOutSigning(const BinaryData& payinHas
       return false;
    }
 
-   auto fallbackAddrCb = [this, thisPtr = QPointer<DealerXBTSettlementContainer>(this), txWallet, payinHash]
-      (const bs::Address &receivingAddress)
+   auto fallbackAddrCb = [this, handle = validityFlag_.handle(), txWallet, payinHash](const bs::Address &receivingAddress)
    {
-      if (!thisPtr) {
+      if (!handle.isValid()) {
          return;
       }
       if (!txWallet->containsAddress(receivingAddress)) {
@@ -218,7 +216,7 @@ bool DealerXBTSettlementContainer::startPayOutSigning(const BinaryData& payinHas
          return;
       }
    };
-   transactionData_->GetFallbackRecvAddress(std::move(fallbackAddrCb));
+   transactionData_->GetFallbackRecvAddress(fallbackAddrCb);
    return true;
 }
 
