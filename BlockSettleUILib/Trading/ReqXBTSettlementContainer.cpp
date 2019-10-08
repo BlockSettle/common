@@ -256,40 +256,40 @@ void ReqXBTSettlementContainer::activateProceed()
 {
    const auto &cbSettlAddr = [this](const bs::Address &addr) {
       settlAddr_ = addr;
-      const auto &buyAuthKey = clientSells_ ? dealerAuthKey_ : userKey_;
-      const auto &sellAuthKey = clientSells_ ? userKey_ : dealerAuthKey_;
+      auto fallbackRecvAddressCb = [this](const bs::Address &addr) {
+         recvAddr_ = addr;
 
-      recvAddr_ = transactionData_->GetFallbackRecvAddress();
+         const auto recipient = transactionData_->RegisterNewRecipient();
+         transactionData_->UpdateRecipientAmount(recipient, amount_, transactionData_->maxSpendAmount());
+         transactionData_->UpdateRecipientAddress(recipient, settlAddr_);
 
-      const auto recipient = transactionData_->RegisterNewRecipient();
-      transactionData_->UpdateRecipientAmount(recipient, amount_, transactionData_->maxSpendAmount());
-      transactionData_->UpdateRecipientAddress(recipient, settlAddr_);
-
-      const auto list = authAddrMgr_->GetVerifiedAddressList();
-      const auto userAddress = bs::Address::fromPubKey(userKey_, AddressEntryType_P2WPKH);
-      userKeyOk_ = (std::find(list.begin(), list.end(), userAddress) != list.end());
-      if (!userKeyOk_) {
-         logger_->warn("[ReqXBTSettlementContainer::activate] userAddr {} not found in verified addrs list ({})"
-            , userAddress.display(), list.size());
-         return;
-      }
-
-      if (clientSells_) {
-         if (!transactionData_->IsTransactionValid()) {
-            userKeyOk_ = false;
-            logger_->error("[ReqXBTSettlementContainer::activate] transaction data is invalid");
-            emit error(tr("Transaction data is invalid - sending of pay-in is prohibited"));
+         const auto list = authAddrMgr_->GetVerifiedAddressList();
+         const auto userAddress = bs::Address::fromPubKey(userKey_, AddressEntryType_P2WPKH);
+         userKeyOk_ = (std::find(list.begin(), list.end(), userAddress) != list.end());
+         if (!userKeyOk_) {
+            logger_->warn("[ReqXBTSettlementContainer::activate] userAddr {} not found in verified addrs list ({})"
+               , userAddress.display(), list.size());
             return;
          }
-      }
 
-      fee_ = transactionData_->GetTransactionSummary().totalFee;
+         if (clientSells_) {
+            if (!transactionData_->IsTransactionValid()) {
+               userKeyOk_ = false;
+               logger_->error("[ReqXBTSettlementContainer::activate] transaction data is invalid");
+               emit error(tr("Transaction data is invalid - sending of pay-in is prohibited"));
+               return;
+            }
+         }
 
-      const auto dealerAddrSW = bs::Address::fromPubKey(dealerAuthKey_, AddressEntryType_P2WPKH);
-      addrVerificator_->addAddress(dealerAddrSW);
-      addrVerificator_->startAddressVerification();
+         fee_ = transactionData_->GetTransactionSummary().totalFee;
 
-      acceptSpotXBT();
+         const auto dealerAddrSW = bs::Address::fromPubKey(dealerAuthKey_, AddressEntryType_P2WPKH);
+         addrVerificator_->addAddress(dealerAddrSW);
+         addrVerificator_->startAddressVerification();
+
+         acceptSpotXBT();
+      };
+      transactionData_->GetFallbackRecvAddress(std::move(fallbackRecvAddressCb));
    };
 
    const auto priWallet = walletsMgr_->getPrimaryWallet();
