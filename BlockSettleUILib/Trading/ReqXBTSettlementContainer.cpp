@@ -1,7 +1,6 @@
 #include "ReqXBTSettlementContainer.h"
 
 #include <QApplication>
-#include <QPointer>
 
 #include <spdlog/spdlog.h>
 
@@ -132,16 +131,15 @@ void ReqXBTSettlementContainer::activate()
 {
    startTimer(kWaitTimeoutInSec);
 
-   QPointer<ReqXBTSettlementContainer> thisPtr = this;
    addrVerificator_ = std::make_shared<AddressVerificator>(logger_, armory_
-      , [thisPtr](const bs::Address &address, AddressVerificationState state)
+      , [this, handle = validityFlag_.handle()](const bs::Address &address, AddressVerificationState state)
    {
-      QMetaObject::invokeMethod(qApp, [thisPtr, address, state] {
-         if (!thisPtr) {
+      QMetaObject::invokeMethod(qApp, [this, handle, address, state] {
+         if (!handle.isValid()) {
             return;
          }
-         thisPtr->dealerAuthAddress_ = address;
-         thisPtr->dealerVerifStateChanged(state);
+         dealerAuthAddress_ = address;
+         dealerVerifStateChanged(state);
       });
    });
 
@@ -170,18 +168,18 @@ void ReqXBTSettlementContainer::activate()
       return;
    }
 
-   settlLeaf->setSettlementID(settlementId_, [thisPtr](bool success)
+   settlLeaf->setSettlementID(settlementId_, [this, handle = validityFlag_.handle()](bool success)
    {
-      if (!thisPtr) {
+      if (!handle.isValid()) {
          return;
       }
 
       if (!success) {
-         SPDLOG_LOGGER_ERROR(thisPtr->logger_, "can't find settlement leaf for auth address '{}'"
-            , thisPtr->authAddr_.display());
+         SPDLOG_LOGGER_ERROR(logger_, "can't find settlement leaf for auth address '{}'"
+            , authAddr_.display());
          return;
       }
-      thisPtr->activateProceed();
+      activateProceed();
    });
 }
 
@@ -256,8 +254,8 @@ void ReqXBTSettlementContainer::activateProceed()
 {
    const auto &cbSettlAddr = [this](const bs::Address &addr) {
       settlAddr_ = addr;
-      auto fallbackRecvAddressCb = [this, thisPtr = QPointer<ReqXBTSettlementContainer>(this)](const bs::Address &addr) {
-         if (!thisPtr) {
+      auto fallbackRecvAddressCb = [this, handle = validityFlag_.handle()](const bs::Address &addr) {
+         if (!handle.isValid()) {
             return;
          }
          recvAddr_ = addr;
