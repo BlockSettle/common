@@ -1,14 +1,15 @@
 #ifndef __RECIPIENT_CONTAINER_H__
 #define __RECIPIENT_CONTAINER_H__
 
+#include "Address.h"
+#include "XBTAmount.h"
+
 #include <string>
 #include <memory>
-#include "Address.h"
 
-
-class ScriptRecipient;
-class BinaryData;
 class AddressEntry;
+class BinaryData;
+class ScriptRecipient;
 
 class RecipientContainer
 {
