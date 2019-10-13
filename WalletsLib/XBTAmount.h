@@ -27,6 +27,8 @@ public:
 
    BTCNumericTypes::satoshi_type GetValue() const;
    BTCNumericTypes::balance_type GetValueBitcoin() const;
+
+   bool isZero() const;
 private:
    static BTCNumericTypes::satoshi_type convertFromBitcoinToSatoshi(BTCNumericTypes::balance_type amount);
    static BTCNumericTypes::balance_type convertFromSatoshiToBitcoin(BTCNumericTypes::satoshi_type value);

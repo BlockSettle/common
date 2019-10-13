@@ -667,7 +667,7 @@ uint64_t OtcClient::estimatePayinFeeWithoutChange(const std::vector<UTXO> &input
    // Use some fake settlement address as the only recipient
    auto recipient = bs::Address(CryptoPRNG::generateRandom(32), AddressEntryType_P2WSH);
    // Select some random amount
-   recipientsMap[0] = recipient.getRecipient(uint64_t(1000));
+   recipientsMap[0] = recipient.getRecipient(bs::XBTAmount{ uint64_t{1000} });
 
    auto inputsCopy = bs::Address::decorateUTXOsCopy(inputs);
    PaymentStruct payment(recipientsMap, 0, feePerByte, 0);
