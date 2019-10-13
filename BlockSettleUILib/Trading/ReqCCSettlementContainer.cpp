@@ -11,8 +11,6 @@
 #include "UiUtils.h"
 #include "XBTAmount.h"
 
-static const unsigned int kWaitTimeoutInSec = 30;
-
 using namespace bs::sync;
 
 ReqCCSettlementContainer::ReqCCSettlementContainer(const std::shared_ptr<spdlog::logger> &logger
@@ -252,7 +250,7 @@ bool ReqCCSettlementContainer::startSigning()
 
          // notify RFQ dialog that signed half could be saved
          emit settlementAccepted();
-         //transactionData_->getWallet()->setTransactionComment(txSignedData(), txComment());
+         transactionData_->getWallet()->setTransactionComment(signedTX, txComment());
       }
       else if (result == bs::error::ErrorCode::TxCanceled) {
          emit settlementCancelled();
