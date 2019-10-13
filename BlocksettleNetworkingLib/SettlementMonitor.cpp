@@ -333,12 +333,9 @@ bs::core::wallet::TXSignRequest bs::SettlementMonitor::createPayoutTXRequest(UTX
 }
 
 UTXO bs::SettlementMonitor::getInputFromTX(const bs::Address &addr
-   , const BinaryData &payinHash, const double amount)
+   , const BinaryData &payinHash, const bs::XBTAmount& amount)
 {
-   const uint64_t value = amount * BTCNumericTypes::BalanceDivider;
-   const uint32_t txHeight = UINT32_MAX;
-
-   return UTXO(value, txHeight, 0, 0, payinHash
+   return UTXO(amount.GetValue(), UINT32_MAX, 0, 0, payinHash
       , BtcUtils::getP2WSHOutputScript(addr.unprefixed()));
 }
 

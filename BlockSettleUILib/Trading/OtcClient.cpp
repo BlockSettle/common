@@ -1610,7 +1610,7 @@ void OtcClient::createRequests(const std::string &settlementId, Peer *peer, cons
                         result.side = otc::Side::Sell;
                         result.payin = transaction->createTXRequest();
                         result.payinTxId = result.payin.txId(resolver);
-                        auto payinUTXO = bs::SettlementMonitor::getInputFromTX(settlAddr, result.payinTxId, amount);
+                        auto payinUTXO = bs::SettlementMonitor::getInputFromTX(settlAddr, result.payinTxId, bs::XBTAmount{ amount });
                         result.fee = int64_t(result.payin.fee);
                         peer->sellFromOffline = targetHdWallet->isOffline();
                         cb(std::move(result));
@@ -1641,7 +1641,7 @@ void OtcClient::createRequests(const std::string &settlementId, Peer *peer, cons
                      result.hdWalletId = targetHdWallet->walletId();
                      result.success = true;
                      result.side = otc::Side::Buy;
-                     auto payinUTXO = bs::SettlementMonitor::getInputFromTX(settlAddr, peer->payinTxIdFromSeller, amount);
+                     auto payinUTXO = bs::SettlementMonitor::getInputFromTX(settlAddr, peer->payinTxIdFromSeller, bs::XBTAmount{ amount });
                      result.payout = bs::SettlementMonitor::createPayoutTXRequest(
                         payinUTXO, outputAddr, feePerByte, armory_->topBlock());
                      result.fee = int64_t(result.payout.fee);
