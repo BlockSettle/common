@@ -12,8 +12,6 @@
 
 #include <sstream>
 
-#include <bech32/ref/c++/segwit_addr.h>
-
 using namespace bs::core;
 
 std::shared_ptr<wallet::AssetEntryMeta> wallet::AssetEntryMeta::deserialize(int, BinaryDataRef value)
