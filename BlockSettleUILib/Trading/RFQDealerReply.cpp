@@ -783,7 +783,8 @@ void RFQDealerReply::onReservedUtxosChanged(const std::string &walletId, const s
       ccCoinSel_->Reload(utxos);
    }
    if (transactionData_ && transactionData_->getWallet() && (transactionData_->getWallet()->walletId() == walletId)) {
-      transactionData_->ReloadSelection(utxos);
+      // FIXME: Disabled as this cause crash when dealer responds to XBT buy requests and selects inputs manually
+      //transactionData_->ReloadSelection(utxos);
    }
    onTransactionDataChanged();
 }
