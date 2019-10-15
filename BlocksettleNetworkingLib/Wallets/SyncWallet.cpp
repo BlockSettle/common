@@ -686,7 +686,7 @@ void Wallet::init(bool force)
 bs::core::wallet::TXSignRequest wallet::createTXRequest(const std::string &walletId
    , const std::vector<UTXO> &inputs
    , const std::vector<std::shared_ptr<ScriptRecipient>> &recipients
-   , const Address &changeAddr
+   , const bs::Address &changeAddr
    , const uint64_t fee, bool isRBF, const uint64_t &origFee)
 {
    bs::core::wallet::TXSignRequest request;
@@ -732,7 +732,7 @@ bs::core::wallet::TXSignRequest wallet::createTXRequest(const std::string &walle
 
 bs::core::wallet::TXSignRequest Wallet::createTXRequest(const std::vector<UTXO> &inputs
    , const std::vector<std::shared_ptr<ScriptRecipient>> &recipients, const uint64_t fee
-   , bool isRBF, const Address &changeAddress, const uint64_t& origFee)
+   , bool isRBF, const bs::Address &changeAddress, const uint64_t& origFee)
 {
    if (!changeAddress.isNull()) {
       setAddressComment(changeAddress, wallet::Comment::toString(wallet::Comment::ChangeAddress));
