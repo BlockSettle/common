@@ -94,7 +94,7 @@ unsigned int ReqXBTSettlementContainer::createPayoutTx(const BinaryData& payinHa
    catch (const std::exception &e) {
       logger_->warn("[ReqXBTSettlementContainer::createPayoutTx] failed to create pay-out transaction based on {}: {}"
          , payinHash.toHexStr(), e.what());
-      cancelWithError(tr("Pay-out transaction creation failure: %1").arg(QLatin1String(e.what())));
+      cancel();
    }
    return 0;
 }
@@ -270,7 +270,7 @@ void ReqXBTSettlementContainer::activateProceed()
             if (!transactionData_->IsTransactionValid()) {
                userKeyOk_ = false;
                logger_->error("[ReqXBTSettlementContainer::activate] transaction data is invalid");
-               cancelWithError(tr("Transaction data is invalid - sending of pay-in is prohibited"));
+               cancel();
                return;
             }
          }
@@ -290,12 +290,6 @@ void ReqXBTSettlementContainer::activateProceed()
    priWallet->getSettlementPayinAddress(settlementId_, dealerAuthKey_, cbSettlAddr, !clientSells_);
 }
 
-void ReqXBTSettlementContainer::cancelWithError(const QString& errorMessage)
-{
-   emit error(errorMessage);
-   cancel();
-}
-
 void ReqXBTSettlementContainer::onTXSigned(unsigned int id, BinaryData signedTX
    , bs::error::ErrorCode errCode, std::string errTxt)
 {
@@ -303,7 +297,7 @@ void ReqXBTSettlementContainer::onTXSigned(unsigned int id, BinaryData signedTX
       payinSignId_ = 0;
 
       if ((errCode != bs::error::ErrorCode::NoError) || signedTX.isNull()) {
-         cancelWithError(tr("Failed to create Pay-In TX - re-type password and try again"));
+         cancel();
          logger_->error("[ReqXBTSettlementContainer::onTXSigned] Failed to create pay-in TX: {} ({})"
             , (int)errCode, errTxt);
          return;
@@ -324,7 +318,7 @@ void ReqXBTSettlementContainer::onTXSigned(unsigned int id, BinaryData signedTX
       if ((errCode != bs::error::ErrorCode::NoError) || signedTX.isNull()) {
          logger_->warn("[ReqXBTSettlementContainer::onTXSigned] Pay-Out sign failure: {} ({})"
             , (int)errCode, errTxt);
-         cancelWithError(tr("Pay-Out signing failed: %1").arg(QString::fromStdString(errTxt)));
+         cancel();
          return;
       }
 
@@ -361,12 +355,12 @@ void ReqXBTSettlementContainer::onTXSigned(unsigned int id, BinaryData signedTX
 
          if (signatureCount != 1) {
             logger_->error("[ReqXBTSettlementContainer::onTXSigned] signature count: {}", signatureCount);
-            cancelWithError(tr("Failed to sign Pay-out"));
+            cancel();
             return;
          }
       } catch (...) {
          logger_->error("[ReqXBTSettlementContainer::onTXSigned] failed to deserialize signed payout");
-         cancelWithError(tr("Failed to sign Pay-out"));
+         cancel();
          return;
       }
 
