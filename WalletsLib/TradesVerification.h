@@ -42,6 +42,9 @@ namespace bs {
          static Result error(std::string errorMsg);
       };
 
+      static bs::Address constructSettlementAddress(const BinaryData &settlementId
+         , const BinaryData &buyAuthKey, const BinaryData &sellAuthKey);
+
       static PayoutSignatureType whichSignature(const Tx &tx
          , uint64_t value
          , const bs::Address &settlAddr

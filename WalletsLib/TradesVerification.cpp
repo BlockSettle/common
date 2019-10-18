@@ -21,6 +21,39 @@ bs::TradesVerification::Result bs::TradesVerification::Result::error(std::string
    return result;
 }
 
+bs::Address bs::TradesVerification::constructSettlementAddress(const BinaryData &settlementId
+   , const BinaryData &buyAuthKey, const BinaryData &sellAuthKey)
+{
+   try {
+      auto buySaltedKey = CryptoECDSA::PubKeyScalarMultiply(buyAuthKey, settlementId);
+      auto sellSaltedKey = CryptoECDSA::PubKeyScalarMultiply(sellAuthKey, settlementId);
+
+      const auto buyAsset = std::make_shared<AssetEntry_Single>(0, BinaryData()
+         , buySaltedKey, nullptr);
+      const auto sellAsset = std::make_shared<AssetEntry_Single>(0, BinaryData()
+         , sellSaltedKey, nullptr);
+
+      //create ms asset
+      std::map<BinaryData, std::shared_ptr<AssetEntry>> assetMap;
+
+      assetMap.insert(std::make_pair(BinaryData::CreateFromHex("00"), buyAsset));
+      assetMap.insert(std::make_pair(BinaryData::CreateFromHex("01"), sellAsset));
+
+      const auto assetMs = std::make_shared<AssetEntry_Multisig>(
+         0, BinaryData(), assetMap, 1, 2);
+
+      //create ms address
+      const auto addrMs = std::make_shared<AddressEntry_Multisig>(assetMs, true);
+
+      //nest it
+      const auto addrP2wsh = std::make_shared<AddressEntry_P2WSH>(addrMs);
+
+      return bs::Address(addrP2wsh->getPrefixedHash());
+   } catch(...) {
+      return {};
+   }
+}
+
 bs::PayoutSignatureType bs::TradesVerification::whichSignature(const Tx &tx, uint64_t value
    , const bs::Address &settlAddr, const BinaryData &buyAuthKey, const BinaryData &sellAuthKey, std::string *errorMsg)
 {
