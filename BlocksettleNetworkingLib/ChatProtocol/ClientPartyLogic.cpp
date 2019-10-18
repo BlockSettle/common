@@ -88,17 +88,17 @@ void ClientPartyLogic::onUserStatusChanged(const ChatUserPtr& currentUserPtr, co
 
    for (const auto& clientPartyPtr : clientPartyPtrList)
    {
+      PartyRecipientPtr recipientPtr = clientPartyPtr->getRecipient(statusChanged.user_name());
+      if (recipientPtr)
+      {
+         recipientPtr->setCelerType(static_cast<CelerClient::CelerUserType>(statusChanged.celer_type()));
+      }
+
       clientPartyPtr->setClientStatus(statusChanged.client_status());
 
       if (ClientStatus::ONLINE != clientPartyPtr->clientStatus())
       {
          return;
-      }
-
-      PartyRecipientPtr recipientPtr = clientPartyPtr->getRecipient(statusChanged.user_name());
-      if (recipientPtr)
-      {
-         recipientPtr->setCelerType(static_cast<CelerClient::CelerUserType>(statusChanged.celer_type()));
       }
 
       // check if public key changed
@@ -139,7 +139,7 @@ void ClientPartyLogic::handlePartyInserted(const Chat::PartyPtr& partyPtr)
    clientDBServicePtr_->createNewParty(partyPtr->id());
 }
 
-void ClientPartyLogic::createPrivateParty(const ChatUserPtr& currentUserPtr, const std::string& remoteUserName, const Chat::PartySubType& partySubType)
+void ClientPartyLogic::createPrivateParty(const ChatUserPtr& currentUserPtr, const std::string& remoteUserName, const Chat::PartySubType& partySubType, const std::string& initialMessage)
 {
    // check if private party exist
    if (isPrivatePartyForUserExist(currentUserPtr, remoteUserName, partySubType))
@@ -169,6 +169,7 @@ void ClientPartyLogic::createPrivateParty(const ChatUserPtr& currentUserPtr, con
    recipients.push_back(std::make_shared<PartyRecipient>(currentUserPtr->userName()));
    recipients.push_back(std::make_shared<PartyRecipient>(remoteUserName));
    newClientPrivatePartyPtr->setRecipients(recipients);
+   newClientPrivatePartyPtr->setInitialMessage(initialMessage);
 
    // update model
    clientPartyModelPtr_->insertParty(newClientPrivatePartyPtr);
