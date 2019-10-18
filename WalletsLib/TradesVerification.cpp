@@ -136,6 +136,7 @@ bs::TradesVerification::Result bs::TradesVerification::verifyUnsignedPayin(const
       uint64_t settlementAmount = 0;
       uint64_t totalOutputAmount = 0;
       uint64_t settlementOutputsCount = 0;
+      int totalInputCount = 0;
 
       for (const auto& recipient : recipients) {
          uint64_t value = recipient->getValue();
@@ -145,6 +146,8 @@ bs::TradesVerification::Result bs::TradesVerification::verifyUnsignedPayin(const
             settlementAmount += value;
             settlementOutputsCount += 1;
          }
+
+         totalInputCount += 1;
       }
 
       if (settlementOutputsCount != 1) {
@@ -179,6 +182,7 @@ bs::TradesVerification::Result bs::TradesVerification::verifyUnsignedPayin(const
       result.success = true;
       result.totalFee = totalInput - totalOutputAmount;
       result.estimatedFee = static_cast<uint64_t>(feePerByte * unsignedPayin.getSize());
+      result.totalInputCount = totalInputCount;
       for (const auto& spender : spenders) {
          result.utxos.push_back(spender->getUtxo());
       }

@@ -34,6 +34,7 @@ namespace bs {
          // returns from verifyUnsignedPayin
          uint64_t totalFee{};
          uint64_t estimatedFee{};
+         int totalInputCount{};
          std::vector<UTXO> utxos;
 
          // returns from verifySignedPayout
