@@ -1677,8 +1677,9 @@ bs::error::ErrorCode HeadlessContainerListener::activateAutoSign(const std::stri
    try {
       const bs::core::WalletPasswordScoped lock(hdWallet, password);
       const auto &seed = hdWallet->getDecryptedSeed();
-      seedStr = seed.seed().toBinStr();
-      privKeyStr = seed.toXpriv().toBinStr();
+      if (seed.empty()) {
+         return ErrorCode::MissingPassword;
+      }
    }
    catch (...) {
       logger_->error("[HeadlessContainerListener::activateAutoSign] wallet {} decryption error"
