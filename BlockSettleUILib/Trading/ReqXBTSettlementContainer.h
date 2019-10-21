@@ -59,7 +59,6 @@ public:
 
 
    std::string fxProduct() const { return fxProd_; }
-   uint64_t fee() const { return fee_; }
    bool weSell() const { return clientSells_; }
    bool userKeyOk() const { return userKeyOk_; }
 
@@ -109,7 +108,6 @@ private:
 
    double            amount_;
    std::string       fxProd_;
-   uint64_t          fee_;
    BinaryData        settlementId_;
    std::string       settlementIdString_;
    BinaryData        userKey_;

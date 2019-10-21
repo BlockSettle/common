@@ -286,8 +286,6 @@ void ReqXBTSettlementContainer::activateProceed()
             }
          }
 
-         fee_ = transactionData_->GetTransactionSummary().totalFee;
-
          const auto dealerAddrSW = bs::Address::fromPubKey(dealerAuthKey_, AddressEntryType_P2WPKH);
          addrVerificator_->addAddress(dealerAddrSW);
          addrVerificator_->startAddressVerification();
