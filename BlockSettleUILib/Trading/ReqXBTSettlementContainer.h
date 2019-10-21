@@ -39,7 +39,7 @@ public:
       , const bs::network::RFQ &
       , const bs::network::Quote &
       , const bs::Address &authAddr
-   );
+      , const std::vector<UTXO> &utxosPayinFixed);
    ~ReqXBTSettlementContainer() override;
 
    bool cancel() override;
@@ -126,6 +126,7 @@ private:
 
    bs::core::wallet::TXSignRequest        unsignedPayinRequest_;
    BinaryData        usedPayinHash_;
+   std::vector<UTXO> utxosPayinFixed_;
 };
 
 #endif // __REQ_XBT_SETTLEMENT_CONTAINER_H__

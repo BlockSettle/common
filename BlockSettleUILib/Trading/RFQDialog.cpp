@@ -8,6 +8,7 @@
 #include "QuoteProvider.h"
 #include "ReqCCSettlementContainer.h"
 #include "ReqXBTSettlementContainer.h"
+#include "SelectedTransactionInputs.h"
 #include "SignContainer.h"
 #include "UiUtils.h"
 
@@ -114,7 +115,7 @@ std::shared_ptr<bs::SettlementContainer> RFQDialog::newXBTcontainer()
 
    xbtSettlContainer_ = std::make_shared<ReqXBTSettlementContainer>(logger_
       , authAddressManager_, signContainer_, armory_, xbtWallet_, walletsManager_
-      , rfq_, quote_, authAddr_);
+      , rfq_, quote_, authAddr_, transactionData_->getSelectedInputs()->GetSelectedTransactions());
 
    connect(xbtSettlContainer_.get(), &ReqXBTSettlementContainer::settlementAccepted
       , this, &RFQDialog::onSettlementAccepted);

@@ -9,6 +9,7 @@
 #include "CheckRecipSigner.h"
 #include "CurrencyPair.h"
 #include "QuoteProvider.h"
+#include "SelectedTransactionInputs.h"
 #include "SettlementMonitor.h"
 #include "SignContainer.h"
 #include "TransactionData.h"
@@ -30,7 +31,8 @@ ReqXBTSettlementContainer::ReqXBTSettlementContainer(const std::shared_ptr<spdlo
    , const std::shared_ptr<bs::sync::WalletsManager> &walletsMgr
    , const bs::network::RFQ &rfq
    , const bs::network::Quote &quote
-   , const bs::Address &authAddr)
+   , const bs::Address &authAddr
+   , const std::vector<UTXO> &utxosPayinFixed)
    : bs::SettlementContainer()
    , logger_(logger)
    , authAddrMgr_(authAddrMgr)
@@ -42,6 +44,7 @@ ReqXBTSettlementContainer::ReqXBTSettlementContainer(const std::shared_ptr<spdlo
    , quote_(quote)
    , clientSellsXbt_(!rfq.isXbtBuy())
    , authAddr_(authAddr)
+   , utxosPayinFixed_(utxosPayinFixed)
 {
    assert(authAddr.isValid());
 
@@ -65,6 +68,9 @@ ReqXBTSettlementContainer::ReqXBTSettlementContainer(const std::shared_ptr<spdlo
 
 ReqXBTSettlementContainer::~ReqXBTSettlementContainer()
 {
+   if (clientSellsXbt_) {
+      utxoAdapter_->unreserve(id());
+   }
    bs::UtxoReservation::delAdapter(utxoAdapter_);
 }
 
@@ -118,9 +124,6 @@ void ReqXBTSettlementContainer::acceptSpotXBT()
 bool ReqXBTSettlementContainer::cancel()
 {
    deactivate();
-   if (clientSellsXbt_) {
-      utxoAdapter_->unreserve(id());
-   }
    emit settlementCancelled();
    return true;
 }
@@ -424,7 +427,8 @@ void ReqXBTSettlementContainer::onUnsignedPayinRequested(const std::string& sett
 
                   SPDLOG_LOGGER_DEBUG(logger_, "unsigned tx id {}", unsignedTxId.toHexStr(true));
 
-                  // XXX: make reservation on UTXO
+                  utxoAdapter_->reserve(xbtWallet_->walletId(), id(), unsignedPayinRequest_.inputs);
+
                   emit sendUnsignedPayinToPB(settlementIdHex_, unsignedPayinRequest_.serializeState(resolver), unsignedTxId);
                };
 
@@ -444,7 +448,13 @@ void ReqXBTSettlementContainer::onUnsignedPayinRequested(const std::string& sett
          });
       };
 
-      transaction->setWallet(xbtWallet_, armory_->topBlock(), false, resetInputsCb);
+      if (utxosPayinFixed_.empty()) {
+         transaction->setWallet(xbtWallet_, armory_->topBlock(), false, resetInputsCb);
+      } else {
+         transaction->setWalletAndInputs(xbtWallet_, utxosPayinFixed_, armory_->topBlock());
+         transaction->getSelectedInputs()->SetUseAutoSel(true);
+         resetInputsCb();
+      }
    });
 }
 
