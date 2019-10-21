@@ -228,9 +228,11 @@ void RFQRequestWidget::onRFQSubmit(const bs::network::RFQ& rfq)
 {
    auto authAddr = ui_->pageRFQTicket->selectedAuthAddress();
 
+   auto xbtWallet = ui_->pageRFQTicket->xbtWallet();
+
    RFQDialog* dialog = new RFQDialog(logger_, rfq, ui_->pageRFQTicket->GetTransactionData(), quoteProvider_,
       authAddressManager_, assetManager_, walletsManager_, signingContainer_, armory_, celerClient_, appSettings_
-      , connectionManager_, authAddr, this);
+      , connectionManager_, xbtWallet, authAddr, this);
 
    // connect to requests from PB
    // just re-emit signal

@@ -82,6 +82,8 @@ public slots:
    void enablePanel();
    void disablePanel();
 
+   std::shared_ptr<bs::sync::Wallet> xbtWallet() const;
+
 private slots:
    void updateBalances();
    void onSignerReady();

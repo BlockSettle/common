@@ -23,6 +23,7 @@ RFQDialog::RFQDialog(const std::shared_ptr<spdlog::logger> &logger
    , const std::shared_ptr<BaseCelerClient> &celerClient
    , const std::shared_ptr<ApplicationSettings> &appSettings
    , const std::shared_ptr<ConnectionManager> &connectionManager
+   , const std::shared_ptr<bs::sync::Wallet> &xbtWallet
    , const bs::Address &authAddr
    , QWidget* parent)
    : QDialog(parent)
@@ -39,6 +40,7 @@ RFQDialog::RFQDialog(const std::shared_ptr<spdlog::logger> &logger
    , celerClient_(celerClient)
    , appSettings_(appSettings)
    , connectionManager_(connectionManager)
+   , xbtWallet_(xbtWallet)
    , authAddr_(authAddr)
 {
    ui_->setupUi(this);
@@ -105,9 +107,14 @@ void RFQDialog::reportError(const QString& errorMessage)
 
 std::shared_ptr<bs::SettlementContainer> RFQDialog::newXBTcontainer()
 {
+   if (!xbtWallet_) {
+      SPDLOG_LOGGER_ERROR(logger_, "xbt wallet is not set");
+      return nullptr;
+   }
+
    xbtSettlContainer_ = std::make_shared<ReqXBTSettlementContainer>(logger_
-      , authAddressManager_, signContainer_, armory_, walletsManager_
-      , rfq_, quote_, transactionData_, authAddr_);
+      , authAddressManager_, signContainer_, armory_, xbtWallet_, walletsManager_
+      , rfq_, quote_, authAddr_);
 
    connect(xbtSettlContainer_.get(), &ReqXBTSettlementContainer::settlementAccepted
       , this, &RFQDialog::onSettlementAccepted);
