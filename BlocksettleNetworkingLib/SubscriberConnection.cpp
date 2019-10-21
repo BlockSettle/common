@@ -54,7 +54,6 @@ SubscriberConnection::SubscriberConnection(const std::shared_ptr<spdlog::logger>
 SubscriberConnection::~SubscriberConnection() noexcept
 {
    stopListen();
-   listener_->disconnect();
 }
 
 bool SubscriberConnection::isActive() const
