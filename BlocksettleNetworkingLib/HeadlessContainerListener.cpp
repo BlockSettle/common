@@ -466,14 +466,25 @@ bool HeadlessContainerListener::onUpdateDialogData(const std::string &clientId, 
       logger_->error("[{}] failed to parse request", __func__);
       return false;
    }
+   Internal::PasswordDialogDataWrapper updatedDialogData = request.passworddialogdata();
+   const auto &id = updatedDialogData.value<std::string>(PasswordDialogData::SettlementId);
+
+   logger_->debug("[{}] Requested dialog data update for settl id {}", __func__, id);
+
+   if (id.empty()) {
+      return true;
+   }
 
    // try to find dialog in queued dialogs deferredPasswordRequests_
    auto it = deferredPasswordRequests_.begin();
    while (it != deferredPasswordRequests_.end()) {
-      Internal::PasswordDialogDataWrapper otherDialogData = request.passworddialogdata();
-      const auto &id = otherDialogData.value<std::string>(bs::sync::PasswordDialogData::SettlementId);
-      if (!id.empty() && it->dialogData.value<std::string>(bs::sync::PasswordDialogData::SettlementId) == id) {
-         it->dialogData.MergeFrom(request.passworddialogdata());
+      if (it->dialogData.value<std::string>(PasswordDialogData::SettlementId) == id) {
+         logger_->debug("[{}] Updating dialog data for settl id {}", __func__, id);
+
+         for (auto & pair : request.passworddialogdata().valuesmap())
+         {
+             (*it->dialogData.mutable_valuesmap())[pair.first] = pair.second;
+         }
       }
 
       it++;
@@ -733,7 +744,7 @@ bool HeadlessContainerListener::RequestPasswordIfNeeded(const std::string &clien
       needPassword = !hdWallet->encryptionTypes().empty();
    }
 
-   auto autoSignCategory = static_cast<bs::signer::AutoSignCategory>(dialogData.value<int>(bs::sync::PasswordDialogData::AutoSignCategory));
+   auto autoSignCategory = static_cast<bs::signer::AutoSignCategory>(dialogData.value<int>(PasswordDialogData::AutoSignCategory));
    // currently only dealer can use autosign
    bool autoSignAllowed = (autoSignCategory == bs::signer::AutoSignCategory::SettlementDealer);
 
@@ -817,11 +828,11 @@ bool HeadlessContainerListener::RequestPassword(const std::string &rootId, const
 
    dialog.dialogData = dialogData;
 
-   milliseconds duration = milliseconds(dialogData.value<int>(bs::sync::PasswordDialogData::Duration));
-   if (duration == 0s) {
-      duration = kDefaultDuration;
+   milliseconds durationTotal = milliseconds(dialogData.value<int>(PasswordDialogData::DurationTotal));
+   if (durationTotal == 0s) {
+      durationTotal = kDefaultDuration;
    }
-   dialog.dialogExpirationTime = std::chrono::steady_clock::now() + duration;
+   dialog.dialogExpirationTime = std::chrono::steady_clock::now() + durationTotal;
 
    dialog.callback = cb;
    dialog.passwordRequest = [this, reqType, txReq](const Internal::PasswordDialogDataWrapper &dlgData){
@@ -901,7 +912,7 @@ void HeadlessContainerListener::RunDeferredPwDialog()
          RunDeferredPwDialog();
       }
       else {
-         dialogData.insert(bs::sync::PasswordDialogData::Duration, static_cast<int>(remainingDuration.count()));
+         dialogData.insert(PasswordDialogData::DurationLeft, static_cast<int>(remainingDuration.count()));
          deferredPasswordRequests_.front().passwordRequest(dialogData); // run stored lambda
       }
    }
@@ -1656,11 +1667,27 @@ bs::error::ErrorCode HeadlessContainerListener::activateAutoSign(const std::stri
 {
    logger_->info("Activate AutoSign for {}", walletId);
 
-   const auto &wallet = walletId.empty() ? walletsMgr_->getPrimaryWallet() : walletsMgr_->getHDWalletById(walletId);
-   if (!wallet) {
+   const auto &hdWallet = walletId.empty() ? walletsMgr_->getPrimaryWallet() : walletsMgr_->getHDWalletById(walletId);
+   if (!hdWallet) {
       return ErrorCode::WalletNotFound;
    }
-   passwords_[wallet->walletId()] = password;
+
+   std::string seedStr, privKeyStr;
+
+   try {
+      const bs::core::WalletPasswordScoped lock(hdWallet, password);
+      const auto &seed = hdWallet->getDecryptedSeed();
+      if (seed.empty()) {
+         return ErrorCode::MissingPassword;
+      }
+   }
+   catch (...) {
+      logger_->error("[HeadlessContainerListener::activateAutoSign] wallet {} decryption error"
+         , walletId);
+      return ErrorCode::InvalidPassword;
+   }
+
+   passwords_[hdWallet->walletId()] = password;
 
    // multicast event
    AutoSignActivatedEvent(walletId, true);
