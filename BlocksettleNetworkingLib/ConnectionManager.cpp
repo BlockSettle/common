@@ -55,8 +55,6 @@ bool ConnectionManager::InitNetworkLibs()
    }
 #endif
 
-   zmqContext_ = std::make_shared<ZmqContext>(logger_);
-
    return true;
 }
 
@@ -79,26 +77,30 @@ std::shared_ptr<spdlog::logger> ConnectionManager::GetLogger() const
 
 std::shared_ptr<ServerConnection> ConnectionManager::CreateGenoaAPIServerConnection() const
 {
-   return std::make_shared<GenoaStreamServerConnection>(logger_, zmqContext_);
+   auto zmqContext = std::make_shared<ZmqContext>(logger_);
+   return std::make_shared<GenoaStreamServerConnection>(logger_, zmqContext);
 }
 
 std::shared_ptr<ServerConnection> ConnectionManager::CreateCelerAPIServerConnection() const
 {
-   return std::make_shared<CelerStreamServerConnection>(logger_, zmqContext_);
+   auto zmqContext = std::make_shared<ZmqContext>(logger_);
+   return std::make_shared<CelerStreamServerConnection>(logger_, zmqContext);
 }
 
 std::shared_ptr<DataConnection> ConnectionManager::CreateCelerClientConnection() const
 {
+   auto zmqContext = std::make_shared<ZmqContext>(logger_);
    auto connection = std::make_shared< CelerClientConnection<ZmqDataConnection> >(logger_);
-   connection->SetContext(zmqContext_);
+   connection->SetContext(zmqContext);
 
    return connection;
 }
 
 std::shared_ptr<DataConnection> ConnectionManager::CreateGenoaClientConnection(bool monitored) const
 {
+   auto zmqContext = std::make_shared<ZmqContext>(logger_);
    auto connection = std::make_shared< GenoaConnection<ZmqDataConnection> >(logger_, monitored);
-   connection->SetContext(zmqContext_);
+   connection->SetContext(zmqContext);
 
    return connection;
 }
@@ -110,7 +112,8 @@ std::shared_ptr<ZmqBIP15XServerConnection> ConnectionManager::CreateZMQBIP15XCha
       return zmqTrustedTerminals_;
    };
 
-   return std::make_shared<ZmqBIP15XServerConnection>(logger_, zmqContext_
+   auto zmqContext = std::make_shared<ZmqContext>(logger_);
+   return std::make_shared<ZmqBIP15XServerConnection>(logger_, zmqContext
       , cbTrustedClients, ephemeral
       , ownKeyFileDir, ownKeyFileName, false);
 }
@@ -130,24 +133,28 @@ ZmqBIP15XDataConnectionPtr ConnectionManager::CreateZMQBIP15XDataConnection() co
 
 std::shared_ptr<ServerConnection> ConnectionManager::CreatePubBridgeServerConnection() const
 {
-   return std::make_shared<GenoaStreamServerConnection>(logger_, zmqContext_);
+   auto zmqContext = std::make_shared<ZmqContext>(logger_);
+   return std::make_shared<GenoaStreamServerConnection>(logger_, zmqContext);
 }
 
 // MD will be sent as HTTP packet
 // each genoa message ( send or received ) ends with double CRLF.
 std::shared_ptr<ServerConnection> ConnectionManager::CreateMDRestServerConnection() const
 {
-   return std::make_shared<GenoaStreamServerConnection>(logger_, zmqContext_);
+   auto zmqContext = std::make_shared<ZmqContext>(logger_);
+   return std::make_shared<GenoaStreamServerConnection>(logger_, zmqContext);
 }
 
 std::shared_ptr<PublisherConnection> ConnectionManager::CreatePublisherConnection() const
 {
-   return std::make_shared<PublisherConnection>(logger_, zmqContext_);
+   auto zmqContext = std::make_shared<ZmqContext>(logger_);
+   return std::make_shared<PublisherConnection>(logger_, zmqContext);
 }
 
 std::shared_ptr<SubscriberConnection> ConnectionManager::CreateSubscriberConnection() const
 {
-   return std::make_shared<SubscriberConnection>(logger_, zmqContext_);
+   auto zmqContext = std::make_shared<ZmqContext>(logger_);
+   return std::make_shared<SubscriberConnection>(logger_, zmqContext);
 }
 
 const std::shared_ptr<QNetworkAccessManager> &ConnectionManager::GetNAM()

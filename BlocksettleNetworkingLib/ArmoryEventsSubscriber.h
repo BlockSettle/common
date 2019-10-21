@@ -42,7 +42,7 @@ private:
    void ProcessZCEvent(const std::string& eventData);
 
 public:
-   void OnDataReceived(const std::string& data) override;
+   void OnDataReceived(std::string data) override;
    void OnConnected() override;
    void OnDisconnected() override;
 

@@ -68,7 +68,6 @@ private:
    bool isInitialized_;
 
    std::shared_ptr<spdlog::logger>        logger_;
-   std::shared_ptr<ZmqContext>            zmqContext_;
    std::shared_ptr<QNetworkAccessManager> nam_;
    std::shared_ptr<ArmoryServersProvider> armoryServers_;
    ZmqBIP15XPeers                         zmqTrustedTerminals_;

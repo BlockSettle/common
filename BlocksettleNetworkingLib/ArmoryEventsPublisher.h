@@ -1,6 +1,8 @@
 #ifndef __ARMORY_EVENTS_PUBLISHER_H__
 #define __ARMORY_EVENTS_PUBLISHER_H__
 
+#include <QObject>
+
 #include "ArmoryConnection.h"
 
 #include <memory>
@@ -14,8 +16,9 @@ class PublisherConnection;
 
 // connects to armory signals and broadcast it to inproc zmq connection
 // events can be received with ArmoryEventsSubscriber
-class ArmoryEventsPublisher
+class ArmoryEventsPublisher : public QObject
 {
+   Q_OBJECT
 public:
    ArmoryEventsPublisher(const std::shared_ptr<ConnectionManager>& connectionManager
       , const std::shared_ptr<spdlog::logger>& logger);

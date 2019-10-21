@@ -1,6 +1,8 @@
 #ifndef __PUBLISHER_CONNECTION_H__
 #define __PUBLISHER_CONNECTION_H__
 
+#include <QObject>
+
 #include "ZmqContext.h"
 
 #include <atomic>
@@ -8,11 +10,14 @@
 #include <string>
 #include <thread>
 
-class PublisherConnection
+class PublisherConnection : public QObject
 {
+   Q_OBJECT
 public:
-   PublisherConnection(const std::shared_ptr<spdlog::logger>& logger
-      , const std::shared_ptr<ZmqContext>& context);
+   PublisherConnection(const std::shared_ptr<spdlog::logger>& logger, 
+      const std::shared_ptr<ZmqContext>& context,
+      QObject* parent = nullptr);
+
    ~PublisherConnection() noexcept;
 
    PublisherConnection(const PublisherConnection&) = delete;
@@ -21,7 +26,6 @@ public:
    PublisherConnection(PublisherConnection&&) = delete;
    PublisherConnection& operator = (PublisherConnection&&) = delete;
 
-   bool InitConnection();
    bool SetWelcomeMessage(const std::string& data);
 
    std::string GetCurrentWelcomeMessage() const;
@@ -33,11 +37,15 @@ public:
 
    bool PublishData(const std::string& data);
 
+signals:
+   void initializeFailed();
+
 private:
    void stopServer();
 
    // run in thread
-   void listenFunction();
+   void listenFunction(const std::string& endpoint, const std::string& controlEndpoint);
+   void initZmqSockets(const std::string& endpoint, const std::string& controlEndpoint);
 
    enum SocketIndex {
       ControlSocketIndex = 0,
@@ -57,17 +65,17 @@ private:
    bool BindConnection(const std::string& endpoint);
 
 private:
+
    std::shared_ptr<spdlog::logger>  logger_;
    std::shared_ptr<ZmqContext>      context_;
-
-   ZmqContext::sock_ptr             dataSocket_;
 
    std::thread                      listenThread_;
 
    std::atomic_flag                 controlSocketLockFlag_ = ATOMIC_FLAG_INIT;
 
-   ZmqContext::sock_ptr             threadMasterSocket_;
-   ZmqContext::sock_ptr             threadSlaveSocket_;
+   ZmqContext::sock_ptr             dataSocket_;
+   ZmqContext::sock_ptr             masterPairSocket_;
+   ZmqContext::sock_ptr             slavePairSocket_;
 
    std::atomic_flag                 dataQueueLock_ = ATOMIC_FLAG_INIT;
    std::deque<std::string>          dataQueue_;

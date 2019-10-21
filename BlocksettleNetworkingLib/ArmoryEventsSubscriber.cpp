@@ -53,7 +53,7 @@ bool ArmoryEventsSubscriber::SubscribeToArmoryEvents(const std::shared_ptr<Conne
    return true;
 }
 
-void ArmoryEventsSubscriber::OnDataReceived(const std::string& data)
+void ArmoryEventsSubscriber::OnDataReceived(std::string data)
 {
    Blocksettle::ArmoryEvents::EventHeader    header;
 

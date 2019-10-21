@@ -1,14 +1,17 @@
 #ifndef __SUBSCRIBER_CONNECTION_H__
 #define __SUBSCRIBER_CONNECTION_H__
 
+#include <QObject>
+
 #include "ZmqContext.h"
 
 #include <atomic>
 #include <thread>
 #include <functional>
 
-class SubscriberConnectionListener
+class SubscriberConnectionListener : public QObject
 {
+   Q_OBJECT
 public:
    SubscriberConnectionListener() = default;
    virtual ~SubscriberConnectionListener() noexcept = default;
@@ -19,7 +22,8 @@ public:
    SubscriberConnectionListener(SubscriberConnectionListener&&) = delete;
    SubscriberConnectionListener& operator = (SubscriberConnectionListener&&) = delete;
 
-   virtual void OnDataReceived(const std::string& data) = 0;
+public slots:
+   virtual void OnDataReceived(std::string data) = 0;
    virtual void OnConnected() = 0;
    virtual void OnDisconnected() = 0;
 };
@@ -43,7 +47,7 @@ public:
    SubscriberConnectionListenerCB(SubscriberConnectionListenerCB&&) = delete;
    SubscriberConnectionListenerCB& operator = (SubscriberConnectionListenerCB&&) = delete;
 
-   void OnDataReceived(const std::string& data) override;
+   void OnDataReceived(std::string data) override;
    void OnConnected() override;
    void OnDisconnected() override;
 
@@ -53,11 +57,15 @@ private:
    disconnectedCB onDisconnected_;
 };
 
-class SubscriberConnection
+class SubscriberConnection : public QObject
 {
+   Q_OBJECT
 public:
-   SubscriberConnection(const std::shared_ptr<spdlog::logger>& logger
-      , const std::shared_ptr<ZmqContext>& context);
+   SubscriberConnection(
+      const std::shared_ptr<spdlog::logger>& logger, 
+      const std::shared_ptr<ZmqContext>& context,
+      QObject *parent = nullptr);
+
    ~SubscriberConnection() noexcept;
 
    SubscriberConnection(const SubscriberConnection&) = delete;
@@ -71,8 +79,16 @@ public:
 
    void stopListen();
 
+signals:
+   void dataReceived(std::string data);
+   void connected();
+   void disconnected();
+   void stopped();
+
 private:
-   void listenFunction();
+   void listenFunction(const std::string& endpoint, const std::string& controlEndpoint);
+   void initZmqSockets(const std::string& endpoint, const std::string& controlEndpoint);
+   void disconnectZmqSockets(const std::string& endpoint, const std::string& controlEndpoint);
 
    enum SocketIndex {
       ControlSocketIndex = 0,
@@ -95,15 +111,16 @@ private:
    std::shared_ptr<ZmqContext>      context_;
 
    std::string                      connectionName_;
-   bool                             isConnected_ = false;
+   std::atomic_bool                 isConnected_;
 
    ZmqContext::sock_ptr             dataSocket_;
-   ZmqContext::sock_ptr             threadMasterSocket_;
-   ZmqContext::sock_ptr             threadSlaveSocket_;
+   ZmqContext::sock_ptr             masterPairSocket_;
+   ZmqContext::sock_ptr             slavePairSocket_;
    ZmqContext::sock_ptr             monSocket_;
 
    std::thread                      listenThread_;
    SubscriberConnectionListener*    listener_ = nullptr;
+   std::atomic_bool                 isListenerActive_;
 };
 
 #endif // __SUBSCRIBER_CONNECTION_H__
