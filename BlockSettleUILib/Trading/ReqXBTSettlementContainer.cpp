@@ -61,7 +61,6 @@ ReqXBTSettlementContainer::ReqXBTSettlementContainer(const std::shared_ptr<spdlo
 
    comment_ = std::string(bs::network::Side::toString(bs::network::Side::invert(quote_.side))) + " "
       + quote_.security + " @ " + std::to_string(price());
-
 }
 
 ReqXBTSettlementContainer::~ReqXBTSettlementContainer()
@@ -271,7 +270,7 @@ void ReqXBTSettlementContainer::cancelWithError(const QString& errorMessage)
 void ReqXBTSettlementContainer::onTXSigned(unsigned int id, BinaryData signedTX
    , bs::error::ErrorCode errCode, std::string errTxt)
 {
-   if (payinSignId_ && (payinSignId_ == id)) {
+   if (payinSignId_ != 0 && (payinSignId_ == id)) {
       payinSignId_ = 0;
 
       if ((errCode != bs::error::ErrorCode::NoError) || signedTX.isNull()) {
@@ -283,11 +282,14 @@ void ReqXBTSettlementContainer::onTXSigned(unsigned int id, BinaryData signedTX
 
       emit sendSignedPayinToPB(settlementIdHex_, signedTX);
 
+      xbtWallet_->setTransactionComment(signedTX, comment_);
+//    walletsMgr_->getSettlementWallet()->setTransactionComment(signedTX, comment_);  //TODO: later
+
       // OK. if payin created - settletlement accepted for this RFQ
       deactivate();
       emit settlementAccepted();
 
-   } else if (payoutSignId_ && (payoutSignId_ == id)) {
+   } else if (payoutSignId_ != 0 && (payoutSignId_ == id)) {
       payoutSignId_ = 0;
 
       if ((errCode != bs::error::ErrorCode::NoError) || signedTX.isNull()) {
@@ -335,6 +337,9 @@ void ReqXBTSettlementContainer::onTXSigned(unsigned int id, BinaryData signedTX
       }
 
       emit sendSignedPayoutToPB(settlementIdHex_, signedTX);
+
+      xbtWallet_->setTransactionComment(signedTX, comment_);
+//         walletsMgr_->getSettlementWallet()->setTransactionComment(payoutData_, comment_); //TODO: later
 
       // OK. if payout created - settletlement accepted for this RFQ
       deactivate();
