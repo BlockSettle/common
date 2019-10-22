@@ -39,7 +39,8 @@ public:
       , const bs::network::RFQ &
       , const bs::network::Quote &
       , const bs::Address &authAddr
-      , const std::vector<UTXO> &utxosPayinFixed);
+      , const std::vector<UTXO> &utxosPayinFixed
+      , const bs::Address &recvAddr);
    ~ReqXBTSettlementContainer() override;
 
    bool cancel() override;

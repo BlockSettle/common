@@ -25,12 +25,14 @@ RFQDialog::RFQDialog(const std::shared_ptr<spdlog::logger> &logger
    , const std::shared_ptr<ApplicationSettings> &appSettings
    , const std::shared_ptr<ConnectionManager> &connectionManager
    , const std::shared_ptr<bs::sync::Wallet> &xbtWallet
+   , const bs::Address &recvXbtAddr
    , const bs::Address &authAddr
    , QWidget* parent)
    : QDialog(parent)
    , ui_(new Ui::RFQDialog())
    , logger_(logger)
    , rfq_(rfq)
+   , recvXbtAddr_(recvXbtAddr)
    , transactionData_(transactionData)
    , quoteProvider_(quoteProvider)
    , authAddressManager_(authAddressManager)
@@ -115,7 +117,7 @@ std::shared_ptr<bs::SettlementContainer> RFQDialog::newXBTcontainer()
 
    xbtSettlContainer_ = std::make_shared<ReqXBTSettlementContainer>(logger_
       , authAddressManager_, signContainer_, armory_, xbtWallet_, walletsManager_
-      , rfq_, quote_, authAddr_, transactionData_->getSelectedInputs()->GetSelectedTransactions());
+      , rfq_, quote_, authAddr_, transactionData_->getSelectedInputs()->GetSelectedTransactions(), recvXbtAddr_);
 
    connect(xbtSettlContainer_.get(), &ReqXBTSettlementContainer::settlementAccepted
       , this, &RFQDialog::onSettlementAccepted);

@@ -50,6 +50,7 @@ public:
       , const std::shared_ptr<ApplicationSettings> &appSettings
       , const std::shared_ptr<ConnectionManager> &
       , const std::shared_ptr<bs::sync::Wallet> &xbtWallet
+      , const bs::Address &recvXbtAddr
       , const bs::Address &authAddr
       , QWidget* parent = nullptr);
    ~RFQDialog() override;
@@ -89,6 +90,7 @@ private:
    std::shared_ptr<spdlog::logger>     logger_;
    const bs::network::RFQ              rfq_;
    bs::network::Quote                  quote_;
+   bs::Address recvXbtAddr_;
 
    std::shared_ptr<TransactionData>             transactionData_;
    std::shared_ptr<QuoteProvider>               quoteProvider_;

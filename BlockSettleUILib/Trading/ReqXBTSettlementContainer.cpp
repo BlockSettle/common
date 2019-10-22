@@ -32,7 +32,8 @@ ReqXBTSettlementContainer::ReqXBTSettlementContainer(const std::shared_ptr<spdlo
    , const bs::network::RFQ &rfq
    , const bs::network::Quote &quote
    , const bs::Address &authAddr
-   , const std::vector<UTXO> &utxosPayinFixed)
+   , const std::vector<UTXO> &utxosPayinFixed
+   , const bs::Address &recvAddr)
    : bs::SettlementContainer()
    , logger_(logger)
    , authAddrMgr_(authAddrMgr)
@@ -42,6 +43,7 @@ ReqXBTSettlementContainer::ReqXBTSettlementContainer(const std::shared_ptr<spdlo
    , xbtWallet_(xbtWallet)
    , rfq_(rfq)
    , quote_(quote)
+   , recvAddr_(recvAddr)
    , clientSellsXbt_(!rfq.isXbtBuy())
    , authAddr_(authAddr)
    , utxosPayinFixed_(utxosPayinFixed)
@@ -473,12 +475,14 @@ void ReqXBTSettlementContainer::onSignedPayoutRequested(const std::string& settl
       if (!handle.isValid()) {
          return;
       }
-      recvAddr_ = addr;
-
-      createPayoutTx(payinHash, amount_, recvAddr_);
+      createPayoutTx(payinHash, amount_, addr);
    };
-   // FIXME: Use recv addr from combobox
-   xbtWallet_->getNewExtAddress(recvAddressCb);
+
+   if (recvAddr_.isNull()) {
+      xbtWallet_->getNewExtAddress(recvAddressCb);
+   } else {
+      recvAddressCb(recvAddr_);
+   }
 }
 
 void ReqXBTSettlementContainer::onSignedPayinRequested(const std::string& settlementId, const BinaryData& unsignedPayin)
