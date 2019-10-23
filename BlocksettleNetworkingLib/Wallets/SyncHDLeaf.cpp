@@ -898,6 +898,9 @@ bool hd::CCLeaf::getSpendableTxOutList(const ArmoryConnection::UTXOsCb &cb, uint
    const ArmoryConnection::UTXOsCb &cbWrap = [this, cb](const std::vector<UTXO> &utxos) {
       std::vector<UTXO> filteredUTXOs;
       for (const auto &utxo : utxos) {
+         if (!isTxValid(utxo.getTxHash())) {
+            continue;
+         }
          const auto nbConf = sync::Wallet::armory_->getConfirmationsNumber(utxo.getHeight());
          if (nbConf >= kIntConfCount) {
             filteredUTXOs.emplace_back(std::move(utxo));
@@ -919,8 +922,14 @@ void hd::CCLeaf::CCWalletACT::onStateChanged(ArmoryState state)
 
 bool hd::CCLeaf::getSpendableZCList(const ArmoryConnection::UTXOsCb &cb) const
 {
-   const auto &cbZCList = [this, cb](std::vector<UTXO> txOutList) {
-      cb(txOutList);    //TODO: apply filter
+   const auto &cbZCList = [this, cb](std::vector<UTXO> utxos) {
+      std::vector<UTXO> txOutList;
+      for (const auto &utxo : utxos) {
+         if (isTxValid(utxo.getTxHash())) {
+            txOutList.emplace_back(std::move(utxo));
+         }
+      }
+      cb(txOutList);
    };
    return hd::Leaf::getSpendableZCList(cbZCList);
 }
