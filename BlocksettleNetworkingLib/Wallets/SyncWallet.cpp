@@ -851,23 +851,6 @@ bs::core::wallet::TXSignRequest Wallet::createPartialTXRequest(uint64_t spendVal
       }
    };
 
-   uint64_t recipAmount = 0;
-   for (const auto &recip : prevStateSigner.recipients()) {
-      recipAmount += recip->getValue();
-   }
-   if (!recipients.empty()) {
-      for (const auto& recipient : recipients) {
-         if (recipient == nullptr) {
-            throw std::logic_error("Invalid recipient");
-         }
-         recipAmount += recipient->getValue();
-      }
-   }
-
-   if ((recipAmount > 0) && (recipAmount != spendVal)) {    // don't check if there were no recipients
-      throw std::invalid_argument("Recipient[s] amount " + std::to_string(recipAmount)
-         + " != spend value " + std::to_string(spendVal));
-   }
    if (inputAmount < (spendVal + fee)) {
       throw std::overflow_error("Not enough inputs (" + std::to_string(inputAmount)
          + ") to spend " + std::to_string(spendVal + fee));
