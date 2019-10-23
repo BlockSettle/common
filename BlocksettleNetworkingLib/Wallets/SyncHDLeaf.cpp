@@ -854,6 +854,7 @@ void hd::CCLeaf::setCCDataResolver(const std::shared_ptr<CCDataResolver> &resolv
    assert(resolver != nullptr);
    ccResolver_ = resolver;
    setPath(path_);
+   lotSize_ = ccResolver_->lotSizeFor(suffix_);
 }
 
 void hd::CCLeaf::setCCTracker(const std::shared_ptr<ColoredCoinTracker> &tracker)
@@ -940,25 +941,23 @@ bool hd::CCLeaf::isBalanceAvailable() const
 
 BTCNumericTypes::balance_type hd::CCLeaf::getSpendableBalance() const
 {
-   if (!tracker_) {
+   if (!tracker_ || !lotSize_) {
       return -1;
    }
-   return tracker_->getConfirmedCcValueForAddresses(collectAddresses())
-      / BTCNumericTypes::BalanceDivider;
+   return tracker_->getConfirmedCcValueForAddresses(collectAddresses()) / lotSize_;
 }
 
 BTCNumericTypes::balance_type hd::CCLeaf::getUnconfirmedBalance() const
 {
-   if (!tracker_) {
+   if (!tracker_ || !lotSize_) {
       return -1;
    }
-   return tracker_->getUnconfirmedCcValueForAddresses(collectAddresses())
-      / BTCNumericTypes::BalanceDivider;
+   return tracker_->getUnconfirmedCcValueForAddresses(collectAddresses()) / lotSize_;
 }
 
 BTCNumericTypes::balance_type hd::CCLeaf::getTotalBalance() const
 {
-   if (!tracker_) {
+   if (!tracker_ || !lotSize_) {
       return -1;
    }
    return (getUnconfirmedBalance() + getSpendableBalance());
@@ -966,12 +965,12 @@ BTCNumericTypes::balance_type hd::CCLeaf::getTotalBalance() const
 
 std::vector<uint64_t> hd::CCLeaf::getAddrBalance(const bs::Address &addr) const
 {
-   if (!tracker_) {
+   if (!tracker_ || !lotSize_) {
       return {};
    }
-   const uint64_t balUnconf = tracker_->getUnconfirmedCcValueForAddresses({ addr.id() });
-   const uint64_t balSpendable = tracker_->getConfirmedCcValueForAddresses({ addr.id() });
-   return { balUnconf + balSpendable, balUnconf, balSpendable };
+   return { tracker_->getCcValueForAddress(addr.id()) / lotSize_
+      , tracker_->getUnconfirmedCcValueForAddresses({ addr.id() } ) / lotSize_
+      , tracker_->getConfirmedCcValueForAddresses({ addr.id() }) / lotSize_ };
 }
 
 bool hd::CCLeaf::isTxValid(const BinaryData &txHash) const
@@ -984,14 +983,10 @@ bool hd::CCLeaf::isTxValid(const BinaryData &txHash) const
 
 BTCNumericTypes::balance_type hd::CCLeaf::getTxBalance(int64_t val) const
 {
-   if (!ccResolver_) {
-      return 0;
-   }
-   const auto lotSize = ccResolver_->lotSizeFor(suffix_);
-   if (lotSize == 0) {
+   if (lotSize_ == 0) {
       return val / BTCNumericTypes::BalanceDivider;
    }
-   return (double)val / lotSize;
+   return (double)val / lotSize_;
 }
 
 QString hd::CCLeaf::displayTxValue(int64_t val) const

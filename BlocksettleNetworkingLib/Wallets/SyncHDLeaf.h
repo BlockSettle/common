@@ -246,6 +246,7 @@ namespace bs {
 
             std::shared_ptr<CCDataResolver>     ccResolver_;
             std::shared_ptr<ColoredCoinTracker> tracker_;
+            uint64_t lotSize_{ 0 };
          };
 
 
