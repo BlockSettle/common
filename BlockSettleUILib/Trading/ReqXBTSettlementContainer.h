@@ -17,6 +17,9 @@ namespace bs {
    namespace sync {
       class WalletsManager;
    }
+   namespace tradeutils {
+      struct Args;
+   }
 }
 class AddressVerificator;
 class ArmoryConnection;
@@ -60,9 +63,8 @@ public:
 
 
    std::string fxProduct() const { return fxProd_; }
-   bool weSell() const { return clientSellsXbt_; }
+   bool weSell() const { return weSellXbt_; }
    bool userKeyOk() const { return userKeyOk_; }
-
 
    void onUnsignedPayinRequested(const std::string& settlementId);
    void onSignedPayoutRequested(const std::string& settlementId, const BinaryData& payinHash);
@@ -74,7 +76,6 @@ signals:
    void acceptQuote(std::string reqId, std::string hexPayoutTx);
    void retry();
 
-signals:
    void sendUnsignedPayinToPB(const std::string& settlementId, const BinaryData& unsignedPayin, const BinaryData& txId);
    void sendSignedPayinToPB(const std::string& settlementId, const BinaryData& signedPayin);
    void sendSignedPayoutToPB(const std::string& settlementId, const BinaryData& signedPayout);
@@ -84,14 +85,13 @@ private slots:
    void onTimerExpired();
 
 private:
-   void createPayoutTx(const BinaryData& payinHash, double qty, const bs::Address &recvAddr);
-
    void acceptSpotXBT();
    void dealerVerifStateChanged(AddressVerificationState);
 
    void cancelWithError(const QString& errorMessage);
 
-private:
+   void initTradesArgs(bs::tradeutils::Args &args, const std::string &settlementId);
+
    std::shared_ptr<spdlog::logger>           logger_;
    std::shared_ptr<AuthAddressManager>       authAddrMgr_;
    std::shared_ptr<bs::sync::WalletsManager> walletsMgr_;
@@ -116,7 +116,7 @@ private:
    AddressVerificationState dealerVerifState_ = AddressVerificationState::VerificationFailed;
 
    std::string       comment_;
-   const bool        clientSellsXbt_;
+   const bool        weSellXbt_;
    bool              userKeyOk_ = false;
 
    unsigned int      payinSignId_ = 0;

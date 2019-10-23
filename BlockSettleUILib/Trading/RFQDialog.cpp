@@ -117,10 +117,13 @@ std::shared_ptr<bs::SettlementContainer> RFQDialog::newXBTcontainer()
       return nullptr;
    }
 
+   auto fixedInputs = transactionData_->getSelectedInputs()->UseAutoSel() ?
+      std::vector<UTXO>{} : transactionData_->getSelectedInputs()->GetSelectedTransactions();
+
    try {
       xbtSettlContainer_ = std::make_shared<ReqXBTSettlementContainer>(logger_
          , authAddressManager_, signContainer_, armory_, xbtWallet_, walletsManager_
-         , rfq_, quote_, authAddr_, transactionData_->getSelectedInputs()->GetSelectedTransactions(), recvXbtAddr_);
+         , rfq_, quote_, authAddr_, fixedInputs, recvXbtAddr_);
 
       connect(xbtSettlContainer_.get(), &ReqXBTSettlementContainer::settlementAccepted
          , this, &RFQDialog::onSettlementAccepted);
@@ -160,7 +163,8 @@ std::shared_ptr<bs::SettlementContainer> RFQDialog::newCCcontainer()
          , this, &QDialog::close);
    }
    catch (const std::exception &e) {
-      reportError(tr("Failed to create CC settlement container: %1").arg(QString::fromLatin1(e.what())));
+      reportError(tr("Failed to create CC settlement container: %1")
+         .arg(QString::fromLatin1(e.what())));
    }
 
    return ccSettlContainer_;
@@ -265,9 +269,10 @@ void RFQDialog::onSignedPayoutRequested(const std::string& settlementId, const B
    }
 
    if (signContainer_->opMode() != SignContainer::OpMode::Remote) {
-      hide();
+      // FIXME: causes failed asserts in BlockSettleUILib/DialogManager.cpp:186
+      //hide();
    }
-   
+
    xbtSettlContainer_->onSignedPayoutRequested(settlementId, payinHash);
 }
 
@@ -278,7 +283,8 @@ void RFQDialog::onSignedPayinRequested(const std::string& settlementId, const Bi
    }
 
    if (signContainer_->opMode() != SignContainer::OpMode::Remote) {
-      hide();
+      // FIXME: causes failed asserts in BlockSettleUILib/DialogManager.cpp:186
+      //hide();
    }
 
    xbtSettlContainer_->onSignedPayinRequested(settlementId, unsignedPayin);
