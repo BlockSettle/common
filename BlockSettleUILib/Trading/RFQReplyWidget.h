@@ -117,8 +117,6 @@ private:
       std::shared_ptr<bs::sync::Wallet> xbtWallet;
       bs::Address authAddr;
       std::vector<UTXO> utxosPayinFixed;
-      // If empty new ext. address would be created in xbtWallet
-      bs::Address recvXbtAddr;
    };
 
    struct SentCCReply

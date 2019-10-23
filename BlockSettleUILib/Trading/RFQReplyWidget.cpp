@@ -208,6 +208,7 @@ void RFQReplyWidget::onReplied(bs::network::QuoteNotification qn)
       auto &reply = sentXbtReplies_[qn.settlementId];
       reply.xbtWallet = ui_->pageRFQReply->getSelectedXbtWallet();
       reply.authAddr = ui_->pageRFQReply->selectedAuthAddress();
+      reply.utxosPayinFixed = ui_->pageRFQReply->selectedXbtInputs();
    } else if (qn.assetType == bs::network::Asset::PrivateMarket) {
       const auto &txData = ui_->pageRFQReply->getTransactionData(qn.quoteRequestId);
       sentCCReplies_[qn.quoteRequestId] = SentCCReply{qn.receiptAddress, txData, qn.reqAuthKey};
@@ -257,9 +258,11 @@ void RFQReplyWidget::onOrder(const bs::network::Order &order)
          }
          try {
             const auto &reply = it->second;
+            // Dealers can't select receiving address, use new
+            const auto recvXbtAddr = bs::Address();
             const auto settlContainer = std::make_shared<DealerXBTSettlementContainer>(logger_, order
                , walletsManager_, reply.xbtWallet, quoteProvider_, signingContainer_, armory_, authAddressManager_
-               , reply.authAddr, reply.utxosPayinFixed, reply.recvXbtAddr);
+               , reply.authAddr, reply.utxosPayinFixed, recvXbtAddr);
 
             connect(settlContainer.get(), &bs::SettlementContainer::readyToAccept, this, &RFQReplyWidget::onReadyToAutoSign);
 

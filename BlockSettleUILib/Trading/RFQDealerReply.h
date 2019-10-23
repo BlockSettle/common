@@ -87,6 +87,7 @@ namespace bs {
 
          std::shared_ptr<bs::sync::Wallet> getSelectedXbtWallet() const;
          bs::Address selectedAuthAddress() const;
+         std::vector<UTXO> selectedXbtInputs() const;
 
       signals:
          void submitQuoteNotif(network::QuoteNotification);

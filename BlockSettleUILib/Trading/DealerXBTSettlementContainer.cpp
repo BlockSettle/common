@@ -41,6 +41,7 @@ DealerXBTSettlementContainer::DealerXBTSettlementContainer(const std::shared_ptr
    , xbtWallet_(xbtWallet)
    , signContainer_(container)
    , authAddrMgr_(authAddrMgr)
+   , utxosPayinFixed_(utxosPayinFixed)
    , recvAddr_(recvAddr)
    , authAddr_(authAddr)
 {

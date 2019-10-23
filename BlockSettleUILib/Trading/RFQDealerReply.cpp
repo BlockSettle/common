@@ -567,6 +567,14 @@ bs::Address RFQDealerReply::selectedAuthAddress() const
    return authAddr_;
 }
 
+std::vector<UTXO> RFQDealerReply::selectedXbtInputs() const
+{
+   if (!transactionData_ || transactionData_->getSelectedInputs()->UseAutoSel()) {
+      return {};
+   }
+   return transactionData_->getSelectedInputs()->GetSelectedTransactions();
+}
+
 void RFQDealerReply::submitReply(const std::shared_ptr<TransactionData> transData
    , const bs::network::QuoteReqNotification &qrn, double price
    , std::function<void(bs::network::QuoteNotification)> cb
