@@ -208,13 +208,46 @@ void ReqXBTSettlementContainer::initTradesArgs(bs::tradeutils::Args &args, const
 void ReqXBTSettlementContainer::onTXSigned(unsigned int id, BinaryData signedTX
    , bs::error::ErrorCode errCode, std::string errTxt)
 {
+   if ((payoutSignId_ != 0) && (payoutSignId_ == id)) {
+      payoutSignId_ = 0;
+
+      if ((errCode != bs::error::ErrorCode::NoError) || signedTX.isNull()) {
+         logger_->warn("[ReqXBTSettlementContainer::onTXSigned] Pay-Out sign failure: {} ({})"
+            , (int)errCode, errTxt);
+         cancelWithError(tr("Pay-Out signing failed: %1").arg(QString::fromStdString(errTxt)));
+         return;
+      }
+
+      SPDLOG_LOGGER_DEBUG(logger_, "signed payout: {}", signedTX.toHexStr());
+
+      bs::tradeutils::PayoutVerifyArgs verifyArgs;
+      verifyArgs.signedTx = signedTX;
+      verifyArgs.settlAddr = settlAddr_;
+      verifyArgs.usedPayinHash = usedPayinHash_;
+      verifyArgs.amount = bs::XBTAmount(amount_);
+      auto verifyResult = bs::tradeutils::verifySignedPayout(verifyArgs);
+      if (!verifyResult.success) {
+         SPDLOG_LOGGER_ERROR(logger_, "payout verification failed: {}", verifyResult.errorMsg);
+         cancelWithError(tr("payin verification failed"));
+         return;
+      }
+
+      emit sendSignedPayoutToPB(settlementIdHex_, signedTX);
+
+      xbtWallet_->setTransactionComment(signedTX, comment_);
+//         walletsMgr_->getSettlementWallet()->setTransactionComment(payoutData_, comment_); //TODO: later
+
+      // OK. if payout created - settletlement accepted for this RFQ
+      deactivate();
+      emit settlementAccepted();
+   }
+
    if ((payinSignId_ != 0) && (payinSignId_ == id)) {
       payinSignId_ = 0;
 
       if ((errCode != bs::error::ErrorCode::NoError) || signedTX.isNull()) {
+         SPDLOG_LOGGER_ERROR(logger_, "failed to create pay-in TX: {} ({})", static_cast<int>(errCode), errTxt);
          cancelWithError(tr("Failed to create Pay-In TX - re-type password and try again"));
-         logger_->error("[ReqXBTSettlementContainer::onTXSigned] Failed to create pay-in TX: {} ({})"
-            , (int)errCode, errTxt);
          return;
       }
 
@@ -227,61 +260,6 @@ void ReqXBTSettlementContainer::onTXSigned(unsigned int id, BinaryData signedTX
       deactivate();
       emit settlementAccepted();
 
-   } else if (payoutSignId_ != 0 && (payoutSignId_ == id)) {
-      payoutSignId_ = 0;
-
-      if ((errCode != bs::error::ErrorCode::NoError) || signedTX.isNull()) {
-         logger_->warn("[ReqXBTSettlementContainer::onTXSigned] Pay-Out sign failure: {} ({})"
-            , (int)errCode, errTxt);
-         cancelWithError(tr("Pay-Out signing failed: %1").arg(QString::fromStdString(errTxt)));
-         return;
-      }
-
-      logger_->debug("[ReqXBTSettlementContainer::onTXSigned] signed payout: {}"
-                     , signedTX.toHexStr());
-
-      try {
-         Tx tx{signedTX};
-
-         auto txdata = tx.serialize();
-         auto bctx = BCTX::parse(txdata);
-
-         auto utxo = bs::SettlementMonitor::getInputFromTX(settlAddr_, usedPayinHash_, bs::XBTAmount{ amount_ });
-
-         std::map<BinaryData, std::map<unsigned, UTXO>> utxoMap;
-         utxoMap[utxo.getTxHash()][0] = utxo;
-
-         TransactionVerifier tsv(*bctx, utxoMap);
-
-         auto tsvFlags = tsv.getFlags();
-         tsvFlags |= SCRIPT_VERIFY_P2SH_SHA256 | SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_SEGWIT;
-         tsv.setFlags(tsvFlags);
-
-         auto verifierState = tsv.evaluateState();
-
-         auto inputState = verifierState.getSignedStateForInput(0);
-
-         auto signatureCount = inputState.getSigCount();
-
-         if (signatureCount != 1) {
-            logger_->error("[ReqXBTSettlementContainer::onTXSigned] signature count: {}", signatureCount);
-            cancelWithError(tr("Failed to sign Pay-out"));
-            return;
-         }
-      } catch (...) {
-         logger_->error("[ReqXBTSettlementContainer::onTXSigned] failed to deserialize signed payout");
-         cancelWithError(tr("Failed to sign Pay-out"));
-         return;
-      }
-
-      emit sendSignedPayoutToPB(settlementIdHex_, signedTX);
-
-      xbtWallet_->setTransactionComment(signedTX, comment_);
-//         walletsMgr_->getSettlementWallet()->setTransactionComment(payoutData_, comment_); //TODO: later
-
-      // OK. if payout created - settletlement accepted for this RFQ
-      deactivate();
-      emit settlementAccepted();
    }
 }
 

@@ -174,9 +174,22 @@ void DealerXBTSettlementContainer::onTXSigned(unsigned int id, BinaryData signed
 {
    if (payoutSignId_ && (payoutSignId_ == id)) {
       payoutSignId_ = 0;
+
       if ((errCode != bs::error::ErrorCode::NoError) || signedTX.isNull()) {
          SPDLOG_LOGGER_ERROR(logger_, "failed to sign pay-out: {} ({})", int(errCode), errMsg);
          failWithErrorText(tr("Failed to sign pay-out"));
+         return;
+      }
+
+      bs::tradeutils::PayoutVerifyArgs verifyArgs;
+      verifyArgs.signedTx = signedTX;
+      verifyArgs.settlAddr = settlAddr_;
+      verifyArgs.usedPayinHash = usedPayinHash_;
+      verifyArgs.amount = bs::XBTAmount(amount_);
+      auto verifyResult = bs::tradeutils::verifySignedPayout(verifyArgs);
+      if (!verifyResult.success) {
+         SPDLOG_LOGGER_ERROR(logger_, "payout verification failed: {}", verifyResult.errorMsg);
+         failWithErrorText(tr("payin verification failed"));
          return;
       }
 
@@ -185,47 +198,15 @@ void DealerXBTSettlementContainer::onTXSigned(unsigned int id, BinaryData signed
 
       SPDLOG_LOGGER_DEBUG(logger_, "signed payout: {}", signedTX.toHexStr());
 
-      try {
-         Tx tx{signedTX};
-
-         auto txdata = tx.serialize();
-         auto bctx = BCTX::parse(txdata);
-
-         auto utxo = bs::SettlementMonitor::getInputFromTX(settlAddr_, usedPayinHash_, bs::XBTAmount{ amount_ });
-
-         std::map<BinaryData, std::map<unsigned, UTXO>> utxoMap;
-         utxoMap[utxo.getTxHash()][0] = utxo;
-
-         TransactionVerifier tsv(*bctx, utxoMap);
-
-         auto tsvFlags = tsv.getFlags();
-         tsvFlags |= SCRIPT_VERIFY_P2SH_SHA256 | SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_SEGWIT;
-         tsv.setFlags(tsvFlags);
-
-         auto verifierState = tsv.evaluateState();
-
-         auto inputState = verifierState.getSignedStateForInput(0);
-
-         auto signatureCount = inputState.getSigCount();
-
-         if (signatureCount != 1) {
-            logger_->error("[DealerXBTSettlementContainer::onTXSigned] signature count: {}", signatureCount);
-            failWithErrorText(tr("Failed to sign Pay-out"));
-            return;
-         }
-      } catch (...) {
-         logger_->error("[DealerXBTSettlementContainer::onTXSigned] failed to deserialize signed payout");
-         failWithErrorText(tr("Failed to sign Pay-out"));
-         return;
-      }
-
       emit sendSignedPayoutToPB(settlementIdHex_, signedTX);
 
       // ok. there is nothing this container could/should do
       emit completed();
    }
 
-   if (payinSignId_ && (payinSignId_ == id)) {
+   if ((payinSignId_ != 0) && (payinSignId_ == id)) {
+      payinSignId_ = 0;
+
       if ((errCode != bs::error::ErrorCode::NoError) || signedTX.isNull()) {
          SPDLOG_LOGGER_ERROR(logger_, "Failed to sign pay-in: {} ({})", (int)errCode, errMsg);
          failWithErrorText(tr("Failed to sign Pay-in"));
