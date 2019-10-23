@@ -44,7 +44,7 @@ ReqXBTSettlementContainer::ReqXBTSettlementContainer(const std::shared_ptr<spdlo
    , rfq_(rfq)
    , quote_(quote)
    , recvAddr_(recvAddr)
-   , clientSellsXbt_(!rfq.isXbtBuy())
+   , sellXbt_(!rfq.isXbtBuy())
    , authAddr_(authAddr)
    , utxosPayinFixed_(utxosPayinFixed)
 {
@@ -70,7 +70,7 @@ ReqXBTSettlementContainer::ReqXBTSettlementContainer(const std::shared_ptr<spdlo
 
 ReqXBTSettlementContainer::~ReqXBTSettlementContainer()
 {
-   if (clientSellsXbt_) {
+   if (sellXbt_) {
       utxoAdapter_->unreserve(id());
    }
    bs::UtxoReservation::delAdapter(utxoAdapter_);
@@ -194,17 +194,6 @@ void ReqXBTSettlementContainer::cancelWithError(const QString& errorMessage)
    cancel();
 }
 
-void ReqXBTSettlementContainer::initTradesArgs(bs::tradeutils::Args &args, const std::string &settlementId)
-{
-   args.amount = bs::XBTAmount{amount_};
-   args.settlementId = BinaryData::CreateFromHex(settlementId);
-   args.ourAuthAddress = authAddr_;
-   args.cpAuthPubKey = dealerAuthKey_;
-   args.walletsMgr = walletsMgr_;
-   args.armory = armory_;
-   args.signContainer = signContainer_;
-}
-
 void ReqXBTSettlementContainer::onTXSigned(unsigned int id, BinaryData signedTX
    , bs::error::ErrorCode errCode, std::string errTxt)
 {
@@ -270,7 +259,7 @@ void ReqXBTSettlementContainer::onUnsignedPayinRequested(const std::string& sett
       return;
    }
 
-   if (!clientSellsXbt_) {
+   if (!sellXbt_) {
       SPDLOG_LOGGER_ERROR(logger_, "customer buy on thq rfq {}. should not create unsigned payin"
          , settlementId);
       return;
@@ -381,7 +370,7 @@ void ReqXBTSettlementContainer::onSignedPayinRequested(const std::string& settle
       return;
    }
 
-   if (!clientSellsXbt_) {
+   if (!sellXbt_) {
       SPDLOG_LOGGER_ERROR(logger_, "customer buy on thq rfq {}. should not sign payin", settlementId);
       return;
    }
@@ -399,4 +388,15 @@ void ReqXBTSettlementContainer::onSignedPayinRequested(const std::string& settle
    dlgData.setValue(PasswordDialogData::SettlementPayInVisible, true);
 
    payinSignId_ = signContainer_->signSettlementTXRequest(unsignedPayinRequest_, dlgData);
+}
+
+void ReqXBTSettlementContainer::initTradesArgs(bs::tradeutils::Args &args, const std::string &settlementId)
+{
+   args.amount = bs::XBTAmount{amount_};
+   args.settlementId = BinaryData::CreateFromHex(settlementId);
+   args.ourAuthAddress = authAddr_;
+   args.cpAuthPubKey = dealerAuthKey_;
+   args.walletsMgr = walletsMgr_;
+   args.armory = armory_;
+   args.signContainer = signContainer_;
 }

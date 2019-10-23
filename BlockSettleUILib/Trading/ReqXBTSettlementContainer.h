@@ -63,7 +63,7 @@ public:
 
 
    std::string fxProduct() const { return fxProd_; }
-   bool weSell() const { return clientSellsXbt_; }
+   bool weSell() const { return sellXbt_; }
    bool userKeyOk() const { return userKeyOk_; }
 
    void onUnsignedPayinRequested(const std::string& settlementId);
@@ -116,7 +116,7 @@ private:
    AddressVerificationState dealerVerifState_ = AddressVerificationState::VerificationFailed;
 
    std::string       comment_;
-   const bool        clientSellsXbt_;
+   const bool        sellXbt_;
    bool              userKeyOk_ = false;
 
    unsigned int      payinSignId_ = 0;

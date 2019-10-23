@@ -82,7 +82,7 @@ private:
 
    const bs::network::Order   order_;
    std::string    fxProd_;
-   const bool     weSell_;
+   const bool     sellXbt_;
    std::string    comment_;
    const double   amount_;
 
