@@ -548,7 +548,7 @@ std::set<BinaryData> ColoredCoinTracker::update()
    }
 
    //track changeset for relevant addresses
-   auto &addrSet = collectOriginAddresses();
+   auto &&addrSet = collectOriginAddresses();
 
    const auto &revokeAddrs = collectRevokeAddresses();
    addrSet.insert(revokeAddrs.cbegin(), revokeAddrs.cend());
@@ -691,7 +691,7 @@ std::set<BinaryData> ColoredCoinTracker::zcUpdate()
    }
 
    //track changeset for relevant addresses
-   auto &addrSet = collectOriginAddresses();
+   auto &&addrSet = collectOriginAddresses();
 
    //current set of live user addresses
    if (currentSs != nullptr) {
