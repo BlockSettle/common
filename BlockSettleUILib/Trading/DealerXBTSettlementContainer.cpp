@@ -33,7 +33,7 @@ DealerXBTSettlementContainer::DealerXBTSettlementContainer(const std::shared_ptr
    , const bs::Address &recvAddr)
    : bs::SettlementContainer()
    , order_(order)
-   , sellXbt_((order.side == bs::network::Side::Buy) != (order.product == bs::network::XbtCurrency))
+   , weSellXbt_((order.side == bs::network::Side::Buy) != (order.product == bs::network::XbtCurrency))
    , amount_((order.product != bs::network::XbtCurrency) ? order.quantity / order.price : order.quantity)
    , logger_(logger)
    , armory_(armory)
@@ -77,7 +77,7 @@ DealerXBTSettlementContainer::DealerXBTSettlementContainer(const std::shared_ptr
 
 DealerXBTSettlementContainer::~DealerXBTSettlementContainer()
 {
-   if (sellXbt_) {
+   if (weSellXbt_) {
       utxoAdapter_->unreserve(id());
    }
    bs::UtxoReservation::delAdapter(utxoAdapter_);
@@ -238,7 +238,7 @@ void DealerXBTSettlementContainer::onUnsignedPayinRequested(const std::string& s
       return;
    }
 
-   if (!sellXbt_) {
+   if (!weSellXbt_) {
       SPDLOG_LOGGER_ERROR(logger_, "dealer is buying. Should not create unsigned payin on {}", settlementIdHex_);
       return;
    }
@@ -285,7 +285,7 @@ void DealerXBTSettlementContainer::onSignedPayoutRequested(const std::string& se
       return;
    }
 
-   if (sellXbt_) {
+   if (weSellXbt_) {
       SPDLOG_LOGGER_ERROR(logger_, "dealer is selling. Should not sign payout on {}", settlementIdHex_);
       return;
    }
@@ -335,7 +335,7 @@ void DealerXBTSettlementContainer::onSignedPayinRequested(const std::string& set
 
    SPDLOG_LOGGER_DEBUG(logger_, "start sign payin: {}", settlementId);
 
-   if (!sellXbt_) {
+   if (!weSellXbt_) {
       SPDLOG_LOGGER_ERROR(logger_, "dealer is buying. Should not sign payin on {}", settlementIdHex_);
       return;
    }

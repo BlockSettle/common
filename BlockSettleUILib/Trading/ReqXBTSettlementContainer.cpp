@@ -44,7 +44,7 @@ ReqXBTSettlementContainer::ReqXBTSettlementContainer(const std::shared_ptr<spdlo
    , rfq_(rfq)
    , quote_(quote)
    , recvAddr_(recvAddr)
-   , sellXbt_(!rfq.isXbtBuy())
+   , weSellXbt_(!rfq.isXbtBuy())
    , authAddr_(authAddr)
    , utxosPayinFixed_(utxosPayinFixed)
 {
@@ -70,7 +70,7 @@ ReqXBTSettlementContainer::ReqXBTSettlementContainer(const std::shared_ptr<spdlo
 
 ReqXBTSettlementContainer::~ReqXBTSettlementContainer()
 {
-   if (sellXbt_) {
+   if (weSellXbt_) {
       utxoAdapter_->unreserve(id());
    }
    bs::UtxoReservation::delAdapter(utxoAdapter_);
@@ -259,7 +259,7 @@ void ReqXBTSettlementContainer::onUnsignedPayinRequested(const std::string& sett
       return;
    }
 
-   if (!sellXbt_) {
+   if (!weSellXbt_) {
       SPDLOG_LOGGER_ERROR(logger_, "customer buy on thq rfq {}. should not create unsigned payin"
          , settlementId);
       return;
@@ -370,7 +370,7 @@ void ReqXBTSettlementContainer::onSignedPayinRequested(const std::string& settle
       return;
    }
 
-   if (!sellXbt_) {
+   if (!weSellXbt_) {
       SPDLOG_LOGGER_ERROR(logger_, "customer buy on thq rfq {}. should not sign payin", settlementId);
       return;
    }
