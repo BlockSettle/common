@@ -916,6 +916,20 @@ std::vector<std::shared_ptr<CcOutpoint>> ColoredCoinTracker::getSpendableOutpoin
    return getSpendableOutpointsForAddress(ssPtr, zcPtr, scrAddr, false);
 }
 
+bool ColoredCoinTracker::isTxHashExist(const BinaryData &txHash) const
+{
+   const auto ssPtr = snapshot();
+   if (ssPtr->utxoSet_.find(txHash) != ssPtr->utxoSet_.end()) {
+      return true;
+   }
+
+   const auto zcPtr = zcSnapshot();
+   if (zcPtr->utxoSet_.find(txHash) != zcPtr->utxoSet_.end()) {
+      return true;
+   }
+   return false;
+}
+
 //// 
 void ColoredCoinTracker::eraseScrAddrOp(
    const std::shared_ptr<ColoredCoinSnapshot> &ssPtr

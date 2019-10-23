@@ -345,6 +345,8 @@ public:
    std::vector<std::shared_ptr<CcOutpoint>> getSpendableOutpointsForAddress(
       const BinaryData&) const;
 
+   bool isTxHashExist(const BinaryData &) const;
+
    //in: set of prefixed addresses
    uint64_t getUnconfirmedCcValueForAddresses(const std::set<BinaryData>&) const;
    uint64_t getConfirmedCcValueForAddresses(const std::set<BinaryData>&) const;
