@@ -510,6 +510,24 @@ void ColoredCoinTracker::processRevocationBatch(
    }
 }
 
+std::set<BinaryData> ColoredCoinTracker::collectOriginAddresses() const
+{
+   std::set<BinaryData> addrSet;
+   for (const auto &origAddr : originAddresses_) {
+      addrSet.insert(origAddr.prefixed());
+   }
+   return addrSet;
+}
+
+std::set<BinaryData> ColoredCoinTracker::collectRevokeAddresses() const
+{
+   std::set<BinaryData> addrSet;
+   for (const auto &revokeAddr : revocationAddresses_) {
+      addrSet.insert(revokeAddr.prefixed());
+   }
+   return addrSet;
+}
+
 ////
 std::set<BinaryData> ColoredCoinTracker::update()
 {
@@ -530,19 +548,14 @@ std::set<BinaryData> ColoredCoinTracker::update()
    }
 
    //track changeset for relevant addresses
-   std::set<BinaryData> addrSet;
+   auto &addrSet = collectOriginAddresses();
 
-   //origin addresses
-   for (const auto &origAddr : originAddresses_) {
-      addrSet.insert(origAddr.prefixed());
-   }
+   const auto &revokeAddrs = collectRevokeAddresses();
+   addrSet.insert(revokeAddrs.cbegin(), revokeAddrs.cend());
+
    //current set of live user addresses
    for (auto& addrRef : ssPtr->scrAddrCcSet_) {
       addrSet.insert(addrRef.first);
-   }
-   //revocation addresses
-   for (const auto &revokeAddr : revocationAddresses_) {
-      addrSet.insert(revokeAddr.prefixed());
    }
 
    auto promPtr = std::make_shared<std::promise<OutpointBatch>>();
@@ -678,12 +691,7 @@ std::set<BinaryData> ColoredCoinTracker::zcUpdate()
    }
 
    //track changeset for relevant addresses
-   std::set<BinaryData> addrSet;
-
-   //origin addresses
-   for (const auto &origAddr : originAddresses_) {
-      addrSet.insert(origAddr.prefixed());
-   }
+   auto &addrSet = collectOriginAddresses();
 
    //current set of live user addresses
    if (currentSs != nullptr) {

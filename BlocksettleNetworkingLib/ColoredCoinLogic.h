@@ -294,6 +294,8 @@ private:
       const std::shared_ptr<ColoredCoinZCSnapshot>&,
       const BinaryData&, bool) const;
 
+   std::set<BinaryData> collectOriginAddresses() const;
+   std::set<BinaryData> collectRevokeAddresses() const;
 
    ////
    std::shared_ptr<ColoredCoinSnapshot> snapshot(void) const;
