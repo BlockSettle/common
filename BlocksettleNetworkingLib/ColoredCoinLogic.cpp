@@ -533,14 +533,17 @@ std::set<BinaryData> ColoredCoinTracker::update()
    std::set<BinaryData> addrSet;
 
    //origin addresses
-   addrSet.insert(originAddresses_.begin(), originAddresses_.end());
-
+   for (const auto &origAddr : originAddresses_) {
+      addrSet.insert(origAddr.prefixed());
+   }
    //current set of live user addresses
    for (auto& addrRef : ssPtr->scrAddrCcSet_) {
       addrSet.insert(addrRef.first);
    }
    //revocation addresses
-   addrSet.insert(revocationAddresses_.begin(), revocationAddresses_.end());
+   for (const auto &revokeAddr : revocationAddresses_) {
+      addrSet.insert(revokeAddr.prefixed());
+   }
 
    auto promPtr = std::make_shared<std::promise<OutpointBatch>>();
    auto fut = promPtr->get_future();
@@ -678,7 +681,9 @@ std::set<BinaryData> ColoredCoinTracker::zcUpdate()
    std::set<BinaryData> addrSet;
 
    //origin addresses
-   addrSet.insert(originAddresses_.begin(), originAddresses_.end());
+   for (const auto &origAddr : originAddresses_) {
+      addrSet.insert(origAddr.prefixed());
+   }
 
    //current set of live user addresses
    if (currentSs != nullptr) {
@@ -919,12 +924,12 @@ std::vector<std::shared_ptr<CcOutpoint>> ColoredCoinTracker::getSpendableOutpoin
 bool ColoredCoinTracker::isTxHashExist(const BinaryData &txHash) const
 {
    const auto ssPtr = snapshot();
-   if (ssPtr->utxoSet_.find(txHash) != ssPtr->utxoSet_.end()) {
+   if (ssPtr && (ssPtr->utxoSet_.find(txHash) != ssPtr->utxoSet_.end())) {
       return true;
    }
 
    const auto zcPtr = zcSnapshot();
-   if (zcPtr->utxoSet_.find(txHash) != zcPtr->utxoSet_.end()) {
+   if (zcPtr && (zcPtr->utxoSet_.find(txHash) != zcPtr->utxoSet_.end())) {
       return true;
    }
    return false;
