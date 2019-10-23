@@ -321,6 +321,8 @@ void ReqXBTSettlementContainer::onUnsignedPayinRequested(const std::string& sett
             return;
          }
 
+         settlAddr_ = result.settlementAddr;
+
          const auto list = authAddrMgr_->GetVerifiedAddressList();
          const auto userAddress = bs::Address::fromPubKey(userKey_, AddressEntryType_P2WPKH);
          userKeyOk_ = (std::find(list.begin(), list.end(), userAddress) != list.end());
@@ -360,6 +362,7 @@ void ReqXBTSettlementContainer::onSignedPayoutRequested(const std::string& settl
    initTradesArgs(args, settlementId);
    args.payinTxId = payinHash;
    args.recvAddr = recvAddr_;
+   args.outputXbtWallet = xbtWallet_;
 
    auto payoutCb = bs::tradeutils::PayoutResultCb([this, payinHash, handle = validityFlag_.handle()]
       (bs::tradeutils::PayoutResult result)
@@ -374,6 +377,8 @@ void ReqXBTSettlementContainer::onSignedPayoutRequested(const std::string& settl
             cancelWithError(tr("payout failed"));
             return;
          }
+
+         settlAddr_ = result.settlementAddr;
 
          bs::sync::PasswordDialogData dlgData = toPayOutTxDetailsPasswordDialogData(result.signRequest);
          dlgData.setValue(PasswordDialogData::Market, "XBT");
