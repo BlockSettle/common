@@ -1527,7 +1527,7 @@ void OtcClient::createRequests(const std::string &settlementId, Peer *peer, cons
                            result.payinTxId = result.payin.txId(resolver);
                            auto payinUTXO = bs::SettlementMonitor::getInputFromTX(settlAddr, result.payinTxId, bs::XBTAmount{amount});
                            result.fee = int64_t(result.payin.fee);
-                           peer->sellFromOffline = false;
+                           peer->sellFromOffline = targetHdWallet->isOffline();
                            cb(std::move(result));
                         };
 
