@@ -43,6 +43,9 @@ namespace Blocksettle {
 }
 
 namespace bs {
+   namespace tradeutils {
+      struct Args;
+   }
    class Address;
    namespace core {
       namespace wallet {
@@ -104,10 +107,6 @@ public:
    const bs::network::otc::Peers &responses() { return responses_; }
    bs::network::otc::Peer *ownRequest() const;
 
-   static unsigned feeTargetBlockCount();
-
-   static uint64_t estimatePayinFeeWithoutChange(const std::vector<UTXO> &inputs, float feePerByte);
-
 public slots:
    void contactConnected(const std::string &contactId);
    void contactDisconnected(const std::string &contactId);
@@ -158,7 +157,8 @@ private:
 
    void send(bs::network::otc::Peer *peer, Blocksettle::Communication::Otc::ContactMessage &msg);
 
-   void createRequests(const std::string &settlementId, bs::network::otc::Peer *peer, const OtcClientDealCb &cb);
+   void createSellerRequest(const std::string &settlementId, bs::network::otc::Peer *peer, const OtcClientDealCb &cb);
+   void createBuyerRequest(const std::string &settlementId, bs::network::otc::Peer *peer, const OtcClientDealCb &cb);
    void sendSellerAccepts(bs::network::otc::Peer *peer);
 
    std::shared_ptr<bs::sync::hd::SettlementLeaf> findSettlementLeaf(const std::string &ourAuthAddress);
@@ -174,6 +174,8 @@ private:
    void setComments(OtcClientDeal *deal);
 
    void updatePublicLists();
+
+   void initTradesArgs(bs::tradeutils::Args &args, bs::network::otc::Peer *peer, const std::string &settlementId);
 
    std::shared_ptr<spdlog::logger> logger_;
 
