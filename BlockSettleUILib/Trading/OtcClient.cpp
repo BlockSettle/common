@@ -1436,7 +1436,6 @@ void OtcClient::createSellerRequest(const std::string &settlementId, Peer *peer,
          result.payin = std::move(payin.signRequest);
          result.payinTxId = std::move(payin.payinTxId);
          result.fee = int64_t(result.payin.fee);
-         peer->sellFromOffline = targetHdWallet->isOffline();
          cb(std::move(result));
       });
    });
