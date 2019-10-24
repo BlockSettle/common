@@ -6,7 +6,7 @@
 // buffer because, while LMDB does bump the DB map size if half the size is hit
 // within a cycle, it's possible (albeit unlikely) that expansion can occur so
 // quickly that the storage is exhausted.
-#define DBMAPSIZE 150000000
+#define DBMAPSIZE 157286400
 
 CacheFile::CacheFile(const std::string &filename, size_t nbElemLimit)
    : QObject(nullptr)
