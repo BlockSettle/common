@@ -29,7 +29,7 @@ AddressVerificator::AddressVerificator(const std::shared_ptr<spdlog::logger>& lo
    : ArmoryCallbackTarget()
    , logger_(logger)
    , validationMgr_(new ValidationAddressManager(armory))
-   , userCallback_(callback)
+   , userCallback_(std::move(callback))
    , stopExecution_(false)
 {
    startCommandQueue();
@@ -147,14 +147,6 @@ void AddressVerificator::AddCommandToQueue(ExecutionCommand&& command)
    std::unique_lock<std::mutex> locker(dataMutex_);
    commandsQueue_.emplace(std::move(command));
    dataAvailable_.notify_all();
-}
-
-void AddressVerificator::AddCommandToWaitingUpdateQueue(const std::string &key, ExecutionCommand&& command)
-{
-   FastLock locker(waitingForUpdateQueueFlag_);
-   if (waitingForUpdateQueue_.find(key) == waitingForUpdateQueue_.end()) {
-      waitingForUpdateQueue_.emplace(key, std::move(command));
-   }
 }
 
 AddressVerificator::ExecutionCommand AddressVerificator::CreateAddressValidationCommand(const bs::Address &address)

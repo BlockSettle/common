@@ -73,7 +73,6 @@ private:
    void refreshUserAddresses();
 
    void AddCommandToQueue(ExecutionCommand&& command);
-   void AddCommandToWaitingUpdateQueue(const std::string &key, ExecutionCommand&& command);
 
    ExecutionCommand CreateAddressValidationCommand(const bs::Address &address);
    ExecutionCommand CreateAddressValidationCommand(const std::shared_ptr<AddressVerificationData>& state);
@@ -89,9 +88,6 @@ private:
 
    //bsAddressList_ - list received from public bridge
    std::set<BinaryData>       bsAddressList_;
-
-   std::unordered_map<std::string, ExecutionCommand>  waitingForUpdateQueue_;
-   std::atomic_flag                 waitingForUpdateQueueFlag_ = ATOMIC_FLAG_INIT;
 
    // command queue
    std::thread                   commandQueueThread_;
