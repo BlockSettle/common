@@ -9,19 +9,10 @@
 #include <cassert>
 #include <spdlog/spdlog.h>
 
-enum class BSValidationAddressState
-{
-   NotRegistered,
-   InProgress,
-   Active,
-   Revoked,
-   Error
-};
-
 struct AddressVerificationData
 {
    bs::Address                   address;
-   AddressVerificationState      currentState;
+   AddressVerificationState      currentState{};
 };
 
 AddressVerificator::AddressVerificator(const std::shared_ptr<spdlog::logger>& logger
@@ -111,31 +102,34 @@ bool AddressVerificator::addAddress(const bs::Address &address)
       }
       return false;
    }
+   std::lock_guard<std::mutex> lock(userAddressesMutex_);
    userAddresses_.emplace(address);
    return true;
 }
 
-bool AddressVerificator::startAddressVerification()
+void AddressVerificator::startAddressVerification()
 {
-   if (bsAddressList_.empty()) {
-      logger_->error("[{}] no BS address[es] set - cannot start validation", __func__);
-      return false;
-   }
-   try {
-      if (validationMgr_->goOnline() == 0) {
-         return false;
+   assert(!bsAddressList_.empty());
+
+   AddCommandToQueue([this] {
+      try {
+         auto rc = validationMgr_->goOnline();
+         if (rc == 0) {
+            SPDLOG_LOGGER_ERROR(logger_, "goOnline failed");
+            return;
+         }
+         refreshUserAddresses();
       }
-      refreshUserAddresses();
-   }
-   catch (const std::exception &e) {
-      logger_->error("[{}] failure: {}", __func__, e.what());
-      return false;
-   }
-   return true;
+      catch (const std::exception &e) {
+         logger_->error("[{}] failure: {}", __func__, e.what());
+         return;
+      }
+   });
 }
 
 void AddressVerificator::refreshUserAddresses()
 {
+   std::lock_guard<std::mutex> lock(userAddressesMutex_);
    logger_->debug("[{}] updating {} user address[es]", __func__, userAddresses_.size());
    for (const auto &addr : userAddresses_) {
       AddCommandToQueue(CreateAddressValidationCommand(addr));

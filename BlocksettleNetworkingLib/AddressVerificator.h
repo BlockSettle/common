@@ -50,7 +50,7 @@ public:
    bool SetBSAddressList(const std::unordered_set<std::string>& addressList);
 
    bool addAddress(const bs::Address &address);
-   bool startAddressVerification();
+   void startAddressVerification();
 
    std::pair<bs::Address, UTXO> getRevokeData(const bs::Address &authAddr);
 
@@ -96,7 +96,8 @@ private:
    mutable std::mutex            dataMutex_;
    std::atomic_bool              stopExecution_;
 
-   std::set<bs::Address>   userAddresses_;
+   std::mutex                    userAddressesMutex_;
+   std::set<bs::Address>         userAddresses_;
 };
 
 #endif // __AUTH_ADDRESS_VERIFICATOR_H__
