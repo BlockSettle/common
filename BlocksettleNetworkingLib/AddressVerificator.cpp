@@ -18,9 +18,6 @@ enum class BSValidationAddressState
    Error
 };
 
-static constexpr int MaxAadressValidationErrorCount = 3;
-static constexpr int MaxBSAddressValidationErrorCount = 3;
-
 struct AddressVerificationData
 {
    bs::Address                   address;
@@ -35,23 +32,22 @@ AddressVerificator::AddressVerificator(const std::shared_ptr<spdlog::logger>& lo
    , userCallback_(callback)
    , stopExecution_(false)
 {
-   init(armory.get());
    startCommandQueue();
+   init(armory.get());
 }
 
 AddressVerificator::~AddressVerificator() noexcept
 {
-   stopCommandQueue();
    cleanup();
+   stopCommandQueue();
 }
 
-bool AddressVerificator::startCommandQueue()
+void AddressVerificator::startCommandQueue()
 {
    commandQueueThread_ = std::thread(&AddressVerificator::commandQueueThreadFunction, this);
-   return true;
 }
 
-bool AddressVerificator::stopCommandQueue()
+void AddressVerificator::stopCommandQueue()
 {
    {
       std::unique_lock<std::mutex> locker(dataMutex_);
@@ -62,7 +58,6 @@ bool AddressVerificator::stopCommandQueue()
    if (commandQueueThread_.joinable()) {
       commandQueueThread_.join();
    }
-   return true;
 }
 
 void AddressVerificator::commandQueueThreadFunction()

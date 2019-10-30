@@ -66,8 +66,8 @@ protected:
    }
 
 private:
-   bool startCommandQueue();
-   bool stopCommandQueue();
+   void startCommandQueue();
+   void stopCommandQueue();
    void commandQueueThreadFunction();
 
    void refreshUserAddresses();
