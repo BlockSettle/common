@@ -10,7 +10,6 @@
 #include <QMimeData>
 #include <QScrollBar>
 
-#include <set>
 #include <iterator>
 
 namespace {
@@ -47,21 +46,37 @@ void ChatMessagesTextEdit::setupHighlightPalette()
    setPalette(highlightPalette);
 }
 
-QString ChatMessagesTextEdit::data(const std::string& partyId, int row, const Column &column)
+Chat::MessagePtr ChatMessagesTextEdit::getMessage(const std::string& partyId, const std::string& messageId) const
+{
+   const auto it = std::find_if(messages_[partyId].begin(), messages_[partyId].end(), [messageId](const Chat::MessagePtr& msg)->bool {
+      return msg->messageId() == messageId;
+   });
+
+   if (it != messages_[partyId].end()) {
+      return *it;
+   }
+
+   return nullptr;
+}
+
+QString ChatMessagesTextEdit::data(const std::string& partyId, const std::string& messageId, const Column &column)
 {
    if (messages_[partyId].empty()) {
        return QString();
    }
 
-   return dataMessage(partyId, row, column);
+   return dataMessage(partyId, messageId, column);
 }
 
-QString ChatMessagesTextEdit::dataMessage(const std::string& partyId, int row, const ChatMessagesTextEdit::Column &column)
+QString ChatMessagesTextEdit::dataMessage(const std::string& partyId, const std::string& messageId, const ChatMessagesTextEdit::Column &column) const
 {
-   const Chat::MessagePtr message = messages_[partyId][row];
+   const auto message = getMessage(partyId, messageId);
 
-   // To avoid lookup every time for the same party_id
-   static Chat::ClientPartyPtr previousClientPartyPtr = nullptr;
+   if (!message) {
+      return QString();
+   }
+
+   Chat::ClientPartyPtr previousClientPartyPtr = nullptr;
 
    switch (column) {
       case Column::Time:
@@ -85,14 +100,13 @@ QString ChatMessagesTextEdit::dataMessage(const std::string& partyId, int row, c
          if (!previousClientPartyPtr->isGlobal()) {
             return elideUserName(previousClientPartyPtr->displayName());
          }
-         else {
-            Chat::ClientPartyPtr clientPartyPtr = partyModel_->getClientPartyById(partyId);
+         
+         const auto clientPartyPtr = partyModel_->getClientPartyById(partyId);
 
-            if (clientPartyPtr && clientPartyPtr->isPrivate()) {
-               return toHtmlUsername(clientPartyPtr->displayName(), clientPartyPtr->userHash());
-            }
-            return toHtmlUsername(senderHash, senderHash);
-         }         
+         if (clientPartyPtr && clientPartyPtr->isPrivate()) {
+            return toHtmlUsername(clientPartyPtr->displayName(), clientPartyPtr->userHash());
+         }
+         return toHtmlUsername(senderHash, senderHash);
       }
       case Column::Status:{
          return QString();
@@ -117,9 +131,10 @@ QString ChatMessagesTextEdit::dataMessage(const std::string& partyId, int row, c
    return QString();
 }
 
-QImage ChatMessagesTextEdit::statusImage(const std::string& partyId, int row)
+QImage ChatMessagesTextEdit::statusImage(const std::string& partyId, const std::string& messageId) const
 {
-   auto message = messages_[partyId][row];
+   const auto message = getMessage(partyId, messageId);
+
    if (!message) {
       return statusImageGreyUnsent_;
    }
@@ -128,9 +143,9 @@ QImage ChatMessagesTextEdit::statusImage(const std::string& partyId, int row)
       return QImage();
    }
 
-   QImage statusImage = statusImageGreyUnsent_;
+   auto statusImage = statusImageGreyUnsent_;
 
-   Chat::ClientPartyPtr clientPartyPtr = partyModel_->getClientPartyById(message->partyId());
+   const auto clientPartyPtr = partyModel_->getClientPartyById(message->partyId());
    
    if (!clientPartyPtr) {
       return QImage();
@@ -172,7 +187,7 @@ void ChatMessagesTextEdit::contextMenuEvent(QContextMenuEvent *e)
    //show contact context menu when username is right clicked in User column
    if ((textCursor_.block().blockNumber() - 1) % 5 == static_cast<int>(Column::User)) {
       if (text != ownSenderUserName) {
-         QUrl link = anchorAt(e->pos());
+         const QUrl link = anchorAt(e->pos());
          if (!link.isEmpty()) {
             text = link.path();
          }
@@ -209,7 +224,7 @@ void ChatMessagesTextEdit::contextMenuEvent(QContextMenuEvent *e)
    }
 }
 
-void ChatMessagesTextEdit::onCopyActionTriggered()
+void ChatMessagesTextEdit::onCopyActionTriggered() const
 {
    if (textCursor_.hasSelection()) {
       QApplication::clipboard()->setText(getFormattedTextFromSelection());
@@ -221,7 +236,7 @@ void ChatMessagesTextEdit::onCopyActionTriggered()
    }
 }
 
-void ChatMessagesTextEdit::onCopyLinkLocationActionTriggered()
+void ChatMessagesTextEdit::onCopyLinkLocationActionTriggered() const
 {
    QApplication::clipboard()->setText(anchor_);
 }
@@ -231,15 +246,15 @@ void ChatMessagesTextEdit::onSelectAllActionTriggered()
    this->selectAll();
 }
 
-void ChatMessagesTextEdit::onTextChanged()
+void ChatMessagesTextEdit::onTextChanged() const
 {
    verticalScrollBar()->setValue(verticalScrollBar()->maximum());
 }
 
 void ChatMessagesTextEdit::onUserUrlOpened(const QUrl &url)
 {
-   std::string userId = url.path().toStdString();
-   Chat::ClientPartyPtr clientPartyPtr = partyModel_->getStandardPartyForUsers(ownUserId_, userId);
+   const std::string userId = url.path().toStdString();
+   const Chat::ClientPartyPtr clientPartyPtr = partyModel_->getStandardPartyForUsers(ownUserId_, userId);
 
    if (!clientPartyPtr) {
       onShowRequestPartyBox(userId);
@@ -261,11 +276,11 @@ void ChatMessagesTextEdit::onUserUrlOpened(const QUrl &url)
 void ChatMessagesTextEdit::onShowRequestPartyBox(const std::string& userHash)
 {
    std::string requestUserHash = userHash;
-   
-   Chat::ClientPartyPtr clientPartyPtr = partyModel_->getStandardPartyForUsers(ownUserId_, requestUserHash);
 
-   QString requestNote = tr("You can enter initial message below:");
-   QString requestTitle = tr("Do you want to send friend request to %1 ?").arg(QString::fromStdString(requestUserHash));
+   const Chat::ClientPartyPtr clientPartyPtr = partyModel_->getStandardPartyForUsers(ownUserId_, requestUserHash);
+
+   const QString requestNote = tr("You can enter initial message below:");
+   const QString requestTitle = tr("Do you want to send friend request to %1 ?").arg(QString::fromStdString(requestUserHash));
 
    RequestPartyBox rpBox(requestTitle, requestNote);
    if (rpBox.exec() == QDialog::Accepted) {
@@ -285,16 +300,16 @@ void ChatMessagesTextEdit::onSwitchToChat(const std::string& partyId)
    if (!currentPartyId_.empty()) {
       showMessages(partyId);
       onTextChanged();
-      ClientMessagesHistory clientMessagesHistory = messages_[partyId];
+      auto clientMessagesHistory = messages_[partyId];
 
       if (clientMessagesHistory.empty()) {
          return;
       }
 
-      ClientMessagesHistory::reverse_iterator riter = clientMessagesHistory.rbegin();
+      auto riter = clientMessagesHistory.rbegin();
       for (; riter != clientMessagesHistory.rend(); ++riter)
       {
-         Chat::MessagePtr messagePtr = (*riter);
+         const auto messagePtr = (*riter);
          
          if (messagePtr->partyMessageState() == Chat::PartyMessageState::SEEN) {
             continue;
@@ -314,7 +329,8 @@ void ChatMessagesTextEdit::onLogout()
    onSwitchToChat({});
 }
 
-const Chat::MessagePtr ChatMessagesTextEdit::onMessageStatusChanged(const std::string& partyId, const std::string& message_id, const int party_message_state)
+Chat::MessagePtr ChatMessagesTextEdit::onMessageStatusChanged(const std::string& partyId, const std::string& message_id,
+                                                              const int party_message_state)
 {
    Chat::MessagePtr message = findMessage(partyId, message_id);
 
@@ -342,7 +358,7 @@ void ChatMessagesTextEdit::onSetClientPartyModel(const Chat::ClientPartyModelPtr
    partyModel_ = partyModel;
 }
 
-QString ChatMessagesTextEdit::getFormattedTextFromSelection()
+QString ChatMessagesTextEdit::getFormattedTextFromSelection() const
 {
    QString text;
    QTextDocument textDocument;
@@ -385,11 +401,9 @@ void  ChatMessagesTextEdit::onUrlActivated(const QUrl &link) {
 
 void ChatMessagesTextEdit::insertMessage(const Chat::MessagePtr& messagePtr)
 {
-   const int messageIndex = messages_[messagePtr->partyId()].size();
-
    // push new message if it doesn't exist in current chat
    auto& messagesList = messages_[messagePtr->partyId()];
-   QVector<Chat::MessagePtr>::iterator messageIt =
+   const auto messageIt =
    std::find_if(messagesList.begin(), messagesList.end(), [messagePtr](const Chat::MessagePtr& m)->bool
    {
       return m->messageId() == messagePtr->messageId();
@@ -404,7 +418,7 @@ void ChatMessagesTextEdit::insertMessage(const Chat::MessagePtr& messagePtr)
 
    messagesList.push_back(messagePtr);
    if (messagePtr->partyId() == currentPartyId_) {
-      showMessage(messagePtr->partyId(), messageIndex);
+      showMessage(messagePtr->partyId(), messagePtr->messageId());
    }
 
    if (messagePtr->partyMessageState() != Chat::PartyMessageState::SEEN
@@ -415,34 +429,45 @@ void ChatMessagesTextEdit::insertMessage(const Chat::MessagePtr& messagePtr)
    }
 }
 
-void ChatMessagesTextEdit::insertMessageInDoc(QTextCursor& cursor, const std::string& partyId, int index)
+void ChatMessagesTextEdit::insertMessageInDoc(QTextCursor& cursor, const std::string& partyId, const std::string& messageId)
 {
    cursor.beginEditBlock();
    auto* table = cursor.insertTable(1, 4, tableFormat_);
 
-   QString time = data(partyId, index, Column::Time);
+   const auto time = data(partyId, messageId, Column::Time);
    table->cellAt(0, 0).firstCursorPosition().insertHtml(time);
 
-   QImage image = statusImage(partyId, index);
+   const auto image = statusImage(partyId, messageId);
    if (!image.isNull()) {
       table->cellAt(0, 1).firstCursorPosition().insertImage(image);
    }
 
-   QString user = data(partyId, index, Column::User);
+   const auto user = data(partyId, messageId, Column::User);
    table->cellAt(0, 2).firstCursorPosition().insertHtml(user);
 
-   QString message = data(partyId, index, Column::Message);
+   const auto message = data(partyId, messageId, Column::Message);
    table->cellAt(0, 3).firstCursorPosition().insertHtml(message);
    cursor.endEditBlock();
 }
 
-void ChatMessagesTextEdit::updateMessage(const std::string& partyId, int index)
+void ChatMessagesTextEdit::updateMessage(const std::string& partyId, const std::string& messageId)
 {
-   QTextCursor cursor = deleteMessage(index);
-   insertMessageInDoc(cursor, partyId, index);
+   ClientMessagesHistory messagesList = messages_[partyId];
+   const ClientMessagesHistory::iterator it =
+      std::find_if(messagesList.begin(), messagesList.end(), [messageId](const Chat::MessagePtr& m)->bool
+   {
+      return m->messageId() == messageId;
+   });
+
+   if (it != messagesList.end())
+   {
+      const int distance = std::distance(messagesList.begin(), it);
+      auto cursor = deleteMessage(distance);
+      insertMessageInDoc(cursor, partyId, messageId);
+   }
 }
 
-QTextCursor ChatMessagesTextEdit::deleteMessage(int index)
+QTextCursor ChatMessagesTextEdit::deleteMessage(const int index) const
 {
    QTextCursor cursor = textCursor();
    cursor.movePosition(QTextCursor::Start);
@@ -453,24 +478,24 @@ QTextCursor ChatMessagesTextEdit::deleteMessage(int index)
    return cursor;
 }
 
-QString ChatMessagesTextEdit::elideUserName(const std::string& displayName)
+QString ChatMessagesTextEdit::elideUserName(const std::string& displayName) const
 {
    return fontMetrics().elidedText(QString::fromStdString(displayName), Qt::ElideRight, userColumnWidth_);
 }
 
-void ChatMessagesTextEdit::showMessage(const std::string& partyId, int messageIndex)
+void ChatMessagesTextEdit::showMessage(const std::string& partyId, const std::string& messageId)
 {
    /* add text */
    QTextCursor cursor = textCursor();
    cursor.movePosition(QTextCursor::End);
 
-   insertMessageInDoc(cursor, partyId, messageIndex);
+   insertMessageInDoc(cursor, partyId, messageId);
 }
 
 void ChatMessagesTextEdit::showMessages(const std::string &partyId)
 {
-   for (int iMessage = 0; iMessage < messages_[partyId].size(); ++iMessage) {
-      showMessage(partyId, iMessage);
+   for (const auto& message : messages_[partyId]) {
+      showMessage(partyId, message->messageId());
    }
 }
 
@@ -516,22 +541,22 @@ void ChatMessagesTextEdit::onMessageUpdate(const Chat::MessagePtrList& messagePt
 
 void ChatMessagesTextEdit::onUpdatePartyName(const std::string& partyId)
 {
-   ClientMessagesHistory messageHistory = messages_[currentPartyId_];
+   const auto messageHistory = messages_[currentPartyId_];
    
-   for (int index = 0; index < messageHistory.size(); ++index) {
-      Chat::MessagePtr messagePtr = messageHistory.at(index);
+   for (const auto& messagePtr : messageHistory)
+   {
       if (messagePtr->partyId() != partyId) {
          continue;
       }
 
-      updateMessage(partyId, index);
+      updateMessage(partyId, messagePtr->messageId());
    }
 }
 
 Chat::MessagePtr ChatMessagesTextEdit::findMessage(const std::string& partyId, const std::string& messageId)
 {
    if (messages_.contains(partyId)) {
-      auto it = std::find_if(messages_[partyId].begin(), messages_[partyId].end(), [messageId](Chat::MessagePtr message) {
+      const auto it = std::find_if(messages_[partyId].begin(), messages_[partyId].end(), [messageId](const Chat::MessagePtr& message) {
          return message->messageId() == messageId;
       });
 
@@ -543,7 +568,7 @@ Chat::MessagePtr ChatMessagesTextEdit::findMessage(const std::string& partyId, c
    return {};
 }
 
-void ChatMessagesTextEdit::notifyMessageChanged(Chat::MessagePtr message)
+void ChatMessagesTextEdit::notifyMessageChanged(const Chat::MessagePtr& message)
 {
    const std::string& partyId = message->partyId();
    if (partyId != currentPartyId_) {
@@ -553,19 +578,17 @@ void ChatMessagesTextEdit::notifyMessageChanged(Chat::MessagePtr message)
 
    if (messages_.contains(partyId)) {
       const std::string& id = message->messageId();
-      auto it = std::find_if(messages_[partyId].begin(), messages_[partyId].end(), [id](Chat::MessagePtr iteration) {
+      const auto it = std::find_if(messages_[partyId].begin(), messages_[partyId].end(), [id](const Chat::MessagePtr& iteration) {
          return iteration->messageId() == id;
       });
 
       if (it != messages_[partyId].end()) {
-         int distance = static_cast<int>(std::distance(messages_[partyId].begin(), it));
-        
-         updateMessage(partyId, distance);
+         updateMessage(partyId, (*it)->messageId());
       }
    }
 }
 
-QString ChatMessagesTextEdit::toHtmlUsername(const std::string& username, const std::string& userId)
+QString ChatMessagesTextEdit::toHtmlUsername(const std::string& username, const std::string& userId) const
 {
    return QStringLiteral("<a href=\"user:%1\" style=\"color:%2\">%3</a>")
       .arg(QString::fromStdString(userId))
@@ -573,15 +596,15 @@ QString ChatMessagesTextEdit::toHtmlUsername(const std::string& username, const 
       .arg(elideUserName(username));
 }
 
-QString ChatMessagesTextEdit::toHtmlInvalid(const QString &text)
+QString ChatMessagesTextEdit::toHtmlInvalid(const QString &text) const
 {
    QString changedText = QStringLiteral("<font color=\"%1\">%2</font>").arg(internalStyle_.colorRed().name()).arg(text);
    return changedText;
 }
 
-QString ChatMessagesTextEdit::toHtmlText(const QString &text)
+QString ChatMessagesTextEdit::toHtmlText(const QString &text) const
 {
-   auto otcText = OtcUtils::toReadableString(text);
+   const auto otcText = OtcUtils::toReadableString(text);
    if (!otcText.isEmpty()) {
       // No further processing is needed
       return QStringLiteral("<font color=\"%1\">*** %2 ***</font>").arg(internalStyle_.colorOtc().name()).arg(otcText);

@@ -795,7 +795,8 @@ bool WalletsManager::getTransactionDirection(Tx tx, const std::string &walletId
 
       for (size_t i = 0; i < tx.getNumTxOut(); ++i) {
          TxOut out = tx.getTxOutCopy((int)i);
-         const auto addrWallet = getWalletByAddress(out.getScrAddressStr());
+         const auto addrObj = bs::Address::fromHash(out.getScrAddressStr());
+         const auto addrWallet = getWalletByAddress(addrObj);
          const auto addrGroup = addrWallet ? getGroupByWalletId(addrWallet->walletId()) : nullptr;
          (((addrWallet == wallet) || (group && (group == addrGroup))) ? ourOuts : otherOuts) = true;
          if (addrWallet && (addrWallet->type() == bs::core::wallet::Type::ColorCoin)) {
@@ -1191,6 +1192,7 @@ void WalletsManager::goOnline()
             logger_->error("[WalletsManager::goOnline] failed for {}", ccTracker.first);
          }
       }
+      QMetaObject::invokeMethod(this, &WalletsManager::walletsReady);
    }).detach();
 }
 
@@ -1198,7 +1200,7 @@ void WalletsManager::onCCSecurityInfo(QString ccProd, QString ccDesc, unsigned l
 {
    const auto &cc = ccProd.toStdString();
    logger_->debug("[{}] received info for {}", __func__, cc);
-   const bs::Address genAddr(genesisAddr.toStdString());
+   const auto genAddr = bs::Address::fromAddressString(genesisAddr.toStdString());
    ccResolver_->addData(cc, nbSatoshis, genAddr, ccDesc.toStdString());
 }
 

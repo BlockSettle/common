@@ -63,7 +63,7 @@ bs::sync::PasswordDialogData ReqCCSettlementContainer::toPasswordDialogData() co
    bs::sync::PasswordDialogData dialogData = SettlementContainer::toPasswordDialogData();
    dialogData.setValue(PasswordDialogData::Market, "CC");
    dialogData.setValue(PasswordDialogData::AutoSignCategory, static_cast<int>(bs::signer::AutoSignCategory::SettlementRequestor));
-   dialogData.setValue(PasswordDialogData::LotSize, qint64(lotSize_));
+   dialogData.setValue(PasswordDialogData::LotSize, static_cast<int>(lotSize_));
 
    if (side() == bs::network::Side::Sell) {
       dialogData.setValue(PasswordDialogData::Title, tr("Settlement Delivery"));
@@ -113,7 +113,7 @@ void ReqCCSettlementContainer::activate()
          throw std::runtime_error("invalid lot size");
       }
       signer_.deserializeState(dealerTx_);
-      foundRecipAddr = signer_.findRecipAddress(bs::Address(rfq_.receiptAddress)
+      foundRecipAddr = signer_.findRecipAddress(bs::Address::fromAddressString(rfq_.receiptAddress)
          , [this, &amountValid](uint64_t value, uint64_t valReturn, uint64_t valInput) {
          if ((quote_.side == bs::network::Side::Sell) && qFuzzyCompare(quantity(), value / lotSize_)) {
             amountValid = valInput == (value + valReturn);
@@ -176,7 +176,7 @@ bool ReqCCSettlementContainer::createCCUnsignedTXdata()
       logger_->debug("[{}] sell amount={}, spend value = {}", __func__, quantity(), spendVal);
       ccTxData_.walletIds = { wallet->walletId() };
       ccTxData_.prevStates = { dealerTx_ };
-      const auto recipient = bs::Address(dealerAddress_).getRecipient(bs::XBTAmount{ spendVal });
+      const auto recipient = bs::Address::fromAddressString(dealerAddress_).getRecipient(bs::XBTAmount{ spendVal });
       if (recipient) {
          ccTxData_.recipients.push_back(recipient);
       }
@@ -185,8 +185,8 @@ bool ReqCCSettlementContainer::createCCUnsignedTXdata()
             , __func__, dealerAddress_, spendVal);
          return false;
       }
-      ccTxData_.outSortOrder = {bs::core::wallet::OutputOrderType::Change
-         , bs::core::wallet::OutputOrderType::PrevState, bs::core::wallet::OutputOrderType::Recipients };
+      ccTxData_.outSortOrder = {bs::core::wallet::OutputOrderType::Recipients
+         , bs::core::wallet::OutputOrderType::PrevState, bs::core::wallet::OutputOrderType::Change };
       ccTxData_.populateUTXOs = true;
       ccTxData_.inputs = utxoAdapter_->get(id());
       logger_->debug("[{}] {} CC inputs reserved ({} recipients)"
@@ -200,7 +200,7 @@ bool ReqCCSettlementContainer::createCCUnsignedTXdata()
          const uint64_t spendVal = amount() * BTCNumericTypes::BalanceDivider;
          const auto &cbTxOutList = [this, feePerByte, spendVal](std::vector<UTXO> utxos) {
             try {
-               const auto recipient = bs::Address(dealerAddress_).getRecipient(bs::XBTAmount{ spendVal });
+               const auto recipient = bs::Address::fromAddressString(dealerAddress_).getRecipient(bs::XBTAmount{ spendVal });
                if (!recipient) {
                   logger_->error("[{}] invalid recipient: {}", __func__, dealerAddress_);
                   return;
@@ -211,7 +211,7 @@ bool ReqCCSettlementContainer::createCCUnsignedTXdata()
                   bs::core::wallet::OutputOrderType::Change
                };
                ccTxData_ = transactionData_->createPartialTXRequest(spendVal, feePerByte
-                  , { recipient }, outSortOrder, dealerTx_, utxos);
+                  , { recipient }, outSortOrder, dealerTx_, utxos, false);
                logger_->debug("{} inputs in ccTxData", ccTxData_.inputs.size());
                utxoAdapter_->reserve(ccTxData_.walletIds.front(), id(), ccTxData_.inputs);
 
@@ -257,7 +257,13 @@ bool ReqCCSettlementContainer::startSigning()
 
          // notify RFQ dialog that signed half could be saved
          emit settlementAccepted();
-         transactionData_->getWallet()->setTransactionComment(signedTX, txComment());
+
+         auto hdWallet = walletsMgr_->getHDRootForLeaf(transactionData_->getWallet()->walletId());
+         auto group = hdWallet ? hdWallet->getGroup(hdWallet->getXBTGroupType()) : nullptr;
+         auto leaves = group ? group->getAllLeaves() : std::vector<std::shared_ptr<bs::sync::Wallet>>();
+         for (const auto & leaf : leaves) {
+            leaf->setTransactionComment(signedTX, txComment());
+         }
       }
       else if (result == bs::error::ErrorCode::TxCanceled) {
          emit settlementCancelled();

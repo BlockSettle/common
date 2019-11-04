@@ -14,12 +14,16 @@ namespace Chat
    class Message
    {
    public:
-      Message(const std::string& partyId, const std::string& messageId, const QDateTime& timestamp,
-         const PartyMessageState& partyMessageState, const std::string& messageText, const std::string& sender_hash);
+      Message(std::string partyId, std::string messageId, QDateTime timestamp,
+         const PartyMessageState& partyMessageState, std::string messageText, std::string sender_hash);
 
       Message(const Message& m2);
 
       Message& operator=(const Message& rhs);
+
+      ~Message() = default;
+      Message(Message&&) = default;
+      Message& operator=(Message&&) = default;
 
       const std::string& partyId() const { return partyId_; }
       void setPartyId(const std::string& val) { partyId_ = val; }
@@ -39,6 +43,9 @@ namespace Chat
       const std::string& senderHash() const { return senderHash_; }
       void setSenderHash(const std::string& val) { senderHash_ = val; }
 
+      std::string displayName() const { return displayName_; }
+      void setDisplayName(const std::string& display_name) { displayName_ = display_name; }
+
    private:
       std::string partyId_;
       std::string messageId_;
@@ -46,6 +53,7 @@ namespace Chat
       PartyMessageState partyMessageState_;
       std::string messageText_;
       std::string senderHash_;
+      std::string displayName_;
    };
 
    using MessagePtr = std::shared_ptr<Message>;

@@ -29,7 +29,7 @@ DealerCCSettlementContainer::DealerCCSettlementContainer(const std::shared_ptr<s
    , wallet_(wallet)
    , signingContainer_(container)
    , txReqData_(BinaryData::CreateFromHex(order.reqTransaction))
-   , ownRecvAddr_(ownRecvAddr)
+   , ownRecvAddr_(bs::Address::fromAddressString(ownRecvAddr))
    , orderId_(QString::fromStdString(order.clOrderId))
    , signer_(armory)
 {
@@ -53,7 +53,7 @@ bs::sync::PasswordDialogData DealerCCSettlementContainer::toPasswordDialogData()
    dialogData.setValue(PasswordDialogData::IsDealer, true);
    dialogData.setValue(PasswordDialogData::Market, "CC");
    dialogData.setValue(PasswordDialogData::AutoSignCategory, static_cast<int>(bs::signer::AutoSignCategory::SettlementDealer));
-   dialogData.setValue(PasswordDialogData::LotSize, qint64(lotSize_));
+   dialogData.setValue(PasswordDialogData::LotSize, static_cast<int>(lotSize_));
 
    if (side() == bs::network::Side::Sell) {
       dialogData.setValue(PasswordDialogData::Title, tr("Settlement Delivery"));
@@ -146,7 +146,7 @@ void DealerCCSettlementContainer::activate()
          }
          else if ((order_.side == bs::network::Side::Sell) &&
          (value == static_cast<uint64_t>(order_.quantity * order_.price * BTCNumericTypes::BalanceDivider))) {
-            amountValid_ = valInput > (value + valReturn);
+            amountValid_ = true; //valInput > (value + valReturn);
          }
       });
    }
@@ -157,7 +157,8 @@ void DealerCCSettlementContainer::activate()
    }
 
    if (!foundRecipAddr_ || !amountValid_) {
-      logger_->warn("[DealerCCSettlementContainer::activate] requester's TX verification failed");
+      logger_->warn("[DealerCCSettlementContainer::activate] requester's TX verification failed: {}/{}"
+         , foundRecipAddr_, amountValid_);
       wallet_ = nullptr;
       emit genAddressVerified(false);
    }

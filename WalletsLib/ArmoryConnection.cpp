@@ -602,7 +602,7 @@ bool ArmoryConnection::getRBFoutputs(const std::vector<std::string> &walletIds, 
    return true;
 }
 
-bool ArmoryConnection::getUTXOsForAddress(const bs::Address &addr, const UTXOsCb &cb, bool withZC)
+bool ArmoryConnection::getUTXOsForAddress(const BinaryData &addr, const UTXOsCb &cb, bool withZC)
 {
    if (!bdv_ || (state_ != ArmoryState::Ready)) {
       logger_->error("[{}] invalid state: {}", __func__, (int)state_.load());
@@ -617,17 +617,17 @@ bool ArmoryConnection::getUTXOsForAddress(const bs::Address &addr, const UTXOsCb
       }
       catch (const std::exception &e) {
          logger->error("[ArmoryConnection::getUTXOsForAddress] {} failed: {}"
-            , addr.display(), e.what());
+            , addr.toHexStr(), e.what());
          if (cb) {
             cb({});
          }
       }
    };
-   bdv_->getUTXOsForAddress(addr.id(), withZC, cbWrap);
+   bdv_->getUTXOsForAddress(addr, withZC, cbWrap);
    return true;
 }
 
-bool ArmoryConnection::getOutpointsFor(const std::vector<bs::Address> &addresses
+bool ArmoryConnection::getOutpointsFor(const std::vector<BinaryData> &addresses
    , const std::function<void(const OutpointBatch &)> &cb
    , unsigned int height, unsigned int zcIndex)
 {
@@ -638,7 +638,7 @@ bool ArmoryConnection::getOutpointsFor(const std::vector<bs::Address> &addresses
 
    std::set<BinaryData> addrVec;
    for (const auto &addr : addresses) {
-      addrVec.insert(addr.prefixed());
+      addrVec.insert(addr);
    }
 
    const auto cbWrap = [logger=logger_, cb, addresses](ReturnMessage<OutpointBatch> opBatch)
@@ -807,7 +807,7 @@ bool ArmoryConnection::getTxByHash(const BinaryData &hash, const TxCb &cb)
    if (addGetTxCallback(hash, cb)) {
       return true;
    }
-   const auto &cbUpdateCache = [this, hash](ReturnMessage<Tx> tx)->void {
+   const auto &cbWrap = [this, hash](ReturnMessage<Tx> tx)->void {
       try {
          auto retTx = tx.get();
          callGetTxCallbacks(hash, retTx);
@@ -818,7 +818,7 @@ bool ArmoryConnection::getTxByHash(const BinaryData &hash, const TxCb &cb)
          callGetTxCallbacks(hash, {});
       }
    };
-   bdv_->getTxByHash(hash, cbUpdateCache);
+   bdv_->getTxByHash(hash, cbWrap);
    return true;
 }
 
@@ -1326,7 +1326,7 @@ bs::TXEntry bs::TXEntry::fromLedgerEntry(const ClientClasses::LedgerEntry &entry
          , entry.getTxTime(), entry.isOptInRBF(), entry.isChainedZC(), false
          , std::chrono::steady_clock::now() };
    for (const auto &addr : entry.getScrAddrList()) {
-      result.addresses.push_back(addr);
+      result.addresses.push_back(bs::Address::fromHash(addr));
    }
    return result;
 }

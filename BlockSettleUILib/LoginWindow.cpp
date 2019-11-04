@@ -18,13 +18,15 @@ namespace {
 
 LoginWindow::LoginWindow(const std::shared_ptr<spdlog::logger> &logger
    , std::shared_ptr<ApplicationSettings> &settings
-   , const ZmqBipNewKeyCb &cbApprove
+   , ZmqBipNewKeyCb *cbApprovePub
+   , ZmqBipNewKeyCb *cbApproveProxy
    , QWidget* parent)
    : QDialog(parent)
    , ui_(new Ui::LoginWindow())
    , logger_(logger)
    , settings_(settings)
-   , cbApprove_(cbApprove)
+   , cbApprovePub_(cbApprovePub)
+   , cbApproveProxy_(cbApproveProxy)
 {
    ui_->setupUi(this);
    ui_->progressBar->setMaximum(kAutheIdTimeout * 2); // update every 0.5 sec
@@ -101,10 +103,7 @@ void LoginWindow::onStartLoginDone(AutheIDClient::ErrorType errorCode)
 {
    if (errorCode != AutheIDClient::NoError) {
       setState(Idle);
-
-      BSMessageBox loginErrorBox(BSMessageBox::critical, tr("Login failed"), tr("Login failed")
-         , AutheIDClient::errorString(errorCode), this);
-      loginErrorBox.exec();
+      displayError(errorCode);
       return;
    }
 
@@ -122,10 +121,7 @@ void LoginWindow::onGetLoginResultDone(const BsClientLoginResult &result)
 
    if (result.status != AutheIDClient::NoError) {
       setState(Idle);
-
-      BSMessageBox loginErrorBox(BSMessageBox::critical, tr("Login failed"), tr("Login failed")
-         , AutheIDClient::errorString(result.status), this);
-      loginErrorBox.exec();
+      displayError(result.status);
       return;
    }
 
@@ -175,6 +171,15 @@ void LoginWindow::updateState()
    }
 }
 
+void LoginWindow::displayError(AutheIDClient::ErrorType errorCode)
+{
+   if (errorCode != AutheIDClient::ErrorType::NetworkError) {
+      BSMessageBox loginErrorBox(BSMessageBox::critical, tr("Login failed"), tr("Login failed")
+         , AutheIDClient::errorString(errorCode), this);
+      loginErrorBox.exec();
+   }
+}
+
 void LoginWindow::onAuthPressed()
 {
    if (state_ != Idle) {
@@ -185,7 +190,7 @@ void LoginWindow::onAuthPressed()
    timeLeft_ = kAutheIdTimeout;
 
    networkSettingsLoader_ = std::make_unique<NetworkSettingsLoader>(logger_
-      , settings_->pubBridgeHost(), settings_->pubBridgePort(), cbApprove_);
+      , settings_->pubBridgeHost(), settings_->pubBridgePort(), *cbApprovePub_);
 
    connect(networkSettingsLoader_.get(), &NetworkSettingsLoader::succeed, this, [this] {
       setState(WaitLoginResult);
@@ -197,10 +202,7 @@ void LoginWindow::onAuthPressed()
       params.connectAddress = networkSettingsLoader_->settings().proxy.host;
       params.connectPort = networkSettingsLoader_->settings().proxy.port;
       params.context = std::make_shared<ZmqContext>(logger_);
-      params.newServerKeyCallback = [](const BsClientParams::NewKey &newKey) {
-         // FIXME: Show GUI prompt
-         newKey.prompt->setValue(true);
-      };
+      params.newServerKeyCallback = *cbApproveProxy_;
 
       bsClient_ = std::make_unique<BsClient>(logger_, params);
       connect(bsClient_.get(), &BsClient::startLoginDone, this, &LoginWindow::onStartLoginDone);

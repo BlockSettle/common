@@ -220,7 +220,9 @@ void RFQTicketXBT::setCurrentCCWallet(const std::shared_ptr<bs::sync::Wallet>& n
 {
    if (newCCWallet != nullptr) {
       ccWallet_ = newCCWallet;
-      ccCoinSel_ = std::make_shared<SelectedTransactionInputs>(ccWallet_, true, true);
+      ccCoinSel_ = std::make_shared<SelectedTransactionInputs>(ccWallet_, true, true, [this](){
+         emit update();
+      });
    } else {
       ccWallet_ = nullptr;
       ccCoinSel_ = nullptr;
@@ -544,7 +546,7 @@ bs::Address RFQTicketXBT::recvAddress() const
 {
    const auto index = ui_->receivingAddressComboBox->currentIndex();
    if ((index < 0) || !recvWallet_) {
-      return BinaryData();
+      return bs::Address();
    }
 
    if (index == 0) {
@@ -818,9 +820,12 @@ double RFQTicketXBT::estimatedXbtPayinFee() const
       return 0;
    }
 
+   BinaryData prefixed;
+   prefixed.append(AddressEntry::getPrefixByte(AddressEntryType_P2WSH));
+   prefixed.append(CryptoPRNG::generateRandom(32));
    const auto balance = transactionData_->GetTransactionSummary().availableBalance;
    const auto maxVal = transactionData_->CalculateMaxAmount(
-      bs::Address(CryptoPRNG::generateRandom(32), AddressEntryType_P2WSH));
+      bs::Address::fromHash(prefixed));
    if (maxVal <= 0) {
       return 0;
    }
