@@ -589,7 +589,10 @@ void AuthAddressManager::onWalletChanged(const std::string &walletId)
    }
 
    if (listUpdated) {
-      addressVerificator_->startAddressVerification();
+      // Try to fix failed assert (BST-2337)
+      if (addressVerificator_->HaveBSAddressList()) {
+         addressVerificator_->startAddressVerification();
+      }
       emit AddressListUpdated();
    }
 }
