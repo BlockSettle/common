@@ -15,6 +15,8 @@ namespace bs {
    private:
       Address(const BinaryDataRef& data, AddressEntryType aet);
       Address(const BinaryDataRef& data);
+   public:
+      static AddressEntryType bs::Address::mapTxOutScriptType(TXOUT_SCRIPT_TYPE scrType);
 
    public:
       enum Format {
