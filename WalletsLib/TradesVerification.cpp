@@ -179,7 +179,7 @@ bs::TradesVerification::Result bs::TradesVerification::verifyUnsignedPayin(const
       Tx deserializedTx(unsignedPayin);
 
       if (deserializedTx.isRBF()) {
-         return Result::error("payin could not be RBF transaction");
+         return Result::error("Pay-In could not be RBF transaction");
       }
 
       Result result;
@@ -189,6 +189,15 @@ bs::TradesVerification::Result bs::TradesVerification::verifyUnsignedPayin(const
       result.totalOutputCount = totalOutputCount;
       result.changeAddr = changeAddr;
       for (const auto& spender : spenders) {
+         const auto& utxo = spender->getUtxo();
+         const auto& scrType = BtcUtils::getTxOutScriptType(utxo.getScript());
+         const auto& inputType = bs::Address::mapTxOutScriptType(scrType);
+
+         // we should accept native SW inputs only
+         if (inputType != AddressEntryType_P2WPKH) {
+            return Result::error("Non SW input in PayIn");
+         }
+
          result.utxos.push_back(spender->getUtxo());
       }
 
