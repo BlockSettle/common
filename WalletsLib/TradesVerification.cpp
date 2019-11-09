@@ -14,10 +14,10 @@ const char *bs::toString(const bs::PayoutSignatureType t)
    }
 }
 
-bs::TradesVerification::Result bs::TradesVerification::Result::error(std::string errorMsg)
+std::shared_ptr<bs::TradesVerification::Result> bs::TradesVerification::Result::error(std::string errorMsg)
 {
-   Result result;
-   result.errorMsg = std::move(errorMsg);
+   auto result = std::make_shared<Result>();
+   result->errorMsg = std::move(errorMsg);
    return result;
 }
 
@@ -120,9 +120,8 @@ bs::PayoutSignatureType bs::TradesVerification::whichSignature(const Tx &tx, uin
    }
 }
 
-bs::TradesVerification::Result bs::TradesVerification::verifyUnsignedPayin(const BinaryData &unsignedPayin
-   , float feePerByte, const std::string &settlementAddress, uint64_t tradeAmount
-   )
+std::shared_ptr<bs::TradesVerification::Result> bs::TradesVerification::verifyUnsignedPayin(const BinaryData &unsignedPayin
+   , float feePerByte, const std::string &settlementAddress, uint64_t tradeAmount)
 {
    if (unsignedPayin.isNull()) {
       return Result::error("no unsigned payin provided");
@@ -182,12 +181,15 @@ bs::TradesVerification::Result bs::TradesVerification::verifyUnsignedPayin(const
          return Result::error("Pay-In could not be RBF transaction");
       }
 
-      Result result;
-      result.success = true;
-      result.totalFee = totalInput - totalOutputAmount;
-      result.estimatedFee = static_cast<uint64_t>(feePerByte * unsignedPayin.getSize());
-      result.totalOutputCount = totalOutputCount;
-      result.changeAddr = changeAddr;
+      auto result = std::make_shared<Result>();
+      result->success = true;
+      result->totalFee = totalInput - totalOutputAmount;
+      result->estimatedFee = static_cast<uint64_t>(feePerByte * unsignedPayin.getSize());
+      result->totalOutputCount = totalOutputCount;
+      result->changeAddr = changeAddr;
+
+      result->utxos.reserve(spenders.size());
+
       for (const auto& spender : spenders) {
          const auto& utxo = spender->getUtxo();
          const auto& scrType = BtcUtils::getTxOutScriptType(utxo.getScript());
@@ -198,7 +200,7 @@ bs::TradesVerification::Result bs::TradesVerification::verifyUnsignedPayin(const
             return Result::error("Non SW input in PayIn");
          }
 
-         result.utxos.push_back(spender->getUtxo());
+         result->utxos.push_back(spender->getUtxo());
       }
 
       return result;
@@ -210,7 +212,7 @@ bs::TradesVerification::Result bs::TradesVerification::verifyUnsignedPayin(const
    }
 }
 
-bs::TradesVerification::Result bs::TradesVerification::verifySignedPayout(const BinaryData &signedPayout
+std::shared_ptr<bs::TradesVerification::Result> bs::TradesVerification::verifySignedPayout(const BinaryData &signedPayout
    , const std::string &buyAuthKeyHex, const std::string &sellAuthKeyHex
    , const BinaryData &payinHash, uint64_t tradeAmount, float feePerByte, const std::string &settlementId, const std::string &settlementAddress)
 {
@@ -277,9 +279,9 @@ bs::TradesVerification::Result bs::TradesVerification::verifySignedPayout(const 
             , toString(signedBy), errorMsg));
       }
 
-      Result result;
-      result.success = true;
-      result.payoutTxHashHex = payoutTx.getThisHash().toHexStr();
+      auto result = std::make_shared<Result>();
+      result->success = true;
+      result->payoutTxHashHex = payoutTx.getThisHash().toHexStr();
       return result;
 
    } catch (const std::exception &e) {
@@ -289,7 +291,7 @@ bs::TradesVerification::Result bs::TradesVerification::verifySignedPayout(const 
    }
 }
 
-bs::TradesVerification::Result bs::TradesVerification::verifySignedPayin(const BinaryData &signedPayin, const BinaryData &payinHash, float feePerByte, uint64_t totalPayinFee)
+std::shared_ptr<bs::TradesVerification::Result> bs::TradesVerification::verifySignedPayin(const BinaryData &signedPayin, const BinaryData &payinHash, float feePerByte, uint64_t totalPayinFee)
 {
    if (signedPayin.isNull()) {
       return Result::error("no signed payin provided");
@@ -318,8 +320,8 @@ bs::TradesVerification::Result bs::TradesVerification::verifySignedPayin(const B
             , totalPayinFee, static_cast<float>(totalPayinFee) / txSize, estimatedFee, feePerByte));
       }
 
-      Result result;
-      result.success = true;
+      auto result = std::make_shared<Result>();
+      result->success = true;
       return result;
 
    }
