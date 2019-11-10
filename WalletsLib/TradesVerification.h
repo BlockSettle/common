@@ -2,6 +2,7 @@
 #define TRADES_VERIFICATION_H
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <vector>
 
