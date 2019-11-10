@@ -16,7 +16,7 @@ namespace bs {
       Address(const BinaryDataRef& data, AddressEntryType aet);
       Address(const BinaryDataRef& data);
    public:
-      static AddressEntryType bs::Address::mapTxOutScriptType(TXOUT_SCRIPT_TYPE scrType);
+      static AddressEntryType mapTxOutScriptType(TXOUT_SCRIPT_TYPE scrType);
 
    public:
       enum Format {
@@ -27,7 +27,7 @@ namespace bs {
          Binary
       };
 
-      Address(void) : BinaryData() 
+      Address(void) : BinaryData()
       {}
 
       Address(const Address&) = default;
@@ -62,7 +62,7 @@ namespace bs {
       static bs::Address fromAddressString(const std::string&);
       static bs::Address fromAddressEntry(const AddressEntry&);
       static bs::Address fromMultisigScript(const BinaryData&, AddressEntryType);
-      
+
       static size_t getPayoutWitnessDataSize();
 
       static uint64_t getNativeSegwitDustAmount();
