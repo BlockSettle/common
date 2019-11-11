@@ -189,22 +189,23 @@ SET(PROTO_SOURCES ${PROTO_SOURCE_FILES} ${PROTO_HEADER_FILES})
 # leveldb_windows_port
 IF(WIN32)
    SET( LEVELDB_WINDOWS_PORT_SOURCES
-      ${LEVELDB_WINDOWS_PORT_DIR}/Win_TranslatePath.cpp
-      ${LEVELDB_WINDOWS_PORT_DIR}/dirent_win32.cpp
-      ${LEVELDB_WINDOWS_PORT_DIR}/mman.cpp
-      ${LEVELDB_WINDOWS_PORT_DIR}/pthread_win32port.cpp
-      ${LEVELDB_WINDOWS_PORT_DIR}/win32_posix.cc
+      ArmoryDB/cppForSwig/leveldb_windows_port/win32_posix/Win_TranslatePath.cpp
+      ArmoryDB/cppForSwig/leveldb_windows_port/win32_posix/dirent_win32.cpp
+      ArmoryDB/cppForSwig/leveldb_windows_port/win32_posix/dirent_win32.cpp
+      ArmoryDB/cppForSwig/leveldb_windows_port/win32_posix/mman.cpp
+      ArmoryDB/cppForSwig/leveldb_windows_port/win32_posix/pthread_win32port.cpp
+      ArmoryDB/cppForSwig/leveldb_windows_port/win32_posix/win32_posix.cc
       )
 
 
    SET(LEVELDB_WINDOWS_PORT_HEADERS
-      ${LEVELDB_WINDOWS_PORT_DIR}/Win_TranslatePath.h
-      ${LEVELDB_WINDOWS_PORT_DIR}/dirent_win32.h
-      ${LEVELDB_WINDOWS_PORT_DIR}/file.h
-      ${LEVELDB_WINDOWS_PORT_DIR}/mman.h
-      ${LEVELDB_WINDOWS_PORT_DIR}/pthread.h
-      ${LEVELDB_WINDOWS_PORT_DIR}/unistd.h
-      ${LEVELDB_WINDOWS_PORT_DIR}/win32_posix.h
+      ArmoryDB/cppForSwig/leveldb_windows_port/win32_posix/Win_TranslatePath.h
+      ArmoryDB/cppForSwig/leveldb_windows_port/win32_posix/dirent_win32.h
+      ArmoryDB/cppForSwig/leveldb_windows_port/win32_posix/file.h
+      ArmoryDB/cppForSwig/leveldb_windows_port/win32_posix/mman.h
+      ArmoryDB/cppForSwig/leveldb_windows_port/win32_posix/pthread.h
+      ArmoryDB/cppForSwig/leveldb_windows_port/win32_posix/unistd.h
+      ArmoryDB/cppForSwig/leveldb_windows_port/win32_posix/win32_posix.h
       )
 
    SET(OS_SPECIFIC_SOURCES ${LEVELDB_WINDOWS_PORT_SOURCES})
@@ -232,6 +233,10 @@ IF(NOT WIN32)
 ENDIF(NOT WIN32)
 
 TARGET_INCLUDE_DIRECTORIES(${CRYPTO_LIB_NAME}
-   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/ArmoryDB/cppForSwig
-   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/ArmoryDB/cppForSwig/lmdb/libraries/liblmdb
+   PUBLIC ArmoryDB/cppForSwig
+   PUBLIC ArmoryDB/cppForSwig/lmdb/libraries/liblmdb
 )
+
+IF(WIN32)
+   TARGET_INCLUDE_DIRECTORIES(${CRYPTO_LIB_NAME} PUBLIC ArmoryDB/cppForSwig/leveldb_windows_port/win32_posix)
+ENDIF(WIN32)
