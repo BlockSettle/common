@@ -12,6 +12,7 @@
 
 #include <disable_warnings.h>
 #include <spdlog/spdlog.h>
+#include "chat.pb.h"
 #include <enable_warnings.h>
 
 using namespace Chat;

@@ -111,6 +111,11 @@ message PartyMessagePacket
    string sender_hash = 8;
 }
 
+message PartyMessageOfflineRequest
+{
+   string receiver_hash = 1;
+}
+
 message PartyMessageStateUpdate
 {
    string party_id = 1;
