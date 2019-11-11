@@ -59,7 +59,7 @@ void ClientPartyLogic::handlePartiesFromWelcomePacket(const ChatUserPtr& current
          {
             const auto& recipient = partyPacket.recipient(j);
             auto recipientPtr =
-               std::make_shared<PartyRecipient>(recipient.user_name(), recipient.public_key(), QDateTime::fromMSecsSinceEpoch(recipient.timestamp_ms()));
+               std::make_shared<PartyRecipient>(recipient.user_hash(), recipient.public_key(), QDateTime::fromMSecsSinceEpoch(recipient.timestamp_ms()));
             recipients.push_back(recipientPtr);
 
             // choose all recipients except me
@@ -86,11 +86,11 @@ void ClientPartyLogic::onUserStatusChanged(const ChatUserPtr&, const StatusChang
 {
    // status changed only for private parties
    auto clientPartyPtrList = 
-      clientPartyModelPtr_->getClientPartyListForRecipient(clientPartyModelPtr_->getIdPrivatePartyList(), statusChanged.user_name());
+      clientPartyModelPtr_->getClientPartyListForRecipient(clientPartyModelPtr_->getIdPrivatePartyList(), statusChanged.user_hash());
 
    for (const auto& clientPartyPtr : clientPartyPtrList)
    {
-      auto recipientPtr = clientPartyPtr->getRecipient(statusChanged.user_name());
+      auto recipientPtr = clientPartyPtr->getRecipient(statusChanged.user_hash());
       if (recipientPtr)
       {
          recipientPtr->setCelerType(static_cast<CelerClient::CelerUserType>(statusChanged.celer_type()));
@@ -238,7 +238,7 @@ void ClientPartyLogic::createPrivatePartyFromPrivatePartyRequest(const ChatUserP
    for (auto i = 0; i < partyPacket.recipient_size(); i++)
    {
       auto recipient = std::make_shared<PartyRecipient>(
-         partyPacket.recipient(i).user_name(), partyPacket.recipient(i).public_key()
+         partyPacket.recipient(i).user_hash(), partyPacket.recipient(i).public_key()
          );
 
       recipients.push_back(recipient);

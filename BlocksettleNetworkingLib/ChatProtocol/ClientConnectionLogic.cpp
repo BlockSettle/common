@@ -128,7 +128,7 @@ void ClientConnectionLogic::onDataReceived(const std::string& data)
 void ClientConnectionLogic::onConnected()
 {
    WelcomeRequest welcomeRequest;
-   welcomeRequest.set_user_name(currentUserPtr()->userName());
+   welcomeRequest.set_user_hash(currentUserPtr()->userName());
    welcomeRequest.set_client_public_key(currentUserPtr()->publicKey().toBinStr());
    welcomeRequest.set_celer_type(static_cast<int>(currentUserPtr()->celerUserType()));
    welcomeRequest.set_chat_token_data(token_.toBinStr());
@@ -177,7 +177,7 @@ void ClientConnectionLogic::handleLogoutResponse(const LogoutResponse&)
 void ClientConnectionLogic::handleStatusChanged(const StatusChanged& statusChanged)
 {
    // clear session keys for user
-   sessionKeyHolderPtr_->clearSessionForUser(statusChanged.user_name());
+   sessionKeyHolderPtr_->clearSessionForUser(statusChanged.user_hash());
 
    emit userStatusChanged(currentUserPtr(), statusChanged);
 }
@@ -425,7 +425,7 @@ void ClientConnectionLogic::prepareRequestPrivateParty(const std::string& partyI
    for (const auto& recipient : clientPartyPtr->recipients())
    {
       auto partyRecipientPacket = partyPacket->add_recipient();
-      partyRecipientPacket->set_user_name(recipient->userHash());
+      partyRecipientPacket->set_user_hash(recipient->userHash());
       partyRecipientPacket->set_public_key(recipient->publicKey().toBinStr());
       partyRecipientPacket->set_timestamp_ms(recipient->publicKeyTime().toMSecsSinceEpoch());
    }
@@ -471,7 +471,7 @@ void ClientConnectionLogic::handlePrivatePartyRequest(const PrivatePartyRequest&
          for (auto i = 0; i < partyPacket.recipient_size(); i++)
          {
             const auto& recipient = partyPacket.recipient(i);
-            auto newRecipient = std::make_shared<PartyRecipient>(recipient.user_name(), recipient.public_key(), QDateTime::fromMSecsSinceEpoch(recipient.timestamp_ms()));
+            auto newRecipient = std::make_shared<PartyRecipient>(recipient.user_hash(), recipient.public_key(), QDateTime::fromMSecsSinceEpoch(recipient.timestamp_ms()));
             updatedRecipients.push_back(newRecipient);
          }
 
@@ -508,9 +508,9 @@ void ClientConnectionLogic::handlePrivatePartyRequest(const PrivatePartyRequest&
 void ClientConnectionLogic::requestSessionKeyExchange(const std::string& receieverUserName, const BinaryData& encodedLocalSessionPublicKey)
 {
    RequestSessionKeyExchange requestSessionKey;
-   requestSessionKey.set_sender_user_name(currentUserPtr()->userName());
+   requestSessionKey.set_sender_user_hash(currentUserPtr()->userName());
    requestSessionKey.set_encoded_public_key(encodedLocalSessionPublicKey.toBinStr());
-   requestSessionKey.set_receiver_user_name(receieverUserName);
+   requestSessionKey.set_receiver_user_hash(receieverUserName);
 
    sendPacket(requestSessionKey);
 }
@@ -518,21 +518,21 @@ void ClientConnectionLogic::requestSessionKeyExchange(const std::string& receiev
 void ClientConnectionLogic::replySessionKeyExchange(const std::string& receieverUserName, const BinaryData& encodedLocalSessionPublicKey)
 {
    ReplySessionKeyExchange replyKeyExchange;
-   replyKeyExchange.set_sender_user_name(currentUserPtr()->userName());
+   replyKeyExchange.set_sender_user_hash(currentUserPtr()->userName());
    replyKeyExchange.set_encoded_public_key(encodedLocalSessionPublicKey.toBinStr());
-   replyKeyExchange.set_receiver_user_name(receieverUserName);
+   replyKeyExchange.set_receiver_user_hash(receieverUserName);
 
    sendPacket(replyKeyExchange);
 }
 
 void ClientConnectionLogic::handleRequestSessionKeyExchange(const RequestSessionKeyExchange& requestKeyExchange) const
 {
-   sessionKeyHolderPtr_->onIncomingRequestSessionKeyExchange(requestKeyExchange.sender_user_name(), requestKeyExchange.encoded_public_key(), currentUserPtr()->privateKey());
+   sessionKeyHolderPtr_->onIncomingRequestSessionKeyExchange(requestKeyExchange.sender_user_hash(), requestKeyExchange.encoded_public_key(), currentUserPtr()->privateKey());
 }
 
 void ClientConnectionLogic::handleReplySessionKeyExchange(const ReplySessionKeyExchange& replyKeyExchange) const
 {
-   sessionKeyHolderPtr_->onIncomingReplySessionKeyExchange(replyKeyExchange.sender_user_name(), replyKeyExchange.encoded_public_key());
+   sessionKeyHolderPtr_->onIncomingReplySessionKeyExchange(replyKeyExchange.sender_user_hash(), replyKeyExchange.encoded_public_key());
 }
 
 void ClientConnectionLogic::prepareAndSendPrivateMessage(const ClientPartyPtr& clientPartyPtr, const std::string& data) const
@@ -733,7 +733,7 @@ void ClientConnectionLogic::handleReplySearchUser(const ReplySearchUser& replySe
 {
    SearchUserReplyList searchUserReplyList;
 
-   for (const auto& searchUser : replySearchUser.user_name())
+   for (const auto& searchUser : replySearchUser.user_hash())
    {
       searchUserReplyList.push_back(searchUser);
    }
