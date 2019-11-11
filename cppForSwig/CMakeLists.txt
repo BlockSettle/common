@@ -2,170 +2,172 @@ CMAKE_MINIMUM_REQUIRED( VERSION 3.3 )
 
 PROJECT(${CRYPTO_LIB_NAME})
 
+SET(CPP_FOR_SWIG_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../ArmoryDB/cppForSwig)
+
 SET (SOURCES
-   ArmoryDB/cppForSwig/Accounts.cpp
-   ArmoryDB/cppForSwig/Addresses.cpp
-   ArmoryDB/cppForSwig/Assets.cpp
-   ArmoryDB/cppForSwig/AssetEncryption.cpp
-   ArmoryDB/cppForSwig/AsyncClient.cpp
-   ArmoryDB/cppForSwig/AuthorizedPeers.cpp
-   ArmoryDB/cppForSwig/BinaryData.cpp
-   ArmoryDB/cppForSwig/BIP150_151.cpp
-   ArmoryDB/cppForSwig/BIP32_Node.cpp
-   ArmoryDB/cppForSwig/BlockDataManagerConfig.cpp
-   ArmoryDB/cppForSwig/BtcUtils.cpp
-   ArmoryDB/cppForSwig/ClientClasses.cpp
-   ArmoryDB/cppForSwig/CoinSelection.cpp
-   ArmoryDB/cppForSwig/DBUtils.cpp
-   ArmoryDB/cppForSwig/DecryptedDataContainer.cpp
-   ArmoryDB/cppForSwig/DerivationScheme.cpp
-   ArmoryDB/cppForSwig/EncryptionUtils_libbtc.cpp
-   ArmoryDB/cppForSwig/hkdf.cpp
-   ArmoryDB/cppForSwig/HttpMessage.cpp
-   ArmoryDB/cppForSwig/JSON_codec.cpp
-   ArmoryDB/cppForSwig/KDF.cpp
-   ArmoryDB/cppForSwig/lmdb_wrapper.cpp
-   ArmoryDB/cppForSwig/log.cpp
-   ArmoryDB/cppForSwig/NetworkConfig.cpp
-   ArmoryDB/cppForSwig/ReentrantLock.cpp
-   ArmoryDB/cppForSwig/Script.cpp
-   ArmoryDB/cppForSwig/ScriptRecipient.cpp
-   ArmoryDB/cppForSwig/SecureBinaryData.cpp
-   ArmoryDB/cppForSwig/Signer.cpp
-   ArmoryDB/cppForSwig/SocketObject.cpp
-   ArmoryDB/cppForSwig/SwigClient.cpp
-   ArmoryDB/cppForSwig/StringSockets.cpp
-   ArmoryDB/cppForSwig/Transactions.cpp
-   ArmoryDB/cppForSwig/TxClasses.cpp
-   ArmoryDB/cppForSwig/TxEvalState.cpp
-   ArmoryDB/cppForSwig/UniversalTimer.cpp
-   ArmoryDB/cppForSwig/Wallets.cpp
-   ArmoryDB/cppForSwig/WalletManager.cpp
-   ArmoryDB/cppForSwig/WebSocketClient.cpp
-   ArmoryDB/cppForSwig/WebSocketMessage.cpp
-   ArmoryDB/cppForSwig/lmdb/libraries/liblmdb/mdb.c
-   ArmoryDB/cppForSwig/lmdb/libraries/liblmdb/midl.c
-   ArmoryDB/cppForSwig/lmdb/libraries/liblmdb/lmdbpp.cpp
-   ArmoryDB/cppForSwig/bech32/ref/c++/bech32.cpp
-   ArmoryDB/cppForSwig/bech32/ref/c++/segwit_addr.cpp
-   ArmoryDB/cppForSwig/chacha20poly1305/chacha.c
-   ArmoryDB/cppForSwig/chacha20poly1305/chachapoly_aead.c
-   ArmoryDB/cppForSwig/chacha20poly1305/poly1305.c
+   ${CPP_FOR_SWIG_ROOT}/Accounts.cpp
+   ${CPP_FOR_SWIG_ROOT}/Addresses.cpp
+   ${CPP_FOR_SWIG_ROOT}/Assets.cpp
+   ${CPP_FOR_SWIG_ROOT}/AssetEncryption.cpp
+   ${CPP_FOR_SWIG_ROOT}/AsyncClient.cpp
+   ${CPP_FOR_SWIG_ROOT}/AuthorizedPeers.cpp
+   ${CPP_FOR_SWIG_ROOT}/BinaryData.cpp
+   ${CPP_FOR_SWIG_ROOT}/BIP150_151.cpp
+   ${CPP_FOR_SWIG_ROOT}/BIP32_Node.cpp
+   ${CPP_FOR_SWIG_ROOT}/BlockDataManagerConfig.cpp
+   ${CPP_FOR_SWIG_ROOT}/BtcUtils.cpp
+   ${CPP_FOR_SWIG_ROOT}/ClientClasses.cpp
+   ${CPP_FOR_SWIG_ROOT}/CoinSelection.cpp
+   ${CPP_FOR_SWIG_ROOT}/DBUtils.cpp
+   ${CPP_FOR_SWIG_ROOT}/DecryptedDataContainer.cpp
+   ${CPP_FOR_SWIG_ROOT}/DerivationScheme.cpp
+   ${CPP_FOR_SWIG_ROOT}/EncryptionUtils_libbtc.cpp
+   ${CPP_FOR_SWIG_ROOT}/hkdf.cpp
+   ${CPP_FOR_SWIG_ROOT}/HttpMessage.cpp
+   ${CPP_FOR_SWIG_ROOT}/JSON_codec.cpp
+   ${CPP_FOR_SWIG_ROOT}/KDF.cpp
+   ${CPP_FOR_SWIG_ROOT}/lmdb_wrapper.cpp
+   ${CPP_FOR_SWIG_ROOT}/log.cpp
+   ${CPP_FOR_SWIG_ROOT}/NetworkConfig.cpp
+   ${CPP_FOR_SWIG_ROOT}/ReentrantLock.cpp
+   ${CPP_FOR_SWIG_ROOT}/Script.cpp
+   ${CPP_FOR_SWIG_ROOT}/ScriptRecipient.cpp
+   ${CPP_FOR_SWIG_ROOT}/SecureBinaryData.cpp
+   ${CPP_FOR_SWIG_ROOT}/Signer.cpp
+   ${CPP_FOR_SWIG_ROOT}/SocketObject.cpp
+   ${CPP_FOR_SWIG_ROOT}/SwigClient.cpp
+   ${CPP_FOR_SWIG_ROOT}/StringSockets.cpp
+   ${CPP_FOR_SWIG_ROOT}/Transactions.cpp
+   ${CPP_FOR_SWIG_ROOT}/TxClasses.cpp
+   ${CPP_FOR_SWIG_ROOT}/TxEvalState.cpp
+   ${CPP_FOR_SWIG_ROOT}/UniversalTimer.cpp
+   ${CPP_FOR_SWIG_ROOT}/Wallets.cpp
+   ${CPP_FOR_SWIG_ROOT}/WalletManager.cpp
+   ${CPP_FOR_SWIG_ROOT}/WebSocketClient.cpp
+   ${CPP_FOR_SWIG_ROOT}/WebSocketMessage.cpp
+   ${CPP_FOR_SWIG_ROOT}/lmdb/libraries/liblmdb/mdb.c
+   ${CPP_FOR_SWIG_ROOT}/lmdb/libraries/liblmdb/midl.c
+   ${CPP_FOR_SWIG_ROOT}/lmdb/libraries/liblmdb/lmdbpp.cpp
+   ${CPP_FOR_SWIG_ROOT}/bech32/ref/c++/bech32.cpp
+   ${CPP_FOR_SWIG_ROOT}/bech32/ref/c++/segwit_addr.cpp
+   ${CPP_FOR_SWIG_ROOT}/chacha20poly1305/chacha.c
+   ${CPP_FOR_SWIG_ROOT}/chacha20poly1305/chachapoly_aead.c
+   ${CPP_FOR_SWIG_ROOT}/chacha20poly1305/poly1305.c
    )
 
 IF (BUILD_TEST_TOOLS)
    LIST (APPEND SOURCES
-      ArmoryDB/cppForSwig/BDM_mainthread.cpp
-      ArmoryDB/cppForSwig/BDM_Server.cpp
-      ArmoryDB/cppForSwig/BitcoinP2P.cpp
-      ArmoryDB/cppForSwig/Blockchain.cpp
-      ArmoryDB/cppForSwig/BlockchainScanner.cpp
-      ArmoryDB/cppForSwig/BlockchainScanner_Super.cpp
-      ArmoryDB/cppForSwig/BlockDataMap.cpp
-      ArmoryDB/cppForSwig/BlockDataViewer.cpp
-      ArmoryDB/cppForSwig/BlockObj.cpp
-      ArmoryDB/cppForSwig/BlockUtils.cpp
-      ArmoryDB/cppForSwig/BtcWallet.cpp
-      ArmoryDB/cppForSwig/DatabaseBuilder.cpp
-      ArmoryDB/cppForSwig/HistoryPager.cpp
-      ArmoryDB/cppForSwig/LedgerEntry.cpp
-      ArmoryDB/cppForSwig/nodeRPC.cpp
-      ArmoryDB/cppForSwig/Progress.cpp
-      ArmoryDB/cppForSwig/ScrAddrFilter.cpp
-      ArmoryDB/cppForSwig/ScrAddrObj.cpp
-      ArmoryDB/cppForSwig/Server.cpp
-      ArmoryDB/cppForSwig/SshParser.cpp
-      ArmoryDB/cppForSwig/StoredBlockObj.cpp
-      ArmoryDB/cppForSwig/txio.cpp
-      ArmoryDB/cppForSwig/ZeroConf.cpp
-      ArmoryDB/cppForSwig/gtest/NodeUnitTest.cpp
+      ${CPP_FOR_SWIG_ROOT}/BDM_mainthread.cpp
+      ${CPP_FOR_SWIG_ROOT}/BDM_Server.cpp
+      ${CPP_FOR_SWIG_ROOT}/BitcoinP2P.cpp
+      ${CPP_FOR_SWIG_ROOT}/Blockchain.cpp
+      ${CPP_FOR_SWIG_ROOT}/BlockchainScanner.cpp
+      ${CPP_FOR_SWIG_ROOT}/BlockchainScanner_Super.cpp
+      ${CPP_FOR_SWIG_ROOT}/BlockDataMap.cpp
+      ${CPP_FOR_SWIG_ROOT}/BlockDataViewer.cpp
+      ${CPP_FOR_SWIG_ROOT}/BlockObj.cpp
+      ${CPP_FOR_SWIG_ROOT}/BlockUtils.cpp
+      ${CPP_FOR_SWIG_ROOT}/BtcWallet.cpp
+      ${CPP_FOR_SWIG_ROOT}/DatabaseBuilder.cpp
+      ${CPP_FOR_SWIG_ROOT}/HistoryPager.cpp
+      ${CPP_FOR_SWIG_ROOT}/LedgerEntry.cpp
+      ${CPP_FOR_SWIG_ROOT}/nodeRPC.cpp
+      ${CPP_FOR_SWIG_ROOT}/Progress.cpp
+      ${CPP_FOR_SWIG_ROOT}/ScrAddrFilter.cpp
+      ${CPP_FOR_SWIG_ROOT}/ScrAddrObj.cpp
+      ${CPP_FOR_SWIG_ROOT}/Server.cpp
+      ${CPP_FOR_SWIG_ROOT}/SshParser.cpp
+      ${CPP_FOR_SWIG_ROOT}/StoredBlockObj.cpp
+      ${CPP_FOR_SWIG_ROOT}/txio.cpp
+      ${CPP_FOR_SWIG_ROOT}/ZeroConf.cpp
+      ${CPP_FOR_SWIG_ROOT}/gtest/NodeUnitTest.cpp
    )
 
 ENDIF (BUILD_TEST_TOOLS)
 
 IF (WIN32)
-   LIST(APPEND SOURCES ArmoryDB/cppForSwig/SocketService_win32.cpp)
+   LIST(APPEND SOURCES ${CPP_FOR_SWIG_ROOT}/SocketService_win32.cpp)
 ELSE (WIN32)
-   LIST(APPEND SOURCES ArmoryDB/cppForSwig/SocketService_unix.cpp)
+   LIST(APPEND SOURCES ${CPP_FOR_SWIG_ROOT}/SocketService_unix.cpp)
 ENDIF (WIN32)
 
 SET (HEADERS
-   ArmoryDB/cppForSwig/Accounts.h
-   ArmoryDB/cppForSwig/Addresses.h
-   ArmoryDB/cppForSwig/Assets.h
-   ArmoryDB/cppForSwig/AssetEncryption.h
-   ArmoryDB/cppForSwig/AsyncClient.h
-   ArmoryDB/cppForSwig/AuthorizedPeers.h
-   ArmoryDB/cppForSwig/BDVCodec.h
-   ArmoryDB/cppForSwig/BinaryData.h
-   ArmoryDB/cppForSwig/BIP150_151.h
-   ArmoryDB/cppForSwig/BIP32_Node.h
-   ArmoryDB/cppForSwig/BlockDataManagerConfig.h
-   ArmoryDB/cppForSwig/BtcUtils.h
-   ArmoryDB/cppForSwig/ClientClasses.h
-   ArmoryDB/cppForSwig/CoinSelection.h
-   ArmoryDB/cppForSwig/DBUtils.h
-   ArmoryDB/cppForSwig/DecryptedDataContainer.h
-   ArmoryDB/cppForSwig/DerivationScheme.h
-   ArmoryDB/cppForSwig/EncryptionUtils.h
-   ArmoryDB/cppForSwig/hkdf.h
-   ArmoryDB/cppForSwig/HttpMessage.h
-   ArmoryDB/cppForSwig/JSON_codec.h
-   ArmoryDB/cppForSwig/lmdb_wrapper.h
-   ArmoryDB/cppForSwig/NetworkConfig.h
-   ArmoryDB/cppForSwig/ReentrantLock.h
-   ArmoryDB/cppForSwig/SecureBinaryData.h
-   ArmoryDB/cppForSwig/Signer.h
-   ArmoryDB/cppForSwig/Script.h
-   ArmoryDB/cppForSwig/SocketObject.h
-   ArmoryDB/cppForSwig/SocketService.h
-   ArmoryDB/cppForSwig/StringSockets.h
-   ArmoryDB/cppForSwig/SwigClient.h
-   ArmoryDB/cppForSwig/Transactions.h
-   ArmoryDB/cppForSwig/TxClasses.h
-   ArmoryDB/cppForSwig/TxEvalState.h
-   ArmoryDB/cppForSwig/Wallets.h
-   ArmoryDB/cppForSwig/WalletManager.h
-   ArmoryDB/cppForSwig/WebSocketClient.h
-   ArmoryDB/cppForSwig/WebSocketMessage.h
-   ArmoryDB/cppForSwig/UniversalTimer.h
-   ArmoryDB/cppForSwig/lmdb/libraries/liblmdb/lmdb.h
-   ArmoryDB/cppForSwig/lmdb/libraries/liblmdb/midl.h
-   ArmoryDB/cppForSwig/lmdb/libraries/liblmdb/lmdbpp.h
-   ArmoryDB/cppForSwig/bech32/ref/c++/bech32.h
-   ArmoryDB/cppForSwig/bech32/ref/c++/segwit_addr.h
+   ${CPP_FOR_SWIG_ROOT}/Accounts.h
+   ${CPP_FOR_SWIG_ROOT}/Addresses.h
+   ${CPP_FOR_SWIG_ROOT}/Assets.h
+   ${CPP_FOR_SWIG_ROOT}/AssetEncryption.h
+   ${CPP_FOR_SWIG_ROOT}/AsyncClient.h
+   ${CPP_FOR_SWIG_ROOT}/AuthorizedPeers.h
+   ${CPP_FOR_SWIG_ROOT}/BDVCodec.h
+   ${CPP_FOR_SWIG_ROOT}/BinaryData.h
+   ${CPP_FOR_SWIG_ROOT}/BIP150_151.h
+   ${CPP_FOR_SWIG_ROOT}/BIP32_Node.h
+   ${CPP_FOR_SWIG_ROOT}/BlockDataManagerConfig.h
+   ${CPP_FOR_SWIG_ROOT}/BtcUtils.h
+   ${CPP_FOR_SWIG_ROOT}/ClientClasses.h
+   ${CPP_FOR_SWIG_ROOT}/CoinSelection.h
+   ${CPP_FOR_SWIG_ROOT}/DBUtils.h
+   ${CPP_FOR_SWIG_ROOT}/DecryptedDataContainer.h
+   ${CPP_FOR_SWIG_ROOT}/DerivationScheme.h
+   ${CPP_FOR_SWIG_ROOT}/EncryptionUtils.h
+   ${CPP_FOR_SWIG_ROOT}/hkdf.h
+   ${CPP_FOR_SWIG_ROOT}/HttpMessage.h
+   ${CPP_FOR_SWIG_ROOT}/JSON_codec.h
+   ${CPP_FOR_SWIG_ROOT}/lmdb_wrapper.h
+   ${CPP_FOR_SWIG_ROOT}/NetworkConfig.h
+   ${CPP_FOR_SWIG_ROOT}/ReentrantLock.h
+   ${CPP_FOR_SWIG_ROOT}/SecureBinaryData.h
+   ${CPP_FOR_SWIG_ROOT}/Signer.h
+   ${CPP_FOR_SWIG_ROOT}/Script.h
+   ${CPP_FOR_SWIG_ROOT}/SocketObject.h
+   ${CPP_FOR_SWIG_ROOT}/SocketService.h
+   ${CPP_FOR_SWIG_ROOT}/StringSockets.h
+   ${CPP_FOR_SWIG_ROOT}/SwigClient.h
+   ${CPP_FOR_SWIG_ROOT}/Transactions.h
+   ${CPP_FOR_SWIG_ROOT}/TxClasses.h
+   ${CPP_FOR_SWIG_ROOT}/TxEvalState.h
+   ${CPP_FOR_SWIG_ROOT}/Wallets.h
+   ${CPP_FOR_SWIG_ROOT}/WalletManager.h
+   ${CPP_FOR_SWIG_ROOT}/WebSocketClient.h
+   ${CPP_FOR_SWIG_ROOT}/WebSocketMessage.h
+   ${CPP_FOR_SWIG_ROOT}/UniversalTimer.h
+   ${CPP_FOR_SWIG_ROOT}/lmdb/libraries/liblmdb/lmdb.h
+   ${CPP_FOR_SWIG_ROOT}/lmdb/libraries/liblmdb/midl.h
+   ${CPP_FOR_SWIG_ROOT}/lmdb/libraries/liblmdb/lmdbpp.h
+   ${CPP_FOR_SWIG_ROOT}/bech32/ref/c++/bech32.h
+   ${CPP_FOR_SWIG_ROOT}/bech32/ref/c++/segwit_addr.h
    )
 
 IF (BUILD_TEST_TOOLS)
    LIST (APPEND HEADERS
-      ArmoryDB/cppForSwig/BDM_mainthread.h
-      ArmoryDB/cppForSwig/BDM_Server.h
-      ArmoryDB/cppForSwig/BitcoinP2p.h
-      ArmoryDB/cppForSwig/Blockchain.h
-      ArmoryDB/cppForSwig/BlockchainScanner.h
-      ArmoryDB/cppForSwig/BlockchainScanner_Super.h
-      ArmoryDB/cppForSwig/BlockDataMap.h
-      ArmoryDB/cppForSwig/BlockDataViewer.h
-      ArmoryDB/cppForSwig/BlockObj.h
-      ArmoryDB/cppForSwig/BlockUtils.h
-      ArmoryDB/cppForSwig/BtcWallet.h
-      ArmoryDB/cppForSwig/DatabaseBuilder.h
-      ArmoryDB/cppForSwig/HistoryPager.h
-      ArmoryDB/cppForSwig/LedgerEntry.h
-      ArmoryDB/cppForSwig/nodeRPC.h
-      ArmoryDB/cppForSwig/Progress.h
-      ArmoryDB/cppForSwig/ScrAddrFilter.h
-      ArmoryDB/cppForSwig/ScrAddrObj.h
-      ArmoryDB/cppForSwig/Server.h
-      ArmoryDB/cppForSwig/SshParser.h
-      ArmoryDB/cppForSwig/StoredBlockObj.h
-      ArmoryDB/cppForSwig/txio.h
-      ArmoryDB/cppForSwig/ZeroConf.h
-      ArmoryDB/cppForSwig/gtest/NodeUnitTest.h
+      ${CPP_FOR_SWIG_ROOT}/BDM_mainthread.h
+      ${CPP_FOR_SWIG_ROOT}/BDM_Server.h
+      ${CPP_FOR_SWIG_ROOT}/BitcoinP2p.h
+      ${CPP_FOR_SWIG_ROOT}/Blockchain.h
+      ${CPP_FOR_SWIG_ROOT}/BlockchainScanner.h
+      ${CPP_FOR_SWIG_ROOT}/BlockchainScanner_Super.h
+      ${CPP_FOR_SWIG_ROOT}/BlockDataMap.h
+      ${CPP_FOR_SWIG_ROOT}/BlockDataViewer.h
+      ${CPP_FOR_SWIG_ROOT}/BlockObj.h
+      ${CPP_FOR_SWIG_ROOT}/BlockUtils.h
+      ${CPP_FOR_SWIG_ROOT}/BtcWallet.h
+      ${CPP_FOR_SWIG_ROOT}/DatabaseBuilder.h
+      ${CPP_FOR_SWIG_ROOT}/HistoryPager.h
+      ${CPP_FOR_SWIG_ROOT}/LedgerEntry.h
+      ${CPP_FOR_SWIG_ROOT}/nodeRPC.h
+      ${CPP_FOR_SWIG_ROOT}/Progress.h
+      ${CPP_FOR_SWIG_ROOT}/ScrAddrFilter.h
+      ${CPP_FOR_SWIG_ROOT}/ScrAddrObj.h
+      ${CPP_FOR_SWIG_ROOT}/Server.h
+      ${CPP_FOR_SWIG_ROOT}/SshParser.h
+      ${CPP_FOR_SWIG_ROOT}/StoredBlockObj.h
+      ${CPP_FOR_SWIG_ROOT}/txio.h
+      ${CPP_FOR_SWIG_ROOT}/ZeroConf.h
+      ${CPP_FOR_SWIG_ROOT}/gtest/NodeUnitTest.h
    )
 ENDIF (BUILD_TEST_TOOLS)
 
-SET(PROTO_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ArmoryDB/cppForSwig/protobuf)
+SET(PROTO_DIR ${CMAKE_CURRENT_SOURCE_DIR}/${CPP_FOR_SWIG_ROOT}/protobuf)
 FILE(GLOB PROTO_FILES ${PROTO_DIR}/*.proto)
 
 FOREACH(PROTO_FILE ${PROTO_FILES})
@@ -189,23 +191,23 @@ SET(PROTO_SOURCES ${PROTO_SOURCE_FILES} ${PROTO_HEADER_FILES})
 # leveldb_windows_port
 IF(WIN32)
    SET( LEVELDB_WINDOWS_PORT_SOURCES
-      ArmoryDB/cppForSwig/leveldb_windows_port/win32_posix/Win_TranslatePath.cpp
-      ArmoryDB/cppForSwig/leveldb_windows_port/win32_posix/dirent_win32.cpp
-      ArmoryDB/cppForSwig/leveldb_windows_port/win32_posix/dirent_win32.cpp
-      ArmoryDB/cppForSwig/leveldb_windows_port/win32_posix/mman.cpp
-      ArmoryDB/cppForSwig/leveldb_windows_port/win32_posix/pthread_win32port.cpp
-      ArmoryDB/cppForSwig/leveldb_windows_port/win32_posix/win32_posix.cc
+      ${CPP_FOR_SWIG_ROOT}/leveldb_windows_port/win32_posix/Win_TranslatePath.cpp
+      ${CPP_FOR_SWIG_ROOT}/leveldb_windows_port/win32_posix/dirent_win32.cpp
+      ${CPP_FOR_SWIG_ROOT}/leveldb_windows_port/win32_posix/dirent_win32.cpp
+      ${CPP_FOR_SWIG_ROOT}/leveldb_windows_port/win32_posix/mman.cpp
+      ${CPP_FOR_SWIG_ROOT}/leveldb_windows_port/win32_posix/pthread_win32port.cpp
+      ${CPP_FOR_SWIG_ROOT}/leveldb_windows_port/win32_posix/win32_posix.cc
       )
 
 
    SET(LEVELDB_WINDOWS_PORT_HEADERS
-      ArmoryDB/cppForSwig/leveldb_windows_port/win32_posix/Win_TranslatePath.h
-      ArmoryDB/cppForSwig/leveldb_windows_port/win32_posix/dirent_win32.h
-      ArmoryDB/cppForSwig/leveldb_windows_port/win32_posix/file.h
-      ArmoryDB/cppForSwig/leveldb_windows_port/win32_posix/mman.h
-      ArmoryDB/cppForSwig/leveldb_windows_port/win32_posix/pthread.h
-      ArmoryDB/cppForSwig/leveldb_windows_port/win32_posix/unistd.h
-      ArmoryDB/cppForSwig/leveldb_windows_port/win32_posix/win32_posix.h
+      ${CPP_FOR_SWIG_ROOT}/leveldb_windows_port/win32_posix/Win_TranslatePath.h
+      ${CPP_FOR_SWIG_ROOT}/leveldb_windows_port/win32_posix/dirent_win32.h
+      ${CPP_FOR_SWIG_ROOT}/leveldb_windows_port/win32_posix/file.h
+      ${CPP_FOR_SWIG_ROOT}/leveldb_windows_port/win32_posix/mman.h
+      ${CPP_FOR_SWIG_ROOT}/leveldb_windows_port/win32_posix/pthread.h
+      ${CPP_FOR_SWIG_ROOT}/leveldb_windows_port/win32_posix/unistd.h
+      ${CPP_FOR_SWIG_ROOT}/leveldb_windows_port/win32_posix/win32_posix.h
       )
 
    SET(OS_SPECIFIC_SOURCES ${LEVELDB_WINDOWS_PORT_SOURCES})
@@ -233,10 +235,10 @@ IF(NOT WIN32)
 ENDIF(NOT WIN32)
 
 TARGET_INCLUDE_DIRECTORIES(${CRYPTO_LIB_NAME}
-   PUBLIC ArmoryDB/cppForSwig
-   PUBLIC ArmoryDB/cppForSwig/lmdb/libraries/liblmdb
+   PUBLIC ${CPP_FOR_SWIG_ROOT}
+   PUBLIC ${CPP_FOR_SWIG_ROOT}/lmdb/libraries/liblmdb
 )
 
 IF(WIN32)
-   TARGET_INCLUDE_DIRECTORIES(${CRYPTO_LIB_NAME} PUBLIC ArmoryDB/cppForSwig/leveldb_windows_port/win32_posix)
+   TARGET_INCLUDE_DIRECTORIES(${CRYPTO_LIB_NAME} PUBLIC ${CPP_FOR_SWIG_ROOT}/leveldb_windows_port/win32_posix)
 ENDIF(WIN32)
