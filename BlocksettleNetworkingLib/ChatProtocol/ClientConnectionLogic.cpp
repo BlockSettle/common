@@ -121,6 +121,13 @@ void ClientConnectionLogic::onDataReceived(const std::string& data)
       return;
    }
 
+   PartyMessageOfflineRequest partyMessageOfflineRequest;
+   if (ProtobufUtils::pbAnyToMessage<PartyMessageOfflineRequest>(any, &partyMessageOfflineRequest))
+   {
+      handlePartyMessageOfflineRequest(partyMessageOfflineRequest);
+      return;
+   }
+
    auto what = QString::fromLatin1("data: %1").arg(QString::fromStdString(data));
    emit error(ClientConnectionLogicError::UnhandledPacket, what.toStdString());
 }
@@ -607,17 +614,33 @@ void ClientConnectionLogic::messageLoaded(const std::string& partyId, const std:
    auto recipients = clientPartyPtr->getRecipientsExceptMe(currentUserPtr()->userName());
    for (const auto& recipient : recipients)
    {
-      // we need to be sure here that sessionKeyDataPtr is properly initialized
-      auto sessionKeyDataPtr = sessionKeyHolderPtr_->sessionKeyDataForUser(recipient->userHash());
-      if (!sessionKeyDataPtr->isInitialized())
+      if (OFFLINE == clientPartyPtr->clientStatus())
       {
-         // sorry, not today
-         continue;
-      }
+         // use IES encryption for offline clients
+         QFuture<std::string> future = cryptManagerPtr_->encryptMessageIES(message, recipient->publicKey());
+         auto encryptedMessage = future.result();
 
-      // use AEAD encryption for online clients
-      if (clientPartyPtr->clientStatus() == ONLINE)
+         PartyMessagePacket partyMessagePacket;
+         partyMessagePacket.set_party_id(clientPartyPtr->id());
+         partyMessagePacket.set_message_id(messageId);
+         partyMessagePacket.set_timestamp_ms(timestamp);
+         partyMessagePacket.set_encryption(IES);
+         partyMessagePacket.set_message(encryptedMessage);
+         partyMessagePacket.set_party_message_state(SENT);
+
+         sendPacket(partyMessagePacket);
+      }
+      else
       {
+         // we need to be sure here that sessionKeyDataPtr is properly initialized
+         const auto sessionKeyDataPtr = sessionKeyHolderPtr_->sessionKeyDataForUser(recipient->userHash());
+         if (!sessionKeyDataPtr->isInitialized())
+         {
+            // sorry, not today
+            continue;
+         }
+         
+         // use AEAD encryption for online clients
          auto nonce = sessionKeyDataPtr->nonce();
          auto associatedData = cryptManagerPtr_->jsonAssociatedData(partyId, nonce);
 
@@ -639,19 +662,6 @@ void ClientConnectionLogic::messageLoaded(const std::string& partyId, const std:
          clientDBServicePtr_->updateMessageState(messageId, SENT);
          continue;
       }
-
-      // in other case use IES encryption
-      QFuture<std::string> future = cryptManagerPtr_->encryptMessageIES(message, recipient->publicKey());
-      auto encryptedMessage = future.result();
-
-      PartyMessagePacket partyMessagePacket;
-      partyMessagePacket.set_party_id(clientPartyPtr->id());
-      partyMessagePacket.set_message_id(messageId);
-      partyMessagePacket.set_timestamp_ms(timestamp);
-      partyMessagePacket.set_encryption(IES);
-      partyMessagePacket.set_party_message_state(SENT);
-
-      sendPacket(partyMessagePacket);
 
       clientDBServicePtr_->updateMessageState(messageId, SENT);
    }
@@ -739,6 +749,20 @@ void ClientConnectionLogic::handleReplySearchUser(const ReplySearchUser& replySe
    }
 
    emit searchUserReply(searchUserReplyList, replySearchUser.search_id());
+}
+
+void ClientConnectionLogic::handlePartyMessageOfflineRequest(
+   const PartyMessageOfflineRequest& partyMessageOfflineRequest) const
+{
+   const auto& receiverHash = partyMessageOfflineRequest.receiver_hash();
+
+   auto clientPartyModelPtr = clientPartyLogicPtr_->clientPartyModelPtr();
+   auto clientPartyPtrList = clientPartyModelPtr->getStandardPrivatePartyListForRecipient(receiverHash);
+
+   for (const auto& clientPartyPtr : clientPartyPtrList)
+   {
+      clientDBServicePtr_->readUnsentMessages(clientPartyPtr->id());
+   }
 }
 
 void ClientConnectionLogic::searchUser(const std::string& userHash, const std::string& searchId)
