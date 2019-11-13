@@ -5,6 +5,7 @@
 #include "ColoredCoinLogic.h"
 #include "FastLock.h"
 #include "WalletSignerContainer.h"
+#include "WalletUtils.h"
 
 #include <unordered_map>
 
@@ -736,7 +737,7 @@ int hd::Leaf::addAddress(const bs::Address &addr, const std::string &index, bool
 
 bool hd::Leaf::getSpendableTxOutList(const ArmoryConnection::UTXOsCb &cb, uint64_t val)
 {  // process the UTXOs for the purposes of handling internal/external addresses
-   const ArmoryConnection::UTXOsCb &cbWrap = [this, cb](const std::vector<UTXO> &utxos) {
+   const ArmoryConnection::UTXOsCb &cbWrap = [this, cb, val](const std::vector<UTXO> &utxos) {
       std::vector<UTXO> filteredUTXOs;
       for (const auto &utxo : utxos) {
          const auto nbConf = armory_->getConfirmationsNumber(utxo.getHeight());
@@ -747,10 +748,10 @@ bool hd::Leaf::getSpendableTxOutList(const ArmoryConnection::UTXOsCb &cb, uint64
          }
       }
       if (cb) {
-         cb(filteredUTXOs);
+         cb(bs::selectUtxoForAmount(std::move(filteredUTXOs), val));
       }
    };
-   return bs::sync::Wallet::getSpendableTxOutList(cbWrap, val);
+   return bs::sync::Wallet::getSpendableTxOutList(cbWrap, std::numeric_limits<uint64_t>::max());
 }
 
 BTCNumericTypes::balance_type hd::Leaf::getSpendableBalance() const
@@ -893,22 +894,22 @@ std::vector<std::string> hd::CCLeaf::setUnconfirmedTarget()
 
 bool hd::CCLeaf::getSpendableTxOutList(const ArmoryConnection::UTXOsCb &cb, uint64_t val)
 {
-   const ArmoryConnection::UTXOsCb &cbWrap = [this, cb](const std::vector<UTXO> &utxos) {
+   const auto cbWrap = [cb, val, armory=armory_]
+      (const std::vector<UTXO> &utxos, std::exception_ptr eptr)
+   {
       std::vector<UTXO> filteredUTXOs;
       for (const auto &utxo : utxos) {
-         if (!isTxValid(utxo.getTxHash())) {
-            continue;
-         }
-         const auto nbConf = sync::Wallet::armory_->getConfirmationsNumber(utxo.getHeight());
+         const auto nbConf = armory->getConfirmationsNumber(utxo.getHeight());
          if (nbConf >= kIntConfCount) {
             filteredUTXOs.emplace_back(std::move(utxo));
          }
       }
       if (cb) {
-         cb(filteredUTXOs);
+         cb(bs::selectUtxoForAmount(std::move(filteredUTXOs), val));
       }
    };
-   return bs::sync::Wallet::getSpendableTxOutList(cbWrap, val);
+   const auto &addrSet = collectAddresses();
+   return tracker_->getCCUtxoForAddresses(addrSet, false, cbWrap);
 }
 
 void hd::CCLeaf::CCWalletACT::onStateChanged(ArmoryState state)
@@ -920,16 +921,23 @@ void hd::CCLeaf::CCWalletACT::onStateChanged(ArmoryState state)
 
 bool hd::CCLeaf::getSpendableZCList(const ArmoryConnection::UTXOsCb &cb) const
 {
-   const auto &cbZCList = [this, cb](std::vector<UTXO> utxos) {
-      std::vector<UTXO> txOutList;
+   const auto cbWrap = [cb, armory = armory_]
+      (const std::vector<UTXO> &utxos, std::exception_ptr eptr)
+   {
+      std::vector<UTXO> filteredUTXOs;
       for (const auto &utxo : utxos) {
-         if (isTxValid(utxo.getTxHash())) {
-            txOutList.emplace_back(std::move(utxo));
+         const auto nbConf = armory->getConfirmationsNumber(utxo.getHeight());
+         if (nbConf == 0) {
+            filteredUTXOs.emplace_back(std::move(utxo));
          }
       }
-      cb(txOutList);
+      if (cb) {
+         cb(filteredUTXOs);
+      }
    };
-   return hd::Leaf::getSpendableZCList(cbZCList);
+
+   const auto &addrSet = collectAddresses();
+   return tracker_->getCCUtxoForAddresses(addrSet, true, cbWrap);
 }
 
 std::set<BinaryData> hd::CCLeaf::collectAddresses() const
@@ -985,7 +993,8 @@ bool hd::CCLeaf::isTxValid(const BinaryData &txHash) const
    if (!tracker_) {
       return true;
    }
-   return tracker_->isTxHashValid(txHash);
+//   return tracker_->isTxHashValid(txHash);
+   return true;   // Disabled [temporarily] the tracker's TX detection, as it doesn't work properly
 }
 
 BTCNumericTypes::balance_type hd::CCLeaf::getTxBalance(int64_t val) const
