@@ -174,6 +174,10 @@ void ClientConnectionLogic::handleWelcomeResponse(const WelcomeResponse& welcome
       // Read and provide last 10 history messages only for standard private parties
       clientDBServicePtr_->readHistoryMessages(clientPartyPtr->id(), clientPartyPtr->userHash(), 10);
    }
+
+   // request offline messages for me
+   const PartyMessageOfflineRequest partyMessageOfflineRequest;
+   emit sendPacket(partyMessageOfflineRequest);
 }
 
 void ClientConnectionLogic::handleLogoutResponse(const LogoutResponse&)
@@ -658,12 +662,7 @@ void ClientConnectionLogic::messageLoaded(const std::string& partyId, const std:
          partyMessagePacket.set_party_message_state(SENT);
 
          sendPacket(partyMessagePacket);
-
-         clientDBServicePtr_->updateMessageState(messageId, SENT);
-         continue;
       }
-
-      clientDBServicePtr_->updateMessageState(messageId, SENT);
    }
 }
 
