@@ -63,7 +63,7 @@ void ClientPartyLogic::handlePartiesFromWelcomePacket(const ChatUserPtr& current
             recipients.push_back(recipientPtr);
 
             // choose all recipients except me
-            if (currentUserPtr->userName() != recipientPtr->userHash())
+            if (currentUserPtr->userHash() != recipientPtr->userHash())
             {
                uniqueRecipients[recipientPtr->userHash()] = recipientPtr;
             }
@@ -157,7 +157,7 @@ void ClientPartyLogic::createPrivateParty(const ChatUserPtr& currentUserPtr, con
       if (OTC == partySubType)
       {
          // delete old otc private party and create new one
-         const auto clientPartyPtr = clientPartyModelPtr_->getOtcPartyForUsers(currentUserPtr->userName(), remoteUserName);
+         const auto clientPartyPtr = clientPartyModelPtr_->getOtcPartyForUsers(currentUserPtr->userHash(), remoteUserName);
          emit deletePrivateParty(clientPartyPtr->id());
       }
       else
@@ -173,10 +173,10 @@ void ClientPartyLogic::createPrivateParty(const ChatUserPtr& currentUserPtr, con
 
    newClientPrivatePartyPtr->setDisplayName(remoteUserName);
    newClientPrivatePartyPtr->setUserHash(remoteUserName);
-   newClientPrivatePartyPtr->setPartyCreatorHash(currentUserPtr->userName());
+   newClientPrivatePartyPtr->setPartyCreatorHash(currentUserPtr->userHash());
    // setup recipients for new private party
    PartyRecipientsPtrList recipients;
-   recipients.push_back(std::make_shared<PartyRecipient>(currentUserPtr->userName()));
+   recipients.push_back(std::make_shared<PartyRecipient>(currentUserPtr->userHash()));
    recipients.push_back(std::make_shared<PartyRecipient>(remoteUserName));
    newClientPrivatePartyPtr->setRecipients(recipients);
    newClientPrivatePartyPtr->setInitialMessage(initialMessage);
@@ -203,7 +203,7 @@ bool ClientPartyLogic::isPrivatePartyForUserExist(const ChatUserPtr& currentUser
          continue;
       }
 
-      auto recipients = clientPartyPtr->getRecipientsExceptMe(currentUserPtr->userName());
+      auto recipients = clientPartyPtr->getRecipientsExceptMe(currentUserPtr->userHash());
       for (const auto& recipient : recipients)
       {
          if (recipient->userHash() == remoteUserName)
@@ -256,7 +256,7 @@ void ClientPartyLogic::createPrivatePartyFromPrivatePartyRequest(const ChatUserP
          emit deletePrivateParty(oldClientPartyPtr->id());
 
          // delete old recipients keys
-         auto oldRecipients = oldClientPartyPtr->getRecipientsExceptMe(currentUserPtr->userName());
+         auto oldRecipients = oldClientPartyPtr->getRecipientsExceptMe(currentUserPtr->userHash());
          clientDBServicePtr_->deleteRecipientsKeys(oldRecipients);
       }
    }
@@ -265,7 +265,7 @@ void ClientPartyLogic::createPrivatePartyFromPrivatePartyRequest(const ChatUserP
    clientPartyModelPtr_->insertParty(newClientPrivatePartyPtr);
 
    // update recipients keys
-   const auto remoteRecipients = newClientPrivatePartyPtr->getRecipientsExceptMe(currentUserPtr->userName());
+   const auto remoteRecipients = newClientPrivatePartyPtr->getRecipientsExceptMe(currentUserPtr->userHash());
    clientDBServicePtr_->saveRecipientsKeys(remoteRecipients);
 
    emit partyModelChanged();

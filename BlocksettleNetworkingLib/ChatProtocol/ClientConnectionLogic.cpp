@@ -135,7 +135,7 @@ void ClientConnectionLogic::onDataReceived(const std::string& data)
 void ClientConnectionLogic::onConnected()
 {
    WelcomeRequest welcomeRequest;
-   welcomeRequest.set_user_hash(currentUserPtr()->userName());
+   welcomeRequest.set_user_hash(currentUserPtr()->userHash());
    welcomeRequest.set_client_public_key(currentUserPtr()->publicKey().toBinStr());
    welcomeRequest.set_celer_type(static_cast<int>(currentUserPtr()->celerUserType()));
    welcomeRequest.set_chat_token_data(token_.toBinStr());
@@ -168,7 +168,7 @@ void ClientConnectionLogic::handleWelcomeResponse(const WelcomeResponse& welcome
 
    // update party to user table and check history messages
    auto clientPartyModelPtr = clientPartyLogicPtr_->clientPartyModelPtr();
-   auto clientPartyPtrList = clientPartyModelPtr->getStandardPrivatePartyListForRecipient(currentUserPtr()->userName());
+   auto clientPartyPtrList = clientPartyModelPtr->getStandardPrivatePartyListForRecipient(currentUserPtr()->userHash());
    for (const auto& clientPartyPtr : clientPartyPtrList)
    {
       // Read and provide last 10 history messages only for standard private parties
@@ -230,7 +230,7 @@ void ClientConnectionLogic::prepareAndSendPublicMessage(const ClientPartyPtr& cl
    partyMessagePacket.set_encryption(encryptionType);
    partyMessagePacket.set_nonce("");
    partyMessagePacket.set_party_message_state(partyMessageState);
-   partyMessagePacket.set_sender_hash(currentUserPtr()->userName());
+   partyMessagePacket.set_sender_hash(currentUserPtr()->userHash());
 
    clientDBServicePtr_->saveMessage(clientPartyPtr, ProtobufUtils::pbMessageToString(partyMessagePacket));
 
@@ -285,7 +285,7 @@ void ClientConnectionLogic::incomingPrivatePartyMessage(PartyMessagePacket& part
    auto clientPartyModelPtr = clientPartyLogicPtr_->clientPartyModelPtr();
    auto clientPartyPtr = clientPartyModelPtr->getClientPartyById(partyMessagePacket.party_id());
 
-   const auto recipientPtr = clientPartyPtr->getSecondRecipient(currentUserPtr()->userName());
+   const auto recipientPtr = clientPartyPtr->getSecondRecipient(currentUserPtr()->userHash());
 
    if (nullptr == recipientPtr)
    {
@@ -413,7 +413,7 @@ void ClientConnectionLogic::prepareRequestPrivateParty(const std::string& partyI
    // update party state
    clientPartyPtr->setPartyState(REQUESTED);
 
-   const auto secondRecipientPtr = clientPartyPtr->getSecondRecipient(currentUserPtr()->userName());
+   const auto secondRecipientPtr = clientPartyPtr->getSecondRecipient(currentUserPtr()->userHash());
    // wrong recipient, delete party and show error
    if (nullptr == secondRecipientPtr)
    {
@@ -429,7 +429,7 @@ void ClientConnectionLogic::prepareRequestPrivateParty(const std::string& partyI
    partyPacket->set_party_type(clientPartyPtr->partyType());
    partyPacket->set_party_subtype(clientPartyPtr->partySubType());
    partyPacket->set_party_state(clientPartyPtr->partyState());
-   partyPacket->set_party_creator_hash(currentUserPtr()->userName());
+   partyPacket->set_party_creator_hash(currentUserPtr()->userHash());
 
    privatePartyRequest.set_initial_message(clientPartyPtr->initialMessage());
 
@@ -469,7 +469,7 @@ void ClientConnectionLogic::handlePrivatePartyRequest(const PrivatePartyRequest&
       // if party request was created by me
       // update recipient data
       const PartyPacket& partyPacket = privatePartyRequest.party_packet();
-      if (currentUserPtr()->userName() == partyPacket.party_creator_hash())
+      if (currentUserPtr()->userHash() == partyPacket.party_creator_hash())
       {
          auto clientPartyPtr = clientPartyModelPtr->getClientPartyById(partyPacket.party_id());
 
@@ -519,7 +519,7 @@ void ClientConnectionLogic::handlePrivatePartyRequest(const PrivatePartyRequest&
 void ClientConnectionLogic::requestSessionKeyExchange(const std::string& receieverUserName, const BinaryData& encodedLocalSessionPublicKey)
 {
    RequestSessionKeyExchange requestSessionKey;
-   requestSessionKey.set_sender_user_hash(currentUserPtr()->userName());
+   requestSessionKey.set_sender_user_hash(currentUserPtr()->userHash());
    requestSessionKey.set_encoded_public_key(encodedLocalSessionPublicKey.toBinStr());
    requestSessionKey.set_receiver_user_hash(receieverUserName);
 
@@ -529,7 +529,7 @@ void ClientConnectionLogic::requestSessionKeyExchange(const std::string& receiev
 void ClientConnectionLogic::replySessionKeyExchange(const std::string& receieverUserName, const BinaryData& encodedLocalSessionPublicKey)
 {
    ReplySessionKeyExchange replyKeyExchange;
-   replyKeyExchange.set_sender_user_hash(currentUserPtr()->userName());
+   replyKeyExchange.set_sender_user_hash(currentUserPtr()->userHash());
    replyKeyExchange.set_encoded_public_key(encodedLocalSessionPublicKey.toBinStr());
    replyKeyExchange.set_receiver_user_hash(receieverUserName);
 
@@ -564,13 +564,13 @@ void ClientConnectionLogic::prepareAndSendPrivateMessage(const ClientPartyPtr& c
    partyMessagePacket.set_encryption(encryptionType);
    partyMessagePacket.set_nonce("");
    partyMessagePacket.set_party_message_state(partyMessageState);
-   partyMessagePacket.set_sender_hash(currentUserPtr()->userName());
+   partyMessagePacket.set_sender_hash(currentUserPtr()->userHash());
 
    // save in db
    clientDBServicePtr_->saveMessage(clientPartyPtr, ProtobufUtils::pbMessageToString(partyMessagePacket));
 
    // call session key handler
-   auto recipients = clientPartyPtr->getRecipientsExceptMe(currentUserPtr()->userName());
+   auto recipients = clientPartyPtr->getRecipientsExceptMe(currentUserPtr()->userHash());
    for (const auto& recipient : recipients)
    {
       sessionKeyHolderPtr_->requestSessionKeysForUser(recipient->userHash(), recipient->publicKey());
@@ -585,7 +585,7 @@ void ClientConnectionLogic::sessionKeysForUser(const Chat::SessionKeyDataPtr& se
 
    const auto idPartyList = clientPartyModelPtr->getIdPrivatePartyList();
    const auto cppList = clientPartyModelPtr->getClientPartyListFromIdPartyList(idPartyList);
-   const auto clientPartyPtrList = clientPartyModelPtr->getClientPartyForRecipients(cppList, currentUserPtr()->userName(), receiverUserHash);
+   const auto clientPartyPtrList = clientPartyModelPtr->getClientPartyForRecipients(cppList, currentUserPtr()->userHash(), receiverUserHash);
 
    for (const auto& clientPartyPtr : clientPartyPtrList)
    {
@@ -615,7 +615,7 @@ void ClientConnectionLogic::messageLoaded(const std::string& partyId, const std:
    auto clientPartyModelPtr = clientPartyLogicPtr_->clientPartyModelPtr();
    auto clientPartyPtr = clientPartyModelPtr->getClientPartyById(partyId);
 
-   auto recipients = clientPartyPtr->getRecipientsExceptMe(currentUserPtr()->userName());
+   auto recipients = clientPartyPtr->getRecipientsExceptMe(currentUserPtr()->userHash());
    for (const auto& recipient : recipients)
    {
       if (OFFLINE == clientPartyPtr->clientStatus())
@@ -676,7 +676,7 @@ void ClientConnectionLogic::unsentMessagesFound(const std::string& partyId) cons
       return;
    }
 
-   PartyRecipientsPtrList recipients = clientPartyPtr->getRecipientsExceptMe(currentUserPtr()->userName());
+   PartyRecipientsPtrList recipients = clientPartyPtr->getRecipientsExceptMe(currentUserPtr()->userHash());
    for (const auto& recipient : recipients)
    {
       sessionKeyHolderPtr_->requestSessionKeysForUser(recipient->userHash(), recipient->publicKey());
@@ -781,7 +781,7 @@ void ClientConnectionLogic::setToken(const BinaryData &token, const BinaryData &
 
 void ClientConnectionLogic::saveRecipientsKeys(const ClientPartyPtr& clientPartyPtr) const
 {
-   const auto recipients = clientPartyPtr->getRecipientsExceptMe(currentUserPtr()->userName());
+   const auto recipients = clientPartyPtr->getRecipientsExceptMe(currentUserPtr()->userHash());
 
    clientDBServicePtr_->saveRecipientsKeys(recipients);
 }
