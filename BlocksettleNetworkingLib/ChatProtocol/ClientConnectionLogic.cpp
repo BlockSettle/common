@@ -640,7 +640,15 @@ void ClientConnectionLogic::messageLoaded(const std::string& partyId, const std:
          const auto sessionKeyDataPtr = sessionKeyHolderPtr_->sessionKeyDataForUser(recipient->userHash());
          if (!sessionKeyDataPtr->isInitialized())
          {
-            // sorry, not today
+            /*
+             * 13.11.2019
+             * This could happen only in rare occasions. 
+             * We need to break here and no error message is needed. 
+             * Process of sending unsent messages will be repeated when sender will send next new message 
+             * or sender will change his status to online again
+             * or server can request unsent messages if detect that we're sending aead message to offline user 
+             * or when we're trying temporary key exchange with offline user.
+            */
             continue;
          }
          
