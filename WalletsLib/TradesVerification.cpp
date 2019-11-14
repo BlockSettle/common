@@ -157,7 +157,6 @@ std::shared_ptr<bs::TradesVerification::Result> bs::TradesVerification::verifyUn
          return Result::error(fmt::format("unexpected settlement outputs count: {}. expected 1", settlementOutputsCount));
       }
 
-
       if (settlementAmount != tradeAmount) {
          return Result::error(fmt::format("unexpected settlement amount: {}. expected {}", settlementAmount, tradeAmount));
       }
@@ -192,13 +191,15 @@ std::shared_ptr<bs::TradesVerification::Result> bs::TradesVerification::verifyUn
 
       for (const auto& spender : spenders) {
          const auto& utxo = spender->getUtxo();
-         const auto& scrType = BtcUtils::getTxOutScriptType(utxo.getScript());
-         const auto& inputType = bs::Address::mapTxOutScriptType(scrType);
 
-         // we should accept native SW inputs only
-         if (inputType != AddressEntryType_P2WPKH) {
-            return Result::error("Non SW input in PayIn");
-         }
+         // XXX: code left for reference. will be removed once proper input type validation will be added
+         // const auto& scrType = BtcUtils::getTxOutScriptType(utxo.getScript());
+         // const auto& inputType = bs::Address::mapTxOutScriptType(scrType);
+
+         // // we should accept native SW inputs only
+         // if (inputType != AddressEntryType_P2WPKH) {
+         //    return Result::error("Non SW input in PayIn");
+         // }
 
          result->utxos.push_back(spender->getUtxo());
       }
