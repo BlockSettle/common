@@ -112,7 +112,7 @@ void ArmoryConnection::maintenanceThreadFunc()
       decltype(activeTargets_) notifiedACTs;
 
       // go through existing ACT
-      // basically there are 2 cicles as minor optimization
+      // basically there are 2 cycles as minor optimization
       // normal path - update once without any changes to ACT set.
       // during startup there might be new ACT added on some armory events ( state changes usually )
       // so we need to protect existing ACT from multiple notifications on the same event
