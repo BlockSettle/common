@@ -542,6 +542,12 @@ bool wallet::TXSignRequest::isSourceOfTx(const Tx &signedTx) const
          return false;
       }
 
+      // this->change may contains one of TxOut
+      if (recipients.size() != signedTx.getNumTxOut()
+          && recipients.size() + 1 != signedTx.getNumTxOut() ) {
+         return false;
+      }
+
       for (int i = 0; i < signedTx.getNumTxOut(); i++) {
          auto&& txOut = signedTx.getTxOutCopy(i);
          bs::Address txAddr = bs::Address::fromTxOut(txOut);
@@ -554,10 +560,6 @@ bool wallet::TXSignRequest::isSourceOfTx(const Tx &signedTx) const
       }
 
       for (int i = 0; i < signedTx.getNumTxIn(); i++) {
-         if (i >= inputs.size()) {
-            return false;
-         }
-
          auto&& txIn = signedTx.getTxInCopy(i);
          OutPoint op = txIn.getOutPoint();
 
