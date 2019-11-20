@@ -535,46 +535,55 @@ std::vector<std::shared_ptr<ScriptRecipient>> wallet::TXSignRequest::getRecipien
    return recipientsVector;
 }
 
-bool wallet::TXSignRequest::isSourceOfTx(Tx signedTx) const
+bool wallet::TXSignRequest::isSourceOfTx(const Tx &signedTx) const
 {
-   for (int i = 0; i < signedTx.getNumTxOut(); i++) {
-      auto&& txOut = signedTx.getTxOutCopy(i);
-      bs::Address txAddr = bs::Address::fromTxOut(txOut);
-      uint64_t outValSigned = txOut.getValue();
-      uint64_t outValUnsigned = amountReceivedOn(txAddr);
-
-      if (outValUnsigned != outValSigned) {
-         return false;
-      }
-   }
-
-   for (int i = 0; i < signedTx.getNumTxIn(); i++) {
-      if (i >= inputs.size()) {
+   try {
+      if ((inputs.size() != signedTx.getNumTxIn())) {
          return false;
       }
 
-      auto&& txIn = signedTx.getTxInCopy(i);
-      OutPoint op = txIn.getOutPoint();
+      for (int i = 0; i < signedTx.getNumTxOut(); i++) {
+         auto&& txOut = signedTx.getTxOutCopy(i);
+         bs::Address txAddr = bs::Address::fromTxOut(txOut);
+         uint64_t outValSigned = txOut.getValue();
+         uint64_t outValUnsigned = amountReceivedOn(txAddr);
 
-      const auto signedHash = op.getTxHash();
-      uint32_t signedTxOutIndex = op.getTxOutIndex();
-
-      bool hasUnsignedInput = false;
-      for (int j = 0; j < inputs.size(); j++) {
-         const auto unsignedHash = inputs.at(j).getTxHash();
-         uint32_t unsignedTxOutIndex = inputs.at(j).getTxOutIndex();
-
-         if (signedHash == unsignedHash && signedTxOutIndex == unsignedTxOutIndex) {
-            hasUnsignedInput = true;
-            break;
+         if (outValUnsigned != outValSigned) {
+            return false;
          }
       }
 
-      if (!hasUnsignedInput) {
-         return false;
+      for (int i = 0; i < signedTx.getNumTxIn(); i++) {
+         if (i >= inputs.size()) {
+            return false;
+         }
+
+         auto&& txIn = signedTx.getTxInCopy(i);
+         OutPoint op = txIn.getOutPoint();
+
+         const auto signedHash = op.getTxHash();
+         uint32_t signedTxOutIndex = op.getTxOutIndex();
+
+         bool hasUnsignedInput = false;
+         for (int j = 0; j < inputs.size(); j++) {
+            const auto unsignedHash = inputs.at(j).getTxHash();
+            uint32_t unsignedTxOutIndex = inputs.at(j).getTxOutIndex();
+
+            if (signedHash == unsignedHash && signedTxOutIndex == unsignedTxOutIndex) {
+               hasUnsignedInput = true;
+               break;
+            }
+         }
+
+         if (!hasUnsignedInput) {
+            return false;
+         }
       }
+      return true;
+
+   } catch (...) {
+      return false;
    }
-   return true;
 }
 
 bool wallet::TXMultiSignRequest::isValid() const noexcept
