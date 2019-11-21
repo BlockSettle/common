@@ -9,6 +9,7 @@
 
 #include <unordered_map>
 
+#include <QtConcurrent/QtConcurrent>
 #include <QLocale>
 #include <QMutexLocker>
 
@@ -34,42 +35,47 @@ void hd::Leaf::synchronize(const std::function<void()> &cbDone)
 {
    const auto &cbProcess = [this, cbDone](bs::sync::WalletData data)
    {
-      reset();
+      const auto &lbd = [this, cbDone, data]() {
+         reset();
 
-      if (wct_) {
-         wct_->metadataChanged(walletId());
-      }
-
-      if (data.highestExtIndex == UINT32_MAX ||
-         data.highestIntIndex == UINT32_MAX)
-         throw WalletException("unintialized addr chain use index");
-
-      lastExtIdx_ = data.highestExtIndex;
-      lastIntIdx_ = data.highestIntIndex;
-
-      logger_->debug("[sync::hd::Leaf::synchronize] {}: last indices {}+{}={} address[es]"
-         , walletId(), lastExtIdx_, lastIntIdx_, data.addresses.size());
-      for (const auto &addr : data.addresses) {
-         addAddress(addr.address, addr.index, false);
-         setAddressComment(addr.address, addr.comment, false);
-      }
-
-      for (const auto &addr : data.addrPool) {
-         //addPool normally won't contain comments
-         const auto path = bs::hd::Path::fromString(addr.index);
-         {
-            FastLock locker{addressPoolLock_};
-            addressPool_[{ path }] = addr.address;
-            poolByAddr_[addr.address] = { path };
+         if (wct_) {
+            wct_->metadataChanged(walletId());
          }
-      }
 
-      for (const auto &txComment : data.txComments) {
-         setTransactionComment(txComment.txHash, txComment.comment, false);
-      }
+         if (data.highestExtIndex == UINT32_MAX ||
+            data.highestIntIndex == UINT32_MAX)
+            throw WalletException("unintialized addr chain use index");
 
-      if (cbDone)
-         cbDone();
+         lastExtIdx_ = data.highestExtIndex;
+         lastIntIdx_ = data.highestIntIndex;
+
+         logger_->debug("[sync::hd::Leaf::synchronize] {}: last indices {}+{}={} address[es]"
+            , walletId(), lastExtIdx_, lastIntIdx_, data.addresses.size());
+         for (const auto &addr : data.addresses) {
+            addAddress(addr.address, addr.index, false);
+            setAddressComment(addr.address, addr.comment, false);
+         }
+
+         FastLock locker{addressPoolLock_};
+         for (const auto &addr : data.addrPool) {
+            //addPool normally won't contain comments
+            const auto path = bs::hd::Path::fromString(addr.index);
+            {
+               addressPool_[{ path }] = addr.address;
+               poolByAddr_[addr.address] = { path };
+            }
+         }
+
+         for (const auto &txComment : data.txComments) {
+            setTransactionComment(txComment.txHash, txComment.comment, false);
+         }
+
+         if (cbDone) {
+            QMetaObject::invokeMethod(qApp, cbDone);
+         }
+      };
+
+      QtConcurrent::run(lbd);
    };
 
    signContainer_->syncWallet(walletId(), cbProcess);
