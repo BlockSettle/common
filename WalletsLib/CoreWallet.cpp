@@ -542,9 +542,10 @@ bool wallet::TXSignRequest::isSourceOfTx(const Tx &signedTx) const
          return false;
       }
 
+      bool okWithChange = (change.value > 0) && (recipients.size() + 1 == signedTx.getNumTxOut());
+      bool okWithoutChange = (change.value == 0) && (recipients.size() == signedTx.getNumTxOut());
       // this->change may contains one of TxOut
-      if (recipients.size() != signedTx.getNumTxOut()
-          && recipients.size() + 1 != signedTx.getNumTxOut() ) {
+      if (!okWithChange && !okWithoutChange) {
          return false;
       }
 
