@@ -130,28 +130,11 @@ bool DealerCCSettlementContainer::startSigning()
    txReq_.prevStates = { txReqData_ };
    txReq_.populateUTXOs = true;
    txReq_.inputs = bs::UtxoReservation::instance()->get(utxoRes_.reserveId());
-
-   // TODO: Find out why code below does not work for sell requests (side() == bs::network::Side::Buy)
-#if 1
-   txReq_.walletIds.clear();
-   for (const auto &input : txReq_.inputs) {
-      const auto addr = bs::Address::fromUTXO(input);
-      const auto wallet = walletsMgr_->getWalletByAddress(addr);
-      if (!wallet) {
-         SPDLOG_LOGGER_ERROR(logger_, "can't find wallet from UTXO");
-         continue;
-      }
-      txReq_.walletIds.push_back(wallet->walletId());
-   }
-#else
    if (side() == bs::network::Side::Buy) {
-      for (const auto &leaf : xbtWallet_->getGroup(bs::sync::hd::Wallet::getXBTGroupType())->getLeaves()) {
-         txReq_.walletIds.push_back(leaf->walletId());
-      }
+      txReq_.walletIds = { xbtWallet_->getGroup(bs::sync::hd::Wallet::getXBTGroupType())->getLeaves().at(0)->walletId() };
    } else {
-      txReq_.walletIds.push_back(ccWallet_->walletId());
+      txReq_.walletIds = { ccWallet_->walletId() };
    }
-#endif
 
    //Waiting for TX half signing...
    SPDLOG_LOGGER_DEBUG(logger_, "signing with {} inputs", txReq_.inputs.size());

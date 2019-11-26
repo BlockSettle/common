@@ -276,7 +276,7 @@ bool ReqCCSettlementContainer::startSigning()
 {
    const auto &cbTx = [this, handle = validityFlag_.handle(), logger=logger_](bs::error::ErrorCode result, const BinaryData &signedTX) {
       if (!handle.isValid()) {
-         logger->warn("[ReqCCSettlementContainer::onTXSigned] failed to sign TX half, already destroyed");
+         SPDLOG_LOGGER_ERROR(logger, "failed to sign TX half, already destroyed");
          return;
       }
 
