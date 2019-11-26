@@ -97,9 +97,13 @@ void hd::Wallet::loadFromFile(const std::string &filename,
       throw std::runtime_error("Wallet file " + filePathName_ + " does not exist");
    }
 
-   lbdControlPassphrase_ = [controlPassphrase]
+   auto nbTries = std::make_shared<int>(0);
+   lbdControlPassphrase_ = [controlPassphrase, nbTries]
       (const std::set<BinaryData>&)->SecureBinaryData
    {
+      if (++(*nbTries) > 1) {
+         return {};
+      }
       return controlPassphrase;
    };
 
