@@ -40,6 +40,7 @@ enum RequestType
    PromoteHDWalletRequestType  = 31;
    UpdateDialogDataType        = 32; // update fields in password input dialogs in signer ui
    AddressPreimageType         = 33;
+   UpdateControlPasswordStatusType   = 34; // send message to ui if control password wrong, accepted or requested new
 }
 
 message RequestPacket
@@ -68,6 +69,12 @@ enum NetworkType
    TestNetType = 1;
 }
 
+enum ControlPasswordStatus
+{
+   Accepted = 0;
+   Rejected = 1;
+   RequestedNew = 2;
+}
 
 message AuthenticationRequest
 {
@@ -503,4 +510,9 @@ message UpdateDialogDataRequest
 {
    uint32                                                dialogId              = 1;
    Blocksettle.Communication.Internal.PasswordDialogData passwordDialogData    = 2;
+}
+
+message UpdateControlPasswordStatus
+{
+   ControlPasswordStatus controlPasswordStatus = 1;
 }

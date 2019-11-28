@@ -51,7 +51,7 @@ enum PacketType
 
    DecryptWalletRequestType   = 30;
    UpdateDialogDataType       = 32; // update fields in password input dialogs in signer ui
-   UpdateControlPasswordStatusType   = 33; // send message to ui if control password wrong
+   UpdateControlPasswordStatusType   = 33; // send message to ui if control password wrong, accepted or requested new
    ControlPasswordReceivedType       = 34;
 }
 

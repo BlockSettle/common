@@ -347,8 +347,6 @@ void BSTerminalMainWindow::LoadWallets()
       , &BSTerminalMainWindow::updateControlEnabledState);
 
    const auto &progressDelegate = [this](int cur, int total) {
-//      const int progress = cur * (100 / total);
-//      splashScreen.SetProgress(progress);
       logMgr_->logger()->debug("Loaded wallet {} of {}", cur, total);
    };
    walletsMgr_->reset();
@@ -491,11 +489,11 @@ bool BSTerminalMainWindow::InitSigningContainer()
       showError(tr("BlockSettle Signer"), tr("BlockSettle Signer creation failure"));
       return false;
    }
-   connect(signContainer_.get(), &SignContainer::ready, this, &BSTerminalMainWindow::SignerReady, Qt::QueuedConnection);
    connect(signContainer_.get(), &SignContainer::connectionError, this, &BSTerminalMainWindow::onSignerConnError, Qt::QueuedConnection);
    connect(signContainer_.get(), &SignContainer::disconnected, this, &BSTerminalMainWindow::updateControlEnabledState, Qt::QueuedConnection);
 
    walletsMgr_->setSignContainer(walletSignerContainer);
+   connect(walletSignerContainer.get(), &WalletSignerContainer::walletsStorageDecrypted, this, &BSTerminalMainWindow::SignerReady, Qt::QueuedConnection);
 
    return true;
 }
