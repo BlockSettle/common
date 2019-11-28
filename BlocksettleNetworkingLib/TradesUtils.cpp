@@ -3,7 +3,6 @@
 #include <spdlog/spdlog.h>
 
 #include "CoinSelection.h"
-#include "SettlementMonitor.h"
 #include "UtxoReservation.h"
 #include "Wallets/SyncHDGroup.h"
 #include "Wallets/SyncHDLeaf.h"
@@ -28,6 +27,48 @@ namespace {
    }
 
 } // namespace
+
+bool bs::tradeutils::getSpendableTxOutList(const std::vector<std::shared_ptr<bs::sync::Wallet>> &wallets
+   , const std::function<void(const std::map<UTXO, std::string> &)> &cb)
+{
+   if (wallets.empty()) {
+      cb({});
+      return true;
+   }
+   struct Result
+   {
+      std::map<std::string, std::vector<UTXO>> utxosMap;
+      std::function<void(const std::map<UTXO, std::string> &)> cb;
+   };
+   auto result = std::make_shared<Result>();
+   result->cb = std::move(cb);
+
+   for (const auto &wallet : wallets) {
+      auto cbWrap = [result, size = wallets.size(), walletId = wallet->walletId()]
+      (std::vector<UTXO> utxos)
+      {
+         result->utxosMap.emplace(walletId, std::move(utxos));
+         if (result->utxosMap.size() != size) {
+            return;
+         }
+
+         std::map<UTXO, std::string> utxosAll;
+
+         for (auto &item : result->utxosMap) {
+            for (const auto &utxo : item.second) {
+               utxosAll[utxo] = item.first;
+            }
+         }
+         result->cb(utxosAll);
+      };
+
+      // If request for some wallet failed resulted callback won't be called.
+      if (!wallet->getSpendableTxOutList(cbWrap, UINT64_MAX)) {
+         return false;
+      }
+   }
+   return true;
+}
 
 bs::tradeutils::Result bs::tradeutils::Result::error(std::string msg)
 {
@@ -184,14 +225,19 @@ void bs::tradeutils::createPayin(bs::tradeutils::PayinArgs args, bs::tradeutils:
             };
 
             if (args.fixedInputs.empty()) {
-               auto inputsCbWrap = [args, cb, inputsCb](std::vector<UTXO> utxos) {
+               auto inputsCbWrap = [args, cb, inputsCb](std::map<UTXO, std::string> inputs) {
+                  std::vector<UTXO> utxos;
+                  utxos.reserve(inputs.size());
+                  for (const auto &input : inputs) {
+                     utxos.emplace_back(std::move(input.first));
+                  }
                   if (args.utxoReservation) {
                      // Ignore filter return value as it fails if there were no reservations before
                      args.utxoReservation->filter(args.utxoReservationWalletId, utxos);
                   }
                   inputsCb(utxos);
                };
-               bs::sync::Wallet::getSpendableTxOutList(args.inputXbtWallets, inputsCbWrap);
+               getSpendableTxOutList(args.inputXbtWallets, inputsCbWrap);
             } else {
                inputsCb(args.fixedInputs);
             }
@@ -203,6 +249,54 @@ void bs::tradeutils::createPayin(bs::tradeutils::PayinArgs args, bs::tradeutils:
 
       args.armory->estimateFee(feeTargetBlockCount(), cbFee);
    });
+}
+
+uint64_t bs::tradeutils::getEstimatedFeeFor(UTXO input, const bs::Address &recvAddr
+   , float feePerByte, unsigned int topBlock)
+{
+   if (!input.isInitialized()) {
+      return 0;
+   }
+   const auto inputAmount = input.getValue();
+   if (input.txinRedeemSizeBytes_ == UINT32_MAX) {
+      const auto scrAddr = bs::Address::fromHash(input.getRecipientScrAddr());
+      input.txinRedeemSizeBytes_ = (unsigned int)scrAddr.getInputSize();
+   }
+   CoinSelection coinSelection([&input](uint64_t) -> std::vector<UTXO> { return { input }; }
+   , std::vector<AddressBookEntry>{}, inputAmount, topBlock);
+
+   const auto &scriptRecipient = recvAddr.getRecipient(bs::XBTAmount{ inputAmount });
+   return coinSelection.getFeeForMaxVal(scriptRecipient->getSize(), feePerByte, { input });
+}
+
+bs::core::wallet::TXSignRequest bs::tradeutils::createPayoutTXRequest(UTXO input
+   , const bs::Address &recvAddr, float feePerByte, unsigned int topBlock)
+{
+   bs::core::wallet::TXSignRequest txReq;
+   txReq.inputs.push_back(input);
+   input.isInputSW_ = true;
+   input.witnessDataSizeBytes_ = unsigned(bs::Address::getPayoutWitnessDataSize());
+   uint64_t fee = getEstimatedFeeFor(input, recvAddr, feePerByte, topBlock);
+
+   uint64_t value = input.getValue();
+   if (value < fee) {
+      value = 0;
+   } else {
+      value = value - fee;
+   }
+
+   txReq.fee = fee;
+   txReq.recipients.emplace_back(recvAddr.getRecipient(bs::XBTAmount{ value }));
+   return txReq;
+}
+
+UTXO bs::tradeutils::getInputFromTX(const bs::Address &addr
+   , const BinaryData &payinHash, const bs::XBTAmount& amount)
+{
+   constexpr uint32_t txHeight = UINT32_MAX;
+
+   return UTXO(amount.GetValue(), txHeight, 0, 0, payinHash
+      , BtcUtils::getP2WSHOutputScript(addr.unprefixed()));
 }
 
 void bs::tradeutils::createPayout(bs::tradeutils::PayoutArgs args, bs::tradeutils::PayoutResultCb cb)
@@ -240,12 +334,12 @@ void bs::tradeutils::createPayout(bs::tradeutils::PayoutArgs args, bs::tradeutil
                   return;
                }
 
-               auto payinUTXO = bs::SettlementMonitor::getInputFromTX(settlAddr, args.payinTxId, args.amount);
+               auto payinUTXO = getInputFromTX(settlAddr, args.payinTxId, args.amount);
 
                PayoutResult result;
                result.success = true;
                result.settlementAddr = settlAddr;
-               result.signRequest = bs::SettlementMonitor::createPayoutTXRequest(
+               result.signRequest = createPayoutTXRequest(
                   payinUTXO, recvAddr, feePerByte, args.armory->topBlock());
                cb(std::move(result));
             };
@@ -275,7 +369,7 @@ bs::tradeutils::PayoutVerifyResult bs::tradeutils::verifySignedPayout(bs::tradeu
       auto txdata = tx.serialize();
       auto bctx = BCTX::parse(txdata);
 
-      auto utxo = bs::SettlementMonitor::getInputFromTX(args.settlAddr, args.usedPayinHash, args.amount);
+      auto utxo = getInputFromTX(args.settlAddr, args.usedPayinHash, args.amount);
 
       std::map<BinaryData, std::map<unsigned, UTXO>> utxoMap;
       utxoMap[utxo.getTxHash()][0] = utxo;
