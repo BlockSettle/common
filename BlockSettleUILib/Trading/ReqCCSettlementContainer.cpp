@@ -1,3 +1,13 @@
+/*
+
+***********************************************************************************
+* Copyright (C) 2016 - 2019, BlockSettle AB
+* Distributed under the GNU Affero General Public License (AGPL v3)
+* See LICENSE or http://www.gnu.org/licenses/agpl.html
+*
+**********************************************************************************
+
+*/
 #include "ReqCCSettlementContainer.h"
 #include <spdlog/spdlog.h>
 #include "AssetManager.h"
@@ -5,7 +15,6 @@
 #include "SignContainer.h"
 #include "TradesUtils.h"
 #include "TransactionData.h"
-#include "UtxoReservation.h"
 #include "Wallets/SyncHDWallet.h"
 #include "Wallets/SyncWalletsManager.h"
 #include "BSErrorCodeStrings.h"
@@ -346,9 +355,11 @@ void ReqCCSettlementContainer::onGenAddressVerified(bool addressVerified, const 
 bool ReqCCSettlementContainer::cancel()
 {
    deactivate();
-   utxoRes_.release();
    emit settlementCancelled();
    signingContainer_->CancelSignTx(id());
+
+   SettlementContainer::releaseUtxoRes();
+
    return true;
 }
 

@@ -1,3 +1,13 @@
+/*
+
+***********************************************************************************
+* Copyright (C) 2016 - 2019, BlockSettle AB
+* Distributed under the GNU Affero General Public License (AGPL v3)
+* See LICENSE or http://www.gnu.org/licenses/agpl.html
+*
+**********************************************************************************
+
+*/
 #ifndef __TRANSACTION_DATA_H__
 #define __TRANSACTION_DATA_H__
 
@@ -118,8 +128,7 @@ public:
 
    // If there is change then changeAddr must be set
    bs::core::wallet::TXSignRequest createTXRequest(bool isRBF = false
-                                             , const bs::Address &changeAddr = {}
-                                             , const uint64_t& origFee = 0) const;
+      , const bs::Address &changeAddr = {}) const;
 
    std::shared_ptr<SelectedTransactionInputs> getSelectedInputs() { return selectedInputs_; }
    TransactionSummary GetTransactionSummary() const;
