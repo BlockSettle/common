@@ -13,7 +13,7 @@ class PDFWriter
 public:
    PDFWriter(const QString &templateFN, const QUrl &baseUrl = {});
 
-   bool substitute(const QVariantHash &vars);
+   //bool substitute(const QVariantHash &vars);
    bool output(const QString &outputFN);
 
 private:
