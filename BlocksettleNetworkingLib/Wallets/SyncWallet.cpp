@@ -1,3 +1,13 @@
+/*
+
+***********************************************************************************
+* Copyright (C) 2016 - 2019, BlockSettle AB
+* Distributed under the GNU Affero General Public License (AGPL v3)
+* See LICENSE or http://www.gnu.org/licenses/agpl.html
+*
+**********************************************************************************
+
+*/
 #include "SyncWallet.h"
 #include <QLocale>
 #include <bech32/ref/c++/segwit_addr.h>
@@ -718,7 +728,7 @@ bs::core::wallet::TXSignRequest wallet::createTXRequest(const std::string &walle
    , const std::vector<UTXO> &inputs
    , const std::vector<std::shared_ptr<ScriptRecipient>> &recipients
    , const bs::Address &changeAddr
-   , const uint64_t fee, bool isRBF, const uint64_t &origFee)
+   , const uint64_t fee, bool isRBF)
 {
    bs::core::wallet::TXSignRequest request;
    request.walletIds = { walletId };
@@ -763,13 +773,13 @@ bs::core::wallet::TXSignRequest wallet::createTXRequest(const std::string &walle
 
 bs::core::wallet::TXSignRequest Wallet::createTXRequest(const std::vector<UTXO> &inputs
    , const std::vector<std::shared_ptr<ScriptRecipient>> &recipients, const uint64_t fee
-   , bool isRBF, const bs::Address &changeAddress, const uint64_t& origFee)
+   , bool isRBF, const bs::Address &changeAddress)
 {
    if (!changeAddress.isNull()) {
       setAddressComment(changeAddress, wallet::Comment::toString(wallet::Comment::ChangeAddress));
    }
    return wallet::createTXRequest(walletId(), inputs, recipients, changeAddress
-      , fee, isRBF, origFee);
+      , fee, isRBF);
 }
 
 bs::core::wallet::TXSignRequest Wallet::createPartialTXRequest(uint64_t spendVal

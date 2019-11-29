@@ -1,3 +1,13 @@
+/*
+
+***********************************************************************************
+* Copyright (C) 2016 - 2019, BlockSettle AB
+* Distributed under the GNU Affero General Public License (AGPL v3)
+* See LICENSE or http://www.gnu.org/licenses/agpl.html
+*
+**********************************************************************************
+
+*/
 #ifndef BS_SYNC_WALLET_H
 #define BS_SYNC_WALLET_H
 
@@ -63,7 +73,7 @@ namespace bs {
             , const std::vector<UTXO> &inputs
             , const std::vector<std::shared_ptr<ScriptRecipient>> &
             , const bs::Address &changeAddr = {}
-            , const uint64_t fee = 0, bool isRBF = false, const uint64_t& origFee = 0);
+            , const uint64_t fee = 0, bool isRBF = false);
 
       }  // namepsace wallet
 
@@ -160,7 +170,7 @@ namespace bs {
          virtual core::wallet::TXSignRequest createTXRequest(const std::vector<UTXO> &
             , const std::vector<std::shared_ptr<ScriptRecipient>> &
             , const uint64_t fee = 0, bool isRBF = false
-            , const bs::Address &changeAddress = {}, const uint64_t& origFee = 0);
+            , const bs::Address &changeAddress = {});
          virtual core::wallet::TXSignRequest createPartialTXRequest(uint64_t spendVal
             , const std::vector<UTXO> &inputs, bs::Address changeAddress = {}
             , float feePerByte = 0
