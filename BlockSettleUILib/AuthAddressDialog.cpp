@@ -283,7 +283,7 @@ void AuthAddressDialog::onAuthAddressConfirmationRequired(float validationAmount
       BSMessageBox warnFunds(BSMessageBox::warning, tr("Insufficient EUR Balance")
          , tr("Please fund your EUR account prior to submitting an Authentication Address")
          , tr("Required amount (EUR): %1<br/>Deposits and withdrawals are administered through the "
-            "<a href=\"https://blocksettle.com\">Client Portal</a>")
+            "<a href=\"https://blocksettle.com\"><span style=\"text-decoration: underline;color:#81888f;\">Client Portal</span></a>")
          .arg(UiUtils::displayCurrencyAmount(validationAmount)), this);
       warnFunds.setWindowTitle(tr("Insufficient Funds"));
       warnFunds.exec();
