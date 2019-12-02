@@ -108,7 +108,7 @@ void ChatWidget::init(const std::shared_ptr<ConnectionManager>& connectionManage
 
    // OTC
    otcHelper_ = new ChatOTCHelper(this);
-   otcHelper_->init(env, loggerPtr, walletsMgr, armory, signContainer, authManager, appSettings);
+   otcHelper_->init(env, loggerPtr, walletsMgr, armory, signContainer, authManager);
    otcWindowsManager_->init(walletsMgr, authManager, mdProvider, assetManager, armory);
 
    chatClientServicePtr_ = chatClientServicePtr;
