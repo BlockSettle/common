@@ -33,7 +33,7 @@ public:
       critical = 5
    };
 
-   static QString defaulUrlColor;
+   static QString kUrlColor;
 
    BSMessageBox(Type mbType
       , const QString& title, const QString& text

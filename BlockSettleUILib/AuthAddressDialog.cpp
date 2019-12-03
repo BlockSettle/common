@@ -285,7 +285,7 @@ void AuthAddressDialog::onAuthAddressConfirmationRequired(float validationAmount
          , tr("Required amount (EUR): %1<br/>Deposits and withdrawals are administered through the "
             "<a href=\"https://blocksettle.com\"><span style=\"text-decoration: underline;color:%2;\">Client Portal</span></a>")
          .arg(UiUtils::displayCurrencyAmount(validationAmount))
-         .arg(BSMessageBox::defaulUrlColor), this);
+         .arg(BSMessageBox::kUrlColor), this);
       warnFunds.setWindowTitle(tr("Insufficient Funds"));
       warnFunds.exec();
 

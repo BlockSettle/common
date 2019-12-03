@@ -29,7 +29,7 @@ NewWalletDialog::NewWalletDialog(bool noWalletsFound, const std::shared_ptr<Appl
          tr("For guidance, please consult the ")
          + QStringLiteral("<a href=\"") + appSettings->get<QString>(ApplicationSettings::GettingStartedGuide_Url) + QStringLiteral("\">")
          + QStringLiteral("<span style=\"text-decoration: underline; color: %1;\">Getting Started Guide.</span></a>")
-         .arg(BSMessageBox::defaulUrlColor);
+         .arg(BSMessageBox::kUrlColor);
 
    ui_->labelMessage->setText(messageText);
 

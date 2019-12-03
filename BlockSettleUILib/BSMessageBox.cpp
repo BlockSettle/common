@@ -14,7 +14,7 @@
 #include <QStyle>
 #include <QTimer>
 
-QString BSMessageBox::defaulUrlColor = QLatin1String("#ffffff");
+QString BSMessageBox::kUrlColor = QLatin1String("#ffffff");
 
 // Basic constructor, sets message box type, title and text
 BSMessageBox::BSMessageBox(Type mbType, const QString& title
