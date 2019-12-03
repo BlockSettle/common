@@ -42,7 +42,7 @@ public:
 
    //! Generate resulted PDF preview pixmap. Height will be calculated using page aspect ratio.
    // Use marginScale to lower visible margins (valid range 0..1).
-   // QPixmap getPreview(int width, double marginScale);
+   QPixmap getPreview(int width, double marginScale);
 
    //! Print on selected printer using printer's page size (A4 and letter only supported at the moment).
    void print(QPrinter *printer);

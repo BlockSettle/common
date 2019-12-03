@@ -41,22 +41,22 @@ PDFWriter::PDFWriter(const QString &templateFN, const QUrl &baseUrl) : printer_(
    }
 }
 
-//bool PDFWriter::substitute(const QVariantHash &vars)
-//{
-//   if (templateText_.isEmpty()) {
-//      return false;
-//   }
-//   substitutedText_ = templateText_;
+bool PDFWriter::substitute(const QVariantHash &vars)
+{
+   if (templateText_.isEmpty()) {
+      return false;
+   }
+   substitutedText_ = templateText_;
 
-//   for (auto var = vars.begin(); var != vars.end(); ++var) {
-//      if (var.key().isEmpty()) {
-//         continue;
-//      }
-//      const auto replaceStr = QLatin1String("%") + var.key() + QLatin1String("%");
-//      substitutedText_.replace(replaceStr, var.value().toString());
-//   }
-//   return true;
-//}
+   for (auto var = vars.begin(); var != vars.end(); ++var) {
+      if (var.key().isEmpty()) {
+         continue;
+      }
+      const auto replaceStr = QLatin1String("%") + var.key() + QLatin1String("%");
+      substitutedText_.replace(replaceStr, var.value().toString());
+   }
+   return true;
+}
 
 bool PDFWriter::output(const QString &outputFN)
 {

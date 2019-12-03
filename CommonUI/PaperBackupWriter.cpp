@@ -65,37 +65,37 @@ bool WalletBackupPdfWriter::write(const QString &fileName)
    return success;
 }
 
-//QPixmap WalletBackupPdfWriter::getPreview(int width, double marginScale)
-//{
-//   int viewportWidth = width;
-//   int viewportHeight = qRound(viewportWidth * kTotalHeightInches / kTotalWidthInches);
+QPixmap WalletBackupPdfWriter::getPreview(int width, double marginScale)
+{
+   int viewportWidth = width;
+   int viewportHeight = qRound(viewportWidth * kTotalHeightInches / kTotalWidthInches);
 
-//   int windowWidth = qRound((kTotalWidthInches - kMarginInches * 2.0) * kResolution);
-//   int windowHeight = qRound((kTotalHeightInches - kMarginInches * 2.0) * kResolution);
+   int windowWidth = qRound((kTotalWidthInches - kMarginInches * 2.0) * kResolution);
+   int windowHeight = qRound((kTotalHeightInches - kMarginInches * 2.0) * kResolution);
 
-//   int viewportMargin = qRound(kMarginInches / kTotalWidthInches * viewportWidth * marginScale);
+   int viewportMargin = qRound(kMarginInches / kTotalWidthInches * viewportWidth * marginScale);
 
-//   QPixmap image(viewportWidth, viewportHeight);
-//   image.fill(Qt::white);
+   QPixmap image(viewportWidth, viewportHeight);
+   image.fill(Qt::white);
 
-//   QPainter painter(&image);
+   QPainter painter(&image);
 
-//   painter.setRenderHint(QPainter::SmoothPixmapTransform);
+   painter.setRenderHint(QPainter::SmoothPixmapTransform);
 
-//   painter.setViewport(viewportMargin, viewportMargin
-//     , viewportWidth - 2 * viewportMargin
-//     , viewportHeight - 2 * viewportMargin);
+   painter.setViewport(viewportMargin, viewportMargin
+     , viewportWidth - 2 * viewportMargin
+     , viewportHeight - 2 * viewportMargin);
 
-//   painter.setWindow(0, 0, windowWidth, windowHeight);
+   painter.setWindow(0, 0, windowWidth, windowHeight);
 
-//   // The code in draw does not work correctly with other sizes than A4 and 1200 DPI.
-//   // So we keep logical sizes and use viewport an window instead.
-//   draw(painter, windowWidth, windowHeight);
+   // The code in draw does not work correctly with other sizes than A4 and 1200 DPI.
+   // So we keep logical sizes and use viewport an window instead.
+   draw(painter, windowWidth, windowHeight);
 
-//   painter.end();
+   painter.end();
 
-//   return image;
-//}
+   return image;
+}
 
 void WalletBackupPdfWriter::print(QPrinter *printer)
 {
@@ -136,37 +136,6 @@ void WalletBackupPdfWriter::draw(QPainter &p, qreal width, qreal height)
    qreal relWidth = width / logo.width();
    qreal relHeight = height / logo.height();
 
-
-//   {
-//      QFont f = font;
-//      f.setPixelSize(300);
-//      p.setFont(f);
-
-//      QRectF r;
-//      p.drawText(QRectF(0.0, y, width, height - y), 0, QLatin1String("Root Private Key"), &r);
-//      y += r.height() + m;
-//   }
-
-//   {
-//      p.setFont(font);
-
-//      QStaticText text(QLatin1String(
-//         "<span style=\"color:#EC0A35\"><b>WARNING!</b></span> "
-//         "Anyone who has access to this unencrypted paper backup "
-//         "of your Root Private Key will be able to access all bitcoins in this"
-//         " wallet! Please keep this paper backup in a safe place."));
-//      QTextOption opt;
-//      opt.setWrapMode(QTextOption::WordWrap);
-//      text.setTextOption(opt);
-//      text.setTextWidth(width);
-
-//      p.drawStaticText(QPointF(0.0, y), text);
-
-//      y += text.size().height() + m;
-//   }
-
-   auto qrY = y;
-
    QFont italic = font;
    italic.setItalic(true);
 
@@ -190,90 +159,12 @@ void WalletBackupPdfWriter::draw(QPainter &p, qreal width, qreal height)
    keyLine1.prepare(QTransform(), bold);
    keyLine2.prepare(QTransform(), bold);
 
-//   const qreal wDescWidth = wIdDesc.size().width();
-//   const qreal wWidth = wId.size().width();
-//   const qreal keyDescWidth = qMax(keyLine1Desc.size().width(), keyLine2Desc.size().width());
-//   const qreal keyWidth = qMax(keyLine1.size().width(), keyLine2.size().width());
-//   const qreal space = 100.0;
-
-//   p.setFont(italic);
-//   p.drawStaticText(QPointF(0.0, y), wIdDesc);
-//   y += (wIdDesc.size().height() + m) * 2;
-
-//   p.setFont(bold);
-
-//   QStaticText keyDesc(QLatin1String("Root Key:"));
-//   p.drawStaticText(QPointF(0.0, y), keyDesc);
-//   y += keyDesc.size().height() + m;
-//   const qreal key1Y = y;
-
-//   p.setFont(italic);
-//   p.drawStaticText(QPointF(0.0, y), keyLine1Desc);
-//   y += keyLine1Desc.size().height() + m;
-//   const qreal key2Y = y;
-//   p.drawStaticText(QPointF(0.0, y), keyLine2Desc);
-//   y += keyLine2Desc.size().height() + m;
-//   const qreal ty = y;
-
-//   p.save();
-//   p.setBrush(QColor(0xF3, 0xF3, 0xF3));
-//   p.setPen(Qt::NoPen);
-
-//   const qreal offset = 50.0;
-
-//   p.drawRect(wDescWidth + space - offset, qrY - m / 2.0 + offset,
-//              wWidth + offset * 2, wId.size().height() + m - offset * 2);
-
-//   p.drawRect(keyDescWidth + space - offset, key1Y - m / 2.0 + offset,
-//              keyWidth + offset * 2, keyLine1.size().height() + m - offset * 2);
-//   p.drawRect(keyDescWidth + space - offset, key2Y - m / 2.0 + offset,
-//              keyWidth + offset * 2, keyLine1.size().height() + m - offset * 2);
-//   p.restore();
 
    p.setFont(bold);
    p.drawStaticText(QPointF(500 * relWidth, 1530 * relHeight), wId);
    p.drawStaticText(QPointF(110 * relWidth, 1940 * relHeight), keyLine1);
    p.drawStaticText(QPointF(110 * relWidth, 2100 * relHeight), keyLine2);
 
-//   qrY = qrY - m / 2.0 + offset;
-//   const qreal qrX = qMax((wDescWidth + wWidth + space + offset * 2),
-//                          (keyDescWidth + keyWidth + space + offset * 2));
-
-//   qreal qrWidth = qMin(width - qrX, key1Y - qrY - m / 2.0 + offset);
-//   qrWidth = qMin(qrWidth, 2048.0);
-
    p.drawPixmap(QRectF(1224 * relWidth, 1611 * relHeight, 569 * relWidth, 569 * relHeight),
                 qr_, qr_.rect());
-
-//   QStaticText bottom(QLatin1String(
-//      "<p style=\"margin-bottom:200px;\">The Root Private Key can be used to recover your wallet if you forgot your password or "
-//      "suffer hardware failure and lose your wallet files.</p></br>"
-//      "<p style=\"margin-bottom:200px;\">BlockSettle uses Hierarchical Deterministic (HD) wallets to make it easy to derive many "
-//      "public keys from a single Root Private Key.</p></br>"
-//      "<p style=\"margin-bottom:200px;\">HD wallets contain keys derived in a tree structure, such that a Root Key can derive a "
-//      "sequence of branch keys, which each can derive their own branches of keys, and so on.</p></br>"
-//      "<p style=\"margin-bottom:200px;\">BlockSettle makes extensive use of this technology to sort Private Market Share "
-//      "tokens and Authentication Addresses from general addresses used for sending and receiving "
-//      "bitcoins.</p></br>"
-//      "<p>The Root Private Key will restore all addresses ever generated by this wallet.</p>"));
-//   QTextOption opt;
-//   opt.setWrapMode(QTextOption::WordWrap);
-//   bottom.setTextOption(opt);
-//   bottom.setTextWidth(width);
-
-//   p.setFont(font);
-//   p.drawStaticText(QPointF(0.0, ty), bottom);
-
-//   y = ty + bottom.size().height() + m * 2;
-
-//   QStaticText footer(QString::fromUtf8(
-//      "<p style=\"color:#888;\" >Ostergatan 21, 211 25 Malmö, Sweden | support@blocksettle.com</p>"));
-//   footer.setTextOption(opt);
-//   footer.setTextWidth(width);
-
-//   QFont f = font;
-//   f.setPixelSize(125);
-//   p.setFont(f);
-
-//   p.drawStaticText(QPointF(0.0, y), footer);
 }
