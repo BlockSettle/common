@@ -40,7 +40,8 @@ enum RequestType
    PromoteHDWalletRequestType  = 31;
    UpdateDialogDataType        = 32; // update fields in password input dialogs in signer ui
    AddressPreimageType         = 33;
-   UpdateControlPasswordStatusType   = 34; // send message to ui if control password wrong, accepted or requested new
+   ChatNodeRequestType         = 34;
+   UpdateControlPasswordStatusType   = 35; // send message to ui if control password wrong, accepted or requested new
 }
 
 message RequestPacket
@@ -512,7 +513,20 @@ message UpdateDialogDataRequest
    Blocksettle.Communication.Internal.PasswordDialogData passwordDialogData    = 2;
 }
 
+<<<<<<< HEAD
 message UpdateControlPasswordStatus
 {
    ControlPasswordStatus controlPasswordStatus = 1;
+=======
+
+message ChatNodeRequest
+{
+   string wallet_id = 1;
+}
+
+message ChatNodeResponse
+{
+   string wallet_id = 1;
+   string b58_chat_node = 2;
+>>>>>>> bs_dev
 }
