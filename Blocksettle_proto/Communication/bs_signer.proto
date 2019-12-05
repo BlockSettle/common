@@ -53,6 +53,7 @@ enum PacketType
    UpdateDialogDataType       = 32; // update fields in password input dialogs in signer ui
    UpdateControlPasswordStatusType   = 33; // send message to ui if control password wrong, accepted or requested new
    ControlPasswordReceivedType       = 34;
+   ChangeControlPasswordType         = 35;
 }
 
 enum PasswordDialogType
@@ -374,6 +375,17 @@ message UpdateControlPasswordStatus
 message EnterControlPasswordRequest
 {
    string controlPassword = 1;
+}
+
+message ChangeControlPasswordRequest
+{
+   string controlPasswordOld = 1;
+   string controlPasswordNew = 2;
+}
+
+message ChangeControlPasswordResponse
+{
+   uint32   errorCode = 1;
 }
 
 message ImportWoWalletRequest

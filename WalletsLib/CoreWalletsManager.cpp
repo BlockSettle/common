@@ -107,10 +107,10 @@ WalletsManager::HDWalletPtr WalletsManager::loadWoWallet(NetworkType netType
    return nullptr;
 }
 
-void WalletsManager::changeControlPassword(const SecureBinaryData &newPass)
+void WalletsManager::changeControlPassword(const SecureBinaryData &oldPass, const SecureBinaryData &newPass)
 {
    for (const auto &hdWallet : hdWallets_) {
-      hdWallet.second->changeControlPassword(newPass);
+      hdWallet.second->changeControlPassword(oldPass, newPass);
    }
 }
 

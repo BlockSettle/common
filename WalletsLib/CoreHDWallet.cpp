@@ -239,11 +239,18 @@ std::shared_ptr<hd::Group> hd::Wallet::getGroup(bs::hd::CoinType ct) const
    return itGroup->second;
 }
 
-void hd::Wallet::changeControlPassword(const SecureBinaryData &newPass)
+void hd::Wallet::changeControlPassword(const SecureBinaryData &oldPass, const SecureBinaryData &newPass)
 {
-   lbdControlPassphrase_ = [newPass](const std::set<BinaryData> &) {
-      return newPass;
+   auto nbTries = std::make_shared<int>(0);
+   lbdControlPassphrase_ = [oldPass, nbTries]
+      (const std::set<BinaryData>&)->SecureBinaryData
+   {
+      if (++(*nbTries) > 1) {
+         return {};
+      }
+      return oldPass;
    };
+
    walletPtr_->changeControlPassphrase(newPass, lbdControlPassphrase_);
 }
 
