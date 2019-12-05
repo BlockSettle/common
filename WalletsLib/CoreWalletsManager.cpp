@@ -107,6 +107,13 @@ WalletsManager::HDWalletPtr WalletsManager::loadWoWallet(NetworkType netType
    return nullptr;
 }
 
+void WalletsManager::changeControlPassword(const SecureBinaryData &newPass)
+{
+   for (const auto &hdWallet : hdWallets_) {
+      hdWallet.second->changeControlPassword(newPass);
+   }
+}
+
 void WalletsManager::backupWallet(const HDWalletPtr &wallet, const std::string &targetDir) const
 {
    if (wallet->isWatchingOnly()) {
