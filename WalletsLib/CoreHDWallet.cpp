@@ -235,6 +235,14 @@ std::shared_ptr<hd::Group> hd::Wallet::getGroup(bs::hd::CoinType ct) const
    return itGroup->second;
 }
 
+void hd::Wallet::changeControlPassword(const SecureBinaryData &newPass)
+{
+   lbdControlPassphrase_ = [newPass](const std::set<BinaryData> &) {
+      return newPass;
+   };
+   walletPtr_->changeControlPassphrase(newPass, lbdControlPassphrase_);
+}
+
 void hd::Wallet::createStructure(unsigned lookup)
 {
    const auto groupXBT = createGroup(getXBTGroupType());
