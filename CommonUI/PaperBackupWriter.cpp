@@ -25,11 +25,10 @@
 
 WalletBackupPdfWriter::WalletBackupPdfWriter(const QString &walletId
    , const QString &keyLine1, const QString &keyLine2
-   , const QPixmap &logo, const QPixmap &qr)
+   , const QPixmap &qr)
    : walletId_(walletId)
    , keyLine1_(keyLine1)
    , keyLine2_(keyLine2)
-   , logo_(logo)
    , qr_(qr)
 {
 }
@@ -124,14 +123,9 @@ void WalletBackupPdfWriter::draw(QPainter &p, qreal width, qreal height)
 {
    QFont font = p.font();
    font.setPixelSize(175);
-   const qreal m = 400.0;
-
-   qreal y = 0.0;
 
    QPixmap logo = QPixmap(QString::fromUtf8("://resources/RPK_template.png"));
    p.drawPixmap(QRect(0, 0, width, height), logo);
-
-   y += logo_.height() + m;
 
    qreal relWidth = width / logo.width();
    qreal relHeight = height / logo.height();
@@ -141,7 +135,6 @@ void WalletBackupPdfWriter::draw(QPainter &p, qreal width, qreal height)
 
    QFont bold = font;
    bold.setBold(true);
-   //bold.setPointSizeF(32);
 
    QStaticText wIdDesc(QLatin1String("Wallet ID"));
    QStaticText keyLine1Desc(QLatin1String("Line 1"));
@@ -159,12 +152,13 @@ void WalletBackupPdfWriter::draw(QPainter &p, qreal width, qreal height)
    keyLine1.prepare(QTransform(), bold);
    keyLine2.prepare(QTransform(), bold);
 
-
    p.setFont(bold);
+
+   // Magic numbers is pixel positions of given controls on RPK_template.png
    p.drawStaticText(QPointF(500 * relWidth, 1530 * relHeight), wId);
    p.drawStaticText(QPointF(110 * relWidth, 1940 * relHeight), keyLine1);
    p.drawStaticText(QPointF(110 * relWidth, 2100 * relHeight), keyLine2);
 
    p.drawPixmap(QRectF(1224 * relWidth, 1611 * relHeight, 569 * relWidth, 569 * relHeight),
-                qr_, qr_.rect());
+      qr_, qr_.rect());
 }
