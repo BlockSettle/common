@@ -13,6 +13,7 @@
 #include <spdlog/spdlog.h>
 
 #include "CoinSelection.h"
+#include "FastLock.h"
 #include "UtxoReservation.h"
 #include "Wallets/SyncHDGroup.h"
 #include "Wallets/SyncHDLeaf.h"
@@ -49,6 +50,7 @@ bool bs::tradeutils::getSpendableTxOutList(const std::vector<std::shared_ptr<bs:
    {
       std::map<std::string, std::vector<UTXO>> utxosMap;
       std::function<void(const std::map<UTXO, std::string> &)> cb;
+      std::atomic_flag lockFlag = ATOMIC_FLAG_INIT;
    };
    auto result = std::make_shared<Result>();
    result->cb = std::move(cb);
@@ -57,6 +59,7 @@ bool bs::tradeutils::getSpendableTxOutList(const std::vector<std::shared_ptr<bs:
       auto cbWrap = [result, size = wallets.size(), walletId = wallet->walletId()]
       (std::vector<UTXO> utxos)
       {
+         FastLock lock(result->lockFlag);
          result->utxosMap.emplace(walletId, std::move(utxos));
          if (result->utxosMap.size() != size) {
             return;
@@ -301,11 +304,11 @@ bs::core::wallet::TXSignRequest bs::tradeutils::createPayoutTXRequest(UTXO input
 }
 
 UTXO bs::tradeutils::getInputFromTX(const bs::Address &addr
-   , const BinaryData &payinHash, const bs::XBTAmount& amount)
+   , const BinaryData &payinHash, unsigned txOutIndex, const bs::XBTAmount& amount)
 {
    constexpr uint32_t txHeight = UINT32_MAX;
 
-   return UTXO(amount.GetValue(), txHeight, 0, 0, payinHash
+   return UTXO(amount.GetValue(), txHeight, UINT32_MAX, txOutIndex, payinHash
       , BtcUtils::getP2WSHOutputScript(addr.unprefixed()));
 }
 
@@ -344,7 +347,7 @@ void bs::tradeutils::createPayout(bs::tradeutils::PayoutArgs args, bs::tradeutil
                   return;
                }
 
-               auto payinUTXO = getInputFromTX(settlAddr, args.payinTxId, args.amount);
+               auto payinUTXO = getInputFromTX(settlAddr, args.payinTxId, 0, args.amount);
 
                PayoutResult result;
                result.success = true;
@@ -379,7 +382,7 @@ bs::tradeutils::PayoutVerifyResult bs::tradeutils::verifySignedPayout(bs::tradeu
       auto txdata = tx.serialize();
       auto bctx = BCTX::parse(txdata);
 
-      auto utxo = getInputFromTX(args.settlAddr, args.usedPayinHash, args.amount);
+      auto utxo = getInputFromTX(args.settlAddr, args.usedPayinHash, 0, args.amount);
 
       std::map<BinaryData, std::map<unsigned, UTXO>> utxoMap;
       utxoMap[utxo.getTxHash()][0] = utxo;

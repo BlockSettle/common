@@ -76,6 +76,7 @@ void WalletsManager::setSignContainer(const std::shared_ptr<WalletSignerContaine
 
    connect(signContainer_.get(), &WalletSignerContainer::AuthLeafAdded, this, &WalletsManager::onAuthLeafAdded);
    connect(signContainer_.get(), &WalletSignerContainer::walletsListUpdated, this, &WalletsManager::onWalletsListUpdated);
+   connect(signContainer_.get(), &WalletSignerContainer::walletsStorageDecrypted, this, &WalletsManager::onWalletsListUpdated);
 }
 
 void WalletsManager::reset()
@@ -1513,7 +1514,7 @@ void WalletsManager::CCResolver::addData(const std::string &cc, uint64_t lotSize
    , const bs::Address &genAddr, const std::string &desc)
 {
    securities_[cc] = { desc, lotSize, genAddr };
-   const auto walletIdx = bs::hd::Path::keyToElem(cc);
+   const auto walletIdx = bs::hd::Path::keyToElem(cc) | bs::hd::hardFlag;
    walletIdxMap_[walletIdx] = cc;
 }
 
@@ -1528,7 +1529,7 @@ std::vector<std::string> WalletsManager::CCResolver::securities() const
 
 std::string WalletsManager::CCResolver::nameByWalletIndex(bs::hd::Path::Elem idx) const
 {
-   idx &= ~bs::hd::hardFlag;
+   idx |= bs::hd::hardFlag;
    const auto &itWallet = walletIdxMap_.find(idx);
    if (itWallet != walletIdxMap_.end()) {
       return itWallet->second;

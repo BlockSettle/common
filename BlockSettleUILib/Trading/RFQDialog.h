@@ -67,7 +67,7 @@ public:
       , const std::shared_ptr<ConnectionManager> &
       , const std::shared_ptr<RfqStorage> &rfqStorage
       , const std::shared_ptr<bs::sync::hd::Wallet> &xbtWallet
-      , const bs::Address &recvXbtAddr
+      , const bs::Address &recvXbtAddrIfSet
       , const bs::Address &authAddr
       , const std::map<UTXO, std::string> &fixedXbtInputs
       , bs::UtxoReservationToken utxoRes
@@ -79,8 +79,8 @@ protected:
 
 public slots:
    void onUnsignedPayinRequested(const std::string& settlementId);
-   void onSignedPayoutRequested(const std::string& settlementId, const BinaryData& payinHash);
-   void onSignedPayinRequested(const std::string& settlementId, const BinaryData& unsignedPayin);
+   void onSignedPayoutRequested(const std::string& settlementId, const BinaryData& payinHash, QDateTime timestamp);
+   void onSignedPayinRequested(const std::string& settlementId, const BinaryData& unsignedPayin, QDateTime timestamp);
 
 private slots:
    bool close();
@@ -91,7 +91,7 @@ private slots:
    void onOrderFailed(const std::string& quoteId, const std::string& reason);
    void onXBTSettlementAccepted();
 
-   void onSignTxRequested(QString orderId, QString reqId);
+   void onSignTxRequested(QString orderId, QString reqId, QDateTime timestamp);
    void onCCQuoteAccepted();
    void onCCTxSigned();
 
@@ -108,7 +108,7 @@ private:
    std::shared_ptr<spdlog::logger>     logger_;
    const bs::network::RFQ              rfq_;
    bs::network::Quote                  quote_;
-   bs::Address recvXbtAddr_;
+   bs::Address recvXbtAddrIfSet_;
 
    std::shared_ptr<QuoteProvider>               quoteProvider_;
    std::shared_ptr<AuthAddressManager>          authAddressManager_;

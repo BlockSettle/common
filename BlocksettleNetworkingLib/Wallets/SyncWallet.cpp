@@ -10,7 +10,6 @@
 */
 #include "SyncWallet.h"
 #include <QLocale>
-#include <bech32/ref/c++/segwit_addr.h>
 #include <spdlog/spdlog.h>
 
 #include "CheckRecipSigner.h"
@@ -502,6 +501,8 @@ void Wallet::onZCInvalidated(const std::set<BinaryData> &ids)
          if (containsAddress(addr)) {
             const auto addrBal = txOut.getValue();
             invalidatedBalance += addrBal / BTCNumericTypes::BalanceDivider;
+
+            std::unique_lock<std::mutex> lock(balanceData_->addrMapsMtx);
             auto &addrBalances = balanceData_->addressBalanceMap[addr.prefixed()];
             addrBalances[0] -= addrBal;
             addrBalances[1] -= addrBal;
@@ -574,6 +575,10 @@ void Wallet::onZeroConfReceived(const std::vector<bs::TXEntry> &entries)
       armory_->getTxByHash(entry.txHash, cbTX);
    }
    updateBalances([this, handle = validityFlag_.handle(), logger=logger_]() mutable {    // TxNs are not updated for ZCs
+      ValidityGuard lock(handle);
+      if (!handle.isValid()) {
+         return;
+      }
       trackChainAddressUse([this, handle, logger](bs::sync::SyncState st) mutable {
          logger->debug("{}: new live address found: {}", walletId(), (int)st);
          if (st == bs::sync::SyncState::Success) {
