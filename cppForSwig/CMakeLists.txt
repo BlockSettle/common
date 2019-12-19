@@ -37,10 +37,13 @@ SET (SOURCES
    ${CPP_FOR_SWIG_ROOT}/SocketObject.cpp
    ${CPP_FOR_SWIG_ROOT}/SwigClient.cpp
    ${CPP_FOR_SWIG_ROOT}/StringSockets.cpp
+   ${CPP_FOR_SWIG_ROOT}/TerminalPassphrasePrompt.cpp
    ${CPP_FOR_SWIG_ROOT}/Transactions.cpp
    ${CPP_FOR_SWIG_ROOT}/TxClasses.cpp
    ${CPP_FOR_SWIG_ROOT}/TxEvalState.cpp
    ${CPP_FOR_SWIG_ROOT}/UniversalTimer.cpp
+   ${CPP_FOR_SWIG_ROOT}/WalletFileInterface.cpp
+   ${CPP_FOR_SWIG_ROOT}/WalletHeader.cpp
    ${CPP_FOR_SWIG_ROOT}/Wallets.cpp
    ${CPP_FOR_SWIG_ROOT}/WalletManager.cpp
    ${CPP_FOR_SWIG_ROOT}/WebSocketClient.cpp
@@ -48,8 +51,6 @@ SET (SOURCES
    ${CPP_FOR_SWIG_ROOT}/lmdb/libraries/liblmdb/mdb.c
    ${CPP_FOR_SWIG_ROOT}/lmdb/libraries/liblmdb/midl.c
    ${CPP_FOR_SWIG_ROOT}/lmdb/libraries/liblmdb/lmdbpp.cpp
-   ${CPP_FOR_SWIG_ROOT}/bech32/ref/c++/bech32.cpp
-   ${CPP_FOR_SWIG_ROOT}/bech32/ref/c++/segwit_addr.cpp
    ${CPP_FOR_SWIG_ROOT}/chacha20poly1305/chacha.c
    ${CPP_FOR_SWIG_ROOT}/chacha20poly1305/chachapoly_aead.c
    ${CPP_FOR_SWIG_ROOT}/chacha20poly1305/poly1305.c
@@ -123,9 +124,12 @@ SET (HEADERS
    ${CPP_FOR_SWIG_ROOT}/SocketService.h
    ${CPP_FOR_SWIG_ROOT}/StringSockets.h
    ${CPP_FOR_SWIG_ROOT}/SwigClient.h
+   ${CPP_FOR_SWIG_ROOT}/TerminalPassphrasePrompt.h
    ${CPP_FOR_SWIG_ROOT}/Transactions.h
    ${CPP_FOR_SWIG_ROOT}/TxClasses.h
    ${CPP_FOR_SWIG_ROOT}/TxEvalState.h
+   ${CPP_FOR_SWIG_ROOT}/WalletFileInterface.h
+   ${CPP_FOR_SWIG_ROOT}/WalletHeader.h
    ${CPP_FOR_SWIG_ROOT}/Wallets.h
    ${CPP_FOR_SWIG_ROOT}/WalletManager.h
    ${CPP_FOR_SWIG_ROOT}/WebSocketClient.h
@@ -134,8 +138,6 @@ SET (HEADERS
    ${CPP_FOR_SWIG_ROOT}/lmdb/libraries/liblmdb/lmdb.h
    ${CPP_FOR_SWIG_ROOT}/lmdb/libraries/liblmdb/midl.h
    ${CPP_FOR_SWIG_ROOT}/lmdb/libraries/liblmdb/lmdbpp.h
-   ${CPP_FOR_SWIG_ROOT}/bech32/ref/c++/bech32.h
-   ${CPP_FOR_SWIG_ROOT}/bech32/ref/c++/segwit_addr.h
    )
 
 IF (BUILD_TEST_TOOLS)

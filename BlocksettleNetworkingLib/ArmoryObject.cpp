@@ -1,3 +1,13 @@
+/*
+
+***********************************************************************************
+* Copyright (C) 2016 - 2019, BlockSettle AB
+* Distributed under the GNU Affero General Public License (AGPL v3)
+* See LICENSE or http://www.gnu.org/licenses/agpl.html
+*
+**********************************************************************************
+
+*/
 #include "ArmoryObject.h"
 
 #include <QFile>
@@ -100,7 +110,7 @@ void ArmoryObject::setupConnection(const ArmorySettings &settings, const BIP151C
 
    ArmoryConnection::setupConnection(settings.netType, settings.armoryDBIp.toStdString()
       , std::to_string(settings.armoryDBPort), settings.dataDir.toStdString(), serverBIP15xKey
-      , bip150PromptUserCb);
+      , settings.password, bip150PromptUserCb);
 }
 
 bool ArmoryObject::getWalletsHistory(const std::vector<std::string> &walletIDs, const WalletsHistoryCb &cb)

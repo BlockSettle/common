@@ -1,3 +1,13 @@
+/*
+
+***********************************************************************************
+* Copyright (C) 2016 - 2019, BlockSettle AB
+* Distributed under the GNU Affero General Public License (AGPL v3)
+* See LICENSE or http://www.gnu.org/licenses/agpl.html
+*
+**********************************************************************************
+
+*/
 #ifndef __ARMORY_CONNECTION_H__
 #define __ARMORY_CONNECTION_H__
 
@@ -178,6 +188,9 @@ public:
    bool getSpentnessForOutputs(const std::map<BinaryData, std::set<unsigned>> &
       , const std::function<void(const std::map<BinaryData, std::map<unsigned, std::pair<BinaryData, unsigned>>> &
          , std::exception_ptr)> &);
+   bool getSpentnessForZcOutputs(const std::map<BinaryData, std::set<unsigned>> &
+      , const std::function<void(const std::map<BinaryData, std::map<unsigned, std::pair<BinaryData, unsigned>>> &
+         , std::exception_ptr)> &);
    bool getOutputsForOutpoints(const std::map<BinaryData, std::set<unsigned>>&, bool withZc,
       const std::function<void(std::vector<UTXO>, std::exception_ptr)>&);
 
@@ -215,6 +228,7 @@ public:
    using BIP151Cb = std::function<bool(const BinaryData&, const std::string&)>;
    void setupConnection(NetworkType, const std::string &host, const std::string &port
       , const std::string &dataDir, const BinaryData &serverKey
+      , const SecureBinaryData &passphrase = {}
       , const BIP151Cb &cbBIP151 = [](const BinaryData&, const std::string&) {return true; });
 
    std::shared_ptr<AsyncClient::BtcWallet> instantiateWallet(const std::string &walletId);

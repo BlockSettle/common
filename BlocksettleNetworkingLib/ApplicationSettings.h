@@ -1,3 +1,13 @@
+/*
+
+***********************************************************************************
+* Copyright (C) 2016 - 2019, BlockSettle AB
+* Distributed under the GNU Affero General Public License (AGPL v3)
+* See LICENSE or http://www.gnu.org/licenses/agpl.html
+*
+**********************************************************************************
+
+*/
 #ifndef __APPLICATION_SETTINGS_H__
 #define __APPLICATION_SETTINGS_H__
 
@@ -43,12 +53,14 @@ public:
 
    void     SaveSettings();
 
-   enum EnvConfiguration
+   enum class EnvConfiguration
    {
-      PROD,
-      UAT,
+      Production,
+      Test,
+#ifndef PRODUCTION_BUILD
       Staging,
       Custom,
+#endif
    };
    Q_ENUM(EnvConfiguration)
 
@@ -71,8 +83,6 @@ public:
       chatServerHost,
       chatServerPort,
       chatServerPubKey,
-      chatPrivKey,
-      chatPubKey,
       chatDbFile,
       celerUsername,
       localSignerPort,

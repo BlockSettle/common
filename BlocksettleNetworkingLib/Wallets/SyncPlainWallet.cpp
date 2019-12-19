@@ -1,3 +1,13 @@
+/*
+
+***********************************************************************************
+* Copyright (C) 2016 - 2019, BlockSettle AB
+* Distributed under the GNU Affero General Public License (AGPL v3)
+* See LICENSE or http://www.gnu.org/licenses/agpl.html
+*
+**********************************************************************************
+
+*/
 #include "SyncPlainWallet.h"
 #include <spdlog/spdlog.h>
 #include "WalletSignerContainer.h"
@@ -12,7 +22,10 @@ PlainWallet::PlainWallet(const std::string &walletId, const std::string &name, c
    walletName_ = name;
 }
 
-PlainWallet::~PlainWallet() = default;
+PlainWallet::~PlainWallet()
+{
+   validityFlag_.reset();
+}
 
 int PlainWallet::addAddress(const bs::Address &addr, const std::string &index
    , bool sync)

@@ -1,3 +1,13 @@
+/*
+
+***********************************************************************************
+* Copyright (C) 2016 - 2019, BlockSettle AB
+* Distributed under the GNU Affero General Public License (AGPL v3)
+* See LICENSE or http://www.gnu.org/licenses/agpl.html
+*
+**********************************************************************************
+
+*/
 #ifndef CLIENTDBSERVICE_H
 #define CLIENTDBSERVICE_H
 
@@ -28,7 +38,7 @@ namespace Chat
 
    signals:
       ////////// PROXY SIGNALS //////////
-      void Init(const Chat::LoggerPtr& loggerPtr, const Chat::ApplicationSettingsPtr& appSettings, 
+      void Init(const Chat::LoggerPtr& loggerPtr, QString chatDbFile,
          const Chat::ChatUserPtr& chatUserPtr, const Chat::CryptManagerPtr& cryptManagerPtr);
       void saveMessage(const Chat::PartyPtr& partyPtr, const std::string& data);
       void updateMessageState(const std::string& message_id, int party_message_state);
@@ -60,7 +70,6 @@ namespace Chat
    using ClientDBServicePtr = std::shared_ptr<ClientDBService>;
 }
 
-Q_DECLARE_METATYPE(Chat::ApplicationSettingsPtr)
 Q_DECLARE_METATYPE(Chat::PartyRecipientsPtrList)
 Q_DECLARE_METATYPE(Chat::UniqieRecipientMap)
 Q_DECLARE_METATYPE(Chat::PartyPtr)

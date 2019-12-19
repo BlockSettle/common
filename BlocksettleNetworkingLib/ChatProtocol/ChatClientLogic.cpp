@@ -1,10 +1,19 @@
+/*
+
+***********************************************************************************
+* Copyright (C) 2016 - 2019, BlockSettle AB
+* Distributed under the GNU Affero General Public License (AGPL v3)
+* See LICENSE or http://www.gnu.org/licenses/agpl.html
+*
+**********************************************************************************
+
+*/
 #include <QRegularExpression>
 #include <google/protobuf/any.pb.h>
 
 #include "ChatProtocol/ChatClientLogic.h"
 
 #include "ConnectionManager.h"
-#include "ApplicationSettings.h"
 #include "ProtobufUtils.h"
 
 #include <disable_warnings.h>
@@ -28,6 +37,8 @@ ChatClientLogic::ChatClientLogic()
    connect(this, &ChatClientLogic::chatClientError, this, &ChatClientLogic::handleLocalErrors);
 }
 
+ChatClientLogic::~ChatClientLogic() = default;
+
 void ChatClientLogic::initDbDone()
 {
    connect(currentUserPtr_.get(), &ChatUser::userHashChanged, this, &ChatClientLogic::chatUserUserHashChanged);
@@ -43,7 +54,6 @@ void ChatClientLogic::initDbDone()
    sessionKeyHolderPtr_ = std::make_shared<SessionKeyHolder>(loggerPtr_, this);
    clientConnectionLogicPtr_ = std::make_shared<ClientConnectionLogic>(
       clientPartyLogicPtr_, 
-      applicationSettingsPtr_, 
       clientDBServicePtr_, 
       loggerPtr_, 
       cryptManagerPtr_, 
@@ -71,34 +81,28 @@ void ChatClientLogic::initDbDone()
    emit initDone();
 }
 
-void ChatClientLogic::Init(const ConnectionManagerPtr& connectionManagerPtr, const ApplicationSettingsPtr& appSettingsPtr, const LoggerPtr& loggerPtr)
+void ChatClientLogic::Init(Chat::LoggerPtr loggerPtr, ChatSettings chatSettings)
 {
-   if (connectionManagerPtr_) {
+   if (chatSettings_.connectionManager) {
       // already initialized
       emit chatClientError(ChatClientLogicError::ConnectionAlreadyInitialized);
       return;
    }
 
-   cryptManagerPtr_ = std::make_shared<CryptManager>(loggerPtr);
-
-   connectionManagerPtr_ = connectionManagerPtr;
-   applicationSettingsPtr_ = appSettingsPtr;
    loggerPtr_ = loggerPtr;
+
+   cryptManagerPtr_ = std::make_shared<CryptManager>(loggerPtr);
 
    clientDBServicePtr_ = std::make_shared<ClientDBService>();
    connect(clientDBServicePtr_.get(), &ClientDBService::initDone, this, &ChatClientLogic::initDbDone);
 
    currentUserPtr_ = std::make_shared<ChatUser>();
-   currentUserPtr_->setPrivateKey(SecureBinaryData(
-      applicationSettingsPtr_->GetAuthKeys().first.data(),
-      applicationSettingsPtr_->GetAuthKeys().first.size()
-   ));
-   currentUserPtr_->setPublicKey(BinaryData(
-      applicationSettingsPtr_->GetAuthKeys().second.data(),
-      applicationSettingsPtr_->GetAuthKeys().second.size()
-   ));
+   currentUserPtr_->setPrivateKey(chatSettings.chatPrivKey);
+   currentUserPtr_->setPublicKey(chatSettings.chatPubKey);
 
-   clientDBServicePtr_->Init(loggerPtr, appSettingsPtr, currentUserPtr_, cryptManagerPtr_);
+   clientDBServicePtr_->Init(loggerPtr, chatSettings.chatDbFile, currentUserPtr_, cryptManagerPtr_);
+
+   chatSettings_ = std::move(chatSettings);
 }
 
 void ChatClientLogic::LoginToServer(const BinaryData &token, const BinaryData &tokenSign, const ZmqBipNewKeyCb& cb)
@@ -118,7 +122,7 @@ void ChatClientLogic::LoginToServer(const BinaryData &token, const BinaryData &t
       connectionPtr_.reset();
    }
 
-   connectionPtr_ = connectionManagerPtr_->CreateZMQBIP15XDataConnection();
+   connectionPtr_ = chatSettings_.connectionManager->CreateZMQBIP15XDataConnection();
    connectionPtr_->setCBs(cb);
 
    clientConnectionLogicPtr_->setToken(token, tokenSign);
@@ -142,12 +146,12 @@ void ChatClientLogic::LoginToServer(const BinaryData &token, const BinaryData &t
 
 std::string ChatClientLogic::getChatServerHost() const
 {
-   return applicationSettingsPtr_->get<std::string>(ApplicationSettings::chatServerHost);
+   return chatSettings_.chatServerHost;
 }
 
 std::string ChatClientLogic::getChatServerPort() const
 {
-   return applicationSettingsPtr_->get<std::string>(ApplicationSettings::chatServerPort);
+   return chatSettings_.chatServerPort;
 }
 
 void ChatClientLogic::OnDataReceived(const std::string& data)
@@ -322,28 +326,6 @@ void ChatClientLogic::DeletePrivateParty(const std::string& partyId)
 void ChatClientLogic::SearchUser(const std::string& userHash, const std::string& searchId) const
 {
    clientConnectionLogicPtr_->searchUser(userHash, searchId);
-
-   // TODO: Decide how we should search for known emails
-#if 0
-   QRegularExpression re(kEmailRegex);
-   if (!re.isValid())
-   {
-      return;
-   }
-   QRegularExpressionMatch match = re.match(QString::fromStdString(userHash));
-
-   std::string stringToSearch;
-   if (match.hasMatch())
-   {
-      stringToSearch = userHasherPtr_->deriveKey(userHash);
-   }
-   else
-   {
-      stringToSearch = userHash;
-   }
-
-   clientConnectionLogicPtr_->searchUser(stringToSearch, searchId);
-#endif
 }
 
 void ChatClientLogic::AcceptNewPublicKeys(const Chat::UserPublicKeyInfoList& userPublicKeyInfoList) const

@@ -3,7 +3,10 @@
 
 #include "ArmoryConnection.h"
 #include "CoreWallet.h"
+#include "TradesVerification.h"
 #include "ValidityFlag.h"
+#include "SettlementTransactionBroadcaster.h"
+#include "XBTTradeData.h"
 
 #include <spdlog/spdlog.h>
 
@@ -11,130 +14,88 @@
 #include <memory>
 #include <string>
 
-#include <QObject>
 
 namespace bs {
 
-   enum class PayoutSignatureType : int;
-
-   struct PayoutSigner
-   {
-      static void WhichSignature(const Tx &
-         , const bs::Address &settlAddr
-         , const BinaryData &buyAuthKey, const BinaryData &sellAuthKey
-         , const std::shared_ptr<spdlog::logger> &
-         , const std::shared_ptr<ArmoryConnection> &, std::function<void(bs::PayoutSignatureType)>);
-   };
-
-   class SettlementMonitor : public ArmoryCallbackTarget
+   class SettlementMonitor : public SettlementTransactionBroadcaster
    {
    public:
+      enum class PayinState {
+         Unknown,
+         AllOk,
+         NotSpent,
+         DoubleSpend,
+         Suspicious,
+         BroadcastFailed
+      };
+      enum class PayoutState {
+         NotDetected,
+         Spent,
+         Revoked,
+         Suspicious
+      };
+      using EventCb = std::function<void(PayinState, int confPayIn
+         , PayoutState, int confPayOut)>;
+
       SettlementMonitor(const std::shared_ptr<ArmoryConnection> &
-         , const std::shared_ptr<spdlog::logger> &, const bs::Address &
-         , const SecureBinaryData &buyAuthKey, const SecureBinaryData &sellAuthKey
-         , const std::function<void()> &);
+         , const std::shared_ptr<spdlog::logger> &
+         , const std::shared_ptr<IdenticalTimersQueue>& rebroadcastTimerQueue);
 
       ~SettlementMonitor() noexcept override;
 
-      void checkNewEntries();
+      bool InitMonitor(const std::shared_ptr<XBTTradeData>& tradeData, const EventCb &userCb);
+      bool PushSettlementOnChain();
+      void StopMonitoring();
 
-      int getPayinConfirmations() const { return payinConfirmations_; }
-      int getPayoutConfirmations() const { return payoutConfirmations_; }
-
-      PayoutSignatureType getPayoutSignerSide() const { return payoutSignedBy_; }
-      void getPayinInput(const std::function<void(UTXO)> &, bool allowZC = true);
-
-      static bs::core::wallet::TXSignRequest createPayoutTXRequest(UTXO
-         , const bs::Address &recvAddr, float feePerByte, unsigned int topBlock);
-      static UTXO getInputFromTX(const bs::Address &, const BinaryData &payinHash
-         , const bs::XBTAmount& amount);
-      static uint64_t getEstimatedFeeFor(UTXO input, const bs::Address &recvAddr
-         , float feePerByte, unsigned int topBlock);
-
-      int confirmedThreshold() const { return 6; }
+      void process();
 
    protected:
-      // payin detected is sent on ZC and once it's get to block.
-      // if payin is already on chain before monitor started, payInDetected will
-      // emited only once
-      virtual void onPayInDetected(int confirmationsNumber, const BinaryData &txHash) = 0;
-      virtual void onPayOutDetected(int confirmationsNumber, PayoutSignatureType signedBy) = 0;
-      virtual void onPayOutConfirmed(bs::PayoutSignatureType signedBy) = 0;
+      bool IsOurTx(const BinaryData& txHash) override;
+      void ProcessBroadcastedZC(const BinaryData& txHash) override;
+      bool ProcessTxConflict(const BinaryData& txHash, const std::string& errorMessage) override;
+      bool ProcessFailedBroadcast(const BinaryData& txHash, const std::string& errorMessage) override;
+      bool ProcessInvalidatedTx(const BinaryData& txHash) override;
 
-      virtual void HandleEmptyHistoryPage();
-
+   protected:
       void onNewBlock(unsigned int height, unsigned int branchHgt) override;
-      void onZCReceived(const std::vector<bs::TXEntry> &) override;
-      void onRefresh(const std::vector<BinaryData>& ids, bool) override;
+      void onRefresh(const std::vector<BinaryData> &, bool) override;
 
    private:
-      std::atomic_flag                          walletLock_ = ATOMIC_FLAG_INIT;
-      std::shared_ptr<AsyncClient::BtcWallet>   rtWallet_;
-      std::set<BinaryData>                      ownAddresses_;
+      void UpdateSettlementStatus(PayinState, int confPayIn, PayoutState, int confPayOut);
+
+      void DumpSpentnessInfo(const std::map<BinaryData, std::map<unsigned int, std::pair<BinaryData, unsigned int>>> &map);
+
+   private:
+      std::shared_ptr<ArmoryConnection>   armoryPtr_;
+      std::shared_ptr<spdlog::logger>     logger_;
+
+      std::shared_ptr<XBTTradeData>       tradeData_;
+
+      bs::Address                         settlAddress_;
+      SecureBinaryData                    buyAuthKey_;
+      SecureBinaryData                    sellAuthKey_;
+      uint64_t                            settlValue_{};
+
+      ValidityFlag                        validityFlag_;
+
+      BinaryData           payinHash_;
+      BinaryData           payoutHash_;
+
+      EventCb              cb_{};
+
+      PayinState  payinState_{PayinState::Unknown};
+      PayoutState  payoutState_{PayoutState::NotDetected};
 
       int payinConfirmations_ = -1;
       int payoutConfirmations_ = -1;
 
-      bool payinInBlockChain_ = false;
-      bool payoutConfirmedFlag_ = false;
+      std::map<BinaryData, std::set<uint32_t>>  spentnessToTrack_;
+      std::map<BinaryData, std::set<uint32_t>>  payoutSpentnessToTrack_;
+      unsigned int                              nbInputs_{};
 
-      PayoutSignatureType payoutSignedBy_{};
+      std::shared_ptr<AsyncClient::BtcWallet>   btcWallet_;
 
-   protected:
-      std::shared_ptr<ArmoryConnection>   armoryPtr_;
-      std::shared_ptr<spdlog::logger>     logger_;
-      bs::Address                         settlAddress_;
-      SecureBinaryData                    buyAuthKey_;
-      SecureBinaryData                    sellAuthKey_;
-      ValidityFlag validityFlag_;
-      std::unordered_map<std::string, std::function<void()>>   refreshCallbacks_;
-
-   protected:
-      void IsPayInTransaction(const ClientClasses::LedgerEntry &, std::function<void(bool)>) const;
-      void IsPayOutTransaction(const ClientClasses::LedgerEntry &, std::function<void(bool)>) const;
-
-      void CheckPayoutSignature(const ClientClasses::LedgerEntry &, std::function<void(PayoutSignatureType)>) const;
-
-      void SendPayInNotification(const int confirmationsNumber, const BinaryData &txHash);
-      void SendPayOutNotification(const ClientClasses::LedgerEntry &);
-   };
-
-   class SettlementMonitorCb : public SettlementMonitor
-   {
-   public:
-      using onPayInDetectedCB = std::function<void (int, const BinaryData &)>;
-      using onPayOutDetectedCB = std::function<void (int, PayoutSignatureType)>;
-      using onPayOutConfirmedCB = std::function<void (PayoutSignatureType)>;
-
-   public:
-      SettlementMonitorCb(const std::shared_ptr<ArmoryConnection> &armory
-         , const std::shared_ptr<spdlog::logger> &logger, const bs::Address &addr
-         , const SecureBinaryData &buyAuthKey, const SecureBinaryData &sellAuthKey
-         , const std::function<void()> &cbInited)
-         : SettlementMonitor(armory, logger, addr, buyAuthKey, sellAuthKey, cbInited) {}
-      ~SettlementMonitorCb() noexcept override;
-
-      SettlementMonitorCb(const SettlementMonitorCb&) = delete;
-      SettlementMonitorCb& operator = (const SettlementMonitorCb&) = delete;
-
-      SettlementMonitorCb(SettlementMonitorCb&&) = delete;
-      SettlementMonitorCb& operator = (SettlementMonitorCb&&) = delete;
-
-      void start(const onPayInDetectedCB& onPayInDetected
-         , const onPayOutDetectedCB& onPayOutDetected
-         , const onPayOutConfirmedCB& onPayOutConfirmed);
-
-      void stop();
-
-   protected:
-      void onPayInDetected(int confirmationsNumber, const BinaryData &txHash) override;
-      void onPayOutDetected(int confirmationsNumber, PayoutSignatureType signedBy) override;
-      void onPayOutConfirmed(PayoutSignatureType signedBy) override;
-
-   private:
-      onPayInDetectedCB    onPayInDetected_;
-      onPayOutDetectedCB   onPayOutDetected_;
-      onPayOutConfirmedCB  onPayOutConfirmed_;
+      std::string                               registrationId_;
    };
 
 } //namespace bs

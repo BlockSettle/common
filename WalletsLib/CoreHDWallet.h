@@ -1,3 +1,13 @@
+/*
+
+***********************************************************************************
+* Copyright (C) 2016 - 2019, BlockSettle AB
+* Distributed under the GNU Affero General Public License (AGPL v3)
+* See LICENSE or http://www.gnu.org/licenses/agpl.html
+*
+**********************************************************************************
+
+*/
 #ifndef BS_CORE_HD_WALLET_H__
 #define BS_CORE_HD_WALLET_H__
 
@@ -39,9 +49,9 @@ namespace bs {
                , const std::shared_ptr<spdlog::logger> &logger = nullptr);
 
             //load existing wallet
-            Wallet(const std::string &filename, NetworkType netType,
-               const std::string& folder = "",
-               const std::shared_ptr<spdlog::logger> &logger = nullptr);
+            Wallet(const std::string &filename, NetworkType netType
+               , const std::string& folder = "", const SecureBinaryData &ctrlPass = {}
+               , const std::shared_ptr<spdlog::logger> &logger = nullptr);
 
             //generate random seed and init
             Wallet(const std::string &name, const std::string &desc
@@ -80,7 +90,10 @@ namespace bs {
             std::string name() const { return name_; }
             std::string description() const { return desc_; }
 
+            void changeControlPassword(const SecureBinaryData &oldPass, const SecureBinaryData &newPass);
             void createStructure(unsigned lookup = UINT32_MAX);
+            void createChatPrivKey();
+
             void shutdown();
             bool eraseFile();
             const std::string& getFileName(void) const;
@@ -102,6 +115,8 @@ namespace bs {
             bs::core::wallet::Seed getDecryptedSeed(void) const;
             SecureBinaryData getDecryptedRootXpriv(void) const;
 
+            BIP32_Node getChatNode() const;
+
             //settlement leaves methods
             std::shared_ptr<hd::Leaf> createSettlementLeaf(const bs::Address&);
             std::shared_ptr<hd::Leaf> getSettlementLeaf(const bs::Address&);
@@ -120,19 +135,19 @@ namespace bs {
             bool extOnlyFlag_ = false;
 
             std::shared_ptr<AssetWallet_Single> walletPtr_;
-            
-            std::shared_ptr<LMDBEnv> dbEnv_ = nullptr;
-            LMDB* db_ = nullptr;
+            PassphraseLambda  lbdControlPassphrase_;
+            std::string       filePathName_;
+
+            mutable BIP32_Node   chatNode_;
 
             std::deque<std::function<SecureBinaryData(const std::set<BinaryData> &)>>  lbdPwdPrompts_;
 
          protected:
             void initNew(const wallet::Seed &, const bs::wallet::PasswordData &
                , const std::string &folder);
-            void loadFromFile(const std::string &filename, const std::string& folder);
-            void putDataToDB(const BinaryData& key, const BinaryData& data);
-            BinaryDataRef getDataRefForKey(LMDB* db, const BinaryData& key) const;
-            BinaryDataRef getDataRefForKey(uint32_t key) const;
+            void loadFromFile(const std::string &filename, const std::string &folder
+               , const SecureBinaryData &controlPassphrase = {});
+
             void writeToDB(bool force = false);
 
             bs::hd::Path getPathForAddress(const bs::Address &);

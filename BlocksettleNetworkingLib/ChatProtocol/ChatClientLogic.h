@@ -1,10 +1,21 @@
+/*
+
+***********************************************************************************
+* Copyright (C) 2016 - 2019, BlockSettle AB
+* Distributed under the GNU Affero General Public License (AGPL v3)
+* See LICENSE or http://www.gnu.org/licenses/agpl.html
+*
+**********************************************************************************
+
+*/
 #ifndef CHATCLIENTLOGIC_H
 #define CHATCLIENTLOGIC_H
 
+#include "ChatProtocol/ChatSettings.h"
 #include "ChatProtocol/ChatUser.h"
 #include "ChatProtocol/ClientConnectionLogic.h"
-#include "ChatProtocol/ClientPartyLogic.h"
 #include "ChatProtocol/ClientDBService.h"
+#include "ChatProtocol/ClientPartyLogic.h"
 #include "ChatProtocol/CryptManager.h"
 
 #include "CommonTypes.h"
@@ -20,16 +31,10 @@ namespace spdlog
    class logger;
 }
 
-class ConnectionManager;
-class ApplicationSettings;
-class UserHasher;
 
 namespace Chat
 {
    using LoggerPtr = std::shared_ptr<spdlog::logger>;
-   using ConnectionManagerPtr = std::shared_ptr<ConnectionManager>;
-   using ApplicationSettingsPtr = std::shared_ptr<ApplicationSettings>;
-   using UserHasherPtr = std::shared_ptr<UserHasher>;
    using SearchUserReplyList = std::vector<std::string>;
 
    enum class ChatClientLogicError
@@ -48,7 +53,7 @@ namespace Chat
 
    public:
       ChatClientLogic();
-      ~ChatClientLogic() override = default;
+      ~ChatClientLogic() override;
 
       ChatClientLogic(const ChatClientLogic&) = delete;
       ChatClientLogic& operator=(const ChatClientLogic&) = delete;
@@ -63,7 +68,7 @@ namespace Chat
       ClientPartyModelPtr clientPartyModelPtr() const { return clientPartyLogicPtr_->clientPartyModelPtr(); }
 
    public slots:
-      void Init(const Chat::ConnectionManagerPtr& connectionManagerPtr, const Chat::ApplicationSettingsPtr& appSettings, const Chat::LoggerPtr& loggerPtr);
+      void Init(Chat::LoggerPtr loggerPtr, ChatSettings chatSettings);
       void LoginToServer(const BinaryData &token, const BinaryData &tokenSign, const ZmqBipNewKeyCb& cb);
       void LogoutFromServer();
       void SendPartyMessage(const std::string& partyId, const std::string& data);
@@ -109,16 +114,16 @@ namespace Chat
       std::string getChatServerHost() const;
       std::string getChatServerPort() const;
 
-      ConnectionManagerPtr       connectionManagerPtr_;
+      ChatSettings               chatSettings_;
       ZmqBIP15XDataConnectionPtr connectionPtr_;
       LoggerPtr                  loggerPtr_;
-      ApplicationSettingsPtr     applicationSettingsPtr_;
       ChatUserPtr                currentUserPtr_;
       ClientConnectionLogicPtr   clientConnectionLogicPtr_;
       ClientPartyLogicPtr        clientPartyLogicPtr_;
       ClientDBServicePtr         clientDBServicePtr_;
       CryptManagerPtr            cryptManagerPtr_;
       SessionKeyHolderPtr        sessionKeyHolderPtr_;
+
    };
 
 }

@@ -1,3 +1,13 @@
+/*
+
+***********************************************************************************
+* Copyright (C) 2016 - 2019, BlockSettle AB
+* Distributed under the GNU Affero General Public License (AGPL v3)
+* See LICENSE or http://www.gnu.org/licenses/agpl.html
+*
+**********************************************************************************
+
+*/
 #include "ZMQ_BIP15X_ServerConnection.h"
 
 #include "FastLock.h"
@@ -78,7 +88,8 @@ ZmqBIP15XServerConnection::ZmqBIP15XServerConnection(
 
    // In general, load the client key from a special Armory wallet file.
    if (!ephemeralPeers) {
-       authPeers_ = std::make_unique<AuthorizedPeers>(ownKeyFileDir, ownKeyFileName);
+      authPeers_ = std::make_unique<AuthorizedPeers>(ownKeyFileDir, ownKeyFileName
+         , [] (const std::set<BinaryData> &) { return SecureBinaryData(); });
    }
    else {
       authPeers_ = std::make_unique<AuthorizedPeers>();
@@ -131,7 +142,8 @@ ZmqBIP15XServerConnection::ZmqBIP15XServerConnection(
    if (!ownKeyFileDir.empty() && !ownKeyFileName.empty()) {
       logger_->debug("[{}] creating/reading static key in {}/{}", __func__
          , ownKeyFileDir, ownKeyFileName);
-      authPeers_ = std::make_unique<AuthorizedPeers>(ownKeyFileDir, ownKeyFileName);
+      authPeers_ = std::make_unique<AuthorizedPeers>(ownKeyFileDir, ownKeyFileName
+         , [](const std::set<BinaryData> &) { return SecureBinaryData{}; });
    }
    else {
       logger_->debug("[{}] creating ephemeral key", __func__);
@@ -331,7 +343,10 @@ const chrono::milliseconds ZmqBIP15XServerConnection::getLocalHeartbeatInterval(
 BinaryData ZmqBIP15XServerConnection::getOwnPubKey(const string &ownKeyFileDir, const string &ownKeyFileName)
 {
    try {
-      AuthorizedPeers authPeers(ownKeyFileDir, ownKeyFileName);
+      AuthorizedPeers authPeers(ownKeyFileDir, ownKeyFileName, [](const std::set<BinaryData> &)
+      {
+         return SecureBinaryData{};
+      });
       return getOwnPubKey(authPeers);
    }
    catch (const std::exception &) { }

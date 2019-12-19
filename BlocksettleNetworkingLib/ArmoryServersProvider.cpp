@@ -1,3 +1,13 @@
+/*
+
+***********************************************************************************
+* Copyright (C) 2016 - 2019, BlockSettle AB
+* Distributed under the GNU Affero General Public License (AGPL v3)
+* See LICENSE or http://www.gnu.org/licenses/agpl.html
+*
+**********************************************************************************
+
+*/
 #include "ArmoryServersProvider.h"
 #include "ArmoryConnection.h"
 
@@ -8,6 +18,13 @@ namespace {
 
    // Change to true if local ArmoryDB auto-start should be reverted (not tested, see BST-2131)
    const bool kEnableLocalAutostart = false;
+
+   enum class ServerIndexes {
+      MainNet = 0,
+      TestNet,
+      LocalhostMainNet,
+      LocalHostTestNet
+   };
 
 } // namespace
 
@@ -38,34 +55,34 @@ QList<ArmoryServer> ArmoryServersProvider::servers() const
    QStringList defaultServersKeys = appSettings_->get<QStringList>(ApplicationSettings::defaultArmoryServersKeys);
 
    // #1 add MainNet blocksettle server
-   ArmoryServer bsMainNet = defaultServers_.at(0);
+   ArmoryServer bsMainNet = defaultServers_.at(static_cast<int>(ServerIndexes::MainNet));
    if (defaultServersKeys.size() >= 1) {
-      bsMainNet.armoryDBKey = defaultServersKeys.at(0);
+      bsMainNet.armoryDBKey = defaultServersKeys.at(static_cast<int>(ServerIndexes::MainNet));
    }
    servers.append(bsMainNet);
 
    // #2 add TestNet blocksettle server
-   ArmoryServer bsTestNet = defaultServers_.at(1);
+   ArmoryServer bsTestNet = defaultServers_.at(static_cast<int>(ServerIndexes::TestNet));
    if (defaultServersKeys.size() >= 2) {
-      bsTestNet.armoryDBKey = defaultServersKeys.at(1);
+      bsTestNet.armoryDBKey = defaultServersKeys.at(static_cast<int>(ServerIndexes::TestNet));
    }
    servers.append(bsTestNet);
 
    // #3 add localhost node MainNet
-   ArmoryServer localMainNet = defaultServers_.at(2);
+   ArmoryServer localMainNet = defaultServers_.at(static_cast<int>(ServerIndexes::LocalhostMainNet));
    localMainNet.armoryDBPort = appSettings_->GetDefaultArmoryLocalPort(NetworkType::MainNet);
    localMainNet.runLocally = kEnableLocalAutostart;
    if (defaultServersKeys.size() >= 3) {
-      localMainNet.armoryDBKey = defaultServersKeys.at(2);
+      localMainNet.armoryDBKey = defaultServersKeys.at(static_cast<int>(ServerIndexes::LocalhostMainNet));
    }
    servers.append(localMainNet);
 
    // #4 add localhost node TestNet
-   ArmoryServer localTestNet = defaultServers_.at(3);
+   ArmoryServer localTestNet = defaultServers_.at(static_cast<int>(ServerIndexes::LocalHostTestNet));
    localTestNet.armoryDBPort = appSettings_->GetDefaultArmoryLocalPort(NetworkType::TestNet);
    localTestNet.runLocally = kEnableLocalAutostart;
    if (defaultServersKeys.size() >= 4) {
-      localTestNet.armoryDBKey = defaultServersKeys.at(3);
+      localTestNet.armoryDBKey = defaultServersKeys.at(static_cast<int>(ServerIndexes::LocalHostTestNet));
    }
    servers.append(localTestNet);
 
@@ -141,6 +158,16 @@ int ArmoryServersProvider::indexOfIpPort(const std::string &srvIPPort) const
       }
    }
    return -1;
+}
+
+int ArmoryServersProvider::getIndexOfMainNetServer() const
+{
+   return static_cast<int>(ServerIndexes::MainNet);
+}
+
+int ArmoryServersProvider::getIndexOfTestNetServer() const
+{
+   return static_cast<int>(ServerIndexes::TestNet);
 }
 
 bool ArmoryServersProvider::add(const ArmoryServer &server)

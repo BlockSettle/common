@@ -1,3 +1,13 @@
+/*
+
+***********************************************************************************
+* Copyright (C) 2016 - 2019, BlockSettle AB
+* Distributed under the GNU Affero General Public License (AGPL v3)
+* See LICENSE or http://www.gnu.org/licenses/agpl.html
+*
+**********************************************************************************
+
+*/
 #include <unordered_map>
 #include <spdlog/spdlog.h>
 #include "CheckRecipSigner.h"
@@ -29,7 +39,6 @@ void hd::Leaf::init(
       throw WalletException("invalid account id");
 
    accountPtr_ = accPtr;
-   db_ = new LMDB(accountPtr_->getDbEnv().get(), BS_WALLET_DBNAME);
    walletPtr_ = walletPtr;
 
    auto&& addrMap = accountPtr_->getUsedAddressMap();
@@ -57,6 +66,16 @@ void hd::Leaf::reset()
    usedAddresses_.clear();
    addressHashes_.clear();
    accountPtr_ = nullptr;
+}
+
+std::shared_ptr<DBIfaceTransaction> hd::Leaf::getDBWriteTx()
+{
+   return walletPtr_->beginSubDBTransaction(BS_WALLET_DBNAME, true);
+}
+
+std::shared_ptr<DBIfaceTransaction> hd::Leaf::getDBReadTx()
+{
+   return walletPtr_->beginSubDBTransaction(BS_WALLET_DBNAME, false);
 }
 
 std::string hd::Leaf::walletId() const
@@ -361,9 +380,16 @@ std::pair<std::shared_ptr<hd::Leaf>, BinaryData> hd::Leaf::deserialize(
    switch (key) {
    case LEAF_KEY:
    {
+      const auto groupType = static_cast<bs::hd::CoinType>(path.get(-2) | bs::hd::hardFlag);
+
       switch (static_cast<bs::hd::Purpose>(path.get(0) & ~bs::hd::hardFlag)) {
       case bs::hd::Purpose::Native:
-         leafPtr = std::make_shared<hd::LeafNative>(netType, logger);
+         if (groupType == bs::hd::CoinType::BlockSettle_CC) {
+            leafPtr = std::make_shared<hd::CCLeaf>(netType, logger);
+         }
+         else {
+            leafPtr = std::make_shared<hd::LeafNative>(netType, logger);
+         }
          break;
       case bs::hd::Purpose::Nested:
          leafPtr = std::make_shared<hd::LeafNested>(netType, logger);
@@ -512,11 +538,6 @@ std::string hd::Leaf::getFilename() const
 
 void hd::Leaf::shutdown()
 {
-   if (db_ != nullptr) {
-      delete db_;
-      db_ = nullptr;
-   }
-
    walletPtr_ = nullptr;
    accountPtr_ = nullptr;
 }
@@ -653,7 +674,7 @@ std::shared_ptr<AssetEntry> hd::Leaf::getRootAsset() const
 
 void hd::Leaf::readMetaData()
 {
-   MetaData::readFromDB(getDBEnv(), db_);
+   MetaData::readFromDB(getDBReadTx());
 }
 
 

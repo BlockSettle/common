@@ -1,3 +1,13 @@
+/*
+
+***********************************************************************************
+* Copyright (C) 2016 - 2019, BlockSettle AB
+* Distributed under the GNU Affero General Public License (AGPL v3)
+* See LICENSE or http://www.gnu.org/licenses/agpl.html
+*
+**********************************************************************************
+
+*/
 #ifndef __HEADLESS_CONTAINER_LISTENER_H__
 #define __HEADLESS_CONTAINER_LISTENER_H__
 
@@ -102,6 +112,10 @@ public:
 
    void resetConnection(ServerConnection *connection);
 
+   // Used only to show prompt in terminal to create new wallets.
+   // Terminal should not prompt if there is encrypted wallets with unknown master password.
+   void setNoWallets(bool noWallets);
+
 protected:
    bool isAutoSignActive(const std::string &walletId) const;
 
@@ -142,6 +156,7 @@ private:
    bool onExtAddrChain(const std::string &clientId, Blocksettle::Communication::headless::RequestPacket packet);
    bool onSyncNewAddr(const std::string &clientId, Blocksettle::Communication::headless::RequestPacket packet);
    bool onAddrPreimage(const std::string &clientId, Blocksettle::Communication::headless::RequestPacket packet);
+   bool onChatNodeRequest(const std::string &clientId, Blocksettle::Communication::headless::RequestPacket packet);
    bool onExecCustomDialog(const std::string &clientId, Blocksettle::Communication::headless::RequestPacket packet);
 
    bool onCreateSettlWallet(const std::string &clientId, Blocksettle::Communication::headless::RequestPacket packet);
@@ -181,6 +196,8 @@ private:
 
    bool CheckSpendLimit(uint64_t value, const std::string &walletId);
 
+   void sendUpdateStatuses(std::string clientId = {});
+
 private:
    std::shared_ptr<spdlog::logger>     logger_;
    ServerConnection                    *connection_{};
@@ -210,6 +227,9 @@ private:
    HeadlessContainerCallbacks *callbacks_{};
 
    std::map<std::pair<std::string, bs::Address>, std::vector<uint32_t>> settlLeafReqs_;
+
+   bool noWallets_{false};
+
 };
 
 #endif // __HEADLESS_CONTAINER_LISTENER_H__

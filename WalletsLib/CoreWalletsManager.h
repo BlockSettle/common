@@ -1,3 +1,13 @@
+/*
+
+***********************************************************************************
+* Copyright (C) 2016 - 2019, BlockSettle AB
+* Distributed under the GNU Affero General Public License (AGPL v3)
+* See LICENSE or http://www.gnu.org/licenses/agpl.html
+*
+**********************************************************************************
+
+*/
 #ifndef CORE_WALLETS_MANAGER_H
 #define CORE_WALLETS_MANAGER_H
 
@@ -37,8 +47,11 @@ namespace bs {
          void reset();
 
          bool walletsLoaded() const { return walletsLoaded_; }
-         void loadWallets(NetworkType, const std::string &walletsPath, const CbProgress &cb = nullptr);
-         HDWalletPtr loadWoWallet(NetworkType, const std::string &walletsPath, const std::string &walletFileName);
+         bool loadWallets(NetworkType, const std::string &walletsPath
+            , const SecureBinaryData &ctrlPass = {}, const CbProgress &cb = nullptr);
+         HDWalletPtr loadWoWallet(NetworkType, const std::string &walletsPath
+            , const std::string &walletFileName, const SecureBinaryData &ctrlPass = {});
+         void changeControlPassword(const SecureBinaryData &oldPass, const SecureBinaryData &newPass);
          void backupWallet(const HDWalletPtr &, const std::string &targetDir) const;
 
          bool empty() const { return hdWallets_.empty(); }

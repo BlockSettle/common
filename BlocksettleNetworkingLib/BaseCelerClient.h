@@ -1,3 +1,13 @@
+/*
+
+***********************************************************************************
+* Copyright (C) 2016 - 2019, BlockSettle AB
+* Distributed under the GNU Affero General Public License (AGPL v3)
+* See LICENSE or http://www.gnu.org/licenses/agpl.html
+*
+**********************************************************************************
+
+*/
 #ifndef BASE_CELER_CLIENT_H
 #define BASE_CELER_CLIENT_H
 
@@ -143,7 +153,10 @@ private:
    commandsQueueType internalCommands_;
 
    std::unordered_map<CelerAPI::CelerMessageType, message_handler, std::hash<int> > messageHandlersMap_;
+
    std::unordered_map<std::string, std::shared_ptr<BaseCelerCommand>>               activeCommands_;
+   // Use recursive mutex here as active commands could probably call RegisterUserCommand again
+   std::recursive_mutex activeCommandsMutex_;
 
    std::string sessionToken_;
    std::string userName_;

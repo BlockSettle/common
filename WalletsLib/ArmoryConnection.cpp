@@ -1,3 +1,13 @@
+/*
+
+***********************************************************************************
+* Copyright (C) 2016 - 2019, BlockSettle AB
+* Distributed under the GNU Affero General Public License (AGPL v3)
+* See LICENSE or http://www.gnu.org/licenses/agpl.html
+*
+**********************************************************************************
+
+*/
 #include "ArmoryConnection.h"
 
 #include <cassert>
@@ -221,7 +231,7 @@ void ArmoryConnection::stopServiceThreads()
 
 void ArmoryConnection::setupConnection(NetworkType netType, const std::string &host
    , const std::string &port, const std::string &dataDir, const BinaryData &serverKey
-   , const BIP151Cb &cbBIP151)
+   , const SecureBinaryData &passphrase, const BIP151Cb &cbBIP151)
 {
    addToMaintQueue([netType, host, port](ArmoryCallbackTarget *tgt) {
       tgt->onPrepareConnection(netType, host, port);
@@ -271,7 +281,7 @@ void ArmoryConnection::setupConnection(NetworkType netType, const std::string &h
       logger_->debug("[ArmoryConnection::setupConnection] completed");
    };
 
-   const auto &connectRoutine = [this, registerRoutine, cbBIP151, host, port, dataDir] {
+   const auto &connectRoutine = [this, registerRoutine, cbBIP151, host, port, dataDir, passphrase] {
       if (connThreadRunning_) {
          return;
       }
@@ -301,7 +311,8 @@ void ArmoryConnection::setupConnection(NetworkType netType, const std::string &h
          // up BIP 150 keys before connecting. BIP 150/151 is transparent to us
          // otherwise. If it fails, the connection will fail.
          bdv_ = AsyncClient::BlockDataViewer::getNewBDV(host, port
-            , dataDir, true // enable ephemeralPeers, because we manage armory keys ourself
+            , dataDir, [passphrase](const std::set<BinaryData> &) { return passphrase; }
+            , true // enable ephemeralPeers, because we manage armory keys ourself
             , cbRemote_);
          if (!bdv_) {
             logger_->error("[setupConnection (connectRoutine)] failed to "
@@ -691,8 +702,33 @@ bool ArmoryConnection::getSpentnessForOutputs(const std::map<BinaryData, std::se
    return true;
 }
 
-bool ArmoryConnection::getOutputsForOutpoints(const std::map<BinaryData, std::set<unsigned>>& outpoints,
-   bool withZc, const std::function<void(std::vector<UTXO>, std::exception_ptr)>& cb)
+bool ArmoryConnection::getSpentnessForZcOutputs(const std::map<BinaryData, std::set<unsigned>> &outputs
+   , const std::function<void(const std::map<BinaryData, std::map<unsigned, std::pair<BinaryData, unsigned>>> &
+      , std::exception_ptr)> &cb)
+{
+   if (!bdv_ || (state_ != ArmoryState::Ready)) {
+      logger_->error("[{}] invalid state: {}", __func__, (int)state_.load());
+      return false;
+   }
+   const auto cbWrap = [logger = logger_, cb](ReturnMessage<std::map<BinaryData
+      , std::map<unsigned, std::pair<BinaryData, unsigned>>>> msg)
+   {
+      try {
+         const auto &spentness = msg.get();
+         cb(spentness, nullptr);
+      }
+      catch (const std::exception &e) {
+         logger->error("[ArmoryConnection::getSpentnessForOutputs] failed to get: {}", e.what());
+         cb({}, std::make_exception_ptr(e));
+      }
+   };
+   bdv_->getSpentnessForZcOutputs(outputs, cbWrap);
+   return true;
+}
+
+bool ArmoryConnection::getOutputsForOutpoints(
+   const std::map<BinaryData, std::set<unsigned>>& outpoints, bool withZc, 
+   const std::function<void(std::vector<UTXO>, std::exception_ptr)>& cb)
 {
    if (!bdv_ || (state_ != ArmoryState::Ready)) {
       logger_->error("[{}] invalid state: {}", __func__, (int)state_.load());
@@ -709,7 +745,7 @@ bool ArmoryConnection::getOutputsForOutpoints(const std::map<BinaryData, std::se
          cb({}, std::make_exception_ptr(e));
       }
    };
-   bdv_->getOutputsForOutpoints(outpoints, cbWrap);
+   bdv_->getOutputsForOutpoints(outpoints, withZc, cbWrap);
    return true;
 }
 

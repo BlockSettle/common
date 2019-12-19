@@ -1,3 +1,13 @@
+/*
+
+***********************************************************************************
+* Copyright (C) 2016 - 2019, BlockSettle AB
+* Distributed under the GNU Affero General Public License (AGPL v3)
+* See LICENSE or http://www.gnu.org/licenses/agpl.html
+*
+**********************************************************************************
+
+*/
 #ifndef _H_COLOREDCOINLOGIC
 #define _H_COLOREDCOINLOGIC
 
@@ -221,6 +231,8 @@ private:
 
    unsigned startHeight_ = 0;
    unsigned zcCutOff_ = 0;
+   unsigned processedHeight_ = 0;
+   unsigned processedZcIndex_ = 0;
    
    uint64_t coinsPerShare_;
 
@@ -243,12 +255,12 @@ private:
    ////
    std::set<BinaryData> processTxBatch(
       std::shared_ptr<ColoredCoinSnapshot>&,
-      const std::set<BinaryData>&);
+      const std::set<BinaryData>&, bool parseLowest);
 
-   void processZcBatch(
+   std::set<BinaryData> processZcBatch(
       const std::shared_ptr<ColoredCoinSnapshot>&,
       const std::shared_ptr<ColoredCoinZCSnapshot>&,
-      const std::set<BinaryData>&);
+      const std::set<BinaryData>&, bool);
 
    void processRevocationBatch(
       const std::shared_ptr<ColoredCoinSnapshot>&,

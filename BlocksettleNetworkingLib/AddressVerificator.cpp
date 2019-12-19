@@ -1,3 +1,13 @@
+/*
+
+***********************************************************************************
+* Copyright (C) 2016 - 2019, BlockSettle AB
+* Distributed under the GNU Affero General Public License (AGPL v3)
+* See LICENSE or http://www.gnu.org/licenses/agpl.html
+*
+**********************************************************************************
+
+*/
 #include "AddressVerificator.h"
 
 #include "ArmoryConnection.h"
@@ -178,7 +188,6 @@ void AddressVerificator::validateAddress(const std::shared_ptr<AddressVerificati
       return;
    }
 
-   validationMgr_->update();
    try {
       state->currentState = AuthAddressLogic::getAuthAddrState(*validationMgr_, state->address);
    }

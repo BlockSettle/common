@@ -1,3 +1,13 @@
+/*
+
+***********************************************************************************
+* Copyright (C) 2016 - 2019, BlockSettle AB
+* Distributed under the GNU Affero General Public License (AGPL v3)
+* See LICENSE or http://www.gnu.org/licenses/agpl.html
+*
+**********************************************************************************
+
+*/
 #include "InprocSigner.h"
 #include <QTimer>
 #include <spdlog/spdlog.h>
@@ -28,7 +38,7 @@ bool InprocSigner::Start()
       const auto &cbLoadProgress = [this](size_t cur, size_t total) {
          logger_->debug("[InprocSigner::Start] loading wallets: {} of {}", cur, total);
       };
-      walletsMgr_->loadWallets(netType_, walletsPath_, cbLoadProgress);
+      walletsMgr_->loadWallets(netType_, walletsPath_, {}, cbLoadProgress);
    }
    inited_ = true;
    emit ready();
@@ -624,4 +634,16 @@ void InprocSigner::getRootPubkey(const std::string& walletID
    if (cb) {
       cb(true, rootSingle->getPubKey()->getCompressedKey());
    }
+}
+
+void InprocSigner::getChatNode(const std::string &walletID
+   , const std::function<void(const BIP32_Node &)> &cb)
+{
+   const auto hdWallet = walletsMgr_->getHDWalletById(walletID);
+   if (!hdWallet) {
+      cb({});
+      return;
+   }
+   const auto chatNode = hdWallet->getChatNode();
+   cb(chatNode);
 }

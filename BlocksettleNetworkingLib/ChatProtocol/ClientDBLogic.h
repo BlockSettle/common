@@ -1,3 +1,13 @@
+/*
+
+***********************************************************************************
+* Copyright (C) 2016 - 2019, BlockSettle AB
+* Distributed under the GNU Affero General Public License (AGPL v3)
+* See LICENSE or http://www.gnu.org/licenses/agpl.html
+*
+**********************************************************************************
+
+*/
 #ifndef CLIENTDBLOGIC_H
 #define CLIENTDBLOGIC_H
 
@@ -14,12 +24,9 @@
 #include "ChatProtocol/Party.h"
 
 class QSqlDatabase;
-class ApplicationSettings;
 
 namespace Chat
 {
-   using ApplicationSettingsPtr = std::shared_ptr<ApplicationSettings>;
-
    enum class ClientDBLogicError
    {
       InitDatabase,
@@ -50,7 +57,7 @@ namespace Chat
       ClientDBLogic(QObject* parent = nullptr);
 
    public slots:
-      void Init(const Chat::LoggerPtr& loggerPtr, const Chat::ApplicationSettingsPtr& appSettings, const Chat::ChatUserPtr& chatUserPtr,
+      void Init(const Chat::LoggerPtr& loggerPtr, QString chatDbFile, const Chat::ChatUserPtr& chatUserPtr,
          const Chat::CryptManagerPtr& cryptManagerPtr);
       void updateMessageState(const std::string& message_id, int party_message_state);
       void saveMessage(const Chat::PartyPtr& partyPtr, const std::string& data);
@@ -93,10 +100,10 @@ namespace Chat
       void insertNewUserHash(const std::string& userHash);
       QSqlDatabase getDb();
 
-      ApplicationSettingsPtr     applicationSettingsPtr_;
       ClientDatabaseCreatorPtr   databaseCreatorPtr_;
       CryptManagerPtr            cryptManagerPtr_;
       ChatUserPtr                currentChatUserPtr_;
+      QString                    chatDbFile_;
    };
 
    using ClientDBLogicPtr = std::shared_ptr<ClientDBLogic>;

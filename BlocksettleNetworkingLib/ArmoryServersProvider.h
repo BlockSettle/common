@@ -1,3 +1,13 @@
+/*
+
+***********************************************************************************
+* Copyright (C) 2016 - 2019, BlockSettle AB
+* Distributed under the GNU Affero General Public License (AGPL v3)
+* See LICENSE or http://www.gnu.org/licenses/agpl.html
+*
+**********************************************************************************
+
+*/
 #ifndef ARMORY_SERVERS_PROVIDER_H
 #define ARMORY_SERVERS_PROVIDER_H
 
@@ -30,6 +40,8 @@ public:
    int indexOf(const QString &name) const;
    int indexOf(const ArmoryServer &server) const;
    int indexOfIpPort(const std::string &srvIPPort) const;
+   int getIndexOfMainNetServer() const;
+   int getIndexOfTestNetServer() const;
 
    bool add(const ArmoryServer &server);
    bool replace(int index, const ArmoryServer &server);
@@ -43,6 +55,8 @@ public:
 
    ArmorySettings connectedArmorySettings() const;
    void setConnectedArmorySettings(const ArmorySettings &connectedArmorySettings);
+
+   
 
 signals:
    void dataChanged();

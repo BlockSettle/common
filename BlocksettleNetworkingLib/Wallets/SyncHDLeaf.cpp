@@ -1,3 +1,13 @@
+/*
+
+***********************************************************************************
+* Copyright (C) 2016 - 2019, BlockSettle AB
+* Distributed under the GNU Affero General Public License (AGPL v3)
+* See LICENSE or http://www.gnu.org/licenses/agpl.html
+*
+**********************************************************************************
+
+*/
 #include "SyncHDLeaf.h"
 
 #include "AddressValidationState.h"
@@ -29,13 +39,20 @@ hd::Leaf::Leaf(const std::string &walletId, const std::string &name, const std::
    , isExtOnly_(extOnlyAddresses)
 {}
 
-hd::Leaf::~Leaf() = default;
+hd::Leaf::~Leaf()
+{
+   validityFlag_.reset();
+}
 
 void hd::Leaf::synchronize(const std::function<void()> &cbDone)
 {
-   const auto &cbProcess = [this, cbDone](bs::sync::WalletData data)
-   {
-      const auto &lbd = [this, cbDone, data]() {
+   const auto &cbProcess = [this, cbDone, handle = validityFlag_.handle()](bs::sync::WalletData data) {
+      QtConcurrent::run([this, cbDone = std::move(cbDone), data = std::move(data), handle = std::move(handle)]() mutable {
+         ValidityGuard lock(handle);
+         if (!handle.isValid()) {
+            return;
+         }
+
          reset();
 
          if (wct_) {
@@ -73,9 +90,7 @@ void hd::Leaf::synchronize(const std::function<void()> &cbDone)
          if (cbDone) {
             QMetaObject::invokeMethod(qApp, cbDone);
          }
-      };
-
-      QtConcurrent::run(lbd);
+      });
    };
 
    signContainer_->syncWallet(walletId(), cbProcess);
@@ -176,6 +191,7 @@ void hd::Leaf::onRefresh(const std::vector<BinaryData> &ids, bool online)
       }
    }
 
+   std::lock_guard<std::mutex> lock(regMutex_);
    if (!unconfTgtRegIds_.empty()) {
       for (const auto &id : ids) {
          const auto it = std::find(unconfTgtRegIds_.cbegin(), unconfTgtRegIds_.cend(), id.toBinStr());
@@ -212,7 +228,11 @@ void hd::Leaf::postOnline()
 
    unconfTgtRegIds_ = setUnconfirmedTarget();
 
-   const auto &cbTrackAddrChain = [this](bs::sync::SyncState st) {
+   const auto &cbTrackAddrChain = [this, handle = validityFlag_.handle()](bs::sync::SyncState st) {
+      if (!handle.isValid()) {
+         return;
+      }
+
       if (st != bs::sync::SyncState::Success) {
          updateBalances();
          if (wct_) {
@@ -503,9 +523,14 @@ void hd::Leaf::topUpAddressPool(bool extInt, const std::function<void()> &cb)
       throw std::runtime_error("uninitialized sign container");
    }
 
-   auto fillUpAddressPoolCallback = [this, extInt, cb](
-      const std::vector<std::pair<bs::Address, std::string>>& addrVec)
+   auto fillUpAddressPoolCallback = [this, extInt, cb, handle = validityFlag_.handle()](
+      const std::vector<std::pair<bs::Address, std::string>>& addrVec) mutable
    {
+      ValidityGuard lock(handle);
+      if (!handle.isValid()) {
+         return;
+      }
+
       /***
       This lambda adds the newly generated addresses to the address pool.
 
@@ -575,6 +600,10 @@ void hd::Leaf::scan(const std::function<void(bs::sync::SyncState)> &cb)
    const auto &cbExtAddrChain = [this, cb]
       (const std::vector<std::pair<bs::Address, std::string>>& addrVec)
    {
+      if (!scanWallet_) {
+         SPDLOG_LOGGER_ERROR(logger_, "scanWallet_ is not set");
+         return;
+      }
       std::vector<BinaryData> addrHashes;
       for (auto& addrPair : addrVec) {
          addrHashes.push_back(addrPair.first.prefixed());
@@ -840,6 +869,11 @@ hd::XBTLeaf::XBTLeaf(const std::string &walletId, const std::string &name, const
 {
 }
 
+hd::XBTLeaf::~XBTLeaf()
+{
+   validityFlag_.reset();
+}
+
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -851,6 +885,11 @@ hd::AuthLeaf::AuthLeaf(const std::string &walletId, const std::string &name, con
    extAddressPoolSize_ = 5;
 }
 
+hd::AuthLeaf::~AuthLeaf()
+{
+   validityFlag_.reset();
+}
+
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -858,6 +897,11 @@ hd::CCLeaf::CCLeaf(const std::string &walletId, const std::string &name, const s
    , WalletSignerContainer *container, const std::shared_ptr<spdlog::logger> &logger)
    : hd::Leaf(walletId, name, desc, container, logger, bs::core::wallet::Type::ColorCoin, true)
 {}
+
+hd::CCLeaf::~CCLeaf()
+{
+   validityFlag_.reset();
+}
 
 void hd::CCLeaf::setCCDataResolver(const std::shared_ptr<CCDataResolver> &resolver)
 {
@@ -1060,6 +1104,11 @@ hd::SettlementLeaf::SettlementLeaf(const std::string &walletId, const std::strin
 {
    intAddressPoolSize_ = 0;
    extAddressPoolSize_ = 0;
+}
+
+hd::SettlementLeaf::~SettlementLeaf()
+{
+   validityFlag_.reset();
 }
 
 void hd::SettlementLeaf::createAddress(const CbAddress &cb, const AddrPoolKey &key)

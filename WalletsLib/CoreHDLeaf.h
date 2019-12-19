@@ -1,3 +1,13 @@
+/*
+
+***********************************************************************************
+* Copyright (C) 2016 - 2019, BlockSettle AB
+* Distributed under the GNU Affero General Public License (AGPL v3)
+* See LICENSE or http://www.gnu.org/licenses/agpl.html
+*
+**********************************************************************************
+
+*/
 #ifndef BS_CORE_HD_LEAF_H
 #define BS_CORE_HD_LEAF_H
 
@@ -109,6 +119,9 @@ namespace bs {
          protected:
             void reset();
 
+            std::shared_ptr<DBIfaceTransaction> getDBWriteTx() override;
+            std::shared_ptr<DBIfaceTransaction> getDBReadTx() override;
+
             bs::Address newAddress();
             bs::Address newInternalAddress();
 
@@ -123,8 +136,6 @@ namespace bs {
             };
             using PooledAddress = std::pair<AddrPoolKey, bs::Address>;
 
-            std::shared_ptr<LMDBEnv> getDBEnv() { return accountPtr_->getDbEnv(); }
-            LMDB* getDB() { return db_; }
             void readMetaData();
 
          protected:
@@ -132,7 +143,6 @@ namespace bs {
             wallet::Type            type_;
             bs::hd::Path            path_;
             std::string suffix_;
-            LMDB* db_ = nullptr;
             const NetworkType netType_;
             std::shared_ptr<::AddressAccount> accountPtr_;
 

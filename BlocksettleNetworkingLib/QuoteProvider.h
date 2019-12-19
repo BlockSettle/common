@@ -1,3 +1,13 @@
+/*
+
+***********************************************************************************
+* Copyright (C) 2016 - 2019, BlockSettle AB
+* Distributed under the GNU Affero General Public License (AGPL v3)
+* See LICENSE or http://www.gnu.org/licenses/agpl.html
+*
+**********************************************************************************
+
+*/
 #ifndef __CELER_QUOTE_PROVIDER_H__
 #define __CELER_QUOTE_PROVIDER_H__
 
@@ -66,7 +76,7 @@ signals:
    void orderUpdated(const bs::network::Order& order) const;
    void orderFailed(const std::string& quoteId, const std::string& reason) const;
    void orderRejected(const QString &id, const QString &reason) const;
-   void signTxRequested(QString orderId, QString reqId) const;
+   void signTxRequested(QString orderId, QString reqId, QDateTime timestamp) const;
    void bestQuotePrice(const QString reqId, double price, bool own) const;
 
    void quoteReqNotifReceived(const bs::network::QuoteReqNotification& qrn);

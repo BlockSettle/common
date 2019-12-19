@@ -1,3 +1,13 @@
+/*
+
+***********************************************************************************
+* Copyright (C) 2016 - 2019, BlockSettle AB
+* Distributed under the GNU Affero General Public License (AGPL v3)
+* See LICENSE or http://www.gnu.org/licenses/agpl.html
+*
+**********************************************************************************
+
+*/
 #ifndef BS_SYNC_HD_LEAF_H
 #define BS_SYNC_HD_LEAF_H
 
@@ -193,7 +203,7 @@ namespace bs {
          public:
             XBTLeaf(const std::string &walletId, const std::string &name, const std::string &desc
                , WalletSignerContainer *, const std::shared_ptr<spdlog::logger> &, bool extOnlyAddresses);
-            ~XBTLeaf() override = default;
+            ~XBTLeaf() override;
          };
 
 
@@ -202,6 +212,7 @@ namespace bs {
          public:
             AuthLeaf(const std::string &walletId, const std::string &name, const std::string &desc
                , WalletSignerContainer *, const std::shared_ptr<spdlog::logger> &);
+            ~AuthLeaf() override;
          };
 
 
@@ -210,6 +221,7 @@ namespace bs {
          public:
             CCLeaf(const std::string &walletId, const std::string &name, const std::string &desc
                , WalletSignerContainer *,const std::shared_ptr<spdlog::logger> &);
+            ~CCLeaf() override;
 
             bs::core::wallet::Type type() const override { return bs::core::wallet::Type::ColorCoin; }
             std::string shortName() const override { return suffix_; }
@@ -257,6 +269,7 @@ namespace bs {
          public:
             SettlementLeaf(const std::string &walletId, const std::string &name,
                const std::string &desc, WalletSignerContainer *, const std::shared_ptr<spdlog::logger> &);
+            ~SettlementLeaf() override;
 
             void getRootPubkey(const std::function<void(const SecureBinaryData &)> &) const;
             void setSettlementID(const SecureBinaryData &, const std::function<void(bool)> &);

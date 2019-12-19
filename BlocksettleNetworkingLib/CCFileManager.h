@@ -1,3 +1,13 @@
+/*
+
+***********************************************************************************
+* Copyright (C) 2016 - 2019, BlockSettle AB
+* Distributed under the GNU Affero General Public License (AGPL v3)
+* See LICENSE or http://www.gnu.org/licenses/agpl.html
+*
+**********************************************************************************
+
+*/
 #ifndef __CC_FILE_MANAGER_H__
 #define __CC_FILE_MANAGER_H__
 
@@ -94,12 +104,7 @@ signals:
    void CCSubmitFailed(const QString address, const QString &err);
    void Loaded();
    void LoadingFailed();
-
-private slots:
-   void onPubSettingsChanged(int setting, QVariant value);
-
-private:
-   void RemoveAndDisableFileSave();
+   void definitionsLoadedFromPub();
 
 protected:
    void ProcessGenAddressesResponse(const std::string& response, const std::string &sig) override;
@@ -114,10 +119,6 @@ protected:
 private:
    std::shared_ptr<ApplicationSettings>   appSettings_;
    std::shared_ptr<BaseCelerClient>       celerClient_;
-
-   // when user changes PuB connection settings - save to file should be disabled.
-   // dev build feature only. final release should have single PuB.
-   bool saveToFileDisabled_ = false;
 
    std::shared_ptr<CCPubResolver>   resolver_;
    QPointer<BsClient> bsClient_;

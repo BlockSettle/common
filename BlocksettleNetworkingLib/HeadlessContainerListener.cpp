@@ -1,3 +1,13 @@
+/*
+
+***********************************************************************************
+* Copyright (C) 2016 - 2019, BlockSettle AB
+* Distributed under the GNU Affero General Public License (AGPL v3)
+* See LICENSE or http://www.gnu.org/licenses/agpl.html
+*
+**********************************************************************************
+
+*/
 #include "HeadlessContainerListener.h"
 
 #include "AuthAddressLogic.h"
@@ -91,6 +101,7 @@ void HeadlessContainerListener::OnClientConnected(const std::string &clientId)
 
    queue_->dispatch([this, clientId] {
       connectedClients_.insert(clientId);
+      sendUpdateStatuses(clientId);
    });
 }
 
@@ -248,6 +259,9 @@ bool HeadlessContainerListener::onRequestPacket(const std::string &clientId, hea
 
    case headless::AddressPreimageType:
       return onAddrPreimage(clientId, packet);
+
+   case headless::ChatNodeRequestType:
+      return onChatNodeRequest(clientId, packet);
 
    default:
       logger_->error("[HeadlessContainerListener] unknown request type {}", packet.type());
@@ -434,7 +448,7 @@ bool HeadlessContainerListener::onSignTxRequest(const std::string &clientId, con
             BinaryData tx;
             {
                const bs::core::WalletPasswordScoped passLock(rootWallet, pass);
-               tx = bs::core::SignMultiInputTX(multiReq, wallets);
+               tx = bs::core::SignMultiInputTX(multiReq, wallets, partial);
             }
             SignTXResponse(clientId, id, reqType, ErrorCode::NoError, tx);
          }
@@ -1120,7 +1134,10 @@ bool HeadlessContainerListener::onCreateHDLeaf(const std::string &clientId
             }
 
             if ((path.get(1) | bs::hd::hardFlag) == bs::hd::CoinType::BlockSettle_Auth) {
-               createSettlementLeaves(hdWallet, leaf->getPooledAddressList());
+               for (int i = 0; i < 5; i++) {
+                  leaf->getNewExtAddress();
+               }
+               createSettlementLeaves(hdWallet, leaf->getUsedAddressList());
             }
          }
 
@@ -1221,7 +1238,10 @@ bool HeadlessContainerListener::createAuthLeaf(const std::shared_ptr<bs::core::h
    try {
       auto leaf = group->createLeaf(AddressEntryType_Default, 0 + bs::hd::hardFlag, 5);
       if (leaf) {
-         return createSettlementLeaves(wallet, leaf->getPooledAddressList());
+         for (int i = 0; i < 5; i++) {
+            leaf->getNewExtAddress();
+         }
+         return createSettlementLeaves(wallet, leaf->getUsedAddressList());
       } else {
          logger_->error("[HeadlessContainerListener::onSetUserId] failed to create auth leaf");
       }
@@ -1667,6 +1687,18 @@ bool HeadlessContainerListener::CheckSpendLimit(uint64_t value, const std::strin
    return true;
 }
 
+void HeadlessContainerListener::sendUpdateStatuses(std::string clientId)
+{
+   headless::UpdateStatus evt;
+   evt.set_status(noWallets_ ? headless::UpdateStatus_WalletsStatus_NoWallets : headless::UpdateStatus_WalletsStatus_Unknown);
+
+   headless::RequestPacket packet;
+   packet.set_type(headless::UpdateStatusType);
+   packet.set_data(evt.SerializeAsString());
+
+   sendData(packet.SerializeAsString(), clientId);
+}
+
 void HeadlessContainerListener::onXbtSpent(int64_t value, bool autoSign)
 {
    if (autoSign) {
@@ -2077,6 +2109,31 @@ bool HeadlessContainerListener::onAddrPreimage(const std::string &clientId, head
    return true;
 }
 
+bool HeadlessContainerListener::onChatNodeRequest(const std::string &clientId, headless::RequestPacket packet)
+{
+   headless::ChatNodeRequest request;
+   if (!request.ParseFromString(packet.data())) {
+      logger_->error("[{}] failed to parse request", __func__);
+      return false;
+   }
+   headless::ChatNodeResponse response;
+   const auto hdWallet = walletsMgr_->getHDWalletById(request.wallet_id());
+   if (hdWallet) {
+      response.set_wallet_id(hdWallet->walletId());
+      const auto chatNode = hdWallet->getChatNode();
+      if (!chatNode.getPrivateKey().isNull()) {
+         response.set_b58_chat_node(chatNode.getBase58().toBinStr());
+      }
+   }
+   else {
+      logger_->error("[{}] HD wallet with id {} not found", __func__, request.wallet_id());
+   }
+
+   packet.set_data(response.SerializeAsString());
+   sendData(packet.SerializeAsString(), clientId);
+   return true;
+}
+
 bool HeadlessContainerListener::onExecCustomDialog(const std::string &clientId, headless::RequestPacket packet)
 {
    headless::CustomDialogRequest request;
@@ -2089,6 +2146,14 @@ bool HeadlessContainerListener::onExecCustomDialog(const std::string &clientId, 
       callbacks_->customDialog(request.dialogname(), request.variantdata());
    }
    return true;
+}
+
+void HeadlessContainerListener::setNoWallets(bool noWallets)
+{
+   if (noWallets_ != noWallets) {
+      noWallets_ = noWallets;
+      sendUpdateStatuses();
+   }
 }
 
 bool PasswordRequest::operator <(const PasswordRequest &other) const

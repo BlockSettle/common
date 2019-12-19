@@ -1,3 +1,13 @@
+/*
+
+***********************************************************************************
+* Copyright (C) 2016 - 2019, BlockSettle AB
+* Distributed under the GNU Affero General Public License (AGPL v3)
+* See LICENSE or http://www.gnu.org/licenses/agpl.html
+*
+**********************************************************************************
+
+*/
 #ifndef CHATCLIENTSERVICE_H
 #define CHATCLIENTSERVICE_H
 
@@ -24,7 +34,7 @@ namespace Chat
 
    signals:
       ////////// PROXY SIGNALS //////////
-      void Init(const Chat::ConnectionManagerPtr& connectionManagerPtr, const Chat::ApplicationSettingsPtr& appSettings, const Chat::LoggerPtr& loggerPtr);
+      void Init(const Chat::LoggerPtr& loggerPtr, Chat::ChatSettings);
       void LoginToServer(const BinaryData& token, const BinaryData& tokenSign, const ZmqBipNewKeyCb& cb);
       void LogoutFromServer();
       void SendPartyMessage(const std::string& partyId, const std::string& data);
@@ -53,7 +63,6 @@ namespace Chat
 }
 
 Q_DECLARE_METATYPE(CelerClient::CelerUserType)
-Q_DECLARE_METATYPE(Chat::ConnectionManagerPtr)
 Q_DECLARE_METATYPE(Chat::LoggerPtr)
 Q_DECLARE_METATYPE(ZmqBipNewKeyCb)
 

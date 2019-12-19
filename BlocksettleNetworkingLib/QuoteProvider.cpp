@@ -1,3 +1,13 @@
+/*
+
+***********************************************************************************
+* Copyright (C) 2016 - 2019, BlockSettle AB
+* Distributed under the GNU Affero General Public License (AGPL v3)
+* See LICENSE or http://www.gnu.org/licenses/agpl.html
+*
+**********************************************************************************
+
+*/
 #include "QuoteProvider.h"
 
 #include "AssetManager.h"
@@ -579,7 +589,8 @@ bool QuoteProvider::onSignTxNotif(const std::string& data)
       logger_->debug("[QuoteProvider::onSignTxNotif] {}", ProtobufUtils::toJsonCompact(response));
    }
 
-   emit signTxRequested(QString::fromStdString(response.orderid()), QString::fromStdString(response.quoterequestid()));
+   auto timestamp = QDateTime::fromMSecsSinceEpoch(response.timestampinutcinmillis());
+   emit signTxRequested(QString::fromStdString(response.orderid()), QString::fromStdString(response.quoterequestid()), timestamp);
    return true;
 }
 

@@ -1,3 +1,13 @@
+/*
+
+***********************************************************************************
+* Copyright (C) 2016 - 2019, BlockSettle AB
+* Distributed under the GNU Affero General Public License (AGPL v3)
+* See LICENSE or http://www.gnu.org/licenses/agpl.html
+*
+**********************************************************************************
+
+*/
 #include "ChatProtocol/ClientDBService.h"
 
 using namespace Chat;
@@ -5,7 +15,6 @@ using namespace Chat;
 ClientDBService::ClientDBService(QObject* parent /* = nullptr */)
    : ServiceThread<ClientDBLogic>(new ClientDBLogic, parent)
 {
-   qRegisterMetaType<Chat::ApplicationSettingsPtr>();
    qRegisterMetaType<Chat::CryptManagerPtr>();
    qRegisterMetaType<Chat::PartyRecipientsPtrList>();
    qRegisterMetaType<Chat::UniqieRecipientMap>();

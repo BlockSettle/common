@@ -1,3 +1,13 @@
+/*
+
+***********************************************************************************
+* Copyright (C) 2016 - 2019, BlockSettle AB
+* Distributed under the GNU Affero General Public License (AGPL v3)
+* See LICENSE or http://www.gnu.org/licenses/agpl.html
+*
+**********************************************************************************
+
+*/
 #include "Address.h"
 #include "BlockDataManagerConfig.h"
 #include <bech32.h>
@@ -97,8 +107,9 @@ bs::Address bs::Address::fromAddressString(const std::string& data)
    }
    const auto &prefix = data.substr(0, 2);
    if ((prefix == SEGWIT_ADDRESS_MAINNET_HEADER) || (prefix == SEGWIT_ADDRESS_TESTNET_HEADER)) {
-
-      auto&& scrAddr = BtcUtils::segWitAddressToScrAddr(data);
+      BinaryData dataCopy(data);
+      dataCopy.append(0);  // segWitAddressToScrAddr requires null-terminated C string
+      auto&& scrAddr = BtcUtils::segWitAddressToScrAddr(dataCopy);
       if (scrAddr.getSize() == 20) {
          return bs::Address(scrAddr, AddressEntryType_P2WPKH);
       }

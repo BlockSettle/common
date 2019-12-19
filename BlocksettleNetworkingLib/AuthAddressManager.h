@@ -1,3 +1,13 @@
+/*
+
+***********************************************************************************
+* Copyright (C) 2016 - 2019, BlockSettle AB
+* Distributed under the GNU Affero General Public License (AGPL v3)
+* See LICENSE or http://www.gnu.org/licenses/agpl.html
+*
+**********************************************************************************
+
+*/
 #ifndef __AUTH_ADDRESS_MANAGER_H__
 #define __AUTH_ADDRESS_MANAGER_H__
 
@@ -10,14 +20,16 @@
 #include <vector>
 #include <QObject>
 #include <QThreadPool>
+
+#include "ArmoryConnection.h"
 #include "AutheIDClient.h"
+#include "BSErrorCode.h"
+#include "BSErrorCodeStrings.h"
 #include "CommonTypes.h"
 #include "WalletEncryption.h"
 #include "ZMQ_BIP15X_Helpers.h"
-#include "BSErrorCode.h"
-#include "BSErrorCodeStrings.h"
-#include "bs_communication.pb.h"
 
+#include "bs_communication.pb.h"
 
 namespace spdlog {
    class logger;
@@ -43,15 +55,24 @@ class ResolverFeed_AuthAddress;
 class SignContainer;
 
 
-class AuthAddressManager : public QObject
+class AuthAddressManager : public QObject, public ArmoryCallbackTarget
 {
    Q_OBJECT
 
 public:
+   enum class ReadyError
+   {
+      NoError,
+      MissingAuthAddr,
+      MissingAddressList,
+      MissingArmoryPtr,
+      ArmoryOffline,
+   };
+
    AuthAddressManager(const std::shared_ptr<spdlog::logger> &
       , const std::shared_ptr<ArmoryConnection> &
       , const ZmqBipNewKeyCb &);
-   ~AuthAddressManager() noexcept;
+   ~AuthAddressManager() noexcept override;
 
    AuthAddressManager(const AuthAddressManager&) = delete;
    AuthAddressManager& operator = (const AuthAddressManager&) = delete;
@@ -91,7 +112,7 @@ public:
 
    virtual bool RevokeAddress(const bs::Address &address);
 
-   virtual bool IsReady() const;
+   virtual ReadyError readyError() const;
 
    virtual void OnDisconnectedFromCeler();
 
@@ -100,8 +121,10 @@ public:
    size_t FromVerifiedIndex(size_t index) const;
    const std::unordered_set<std::string> &GetBSAddresses() const;
 
+   static std::string readyErrorStr(ReadyError error);
+
 private slots:
-   void VerifyWalletAddresses();
+   void tryVerifyWalletAddresses();
    void onAuthWalletChanged();
    void onWalletChanged(const std::string &walletId);
    void onTXSigned(unsigned int id, BinaryData signedTX, bs::error::ErrorCode result, const std::string &errorReason);
@@ -157,6 +180,9 @@ private:
    bool BroadcastTransaction(const BinaryData& transactionData);
    void SetBSAddressList(const std::unordered_set<std::string>& bsAddressList);
 
+   // From ArmoryCallbackTarget
+   void onStateChanged(ArmoryState) override;
+
 protected:
    std::shared_ptr<spdlog::logger>        logger_;
    std::shared_ptr<ArmoryConnection>      armory_;
@@ -172,7 +198,10 @@ protected:
 
    mutable std::atomic_flag                  lockList_ = ATOMIC_FLAG_INIT;
    std::vector<bs::Address>                  addresses_;
+
    std::map<bs::Address, AddressVerificationState> states_;
+   mutable std::atomic_flag                        statesLock_ = ATOMIC_FLAG_INIT;
+
    using HashMap = std::map<bs::Address, BinaryData>;
    bs::Address                               defaultAddr_;
 
@@ -181,6 +210,7 @@ protected:
 
    std::shared_ptr<SignContainer>      signingContainer_;
    std::unordered_set<unsigned int>    signIdsRevoke_;
+
 };
 
 #endif // __AUTH_ADDRESS_MANAGER_H__

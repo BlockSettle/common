@@ -1,3 +1,13 @@
+/*
+
+***********************************************************************************
+* Copyright (C) 2016 - 2019, BlockSettle AB
+* Distributed under the GNU Affero General Public License (AGPL v3)
+* See LICENSE or http://www.gnu.org/licenses/agpl.html
+*
+**********************************************************************************
+
+*/
 #include "ZmqDataConnection.h"
 
 #include "FastLock.h"
@@ -225,7 +235,7 @@ void ZmqDataConnection::listenFunction()
 
    auto executionFlag = continueExecution_;
 
-   while(*executionFlag) {
+   while (*executionFlag) {
       result = zmq_poll(poll_items, monSocket_ ? 3 : 2, -1);
       if (result == -1) {
          if (logger_) {
@@ -292,6 +302,11 @@ void ZmqDataConnection::listenFunction()
          }
       }
 
+      // Check executionFlag one more time, after recvData call processing might already stop
+      if (!*executionFlag) {
+         break;
+      }
+
       if (monSocket_ && (poll_items[ZmqDataConnection::MonitorSocketIndex].revents & ZMQ_POLLIN)) {
          switch (bs::network::get_monitor_event(monSocket_.get())) {
          case ZMQ_EVENT_CONNECTED:
@@ -316,7 +331,9 @@ void ZmqDataConnection::listenFunction()
       }
    }
 
-   zmq_socket_monitor(dataSocket_.get(), nullptr, ZMQ_EVENT_ALL);
+   if (*executionFlag) {
+      zmq_socket_monitor(dataSocket_.get(), nullptr, ZMQ_EVENT_ALL);
+   }
 }
 
 bool ZmqDataConnection::recvData()

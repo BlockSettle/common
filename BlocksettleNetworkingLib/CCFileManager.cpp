@@ -1,3 +1,13 @@
+/*
+
+***********************************************************************************
+* Copyright (C) 2016 - 2019, BlockSettle AB
+* Distributed under the GNU Affero General Public License (AGPL v3)
+* See LICENSE or http://www.gnu.org/licenses/agpl.html
+*
+**********************************************************************************
+
+*/
 #include "CCFileManager.h"
 
 #include "ApplicationSettings.h"
@@ -53,35 +63,7 @@ CCFileManager::CCFileManager(const std::shared_ptr<spdlog::logger> &logger
       , BinaryData::CreateFromHex(appSettings_->get<std::string>(ApplicationSettings::bsPublicKey))
       , cbSecLoaded, cbLoadComplete);
 
-   connect(appSettings_.get(), &ApplicationSettings::settingChanged, this, &CCFileManager::onPubSettingsChanged
-      , Qt::QueuedConnection);
-
    ccFilePath_ = appSettings->ccFilePath();
-}
-
-void CCFileManager::onPubSettingsChanged(int setting, QVariant)
-{
-   switch (setting) {
-      case ApplicationSettings::customPubBridgeHost:
-      case ApplicationSettings::customPubBridgePort:
-      case ApplicationSettings::envConfiguration:
-         RemoveAndDisableFileSave();
-         break;
-      default:
-         break;
-   }
-}
-
-void CCFileManager::RemoveAndDisableFileSave()
-{
-   saveToFileDisabled_ = true;
-   if (QFile::exists(ccFilePath_)) {
-      logger_->debug("[CCFileManager::RemoveAndDisableFileSave] remove {} and disable save"
-         , ccFilePath_.toStdString());
-      QFile::remove(ccFilePath_);
-   } else {
-      logger_->debug("[CCFileManager::RemoveAndDisableFileSave] disabling saving on cc gen file");
-   }
 }
 
 bool CCFileManager::hasLocalFile() const
@@ -133,6 +115,8 @@ void CCFileManager::ProcessGenAddressesResponse(const std::string& response, con
       return;
    }
 
+   emit definitionsLoadedFromPub();
+
    if (currentRev_ > 0 && genAddrResp.revision() == currentRev_) {
       logger_->debug("[CCFileManager::ProcessCCGenAddressesResponse] having the same revision already");
       return;
@@ -144,11 +128,6 @@ void CCFileManager::ProcessGenAddressesResponse(const std::string& response, con
    }
 
    resolver_->fillFrom(&genAddrResp);
-
-   if (saveToFileDisabled_) {
-      logger_->debug("[{}] save to file disabled", __func__);
-      return;
-   }
 
    resolver_->saveToFile(ccFilePath_.toStdString(), response, sig);
 }
@@ -283,7 +262,7 @@ void CCPubResolver::clear()
 void CCPubResolver::add(const bs::network::CCSecurityDef &ccDef)
 {
    securities_[ccDef.product] = ccDef;
-   const auto walletIdx = bs::hd::Path::keyToElem(ccDef.product);
+   const auto walletIdx = bs::hd::Path::keyToElem(ccDef.product) | bs::hd::hardFlag;
    walletIdxMap_[walletIdx] = ccDef.product;
    cbSecLoaded_(ccDef);
 }
@@ -299,7 +278,7 @@ std::vector<std::string> CCPubResolver::securities() const
 
 std::string CCPubResolver::nameByWalletIndex(bs::hd::Path::Elem idx) const
 {
-   idx &= ~bs::hd::hardFlag;
+   idx |= bs::hd::hardFlag;
    const auto &itWallet = walletIdxMap_.find(idx);
    if (itWallet != walletIdxMap_.end()) {
       return itWallet->second;

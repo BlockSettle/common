@@ -1,3 +1,13 @@
+/*
+
+***********************************************************************************
+* Copyright (C) 2016 - 2019, BlockSettle AB
+* Distributed under the GNU Affero General Public License (AGPL v3)
+* See LICENSE or http://www.gnu.org/licenses/agpl.html
+*
+**********************************************************************************
+
+*/
 #include "disable_warnings.h"
 #include <spdlog/spdlog.h>
 #include <btc/ecc.h>
@@ -9,6 +19,8 @@
 #include "SystemFileUtils.h"
 
 using namespace bs::core;
+
+static const char *wrongControlPasswordException = "empty passphrase";
 
 WalletsManager::WalletsManager(const std::shared_ptr<spdlog::logger> &logger, unsigned int nbBackups)
    : logger_(logger), nbBackupFilesToKeep_(nbBackups)
@@ -22,11 +34,11 @@ void WalletsManager::reset()
 //   settlementWallet_.reset();
 }
 
-void WalletsManager::loadWallets(NetworkType netType, const std::string &walletsPath
-   , const CbProgress &cbProgress)
+bool WalletsManager::loadWallets(NetworkType netType, const std::string &walletsPath
+   , const SecureBinaryData &controlPassphrase, const CbProgress &cbProgress)
 {
    if (walletsPath.empty()) {
-      return;
+      return true;
    }
    if (!SystemFileUtils::pathExist(walletsPath)) {
       logger_->debug("Creating wallets path {}", walletsPath);
@@ -44,7 +56,7 @@ void WalletsManager::loadWallets(NetworkType netType, const std::string &wallets
       try {
          logger_->debug("Loading BIP44 wallet from {}", file);
          const auto wallet = std::make_shared<hd::Wallet>(file, netType
-            , walletsPath, logger_);
+            , walletsPath, controlPassphrase, logger_);
          current++;
          if (cbProgress) {
             cbProgress(current, totalCount);
@@ -56,13 +68,19 @@ void WalletsManager::loadWallets(NetworkType netType, const std::string &wallets
       }
       catch (const std::exception &e) {
          logger_->warn("Failed to load BIP44 wallet: {}", e.what());
+
+         if (!strncmp(e.what(), wrongControlPasswordException, strlen(wrongControlPasswordException))) {
+            return false;
+         }
       }
    }
    walletsLoaded_ = true;
+   return true;
 }
 
 WalletsManager::HDWalletPtr WalletsManager::loadWoWallet(NetworkType netType
-   , const std::string &walletsPath, const std::string &fileName)
+   , const std::string &walletsPath, const std::string &fileName
+   , const SecureBinaryData &controlPassphrase)
 {
    if (walletsPath.empty()) {
       return nullptr;
@@ -75,7 +93,7 @@ WalletsManager::HDWalletPtr WalletsManager::loadWoWallet(NetworkType netType
    try {
       logger_->debug("Loading BIP44 WO-wallet from {}", fileName);
       const auto wallet = std::make_shared<hd::Wallet>(fileName
-         , netType, walletsPath, logger_);
+         , netType, walletsPath, controlPassphrase, logger_);
       if (!wallet->isWatchingOnly()) {
          logger_->error("Wallet {} is not watching-only", fileName);
          return nullptr;
@@ -87,6 +105,13 @@ WalletsManager::HDWalletPtr WalletsManager::loadWoWallet(NetworkType netType
       logger_->warn("Failed to load WO-wallet: {}", e.what());
    }
    return nullptr;
+}
+
+void WalletsManager::changeControlPassword(const SecureBinaryData &oldPass, const SecureBinaryData &newPass)
+{
+   for (const auto &hdWallet : hdWallets_) {
+      hdWallet.second->changeControlPassword(oldPass, newPass);
+   }
 }
 
 void WalletsManager::backupWallet(const HDWalletPtr &wallet, const std::string &targetDir) const
@@ -129,12 +154,19 @@ bool WalletsManager::isWalletFile(const std::string &fileName) const
 
 WalletsManager::HDWalletPtr WalletsManager::getPrimaryWallet() const
 {
+   HDWalletPtr primaryWallet = nullptr;
+   int count = 0;
    for (const auto &hdWallet : hdWallets_) {
       if (hdWallet.second->isPrimary()) {
-         return hdWallet.second;
+         primaryWallet = hdWallet.second;
+         count++;
       }
    }
-   return nullptr;
+   if (count > 1) {
+      throw std::runtime_error("Only one primary wallet allowed");
+   }
+
+   return primaryWallet;
 }
 
 void WalletsManager::saveWallet(const HDWalletPtr &wallet)
@@ -301,6 +333,7 @@ WalletsManager::HDWalletPtr WalletsManager::createWallet(
       const bs::core::WalletPasswordScoped lock(newWallet, pd.password);
       newWallet->createStructure();
       if (primary) {
+         newWallet->createChatPrivKey();
          auto group = newWallet->createGroup(bs::hd::CoinType::BlockSettle_Auth);
          if (!userId_.isNull()) {
             newWallet->createGroup(bs::hd::CoinType::BlockSettle_Settlement);

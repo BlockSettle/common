@@ -1,3 +1,13 @@
+/*
+
+***********************************************************************************
+* Copyright (C) 2016 - 2019, BlockSettle AB
+* Distributed under the GNU Affero General Public License (AGPL v3)
+* See LICENSE or http://www.gnu.org/licenses/agpl.html
+*
+**********************************************************************************
+
+*/
 #ifndef CLIENTCONNECTIONLOGIC_H
 #define CLIENTCONNECTIONLOGIC_H
 
@@ -5,7 +15,6 @@
 #include <QObject>
 
 #include "DataConnectionListener.h"
-#include "ApplicationSettings.h"
 #include "ChatProtocol/ChatUser.h"
 #include "ChatProtocol/ClientPartyLogic.h"
 #include "ChatProtocol/ClientDBService.h"
@@ -32,7 +41,6 @@ namespace Chat
    class ReplySearchUser;
 
    using LoggerPtr = std::shared_ptr<spdlog::logger>;
-   using ApplicationSettingsPtr = std::shared_ptr<ApplicationSettings>;
    using SearchUserReplyList = std::vector<std::string>;
 
    enum class ClientConnectionLogicError
@@ -49,7 +57,7 @@ namespace Chat
    {
       Q_OBJECT
    public:
-      explicit ClientConnectionLogic(ClientPartyLogicPtr clientPartyLogicPtr, ApplicationSettingsPtr appSettings,
+      explicit ClientConnectionLogic(ClientPartyLogicPtr clientPartyLogicPtr,
                                      ClientDBServicePtr clientDBServicePtr, LoggerPtr loggerPtr,
                                      CryptManagerPtr cryptManagerPtr,
                                      SessionKeyHolderPtr sessionKeyHolderPtr, QObject* parent = nullptr);
@@ -119,7 +127,6 @@ namespace Chat
 
       LoggerPtr   loggerPtr_;
       ChatUserPtr currentUserPtr_;
-      ApplicationSettingsPtr appSettings_;
       ClientPartyLogicPtr clientPartyLogicPtr_;
       ClientDBServicePtr clientDBServicePtr_;
       SessionKeyHolderPtr sessionKeyHolderPtr_;

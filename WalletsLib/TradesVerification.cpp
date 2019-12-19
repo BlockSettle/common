@@ -1,9 +1,21 @@
+/*
+
+***********************************************************************************
+* Copyright (C) 2016 - 2019, BlockSettle AB
+* Distributed under the GNU Affero General Public License (AGPL v3)
+* See LICENSE or http://www.gnu.org/licenses/agpl.html
+*
+**********************************************************************************
+
+*/
 #include "TradesVerification.h"
 
 #include <spdlog/spdlog.h>
 
 #include "BinaryData.h"
 #include "CheckRecipSigner.h"
+#include "PublicResolver.h"
+#include "SettableField.h"
 
 const char *bs::toString(const bs::PayoutSignatureType t)
 {
@@ -121,14 +133,17 @@ bs::PayoutSignatureType bs::TradesVerification::whichSignature(const Tx &tx, uin
 }
 
 std::shared_ptr<bs::TradesVerification::Result> bs::TradesVerification::verifyUnsignedPayin(const BinaryData &unsignedPayin
+   , const std::map<std::string, BinaryData>& preimageData
    , float feePerByte, const std::string &settlementAddress, uint64_t tradeAmount)
 {
    if (unsignedPayin.isNull()) {
       return Result::error("no unsigned payin provided");
    }
 
+
    try {
       bs::CheckRecipSigner deserializedSigner(unsignedPayin);
+      auto settlAddressBin = bs::Address::fromAddressString(settlementAddress);
 
       // check that there is only one output of correct amount to settlement address
       auto recipients = deserializedSigner.recipients();
@@ -136,18 +151,26 @@ std::shared_ptr<bs::TradesVerification::Result> bs::TradesVerification::verifyUn
       uint64_t totalOutputAmount = 0;
       uint64_t settlementOutputsCount = 0;
       int totalOutputCount = 0;
-      std::string changeAddr;
 
-      for (const auto& recipient : recipients) {
+      SettableField<bs::Address> optionalChangeAddr;
+
+      for (unsigned i=0; i<recipients.size(); i++) {
+         auto& recipient = recipients[i];
          uint64_t value = recipient->getValue();
 
          totalOutputAmount += value;
-         const auto &addr = bs::CheckRecipSigner::getRecipientAddress(recipient).display();
-         if (addr == settlementAddress) {
+         const auto &addr = bs::CheckRecipSigner::getRecipientAddress(recipient);
+         if (addr == settlAddressBin) {
             settlementAmount += value;
             settlementOutputsCount += 1;
+
+            //fail the check if the settlement isn't the first output of the PayIn tx.
+            if (i != 0) {
+               return Result::error(fmt::format("unexpected settlement output id: {}. expected 0", i));
+            }
+
          } else {
-            changeAddr = addr;
+            optionalChangeAddr.setValue(addr);
          }
 
          totalOutputCount += 1;
@@ -177,28 +200,30 @@ std::shared_ptr<bs::TradesVerification::Result> bs::TradesVerification::verifyUn
          return Result::error("Pay-In could not be RBF transaction");
       }
 
+      if (!preimageData.empty()) {
+         const auto resolver = std::make_shared<PublicResolver>(preimageData);
+         deserializedSigner.setFeed(resolver);
+      }
+
       auto result = std::make_shared<Result>();
       result->success = true;
       result->totalFee = totalInput - totalOutputAmount;
       result->estimatedFee = deserializedSigner.estimateFee(feePerByte, result->totalFee);
       result->totalOutputCount = totalOutputCount;
-      result->changeAddr = changeAddr;
+      if (optionalChangeAddr.isValid()) {
+         result->changeAddr = optionalChangeAddr.getValue().display();
+      }
 
       result->utxos.reserve(spenders.size());
 
       for (const auto& spender : spenders) {
-         const auto& utxo = spender->getUtxo();
-
-         // XXX: code left for reference. will be removed once proper input type validation will be added
-         // const auto& scrType = BtcUtils::getTxOutScriptType(utxo.getScript());
-         // const auto& inputType = bs::Address::mapTxOutScriptType(scrType);
-
-         // // we should accept native SW inputs only
-         // if (inputType != AddressEntryType_P2WPKH) {
-         //    return Result::error("Non SW input in PayIn");
-         // }
-
          result->utxos.push_back(spender->getUtxo());
+      }
+
+      result->payinHash = deserializedSigner.getTxId();
+
+      if (!XBTInputsAcceptable(result->utxos, preimageData)) {
+         return Result::error("Not supported input type used");
       }
 
       return result;
@@ -242,10 +267,12 @@ std::shared_ptr<bs::TradesVerification::Result> bs::TradesVerification::verifySi
       const TxIn in = payoutTx.getTxInCopy(0);
       const OutPoint op = in.getOutPoint();
 
-      if (op.getTxHash() != payinHash) {
-         return Result::error(fmt::format("unexpected payin hash is used: {}. Expected: {}"
-            , op.getTxHash().toHexStr(), payinHash.toHexStr()));
+      //check both outpoint hash and index
+      if (op.getTxHash() != payinHash || op.getTxOutIndex() != 0) {
+         return Result::error(fmt::format("payout uses unexpected outpoint: {}:{}. Expected: {}:{}"
+            , op.getTxHash().toHexStr(), op.getTxOutIndex(), payinHash.toHexStr(), 0));
       }
+
 
       // ok, if we use payin hash, that mean that input amount is verified on earlier stage
       // so we need to get output amount and check fee for payout
@@ -262,6 +289,8 @@ std::shared_ptr<bs::TradesVerification::Result> bs::TradesVerification::verifySi
          return Result::error(fmt::format("fee too small: {} ({} s/b). Expected: {} ({} s/b)"
             , totalFee, static_cast<float>(totalFee) / txSize, estimatedFee, feePerByte));
       }
+
+      // xxx : add a check for fees that are too high
 
       // check that it is signed by buyer
       const auto settlementIdBin = BinaryData::CreateFromHex(settlementId);
@@ -312,6 +341,9 @@ std::shared_ptr<bs::TradesVerification::Result> bs::TradesVerification::verifySi
          return Result::error("failed to get TX weight");
       }
 
+      // xxx : need to discuss what to do when tx fee is below market.
+      // this is a signed payin, so the fee was checked once within 30s already, which suggest a
+      // network spike. Does this check affect OTC?
       const uint64_t estimatedFee = feePerByte * txSize;
       if (estimatedFee > totalPayinFee) {
          return Result::error(fmt::format("fee too small: {} ({} s/b). Expected: {} ({} s/b)"
@@ -329,4 +361,49 @@ std::shared_ptr<bs::TradesVerification::Result> bs::TradesVerification::verifySi
    catch (...) {
       return Result::error("undefined exception during payin processing");
    }
+}
+
+//only  TXOUT_SCRIPT_P2WPKH and (TXOUT_SCRIPT_P2SH | TXOUT_SCRIPT_P2WPKH) accepted
+bool bs::TradesVerification::XBTInputsAcceptable(const std::vector<UTXO>& utxoList, const std::map<std::string, BinaryData>& preImages)
+try {
+   for (const auto& input : utxoList) {
+      const auto scrType = BtcUtils::getTxOutScriptType(input.getScript());
+      if (scrType == TXOUT_SCRIPT_P2WPKH) {
+         continue;
+      }
+
+      if (scrType != TXOUT_SCRIPT_P2SH) {
+         return false;
+      }
+
+      // check underlying script type
+      auto address = bs::Address::fromScript(input.getScript());
+
+      //xxx: shouldn't be using string addresses when this could be binary addresses.
+      const auto it = preImages.find(address.display());
+      if (it == preImages.end()) {
+         return false;
+      }
+
+      auto underlyingScriptType = BtcUtils::getTxOutScriptType(it->second);
+      if (underlyingScriptType != TXOUT_SCRIPT_P2WPKH) {
+         return false;
+      }
+
+      // check that preimage belong to that address
+      const auto& hash = BtcUtils::getHash160(it->second);
+
+      BinaryWriter bw;
+      bw.put_uint8_t(NetworkConfig::getScriptHashPrefix());
+      bw.put_BinaryData(hash);
+      const auto& prefixedHash = bw.getData();
+
+      if (prefixedHash != address.prefixed()) {
+         return false;
+      }
+   }
+
+   return true;
+} catch (...) {
+   return false;
 }

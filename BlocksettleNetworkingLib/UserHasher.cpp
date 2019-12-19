@@ -1,3 +1,13 @@
+/*
+
+***********************************************************************************
+* Copyright (C) 2016 - 2019, BlockSettle AB
+* Distributed under the GNU Affero General Public License (AGPL v3)
+* See LICENSE or http://www.gnu.org/licenses/agpl.html
+*
+**********************************************************************************
+
+*/
 #include "UserHasher.h"
 
 #include "AssetEncryption.h"
@@ -5,8 +15,8 @@
 #include "ZBase32.h"
 
 namespace {
-   const std::string kdf_iv = "2b"                //total_length
-                              "00c1"              //Romix_KDF
+   const std::string kdf_iv = "2f"                //total_length
+                              "01000000"          //version
                               "01000000"          //Iterations
                               "00040000"          //memory_target
                               "20"                //salt_length

@@ -1,9 +1,21 @@
+/*
+
+***********************************************************************************
+* Copyright (C) 2016 - 2019, BlockSettle AB
+* Distributed under the GNU Affero General Public License (AGPL v3)
+* See LICENSE or http://www.gnu.org/licenses/agpl.html
+*
+**********************************************************************************
+
+*/
 #include "SyncWalletsManager.h"
 
 #include "ApplicationSettings.h"
 #include "CheckRecipSigner.h"
+#include "CoinSelection.h"
 #include "ColoredCoinLogic.h"
 #include "FastLock.h"
+#include "PublicResolver.h"
 #include "SyncHDWallet.h"
 
 #include <QCoreApplication>
@@ -64,6 +76,7 @@ void WalletsManager::setSignContainer(const std::shared_ptr<WalletSignerContaine
 
    connect(signContainer_.get(), &WalletSignerContainer::AuthLeafAdded, this, &WalletsManager::onAuthLeafAdded);
    connect(signContainer_.get(), &WalletSignerContainer::walletsListUpdated, this, &WalletsManager::onWalletsListUpdated);
+   connect(signContainer_.get(), &WalletSignerContainer::walletsStorageDecrypted, this, &WalletsManager::onWalletsListUpdated);
 }
 
 void WalletsManager::reset()
@@ -157,6 +170,7 @@ void WalletsManager::syncWallets(const CbProgress &cb)
    };
 
    synchronized_ = false;
+   emit walletsSynchronizationStarted();
    if (!signContainer_) {
       logger_->error("[WalletsManager::{}] signer is not set - aborting"
          , __func__);
@@ -664,7 +678,7 @@ std::vector<std::string> WalletsManager::registerWallets()
    for (auto &it : wallets_) {
       const auto &ids = it.second->registerWallet(armoryPtr_);
       result.insert(result.end(), ids.begin(), ids.end());
-      if (ids.empty()) {
+      if (ids.empty() && it.second->type() != bs::core::wallet::Type::Settlement) {
          logger_->error("[{}] failed to register wallet {}", __func__, it.second->walletId());
       }
    }
@@ -1119,12 +1133,10 @@ void WalletsManager::onAuthLeafAdded(const std::string &walletId)
    }
    leaf->synchronize([this, leaf] {
       logger_->debug("[WalletsManager::onAuthLeafAdded sync cb] Synchronized auth leaf has {} address[es]", leaf->getUsedAddressCount());
+      leaf->registerWallet(armoryPtr_);
       addWallet(leaf, true);
       authAddressWallet_ = leaf;
-      authAddressWallet_->registerWallet(armoryPtr_);
       QMetaObject::invokeMethod(this, [this, walletId=leaf->walletId()] {
-         emit AuthLeafCreated();
-         emit authWalletChanged();
          emit walletChanged(walletId);
       });
    });
@@ -1133,7 +1145,7 @@ void WalletsManager::onAuthLeafAdded(const std::string &walletId)
 void WalletsManager::adoptNewWallet(const HDWalletPtr &wallet)
 {
    saveWallet(wallet);
-   if (armory_) {
+   if (armoryPtr_) {
       wallet->registerWallet(armoryPtr_);
    }
    emit newWalletAdded(wallet->walletId());
@@ -1177,18 +1189,17 @@ void WalletsManager::goOnline()
       }
    }
 
-   std::thread([this, handle = validityFlag_.handle()]() mutable {
-      for (const auto &ccTracker : trackers_) {
-         ValidityGuard lock(handle);
-         if (!handle.isValid()) {
-            return;
-         }
-
+   std::thread([this, handle = validityFlag_.handle(), trackers = trackers_, logger = logger_]() mutable {
+      for (const auto &ccTracker : trackers) {
          if (!ccTracker.second->goOnline()) {
-            logger_->error("[WalletsManager::goOnline] failed for {}", ccTracker.first);
+            logger->error("[WalletsManager::goOnline] failed for {}", ccTracker.first);
          }
       }
-      QMetaObject::invokeMethod(this, &WalletsManager::walletsReady);
+
+      ValidityGuard lock(handle);
+      if (handle.isValid()) {
+         QMetaObject::invokeMethod(this, &WalletsManager::walletsReady);
+      }
    }).detach();
 }
 
@@ -1357,39 +1368,39 @@ void WalletsManager::trackAddressChainUse(
    std::function<void(bool)> cb)
 {
    /***
-   This method grabs address txn count from the db for all managed 
+   This method grabs address txn count from the db for all managed
    wallets and deduces address chain use and type from the address
-   tx counters. 
+   tx counters.
 
-   This is then reflected to the armory wallets through the 
+   This is then reflected to the armory wallets through the
    SignContainer, to keep address chain counters and address types
    in sync.
 
    This method should be run only once per per, after registration.
 
-   It will only have an effect if a wallet has been restored from 
+   It will only have an effect if a wallet has been restored from
    seed or if there exist several instances of a wallet being used
    on different machines across time.
 
    More often than not, the armory wallet has all this meta data
    saved on disk to begin with.
 
-   Callback is fired with either true (operation success) or 
+   Callback is fired with either true (operation success) or
    false (SyncState_Failure, read below):
 
-   trackChainAddressUse can return 3 states per wallet. These 
-   states are combined and processed as one when all wallets are 
+   trackChainAddressUse can return 3 states per wallet. These
+   states are combined and processed as one when all wallets are
    done synchronizing. The states are as follow:
 
     - SyncState_Failure: the armory wallet failed to fine one or
       several of the addresses. This shouldn't typically happen.
       Most likely culprit is an address chain that is too short.
-      Extend it. 
+      Extend it.
       This state overrides all other states.
-    
-    - SyncState_NothingToDo: wallets are already sync'ed. 
+
+    - SyncState_NothingToDo: wallets are already sync'ed.
       Lowest priority.
-    
+
     - SyncState_Success: Armory wallet address chain usage is now up
       to date, call WalletsManager::SyncWallets once again.
       Overrides NothingToDo.
@@ -1503,7 +1514,7 @@ void WalletsManager::CCResolver::addData(const std::string &cc, uint64_t lotSize
    , const bs::Address &genAddr, const std::string &desc)
 {
    securities_[cc] = { desc, lotSize, genAddr };
-   const auto walletIdx = bs::hd::Path::keyToElem(cc);
+   const auto walletIdx = bs::hd::Path::keyToElem(cc) | bs::hd::hardFlag;
    walletIdxMap_[walletIdx] = cc;
 }
 
@@ -1518,7 +1529,7 @@ std::vector<std::string> WalletsManager::CCResolver::securities() const
 
 std::string WalletsManager::CCResolver::nameByWalletIndex(bs::hd::Path::Elem idx) const
 {
-   idx &= ~bs::hd::hardFlag;
+   idx |= bs::hd::hardFlag;
    const auto &itWallet = walletIdxMap_.find(idx);
    if (itWallet != walletIdxMap_.end()) {
       return itWallet->second;
@@ -1640,13 +1651,6 @@ void WalletsManager::processCreatedCCLeaf(const std::string &ccName, bs::error::
 bool WalletsManager::PromoteHDWallet(const std::string& walletId
    , const std::function<void(bs::error::ErrorCode result)> &cb)
 {
-   const auto primaryWallet = getPrimaryWallet();
-   if (primaryWallet != nullptr) {
-      logger_->error("[WalletsManager::PromoteWallet] Primary wallet already exists {}"
-                     , primaryWallet->walletId());
-      return false;
-   }
-
    bs::sync::PasswordDialogData dialogData;
    dialogData.setValue(PasswordDialogData::Title, tr("Promote To Primary Wallet"));
    dialogData.setValue(PasswordDialogData::XBT, tr("Authentification Addresses"));
@@ -1787,33 +1791,7 @@ std::map<std::string, std::vector<bs::Address>> WalletsManager::getAddressToWall
 
 std::shared_ptr<ResolverFeed> WalletsManager::getPublicResolver(const std::map<bs::Address, BinaryData> &piMap)
 {
-   class PublicResolver : public ResolverFeed
-   {
-   public:
-      PublicResolver(const std::map<bs::Address, BinaryData> &preimageMap)
-         : ResolverFeed()
-      {
-         for (const auto &preimage : preimageMap) {
-            preimageMap_[preimage.first.unprefixed()] = preimage.second;
-         }
-      }
-
-      BinaryData getByVal(const BinaryData &addr) override
-      {
-         const auto itAddr = preimageMap_.find(addr);
-         if (itAddr != preimageMap_.end()) {
-            return itAddr->second;
-         }
-         throw std::runtime_error("not found");
-      }
-      const SecureBinaryData &getPrivKeyForPubkey(const BinaryData &pk) override
-      {
-         throw std::runtime_error("not supported");
-      }
-   private:
-      std::map<BinaryData, BinaryData>   preimageMap_;
-   };
-   return std::make_shared<PublicResolver>(piMap);
+   return std::make_shared<bs::PublicResolver>(piMap);
 }
 
 bool WalletsManager::mergeableEntries(const bs::TXEntry &entry1, const bs::TXEntry &entry2) const
@@ -1831,7 +1809,7 @@ bool WalletsManager::mergeableEntries(const bs::TXEntry &entry1, const bs::TXEnt
          break;
       }
    }
-   
+
    WalletPtr wallet2;
    for (const auto &walletId : entry2.walletIds) {
       wallet2 = getWalletById(walletId);
@@ -1880,4 +1858,164 @@ std::vector<bs::TXEntry> WalletsManager::mergeEntries(const std::vector<bs::TXEn
       }
    }
    return mergedEntries;
+}
+
+bs::core::wallet::TXSignRequest WalletsManager::createPartialTXRequest(uint64_t spendVal
+   , const std::map<UTXO, std::string> &inputs, bs::Address changeAddress
+   , float feePerByte
+   , const std::vector<std::shared_ptr<ScriptRecipient>> &recipients
+   , const bs::core::wallet::OutputSortOrder &outSortOrder
+   , const BinaryData prevPart, bool feeCalcUsePrevPart)
+{
+   if (inputs.empty()) {
+      throw std::invalid_argument("No usable UTXOs");
+   }
+   uint64_t fee = 0;
+   uint64_t spendableVal = 0;
+   std::vector<UTXO> utxos;
+   utxos.reserve(inputs.size());
+   for (const auto &input : inputs) {
+      utxos.push_back(input.first);
+      spendableVal += input.first.getValue();
+   }
+
+   if (feePerByte > 0) {
+      unsigned int idMap = 0;
+      std::map<unsigned int, std::shared_ptr<ScriptRecipient>> recipMap;
+      for (const auto &recip : recipients) {
+         if (recip->getValue()) {
+            recipMap.emplace(idMap++, recip);
+         }
+      }
+
+      PaymentStruct payment(recipMap, 0, feePerByte, ADJUST_FEE);
+      for (auto &utxo : utxos) {
+         const auto scrAddr = bs::Address::fromHash(utxo.getRecipientScrAddr());
+         utxo.txinRedeemSizeBytes_ = (unsigned int)scrAddr.getInputSize();
+         utxo.witnessDataSizeBytes_ = unsigned(scrAddr.getWitnessDataSize());
+         utxo.isInputSW_ = (scrAddr.getWitnessDataSize() != UINT32_MAX);
+      }
+
+      const auto coinSelection = std::make_shared<CoinSelection>([utxos](uint64_t) { return utxos; }
+         , std::vector<AddressBookEntry>{}, spendableVal
+         , armory_ ? armory_->topBlock() : UINT32_MAX);
+
+      try {
+         const auto selection = coinSelection->getUtxoSelectionForRecipients(payment, utxos);
+         fee = selection.fee_;
+         utxos = selection.utxoVec_;
+      } catch (const std::exception &e) {
+         SPDLOG_LOGGER_ERROR(logger_, "coin selection failed: {}, all inputs will be used", e.what());
+      }
+   }
+   /*   else {    // use all supplied inputs
+         size_t nbUtxos = 0;
+         for (auto &utxo : utxos) {
+            inputAmount += utxo.getValue();
+            nbUtxos++;
+            if (inputAmount >= (spendVal + fee)) {
+               break;
+            }
+         }
+         if (nbUtxos < utxos.size()) {
+            utxos.erase(utxos.begin() + nbUtxos, utxos.end());
+         }
+      }*/
+
+   if (utxos.empty()) {
+      throw std::logic_error("No UTXOs");
+   }
+
+   std::set<std::string> walletIds;
+   for (const auto &utxo : utxos) {
+      const auto &itInput = inputs.find(utxo);
+      if (itInput == inputs.end()) {
+         continue;
+      }
+      walletIds.insert(itInput->second);
+   }
+   if (walletIds.empty()) {
+      throw std::logic_error("No wallet IDs");
+   }
+
+   bs::core::wallet::TXSignRequest request;
+   request.walletIds.insert(request.walletIds.end(), walletIds.cbegin(), walletIds.cend());
+   request.populateUTXOs = true;
+   request.outSortOrder = outSortOrder;
+   Signer signer;
+   bs::CheckRecipSigner prevStateSigner;
+   if (!prevPart.isNull()) {
+      prevStateSigner.deserializeState(prevPart);
+      if (feePerByte > 0) {
+         fee += prevStateSigner.estimateFee(feePerByte);
+         fee -= 10 * feePerByte;    // subtract TX header size as it's counted twice
+      }
+      for (const auto &spender : prevStateSigner.spenders()) {
+         signer.addSpender(spender);
+      }
+   }
+   signer.setFlags(SCRIPT_VERIFY_SEGWIT);
+   request.fee = fee;
+
+   uint64_t inputAmount = 0;
+   if (feeCalcUsePrevPart) {
+      for (const auto &spender : prevStateSigner.spenders()) {
+         inputAmount += spender->getValue();
+      }
+   }
+   for (const auto &utxo : utxos) {
+      signer.addSpender(std::make_shared<ScriptSpender>(utxo.getTxHash(), utxo.getTxOutIndex(), utxo.getValue()));
+      request.inputs.push_back(utxo);
+      inputAmount += utxo.getValue();
+      /*      if (inputAmount >= (spendVal + fee)) {
+               break;
+            }*/   // use all provided inputs now (will be uncommented if some logic depends on it)
+   }
+   if (!inputAmount) {
+      throw std::logic_error("No inputs detected");
+   }
+
+   const auto addRecipients = [&request, &signer]
+   (const std::vector<std::shared_ptr<ScriptRecipient>> &recipients)
+   {
+      for (const auto& recipient : recipients) {
+         request.recipients.push_back(recipient);
+         signer.addRecipient(recipient);
+      }
+   };
+
+   if (inputAmount < (spendVal + fee)) {
+      throw std::overflow_error("Not enough inputs (" + std::to_string(inputAmount)
+         + ") to spend " + std::to_string(spendVal + fee));
+   }
+
+   for (const auto &outputType : outSortOrder) {
+      switch (outputType) {
+      case bs::core::wallet::OutputOrderType::Recipients:
+         addRecipients(recipients);
+         break;
+      case bs::core::wallet::OutputOrderType::PrevState:
+         addRecipients(prevStateSigner.recipients());
+         break;
+      case bs::core::wallet::OutputOrderType::Change:
+         if (inputAmount == (spendVal + fee)) {
+            break;
+         }
+         {
+            const uint64_t changeVal = inputAmount - (spendVal + fee);
+            if (changeAddress.isNull()) {
+               throw std::invalid_argument("Change address required, but missing");
+            }
+            signer.addRecipient(changeAddress.getRecipient(bs::XBTAmount{ changeVal }));
+            request.change.value = changeVal;
+            request.change.address = changeAddress;
+         }
+         break;
+      default:
+         throw std::invalid_argument("Unsupported output type " + std::to_string((int)outputType));
+      }
+   }
+
+   request.prevStates.emplace_back(signer.serializeState());
+   return request;
 }
