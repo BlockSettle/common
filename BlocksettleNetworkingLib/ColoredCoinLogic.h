@@ -229,12 +229,12 @@ private:
    std::shared_ptr<ColoredCoinSnapshot> snapshot_ = nullptr;
    std::shared_ptr<ColoredCoinZCSnapshot> zcSnapshot_ = nullptr;
 
-   unsigned startHeight_ = 0;
-   unsigned zcCutOff_ = 0;
-   unsigned processedHeight_ = 0;
-   unsigned processedZcIndex_ = 0;
+   std::atomic_uint32_t startHeight_{0};
+   std::atomic_uint32_t zcCutOff_{0};
+   std::atomic_uint32_t processedHeight_{0};
+   std::atomic_uint32_t processedZcIndex_{0};
    
-   uint64_t coinsPerShare_;
+   const uint64_t coinsPerShare_;
 
    ////
    std::atomic<bool> ready_;
@@ -368,6 +368,12 @@ public:
 
    bool getCCUtxoForAddresses(const std::set<BinaryData>&, bool,
       const std::function<void(std::vector<UTXO>, std::exception_ptr)>&) const;
+
+   // Try to load cached snapshot, could be called before goOnline
+   bool loadSnapshot(const BinaryData &data);
+
+   // Save current snapshot
+   BinaryData saveSnapshot() const;
 };
 
 #endif

@@ -11,6 +11,7 @@
 #include "SyncWalletsManager.h"
 
 #include "ApplicationSettings.h"
+#include "CacheFile.h"
 #include "CheckRecipSigner.h"
 #include "CoinSelection.h"
 #include "ColoredCoinLogic.h"
@@ -38,13 +39,18 @@ bool isCCNameCorrect(const std::string& ccName)
 
 WalletsManager::WalletsManager(const std::shared_ptr<spdlog::logger>& logger
    , const std::shared_ptr<ApplicationSettings>& appSettings
-   , const std::shared_ptr<ArmoryConnection> &armory)
+   , const std::shared_ptr<ArmoryConnection> &armory
+   , const std::string &ccTrackerCacheFileName)
    : QObject(nullptr)
    , logger_(logger)
    , appSettings_(appSettings)
    , armoryPtr_(armory)
 {
    init(armory.get());
+
+   if (!ccTrackerCacheFileName.empty()) {
+      ccTrackerCache_ = std::make_unique<CacheFile>(ccTrackerCacheFileName);
+   }
 
    ccResolver_ = std::make_shared<CCResolver>();
    maintThreadRunning_ = true;
@@ -53,6 +59,14 @@ WalletsManager::WalletsManager(const std::shared_ptr<spdlog::logger>& logger
 
 WalletsManager::~WalletsManager() noexcept
 {
+   if (ccTrackerCache_) {
+      for (const auto &tr : trackers_) {
+         const std::string &cc = tr.first;
+         auto data = tr.second->saveSnapshot();
+         ccTrackerCache_->put(cc, data);
+      }
+   }
+
    validityFlag_.reset();
 
    for (const auto &hdWallet : hdWallets_) {
@@ -1180,6 +1194,16 @@ void WalletsManager::goOnline()
       tracker->addOriginAddress(ccResolver_->genesisAddrFor(cc));
       trackers_[cc] = tracker;
       logger_->debug("[{}] added CC tracker for {}", __func__, cc);
+
+      if (ccTrackerCache_) {
+         auto cache = ccTrackerCache_->get(cc);
+         if (!cache.isNull()) {
+            bool result = tracker->loadSnapshot(cache);
+            if (!result) {
+               SPDLOG_LOGGER_ERROR(logger_, "loading CC tracker cache failed for {}", cc);
+            }
+         }
+      }
    }
 
    for (const auto &wallet : getAllWallets()) {

@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package Blocksettle.Storage.CcTracker;
+
+message Outpoint
+{
+    uint64 value = 1;
+    uint32 index = 2;
+    bytes tx_hash = 3;
+    bytes scr_addr = 4;
+}
+
+message RevokedAddress
+{
+    bytes scr_addr = 1;
+    uint32 height = 2;
+}
+
+message ColoredCoinSnapshot
+{
+    repeated Outpoint outpoints = 1;
+    repeated RevokedAddress revoked_addresses = 4;
+    uint32 start_height = 2;
+    uint32 processed_height = 3;
+}

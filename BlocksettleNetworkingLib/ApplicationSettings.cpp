@@ -47,6 +47,7 @@ static const QString SettingsCompanyName = QLatin1String("BlockSettle");
 static const QString LogFileName = QLatin1String("bs_terminal.log");
 static const QString LogMsgFileName = QLatin1String("bs_terminal_messages.log");
 static const QString TxCacheFileName = QLatin1String("transactions.cache");
+static const QString TxCcTrackersCacheFileName = QLatin1String("cc_trackers.cache");
 
 static const QString blockDirName = QLatin1String("blocks");
 static const QString databasesDirName = QLatin1String("databases");
@@ -148,6 +149,7 @@ ApplicationSettings::ApplicationSettings(const QString &appName
       { logDefault,              SettingDef(QLatin1String("LogFile"), QStringList() << LogFileName << QString() << QString() << QLatin1String(DefaultLogLevel)) },
       { logMessages,             SettingDef(QLatin1String("LogMsgFile"), QStringList() << LogMsgFileName << QLatin1String("message") << QLatin1String("%C/%m/%d %H:%M:%S.%e [%L]: %v") << QLatin1String(DefaultLogLevel)) },
       { txCacheFileName,         SettingDef(QString(), AppendToWritableDir(TxCacheFileName)) },
+      { ccTrackersCacheFileName, SettingDef(QString(), AppendToWritableDir(TxCcTrackersCacheFileName)) },
       { nbBackupFilesKeep,       SettingDef(QString(), 10) },
       { aqScripts,               SettingDef(QLatin1String("AutoQuotingScripts")) },
       { lastAqScript,            SettingDef(QLatin1String("LastAutoQuotingScript")) },

@@ -34,6 +34,7 @@ namespace spdlog {
    class logger;
 }
 class ApplicationSettings;
+class CacheFile;
 class ColoredCoinTracker;
 class WalletSignerContainer;
 
@@ -60,7 +61,7 @@ namespace bs {
          using GroupPtr = std::shared_ptr<hd::Group>;
 
          WalletsManager(const std::shared_ptr<spdlog::logger> &, const std::shared_ptr<ApplicationSettings>& appSettings
-            , const std::shared_ptr<ArmoryConnection> &);
+            , const std::shared_ptr<ArmoryConnection> &, const std::string &ccTrackerCacheFileName = {});
          ~WalletsManager() noexcept override;
 
          WalletsManager(const WalletsManager&) = delete;
@@ -305,7 +306,10 @@ namespace bs {
          std::thread                maintThread_;
          std::condition_variable    maintCV_;
          std::mutex                 maintMutex_;
+
          ValidityFlag   validityFlag_;
+
+         std::unique_ptr<CacheFile> ccTrackerCache_;
       };
 
    }  //namespace sync

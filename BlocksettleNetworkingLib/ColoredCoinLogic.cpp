@@ -10,6 +10,8 @@
 */
 #include "ColoredCoinLogic.h"
 
+#include "ColoredCoinCache.h"
+
 /***
 
 #1: Add CC origin address
@@ -1326,7 +1328,6 @@ bool ColoredCoinTracker::goOnline()
    if (ready_.load(std::memory_order_relaxed) || !walletObj_) {
       return false;
    }
-   //TODO: load from snapshot
 
    //use default ACT if none is set
    if (actPtr_ == nullptr) {
@@ -1714,4 +1715,32 @@ void ColoredCoinACT::processNotification()
 
       processNotificationList();
    }
+}
+
+bool ColoredCoinTracker::loadSnapshot(const BinaryData &data)
+{
+   if (ready_.load()) {
+      return false;
+   }
+
+   auto cache = deserializeSnapshot(data);
+   if (!cache.snapshot) {
+      return false;
+   }
+
+   snapshot_ = cache.snapshot;
+   startHeight_ = cache.startHeight;
+   processedHeight_ = cache.processedHeight;
+   return true;
+}
+
+BinaryData ColoredCoinTracker::saveSnapshot() const
+{
+   ColoredCoinCache cache;
+   cache.startHeight = startHeight_;
+   cache.processedHeight = processedHeight_;
+   cache.snapshot = snapshot_;
+
+   auto data = serializeSnapshot(cache);
+   return data;
 }

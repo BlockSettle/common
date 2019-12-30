@@ -98,6 +98,7 @@ public:
       logDefault,
       logMessages,
       txCacheFileName,
+      ccTrackersCacheFileName,
       nbBackupFilesKeep,
       aqScripts,
       lastAqScript,
