@@ -73,8 +73,8 @@ ColoredCoinCache deserializeSnapshot(const BinaryData &data)
 
    for (const auto &d : msg.outpoints()) {
       auto point = std::make_shared<CcOutpoint>(d.value(), d.index());
-      auto txHash = BinaryData(d.tx_hash());
-      auto scrAddr = BinaryData(d.scr_addr());
+      const BinaryData txHash{d.tx_hash()};
+      const BinaryData scrAddr{d.scr_addr()};
 
       point->setTxHash(getOrInsert(txHash, txHashes));
       point->setScrAddr(getOrInsert(scrAddr, scrAddresses));
