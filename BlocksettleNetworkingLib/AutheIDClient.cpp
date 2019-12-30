@@ -114,7 +114,7 @@ QString AutheIDClient::errorString(AutheIDClient::ErrorType error)
    case DecryptError:
       return tr("Decrypt failed");
    case InvalidSecureReplyError:
-      return tr("Invalid secure relply");
+      return tr("Invalid secure reply");
    case InvalidKeySizeError:
       return tr("Invalid key size");
    case MissingSignatuteError:
@@ -534,12 +534,19 @@ void AutheIDClient::processNetworkReply(QNetworkReply *reply, int timeoutSeconds
             return;
          }
 
-         if (requestType_ == ActivateWalletNewDevice && error.error() == rp::INVALID_ARGUMENT) {
-            // Show more specific error
-            logger_->error("can't find new Auth eID device: {}", error.message());
-            emit failed(ErrorType::NoNewDeviceAvailable);
-            return;
+         if (error.error() == rp::INVALID_ARGUMENT) {
+            if (requestType_ == ActivateWalletNewDevice) {
+               logger_->error("Can't find new Auth eID device: {}", error.message());
+               emit failed(ErrorType::NoNewDeviceAvailable);
+               return;
+            }
+            else {
+               logger_->error("Can't find Auth eID device: {}", error.message());
+               emit failed(ErrorType::ParseSignatureError);
+               return;
+            }
          }
+
 
          logger_->error("AuthEid server error: {}", error.message());
          emit failed(ErrorType::ServerError);
