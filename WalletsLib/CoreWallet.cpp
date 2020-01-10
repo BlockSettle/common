@@ -943,12 +943,10 @@ BinaryData bs::core::SignMultiInputTX(const bs::core::wallet::TXMultiSignRequest
 
 BinaryData wallet::computeID(const BinaryData &input)
 {
-   auto inputCopy = input;
-   const auto outSz = input.getSize();
-   if (outSz > 0 && input.getPtr()[outSz - 1] == 0) {
-      inputCopy.resize(outSz - 1);
-   }
-   return BinaryData::fromString(BtcUtils::computeID(inputCopy));
+   std::cerr << "wallet::computeID: " << input.toHexStr() << std::endl;
+   auto result = BtcUtils::computeID(input);
+   std::cerr << "done" << std::endl;
+   return BinaryData::fromString(result);
 }
 
 
