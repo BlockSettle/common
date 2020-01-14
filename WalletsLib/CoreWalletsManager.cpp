@@ -17,6 +17,7 @@
 #include "CoreWalletsManager.h"
 #include "CoreHDWallet.h"
 #include "SystemFileUtils.h"
+#include "ThreadWorker/SameThreadWorker.h"
 
 using namespace bs::core;
 
@@ -37,45 +38,93 @@ void WalletsManager::reset()
 bool WalletsManager::loadWallets(NetworkType netType, const std::string &walletsPath
    , const SecureBinaryData &controlPassphrase, const CbProgress &cbProgress)
 {
+   SameThreadWorker<AsyncLoadResult> worker;
+
+   loadWalletsAsync(&worker, netType, walletsPath, controlPassphrase, nullptr, cbProgress);
+   walletsLoaded_ = true;
+   return true;
+}
+
+template <typename ResultType>
+void WalletsManager::loadWalletsAsync(ThreadWorkerBase<ResultType>* threadWorker, NetworkType netType,
+   const std::string &walletsPath, const SecureBinaryData &ctrlPass /*= {}*/,
+   const CbAsyncResult &cbResult /*= nullptr*/, const CbProgress &cbProgress /*= nullptr*/)
+{
    if (walletsPath.empty()) {
-      return true;
+      if (cbResult) {
+         cbResult(false);
+      }
+      return;
    }
    if (!SystemFileUtils::pathExist(walletsPath)) {
       logger_->debug("Creating wallets path {}", walletsPath);
       SystemFileUtils::mkPath(walletsPath);
    }
 
-   const auto fileList = SystemFileUtils::readDir(walletsPath, "*.lmdb");
-   const size_t totalCount = fileList.size();
-   size_t current = 0;
+   auto threadFunction = [loggerCopy = logger_, netTypeCopy = netType,
+      walletsPathCopy = walletsPath, controlPassphraseCopy = ctrlPass,
+      cbProgressCopy = std::move(cbProgress)]()->AsyncLoadResult {
 
-   for (const auto &file : fileList) {
-      if (!isWalletFile(file)) {
-         continue;
+      AsyncLoadResult res;
+      res.isSuccess_ = true;
+
+      const auto fileList = SystemFileUtils::readDir(walletsPathCopy, "*.lmdb");
+      const size_t totalCount = fileList.size();
+      size_t current = 0;
+
+      for (const auto &file : fileList) {
+         if (!bs::core::WalletsManager::isWalletFile(file)) {
+            continue;
+         }
+         try {
+            loggerCopy->debug("Loading BIP44 wallet from {}", file);
+            const auto wallet = std::make_shared<hd::Wallet>(file, netTypeCopy
+               , walletsPathCopy, controlPassphraseCopy, loggerCopy);
+            current++;
+            if (cbProgressCopy) {
+               cbProgressCopy(current, totalCount);
+            }
+            if ((netTypeCopy != NetworkType::Invalid) && (netTypeCopy != wallet->networkType())) {
+               loggerCopy->warn("[{}] Network type mismatch: loading {}, wallet has {}", __func__,
+                  static_cast<int>(netTypeCopy), static_cast<int>(wallet->networkType()));
+            }
+
+            res.wallets_.push_back(wallet);
+         }
+         catch (const std::exception &e) {
+            loggerCopy->warn("Failed to load BIP44 wallet: {}", e.what());
+
+            if (!strncmp(e.what(), wrongControlPasswordException, strlen(wrongControlPasswordException))) {
+               res.isSuccess_ = false;
+               break;
+            }
+         }
       }
-      try {
-         logger_->debug("Loading BIP44 wallet from {}", file);
-         const auto wallet = std::make_shared<hd::Wallet>(file, netType
-            , walletsPath, controlPassphrase, logger_);
-         current++;
-         if (cbProgress) {
-            cbProgress(current, totalCount);
+
+      return res;
+   };
+
+   auto loadedCb = [this, cb = std::move(cbResult)](const AsyncLoadResult& result) {
+      if (!result.isSuccess_) {
+         if (cb) {
+            cb(false);
          }
-         if ((netType != NetworkType::Invalid) && (netType != wallet->networkType())) {
-            logger_->warn("[{}] Network type mismatch: loading {}, wallet has {}", __func__, (int)netType, (int)wallet->networkType());
-         }
+         return;
+      }
+
+      for (auto &wallet : result.wallets_) {
          saveWallet(wallet);
       }
-      catch (const std::exception &e) {
-         logger_->warn("Failed to load BIP44 wallet: {}", e.what());
 
-         if (!strncmp(e.what(), wrongControlPasswordException, strlen(wrongControlPasswordException))) {
-            return false;
-         }
+      walletsLoaded_ = true;
+      if (cb) {
+         cb(true);
       }
-   }
-   walletsLoaded_ = true;
-   return true;
+   };
+
+   ThreadWorkerData<ResultType, AsyncLoadResult> workerData(std::move(threadFunction), std::move(loadedCb));
+   threadWorker->setFunctions(std::move(workerData));
+   threadWorker->run();
 }
 
 WalletsManager::HDWalletPtr WalletsManager::loadWoWallet(NetworkType netType
@@ -151,7 +200,7 @@ void WalletsManager::backupWallet(const HDWalletPtr &wallet, const std::string &
    wallet->copyToFile(backupFile);
 }
 
-bool WalletsManager::isWalletFile(const std::string &fileName) const
+bool WalletsManager::isWalletFile(const std::string &fileName)
 {
    return true;
 }

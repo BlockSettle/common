@@ -17,7 +17,8 @@
 #include "BTCNumericTypes.h"
 #include "EncryptionUtils.h"
 #include "CoreWallet.h"
-
+#include "CoreHDWallet.h"
+#include "ThreadWorker/ThreadWorkerBase.h"
 
 namespace spdlog {
    class logger;
@@ -26,15 +27,20 @@ namespace bs {
    namespace core {
       namespace hd {
          class Leaf;
-         class Wallet;
+         //class Wallet;
       }
 
       class WalletsManager
       {
       public:
          using CbProgress = std::function<void(size_t cur, size_t total)>;
+         using CbAsyncResult = std::function<void(bool)>;
          using WalletPtr = std::shared_ptr<bs::core::hd::Leaf>;
          using HDWalletPtr = std::shared_ptr<bs::core::hd::Wallet>;
+         struct AsyncLoadResult {
+            bool isSuccess_ = false;
+            std::vector<HDWalletPtr> wallets_;
+         };
 
          WalletsManager(const std::shared_ptr<spdlog::logger> &, unsigned int nbBackups = 10);
          ~WalletsManager() noexcept = default;
@@ -49,6 +55,11 @@ namespace bs {
          bool walletsLoaded() const { return walletsLoaded_; }
          bool loadWallets(NetworkType, const std::string &walletsPath
             , const SecureBinaryData &ctrlPass = {}, const CbProgress &cb = nullptr);
+
+         template <typename ResultType>
+         void loadWalletsAsync(ThreadWorkerBase<ResultType>* threadWorker, NetworkType netType, const std::string &walletsPath
+            , const SecureBinaryData &ctrlPass = {}, const CbAsyncResult &cbResult = nullptr, const CbProgress &cbProgress = nullptr);
+
          HDWalletPtr loadWoWallet(NetworkType, const std::string &walletsPath
             , const std::string &walletFileName, const SecureBinaryData &ctrlPass = {});
          void changeControlPassword(const SecureBinaryData &oldPass, const SecureBinaryData &newPass);
@@ -78,8 +89,8 @@ namespace bs {
 
          void setUserId(const BinaryData &userId) { userId_ = userId; }
 
+         static bool isWalletFile(const std::string &fileName);
       private:
-         bool isWalletFile(const std::string &fileName) const;
          void saveWallet(const HDWalletPtr &);
          void eraseWallet(const WalletPtr &);
 
