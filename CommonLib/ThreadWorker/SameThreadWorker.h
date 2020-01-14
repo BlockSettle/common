@@ -29,6 +29,4 @@ public:
    void onInitDone() override {};
 };
 
-#include "SameThreadWorker.cpp"
-
 #endif // __SAME_THREAD_WORKER__
