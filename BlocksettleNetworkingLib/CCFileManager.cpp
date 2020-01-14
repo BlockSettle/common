@@ -163,7 +163,7 @@ bool CCFileManager::SubmitAddressToPuB(const bs::Address &address, uint32_t seed
    request.set_bsseed(seed);
 
    std::string requestData = request.SerializeAsString();
-   BinaryData requestDataHash = BtcUtils::getSha256(requestData);
+   BinaryData requestDataHash = BtcUtils::getSha256(BinaryData::fromString(requestData));
 
    BsClient::SignAddressReq req;
    req.type = BsClient::SignAddressReq::CcAddr;
@@ -406,5 +406,5 @@ bool CCPubResolver::saveToFile(const std::string &path, const std::string &respo
 
 bool CCPubResolver::verifySignature(const std::string& data, const std::string& signature) const
 {
-   return CryptoECDSA().VerifyData(data, signature, pubKey_);
+   return CryptoECDSA().VerifyData(BinaryData::fromString(data), BinaryData::fromString(signature), pubKey_);
 }

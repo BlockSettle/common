@@ -684,7 +684,7 @@ void Wallet::onBalanceAvailable(const std::function<void()> &cb) const
 void Wallet::onRefresh(const std::vector<BinaryData> &ids, bool online)
 {
    for (const auto &id : ids) {
-      if (id == regId_) {
+      if (id == BinaryData::fromString(regId_)) {
          regId_.clear();
          logger_->debug("[bs::sync::Wallet::registerWallet] wallet {} registered", walletId());
          isRegistered_ = Registered::Registered;

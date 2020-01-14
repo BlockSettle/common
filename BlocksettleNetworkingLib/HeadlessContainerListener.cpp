@@ -478,7 +478,7 @@ bool HeadlessContainerListener::onCancelSignTx(const std::string &, headless::Re
    }
 
    if (callbacks_) {
-      callbacks_->cancelTxSign(request.tx_id());
+      callbacks_->cancelTxSign(BinaryData::fromString(request.tx_id()));
    }
 
    return true;
@@ -534,7 +534,7 @@ bool HeadlessContainerListener::onSignMultiTXRequest(const std::string &clientId
 
    bs::core::wallet::TXMultiSignRequest txMultiReq;
    bs::core::WalletMap walletMap;
-   txMultiReq.prevState = request.signerstate();
+   txMultiReq.prevState = BinaryData::fromString(request.signerstate());
    for (int i = 0; i < request.walletids_size(); i++) {
       const auto &wallet = walletsMgr_->getWalletById(request.walletids(i));
       if (!wallet) {
@@ -581,12 +581,12 @@ bool HeadlessContainerListener::onSignSettlementPayoutTxRequest(const std::strin
    txSignReq.walletIds = { walletsMgr_->getPrimaryWallet()->walletId() };
 
    UTXO utxo;
-   utxo.unserialize(request.signpayouttxrequest().input());
+   utxo.unserialize(BinaryData::fromString(request.signpayouttxrequest().input()));
    if (utxo.isInitialized()) {
       txSignReq.inputs.push_back(utxo);
    }
 
-   BinaryData serialized = request.signpayouttxrequest().recipient();
+   auto serialized = BinaryData::fromString(request.signpayouttxrequest().recipient());
    const auto recip = ScriptRecipient::deserialize(serialized);
    txSignReq.recipients.push_back(recip);
 
@@ -599,8 +599,8 @@ bool HeadlessContainerListener::onSignSettlementPayoutTxRequest(const std::strin
    }
 
    const auto settlData = request.signpayouttxrequest().settlement_data();
-   bs::core::wallet::SettlementData sd{ settlData.settlement_id()
-      , settlData.counterparty_pubkey(), settlData.my_pubkey_first() };
+   bs::core::wallet::SettlementData sd{ BinaryData::fromString(settlData.settlement_id())
+      , BinaryData::fromString(settlData.counterparty_pubkey()), settlData.my_pubkey_first() };
 
    const auto onPassword = [this, txSignReq, sd, clientId, id = packet.id(), reqType]
       (bs::error::ErrorCode result, const SecureBinaryData &pass) {
@@ -657,7 +657,7 @@ bool HeadlessContainerListener::onSignAuthAddrRevokeRequest(const std::string &c
    txSignReq.walletIds = { wallet->walletId() };
 
    UTXO utxo;
-   utxo.unserialize(request.utxo());
+   utxo.unserialize(BinaryData::fromString(request.utxo()));
    if (utxo.isInitialized()) {
       txSignReq.inputs.push_back(utxo);
    }
@@ -960,7 +960,7 @@ bool HeadlessContainerListener::onSetUserId(const std::string &clientId, headles
       return true;
    }
 
-   walletsMgr_->setUserId(request.userid());
+   walletsMgr_->setUserId(BinaryData::fromString(request.userid()));
 
    const auto wallet = walletsMgr_->getPrimaryWallet();
    if (!wallet) {
@@ -979,7 +979,7 @@ bool HeadlessContainerListener::onSetUserId(const std::string &clientId, headles
       setUserIdResponse(clientId, packet.id(), headless::AWR_NoPrimary);
       return false;
    }
-   const SecureBinaryData salt(request.userid());
+   const auto salt = SecureBinaryData::fromString(request.userid());
 
    if (salt.isNull()) {
       logger_->debug("[{}] unsetting auth salt", __func__);
@@ -1085,7 +1085,7 @@ bool HeadlessContainerListener::onCreateHDLeaf(const std::string &clientId
       return false;
    }
 
-   const auto onPassword = [this, hdWallet, path, clientId, id = packet.id(), salt=request.salt()]
+   const auto onPassword = [this, hdWallet, path, clientId, id = packet.id(), salt=SecureBinaryData::fromString(request.salt())]
       (bs::error::ErrorCode result, const SecureBinaryData &pass)
    {
       std::shared_ptr<bs::core::hd::Node> leafNode;
@@ -1102,7 +1102,7 @@ bool HeadlessContainerListener::onCreateHDLeaf(const std::string &clientId
       }
 
       try {
-         if (!salt.empty()) {
+         if (!salt.isNull()) {
             const auto authGroup = std::dynamic_pointer_cast<bs::core::hd::AuthGroup>(group);
             if (authGroup) {
                const auto prevSalt = authGroup->getSalt();
@@ -1283,7 +1283,7 @@ bool HeadlessContainerListener::onPromoteHDWallet(const std::string& clientId, h
       }
 
       const bs::core::WalletPasswordScoped lock(hdWallet, pass);
-      if (!createAuthLeaf(hdWallet, userId)) {
+      if (!createAuthLeaf(hdWallet, BinaryData::fromString(userId))) {
          logger_->error("[HeadlessContainerListener::onPromoteHDWallet] failed to create auth leaf");
       }
 
@@ -1481,7 +1481,7 @@ bool HeadlessContainerListener::onSetSettlementId(const std::string &clientId
    }
 
    // Call addSettlementID only once, otherwise addSettlementID will crash
-   const SecureBinaryData settlementId(request.settlement_id());
+   const auto settlementId = SecureBinaryData::fromString(request.settlement_id());
    if (settlLeaf->getIndexForSettlementID(settlementId) == UINT32_MAX) {
       settlLeaf->addSettlementID(settlementId);
       settlLeaf->getNewExtAddress();
@@ -1517,8 +1517,8 @@ bool HeadlessContainerListener::onGetPayinAddr(const std::string &clientId
       sendData(packet.SerializeAsString(), clientId);
       return false;
    }
-   const bs::core::wallet::SettlementData sd { request.settlement_data().settlement_id()
-      , request.settlement_data().counterparty_pubkey()
+   const bs::core::wallet::SettlementData sd { BinaryData::fromString(request.settlement_data().settlement_id())
+      , BinaryData::fromString(request.settlement_data().counterparty_pubkey())
       , request.settlement_data().my_pubkey_first() };
    const auto addr = wallet->getSettlementPayinAddress(sd);
    response.set_address(addr.display());
@@ -1650,7 +1650,7 @@ void HeadlessContainerListener::GetHDWalletInfoResponse(const std::string &clien
 
    if (!sendData(packet.SerializeAsString(), clientId)) {
       logger_->error("[HeadlessContainerListener::{}] failed to send to {}", __func__
-         , BinaryData(clientId).toHexStr());
+         , BinaryData::fromString(clientId).toHexStr());
    }
 }
 
@@ -1898,8 +1898,8 @@ bool HeadlessContainerListener::onSyncComment(const std::string &clientId, headl
       logger_->debug("[{}] comment for address {} is set: {}", __func__, request.address(), rc);
    }
    else {
-      rc = wallet->setTransactionComment(request.txhash(), request.comment());
-      logger_->debug("[{}] comment for TX {} is set: {}", __func__, BinaryData(request.txhash()).toHexStr(true), rc);
+      rc = wallet->setTransactionComment(BinaryData::fromString(request.txhash()), request.comment());
+      logger_->debug("[{}] comment for TX {} is set: {}", __func__, BinaryData::fromString(request.txhash()).toHexStr(true), rc);
    }
    return rc;
 }
@@ -1946,7 +1946,7 @@ bool HeadlessContainerListener::onSyncAddresses(const std::string &clientId, hea
 
    std::set<BinaryData> addrSet;
    for (int i = 0; i < request.addresses_size(); ++i) {
-      addrSet.insert(request.addresses(i));
+      addrSet.insert(BinaryData::fromString(request.addresses(i)));
    }
 
    //resolve the path and address type for addrSet

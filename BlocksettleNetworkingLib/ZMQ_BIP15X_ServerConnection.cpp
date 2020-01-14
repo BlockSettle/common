@@ -282,7 +282,7 @@ bool ZmqBIP15XServerConnection::SendDataToClient(const string& clientId
 {
    {
       std::lock_guard<std::mutex> lock(pendingDataMutex_);
-      pendingData_[clientId].push_back({ data, cb });
+      pendingData_[clientId].push_back({ BinaryData::fromString(data), cb });
    }
 
    if (std::this_thread::get_id() != listenThreadId()) {
@@ -297,13 +297,13 @@ void ZmqBIP15XServerConnection::rekey(const std::string &clientId)
 {
    auto connection = GetConnection(clientId);
    if (connection == nullptr) {
-      logger_->error("[ZmqBIP15XServerConnection::rekey] can't find connection for {}", BinaryData(clientId).toHexStr());
+      logger_->error("[ZmqBIP15XServerConnection::rekey] can't find connection for {}", BinaryData::fromString(clientId).toHexStr());
       return;
    }
 
    if (!connection->bip151HandshakeCompleted_) {
       logger_->error("[ZmqBIP15XServerConnection::rekey] can't rekey {} without BIP151"
-         " handshaked completed", BinaryData(clientId).toHexStr());
+         " handshaked completed", BinaryData::fromString(clientId).toHexStr());
       return;
    }
 
@@ -315,7 +315,7 @@ void ZmqBIP15XServerConnection::rekey(const std::string &clientId)
       .encryptIfNeeded(conn).build();
 
    logger_->debug("[ZmqBIP15XServerConnection::rekey] rekeying session for {}"
-      , BinaryData(clientId).toHexStr());
+      , BinaryData::fromString(clientId).toHexStr());
    connection->encData_->rekeyOuterSession();
    ++connection->outerRekeyCount_;
 
@@ -399,7 +399,7 @@ bool ZmqBIP15XServerConnection::SendDataToAllClients(const std::string& data, co
 {
    {
       std::lock_guard<std::mutex> lock(pendingDataMutex_);
-      pendingDataToAll_.push_back({ data, cb });
+      pendingDataToAll_.push_back({ BinaryData::fromString(data), cb });
    }
 
    if (std::this_thread::get_id() != listenThreadId()) {
@@ -423,12 +423,12 @@ void ZmqBIP15XServerConnection::ProcessIncomingData(const string& encData
 
    if (!connData) {
       logger_->error("[ZmqBIP15XServerConnection::ProcessIncomingData] failed to find connection data for client {}"
-         , BinaryData(clientID).toHexStr());
+         , BinaryData::fromString(clientID).toHexStr());
       notifyListenerOnClientError(clientID, "missing connection data");
       return;
    }
 
-   BinaryData payload(encData);
+   auto payload = BinaryData::fromString(encData);
 
    // Decrypt only if the BIP 151 handshake is complete.
    if (connData->bip151HandshakeCompleted_) {
@@ -517,7 +517,7 @@ bool ZmqBIP15XServerConnection::processAEADHandshake(
          auto connection = GetConnection(clientID);
          if (connection == nullptr) {
             logger_->error("[ZmqBIP15XServerConnection::processAEADHandshake::writeToClient] no connection for client {}"
-               , BinaryData(clientID).toHexStr());
+               , BinaryData::fromString(clientID).toHexStr());
             return false;
          }
          conn = connection->encData_.get();
@@ -534,7 +534,7 @@ bool ZmqBIP15XServerConnection::processAEADHandshake(
       auto connection = GetConnection(clientID);
       if (connection == nullptr) {
          logger_->error("[ZmqBIP15XServerConnection::processAEADHandshake::processHandshake] no connection for client {}"
-               , BinaryData(clientID).toHexStr());
+               , BinaryData::fromString(clientID).toHexStr());
             return false;
       }
 
@@ -789,14 +789,14 @@ bool ZmqBIP15XServerConnection::processAEADHandshake(
 
          logger_->info("[processHandshake] BIP 150 handshake with client "
             "complete - connection with {} is ready and fully secured"
-            , BinaryData(clientID).toHexStr());
+            , BinaryData::fromString(clientID).toHexStr());
 
          break;
       }
 
       case ZMQ_MSGTYPE_DISCONNECT:
          logger_->debug("[processHandshake] disconnect request received from {}"
-            , BinaryData(clientID).toHexStr());
+            , BinaryData::fromString(clientID).toHexStr());
          closeClient(clientID);
          break;
 
@@ -857,13 +857,13 @@ bool ZmqBIP15XServerConnection::AddConnection(const std::string& clientId, const
 {
    auto it = socketConnMap_.find(clientId);
    if (it != socketConnMap_.end()) {
-      logger_->error("[ZmqBIP15XServerConnection::AddConnection] connection already saved for {}", BinaryData(clientId).toHexStr());
+      logger_->error("[ZmqBIP15XServerConnection::AddConnection] connection already saved for {}", BinaryData::fromString(clientId).toHexStr());
       return false;
    }
 
    socketConnMap_.emplace(clientId, connection);
 
-   logger_->debug("[ZmqBIP15XServerConnection::AddConnection] adding new connection for client {}", BinaryData(clientId).toHexStr());
+   logger_->debug("[ZmqBIP15XServerConnection::AddConnection] adding new connection for client {}", BinaryData::fromString(clientId).toHexStr());
    return true;
 }
 
@@ -884,7 +884,7 @@ void ZmqBIP15XServerConnection::sendData(const std::string &clientId, const Pend
    auto connection = GetConnection(clientId);
    if (connection == nullptr) {
       logger_->error("[ZmqBIP15XServerConnection::SendDataToClient] missing client connection {}"
-         , BinaryData(clientId).toHexStr());
+         , BinaryData::fromString(clientId).toHexStr());
       return;
    }
 
@@ -979,7 +979,7 @@ void ZmqBIP15XServerConnection::checkHeartbeats()
 
    for (const auto &clientId : timedOutClients) {
       logger_->debug("[ZmqBIP15XServerConnection] client {} timed out"
-         , BinaryData(clientId).toHexStr());
+         , BinaryData::fromString(clientId).toHexStr());
       closeClient(clientId);
    }
 }

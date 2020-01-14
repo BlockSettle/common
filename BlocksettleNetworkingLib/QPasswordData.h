@@ -51,10 +51,10 @@ public:
    QEncryptionType         getEncType() const               { return QEncryptionType(metaData.encType); }
    QString                 getEncKey() const                { return QString::fromStdString(metaData.encKey.toBinStr()); }
 
-   void setTextPassword    (const QString &pw)              { password =  SecureBinaryData(pw.toStdString()); emit passwordChanged(); }
+   void setTextPassword    (const QString &pw)              { password =  SecureBinaryData::fromString(pw.toStdString()); emit passwordChanged(); }
    void setBinaryPassword  (const SecureBinaryData &data)   { password =  data; emit passwordChanged(); }
    void setEncType         (QEncryptionType e)              { metaData.encType = EncryptionType(e); emit encTypeChanged(e); }
-   void setEncKey          (const QString &e)               { metaData.encKey =  SecureBinaryData(e.toStdString()); emit encKeyChanged(e); }
+   void setEncKey          (const QString &e)               { metaData.encKey =  SecureBinaryData::fromString(e.toStdString()); emit encKeyChanged(e); }
 
 signals:
    void passwordChanged();

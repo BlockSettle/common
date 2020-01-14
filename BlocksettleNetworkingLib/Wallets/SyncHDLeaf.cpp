@@ -159,10 +159,10 @@ void hd::Leaf::onRefresh(const std::vector<BinaryData> &ids, bool online)
             }
             logger_->debug("[sync::hd::Leaf::onRefresh] {}: id={}, extId={}, intId={}", walletId()
                , id.toBinStr(), regIdExt_, regIdInt_);
-            if (id == regIdExt_) {
+            if (id == BinaryData::fromString(regIdExt_)) {
                regIdExt_.clear();
                cbRegisterExt();
-            } else if (id == regIdInt_) {
+            } else if (id == BinaryData::fromString(regIdInt_)) {
                regIdInt_.clear();
                cbRegisterInt();
             }

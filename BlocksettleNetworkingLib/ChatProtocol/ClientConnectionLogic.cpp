@@ -307,7 +307,7 @@ void ClientConnectionLogic::incomingPrivatePartyMessage(PartyMessagePacket& part
    {
       const auto sessionKeyDataPtr = sessionKeyHolderPtr_->sessionKeyDataForUser(recipientPtr->userHash());
 
-      const BinaryData nonce = partyMessagePacket.nonce();
+      const BinaryData nonce = BinaryData::fromString(partyMessagePacket.nonce());
       const auto associatedData = cryptManagerPtr_->jsonAssociatedData(clientPartyPtr->id(), nonce);
 
       const auto future = cryptManagerPtr_->decryptMessageAEAD(partyMessagePacket.message(), associatedData,
@@ -492,7 +492,8 @@ void ClientConnectionLogic::handlePrivatePartyRequest(const PrivatePartyRequest&
          for (auto i = 0; i < partyPacket.recipient_size(); i++)
          {
             const auto& recipient = partyPacket.recipient(i);
-            auto newRecipient = std::make_shared<PartyRecipient>(recipient.user_hash(), recipient.public_key(), QDateTime::fromMSecsSinceEpoch(recipient.timestamp_ms()));
+            auto newRecipient = std::make_shared<PartyRecipient>(recipient.user_hash()
+               , BinaryData::fromString(recipient.public_key()), QDateTime::fromMSecsSinceEpoch(recipient.timestamp_ms()));
             updatedRecipients.push_back(newRecipient);
          }
 
@@ -548,12 +549,15 @@ void ClientConnectionLogic::replySessionKeyExchange(const std::string& receiever
 
 void ClientConnectionLogic::handleRequestSessionKeyExchange(const RequestSessionKeyExchange& requestKeyExchange) const
 {
-   sessionKeyHolderPtr_->onIncomingRequestSessionKeyExchange(requestKeyExchange.sender_user_hash(), requestKeyExchange.encoded_public_key(), currentUserPtr()->privateKey());
+   sessionKeyHolderPtr_->onIncomingRequestSessionKeyExchange(requestKeyExchange.sender_user_hash()
+      , BinaryData::fromString(requestKeyExchange.encoded_public_key())
+      , currentUserPtr()->privateKey());
 }
 
 void ClientConnectionLogic::handleReplySessionKeyExchange(const ReplySessionKeyExchange& replyKeyExchange) const
 {
-   sessionKeyHolderPtr_->onIncomingReplySessionKeyExchange(replyKeyExchange.sender_user_hash(), replyKeyExchange.encoded_public_key());
+   sessionKeyHolderPtr_->onIncomingReplySessionKeyExchange(replyKeyExchange.sender_user_hash()
+      , BinaryData::fromString(replyKeyExchange.encoded_public_key()));
 }
 
 void ClientConnectionLogic::prepareAndSendPrivateMessage(const ClientPartyPtr& clientPartyPtr, const std::string& data) const

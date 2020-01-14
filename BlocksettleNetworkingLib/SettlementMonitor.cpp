@@ -300,7 +300,7 @@ bs::SettlementMonitor::~SettlementMonitor() noexcept
 void bs::SettlementMonitor::onRefresh(const std::vector<BinaryData>& ids, bool)
 {
    for (const auto& id : ids) {
-      if (id == registrationId_) {
+      if (id == BinaryData::fromString(registrationId_)) {
          // push pay-in on chain
          logger_->debug("[SettlementMonitor::onRefresh] broadcasting pay-in {}"
                         , tradeData_->settlementId);

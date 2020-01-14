@@ -46,13 +46,13 @@ namespace bs {
    struct TXEntry {
       BinaryData  txHash;
       std::set<std::string>   walletIds;
-      int64_t     value;
-      uint32_t    blockNum;
-      uint32_t    txTime;
-      bool        isRBF;
-      bool        isChainedZC;
-      bool        merged;
-      std::chrono::time_point<std::chrono::steady_clock> recvTime;
+      int64_t     value{};
+      uint32_t    blockNum{};
+      uint32_t    txTime{};
+      bool        isRBF{};
+      bool        isChainedZC{};
+      bool        merged{};
+      std::chrono::time_point<std::chrono::steady_clock> recvTime{};
       std::vector<bs::Address>   addresses;
 
       bool operator==(const TXEntry &other) const { return (txHash == other.txHash); }

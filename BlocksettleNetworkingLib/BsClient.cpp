@@ -368,8 +368,8 @@ void BsClient::processGetLoginResult(const Response_GetLoginResult &response)
    result.status = static_cast<AutheIDClient::ErrorType>(response.error().error_code());
    result.userType = static_cast<bs::network::UserType>(response.user_type());
    result.celerLogin = response.celer_login();
-   result.chatTokenData = response.chat_token_data();
-   result.chatTokenSign = response.chat_token_sign();
+   result.chatTokenData = BinaryData::fromString(response.chat_token_data());
+   result.chatTokenSign = BinaryData::fromString(response.chat_token_sign());
    emit getLoginResultDone(result);
 }
 
@@ -414,11 +414,11 @@ void BsClient::requestSignResult(std::chrono::seconds timeout
 
       AutheIDClient::SignResult result;
       result.serialization = AutheIDClient::Serialization::Protobuf;
-      result.data = d.sign_data();
-      result.sign = d.sign();
-      result.certificateClient = d.certificate_client();
-      result.certificateIssuer = d.certificate_issuer();
-      result.ocspResponse = d.ocsp_response();
+      result.data = BinaryData::fromString(d.sign_data());
+      result.sign = BinaryData::fromString(d.sign());
+      result.certificateClient = BinaryData::fromString(d.certificate_client());
+      result.certificateIssuer = BinaryData::fromString(d.certificate_issuer());
+      result.ocspResponse = BinaryData::fromString(d.ocsp_response());
       signedCb(result);
    };
 

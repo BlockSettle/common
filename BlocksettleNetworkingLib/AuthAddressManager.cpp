@@ -280,7 +280,7 @@ void AuthAddressManager::OnDataReceived(const std::string& data)
    }
    else {
       BinaryData publicKey = BinaryData::CreateFromHex(settings_->get<std::string>(ApplicationSettings::bsPublicKey));
-      sigVerified = CryptoECDSA().VerifyData(response.responsedata(), response.datasignature(), publicKey);
+      sigVerified = CryptoECDSA().VerifyData(BinaryData::fromString(response.responsedata()), BinaryData::fromString(response.datasignature()), publicKey);
       if (!sigVerified) {
          logger_->error("[AuthAddressManager::OnDataReceived] Response signature verification failed - response {} dropped"
             , static_cast<int>(response.responsetype()));
@@ -341,7 +341,7 @@ void AuthAddressManager::ConfirmSubmitForVerification(BsClient *bsClient, const 
    request.set_userid(celerClient_->userId());
 
    std::string requestData = request.SerializeAsString();
-   BinaryData requestDataHash = BtcUtils::getSha256(requestData);
+   BinaryData requestDataHash = BtcUtils::getSha256(BinaryData::fromString(requestData));
 
    QPointer<AuthAddressManager> thisPtr = this;
 

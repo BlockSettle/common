@@ -107,9 +107,7 @@ bs::Address bs::Address::fromAddressString(const std::string& data)
    }
    const auto &prefix = data.substr(0, 2);
    if ((prefix == SEGWIT_ADDRESS_MAINNET_HEADER) || (prefix == SEGWIT_ADDRESS_TESTNET_HEADER)) {
-      BinaryData dataCopy(data);
-      dataCopy.append(0);  // segWitAddressToScrAddr requires null-terminated C string
-      auto&& scrAddr = BtcUtils::segWitAddressToScrAddr(dataCopy);
+      auto&& scrAddr = BtcUtils::segWitAddressToScrAddr(data);
       if (scrAddr.getSize() == 20) {
          return bs::Address(scrAddr, AddressEntryType_P2WPKH);
       }
@@ -118,9 +116,7 @@ bs::Address bs::Address::fromAddressString(const std::string& data)
       }
    }
    else {
-      BinaryData base58In(data);
-      base58In.append('\0'); // Remove once base58toScrAddr() is fixed.
-      auto&& scrAddr = BtcUtils::base58toScrAddr(base58In);
+      auto&& scrAddr = BtcUtils::base58toScrAddr(data);
 
       if (scrAddr.getPtr()[0] == NetworkConfig::getPubkeyHashPrefix())
       {
@@ -296,7 +292,7 @@ std::string bs::Address::display() const
    {
    case Base58:
       try {
-         result = BtcUtils::scrAddrToBase58(fullAddress).toBinStr();
+         result = BtcUtils::scrAddrToBase58(fullAddress);
          break;
       }
       catch (const std::exception &) {
@@ -308,7 +304,7 @@ std::string bs::Address::display() const
 
    case Bech32:
       try {
-         result = BtcUtils::scrAddrToSegWitAddress(unprefixed()).toBinStr();
+         result = BtcUtils::scrAddrToSegWitAddress(unprefixed());
          break;
       }
       catch (const std::exception &) {
@@ -329,11 +325,11 @@ std::string bs::Address::display() const
          switch (nestedFlag)
          {
          case AddressEntryType_P2SH:
-            result = BtcUtils::scrAddrToBase58(fullAddress).toBinStr();
+            result = BtcUtils::scrAddrToBase58(fullAddress);
             break;
 
          case AddressEntryType_P2WSH:
-            result = BtcUtils::scrAddrToSegWitAddress(unprefixed()).toBinStr();
+            result = BtcUtils::scrAddrToSegWitAddress(unprefixed());
             break;
 
          default:
@@ -347,11 +343,11 @@ std::string bs::Address::display() const
       //address isn't nested if we got this far
       switch (aet_) {
       case AddressEntryType_P2PKH:
-         result = BtcUtils::scrAddrToBase58(fullAddress).toBinStr();
+         result = BtcUtils::scrAddrToBase58(fullAddress);
          break;
 
       case AddressEntryType_P2WPKH:
-         result = BtcUtils::scrAddrToSegWitAddress(unprefixed()).toBinStr();
+         result = BtcUtils::scrAddrToSegWitAddress(unprefixed());
          break;
 
       default:

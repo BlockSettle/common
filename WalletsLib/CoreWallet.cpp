@@ -47,7 +47,7 @@ BinaryData wallet::AssetEntryComment::serialize() const
    bw.put_BinaryData(key_);
 
    bw.put_var_int(comment_.length());
-   bw.put_BinaryData(comment_);
+   bw.put_BinaryData(BinaryData::fromString(comment_));
 
    return bw.getData();
 }
@@ -618,7 +618,7 @@ std::string wallet::Seed::getWalletId() const
       assert(addrVec.size() == 1);
       auto firstEntry = std::dynamic_pointer_cast<AssetEntry_Single>(addrVec[0]);
       assert(firstEntry != nullptr);
-      walletId_ = BtcUtils::computeID(firstEntry->getPubKey()->getUncompressedKey()).toBinStr();
+      walletId_ = BtcUtils::computeID(firstEntry->getPubKey()->getUncompressedKey());
       if (*(walletId_.rbegin()) == 0) {
          walletId_.resize(walletId_.size() - 1);
       }
@@ -944,11 +944,10 @@ BinaryData bs::core::SignMultiInputTX(const bs::core::wallet::TXMultiSignRequest
 BinaryData wallet::computeID(const BinaryData &input)
 {
    auto result = BtcUtils::computeID(input);
-   const auto outSz = result.getSize();
-   if (result.getPtr()[outSz - 1] == 0) {
-      result.resize(outSz - 1);
+   if (!result.empty() && result.back() == 0) {
+      result.pop_back();
    }
-   return result;
+   return BinaryData::fromString(result);
 }
 
 

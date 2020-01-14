@@ -46,7 +46,7 @@ std::vector<bs::core::wallet::TXSignRequest> bs::core::wallet::ParseOfflineTXFil
             if (!tx.ParseFromString(container.data())) {
                continue;
             }
-            txReq.prevStates.push_back(tx.transaction());
+            txReq.prevStates.push_back(BinaryData::fromString(tx.transaction()));
             txReq.comment = tx.comment();
          }
          else {

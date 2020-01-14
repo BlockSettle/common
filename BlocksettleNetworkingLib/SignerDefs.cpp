@@ -58,7 +58,7 @@ bs::sync::WalletData bs::sync::WalletData::fromPbMessage(const headless::SyncWal
    }
    for (int i = 0; i < response.txcomments_size(); ++i) {
       const auto txInfo = response.txcomments(i);
-      result.txComments.push_back({ txInfo.txhash(), txInfo.comment() });
+      result.txComments.push_back({ BinaryData::fromString(txInfo.txhash()), txInfo.comment() });
    }
 
    return result;
@@ -84,7 +84,7 @@ std::vector<bs::sync::WalletInfo> bs::sync::WalletInfo::fromPbMessage(const head
       }
       for (int i = 0; i < walletInfoPb.encryptionkeys_size(); ++i) {
          const auto encKey = walletInfoPb.encryptionkeys(i);
-         walletInfo.encryptionKeys.push_back(encKey);
+         walletInfo.encryptionKeys.push_back(BinaryData::fromString(encKey));
       }
       walletInfo.encryptionRank = { walletInfoPb.keyrank().m(), walletInfoPb.keyrank().n() };
 

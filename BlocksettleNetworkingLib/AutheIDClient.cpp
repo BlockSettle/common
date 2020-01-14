@@ -241,7 +241,7 @@ AutheIDClient::SignVerifyStatus AutheIDClient::verifySignature(const SignResult 
       status.title = sigData.title();
       status.description = sigData.description();
       status.finished = signTimestamp;
-      status.invisibleData = sigData.invisible_data();
+      status.invisibleData = BinaryData::fromString(sigData.invisible_data());
       return status;
    } catch (const std::exception &e) {
       return SignVerifyStatus::failed(fmt::format("signature verification failed: {}", e.what()));
@@ -313,7 +313,8 @@ void AutheIDClient::getDeviceKey(RequestType requestType, const std::string &ema
    request.set_ra_pub_key(authKeys_.second.data(), authKeys_.second.size());
    request.set_timestamp_created(timestamp);
 
-   request.set_title(action.toStdString() + "\nWallet ID:" + walletId);
+   request.set_title(action.toStdString());
+   request.set_description("Wallet ID:" + walletId);
    request.set_email(email_);
    request.mutable_device_key()->set_use_new_devices(newDevice);
 
@@ -504,7 +505,7 @@ void AutheIDClient::processResultReply(const QByteArray &payload)
       + kSeparatorSymbol + reply.device_id()
       + kSeparatorSymbol + reply.device_name();
 
-   emit succeeded(encKey, SecureBinaryData(deviceKey));
+   emit succeeded(encKey, SecureBinaryData::fromString(deviceKey));
 }
 
 void AutheIDClient::processNetworkReply(QNetworkReply *reply, int timeoutSeconds, const AutheIDClient::ResultCallback &callback)
@@ -674,11 +675,11 @@ void AutheIDClient::processSignatureReply(const autheid::rp::GetResultResponse_S
 
    SignResult result;
    result.serialization = Serialization(reply.serialization());
-   result.data = reply.signature_data();
-   result.sign = reply.sign();
-   result.certificateClient = reply.certificate_client();
-   result.certificateIssuer = reply.certificate_issuer();
-   result.ocspResponse = reply.ocsp_response();
+   result.data = BinaryData::fromString(reply.signature_data());
+   result.sign = BinaryData::fromString(reply.sign());
+   result.certificateClient = BinaryData::fromString(reply.certificate_client());
+   result.certificateIssuer = BinaryData::fromString(reply.certificate_issuer());
+   result.ocspResponse = BinaryData::fromString(reply.ocsp_response());
 
    emit signSuccess(result);
 }

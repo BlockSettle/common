@@ -40,7 +40,7 @@ UserHasher::UserHasher(const BinaryData& iv)
 
 std::string UserHasher::deriveKey(const std::string& rawData) const
 {
-   auto key = getKDF()->deriveKey(rawData);
+   auto key = getKDF()->deriveKey(BinaryData::fromString(rawData));
    std::vector<uint8_t> keyData(key.getPtr(), key.getPtr() + key.getSize());
    return bs::zbase32Encode(keyData).substr(0, KeyLength);
 }

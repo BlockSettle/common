@@ -696,7 +696,7 @@ std::pair<autheid::PrivateKey, autheid::PublicKey> ApplicationSettings::GetAuthK
    else {
       authPrivKey_ = autheid::generatePrivateKey();
       const std::string sPrivKey(authPrivKey_.begin(), authPrivKey_.end());
-      set(authPrivKey, QString::fromStdString(BinaryData(sPrivKey).toHexStr()));
+      set(authPrivKey, QString::fromStdString(BinaryData::fromString(sPrivKey).toHexStr()));
    }
    authPubKey_ = autheid::getPublicKey(authPrivKey_);
    return { authPrivKey_, authPubKey_ };

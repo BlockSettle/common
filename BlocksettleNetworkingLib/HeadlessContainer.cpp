@@ -195,7 +195,7 @@ void HeadlessContainer::ProcessSignTXResponse(unsigned int id, const std::string
       emit TXSigned(id, {}, bs::error::ErrorCode::FailedToParse);
       return;
    }
-   emit TXSigned(id, response.signedtx(), static_cast<bs::error::ErrorCode>(response.errorcode()));
+   emit TXSigned(id, BinaryData::fromString(response.signedtx()), static_cast<bs::error::ErrorCode>(response.errorcode()));
 }
 
 void HeadlessContainer::ProcessSettlementSignTXResponse(unsigned int id, const std::string &data)
@@ -209,11 +209,11 @@ void HeadlessContainer::ProcessSettlementSignTXResponse(unsigned int id, const s
    const auto itCb = cbSettlementSignTxMap_.find(id);
    if (itCb != cbSettlementSignTxMap_.end()) {
       if (itCb->second) {
-         itCb->second(static_cast<bs::error::ErrorCode>(response.errorcode()), BinaryData(response.signedtx()));
+         itCb->second(static_cast<bs::error::ErrorCode>(response.errorcode()), BinaryData::fromString(response.signedtx()));
       }
       cbSettlementSignTxMap_.erase(itCb);
    }
-   emit TXSigned(id, response.signedtx(), static_cast<bs::error::ErrorCode>(response.errorcode()));
+   emit TXSigned(id, BinaryData::fromString(response.signedtx()), static_cast<bs::error::ErrorCode>(response.errorcode()));
 }
 
 void HeadlessContainer::ProcessCreateHDLeafResponse(unsigned int id, const std::string &data)
@@ -962,7 +962,7 @@ void HeadlessContainer::ProcessAddrPreimageResponse(unsigned int id, const std::
       for (int j = 0; j < resp.preimages_size(); ++j) {
          const auto piData = resp.preimages(j);
          auto addrObj = bs::Address::fromAddressString(piData.address());
-         result[addrObj] = piData.preimage();
+         result[addrObj] = BinaryData::fromString(piData.preimage());
       }
    }
    const auto itCb = cbAddrPreimageMap_.find(id);
@@ -1000,7 +1000,7 @@ void HeadlessContainer::ProcessSettlWalletCreate(unsigned int id, const std::str
       emit Error(id, "no callback found for id " + std::to_string(id));
       return;
    }
-   itCb->second(response.public_key());
+   itCb->second(SecureBinaryData::fromString(response.public_key()));
    cbSettlWalletMap_.erase(itCb);
 }
 
@@ -1052,7 +1052,7 @@ void HeadlessContainer::ProcessSettlGetRootPubkey(unsigned int id, const std::st
       emit Error(id, "no callback found for id " + std::to_string(id));
       return;
    }
-   itCb->second(response.success(), response.public_key());
+   itCb->second(response.success(), SecureBinaryData::fromString(response.public_key()));
    cbSettlPubkeyMap_.erase(itCb);
 }
 
@@ -1077,7 +1077,7 @@ void HeadlessContainer::ProcessChatNodeResponse(unsigned int id, const std::stri
    else {
       BIP32_Node chatNode;
       try {
-         chatNode.initFromBase58(response.b58_chat_node());
+         chatNode.initFromBase58(SecureBinaryData::fromString(response.b58_chat_node()));
       } catch (const std::exception &e) {
          logger_->error("[HeadlessContainer::ProcessChatNodeResponse] failed to deserialize BIP32 node: {}", e.what());
       }
@@ -1133,14 +1133,14 @@ void HeadlessContainer::ProcessSyncHDWallet(unsigned int id, const std::string &
       bs::sync::HDWalletData::Group group;
       group.type = static_cast<bs::hd::CoinType>(groupInfo.type() | bs::hd::hardFlag);
       group.extOnly = groupInfo.ext_only();
-      group.salt = groupInfo.salt();
+      group.salt = BinaryData::fromString(groupInfo.salt());
       for (int j = 0; j < groupInfo.leaves_size(); ++j) {
          const auto leafInfo = groupInfo.leaves(j);
          if (isWoRoot) {
             woWallets_.insert(leafInfo.id());
          }
          group.leaves.push_back({ leafInfo.id(), bs::hd::Path::fromString(leafInfo.path())
-            , group.extOnly, leafInfo.extra_data() });
+            , group.extOnly, BinaryData::fromString(leafInfo.extra_data()) });
       }
       result.groups.push_back(group);
    }

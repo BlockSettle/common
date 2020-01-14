@@ -69,7 +69,7 @@ void ClientPartyLogic::handlePartiesFromWelcomePacket(const ChatUserPtr& current
          {
             const auto& recipient = partyPacket.recipient(j);
             auto recipientPtr =
-               std::make_shared<PartyRecipient>(recipient.user_hash(), recipient.public_key(), QDateTime::fromMSecsSinceEpoch(recipient.timestamp_ms()));
+               std::make_shared<PartyRecipient>(recipient.user_hash(), BinaryData::fromString(recipient.public_key()), QDateTime::fromMSecsSinceEpoch(recipient.timestamp_ms()));
             recipients.push_back(recipientPtr);
 
             // choose all recipients except me
@@ -120,7 +120,7 @@ void ClientPartyLogic::onUserStatusChanged(const ChatUserPtr&, const StatusChang
       {
          if (recipientPtr)
          {
-            const BinaryData public_key(statusChanged.public_key().value());
+            auto public_key = BinaryData::fromString(statusChanged.public_key().value());
             const auto dt = QDateTime::fromMSecsSinceEpoch(statusChanged.timestamp_ms().value());
             const auto userPkPtr = std::make_shared<UserPublicKeyInfo>();
 
@@ -248,8 +248,7 @@ void ClientPartyLogic::createPrivatePartyFromPrivatePartyRequest(const ChatUserP
    for (auto i = 0; i < partyPacket.recipient_size(); i++)
    {
       auto recipient = std::make_shared<PartyRecipient>(
-         partyPacket.recipient(i).user_hash(), partyPacket.recipient(i).public_key()
-         );
+         partyPacket.recipient(i).user_hash(), BinaryData::fromString(partyPacket.recipient(i).public_key()));
 
       recipients.push_back(recipient);
    }

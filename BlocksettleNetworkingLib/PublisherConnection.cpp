@@ -275,7 +275,7 @@ void PublisherConnection::ReadReceivedData()
       }
 
       logger_->debug("[PublisherConnection::ReadReceivedData] received {} bytes: {}. ( {} )"
-         , result, BinaryData(msg.ToString()).toHexStr(), (msg.IsLast() ? "last message" : "there is more") );
+         , result, BinaryData::fromString(msg.ToString()).toHexStr(), (msg.IsLast() ? "last message" : "there is more") );
 
       if (msg.IsLast()) {
          break;

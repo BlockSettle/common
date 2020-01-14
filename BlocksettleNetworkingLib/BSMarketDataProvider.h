@@ -36,8 +36,7 @@ Q_OBJECT
 
 public:
    BSMarketDataProvider(const std::shared_ptr<ConnectionManager>& connectionManager
-      , const std::shared_ptr<spdlog::logger>& logger
-      , bool receiveUSD = false);
+      , const std::shared_ptr<spdlog::logger>& logger);
    ~BSMarketDataProvider() noexcept override = default;
 
    BSMarketDataProvider(const BSMarketDataProvider&) = delete;
@@ -78,8 +77,6 @@ private:
    std::shared_ptr<ConnectionManager>  connectionManager_;
    std::shared_ptr<SubscriberConnection> mdConnection_ = nullptr;
    std::shared_ptr<SubscriberConnectionListenerCB> listener_ = nullptr;
-
-   const bool receiveUSD_ = false;
 };
 
 #endif // __BS_MARKET_DATA_PROVIDER_H__

@@ -250,7 +250,10 @@ void hd::Wallet::changeControlPassword(const SecureBinaryData &oldPass, const Se
       return oldPass;
    };
 
-   walletPtr_->changeControlPassphrase(newPass, lbdControlPassphrase_);
+   auto newPassCb = [newPass] {
+      return newPass;
+   };
+   walletPtr_->changeControlPassphrase(newPassCb, lbdControlPassphrase_);
 }
 
 void hd::Wallet::createStructure(unsigned lookup)
@@ -377,7 +380,7 @@ void hd::Wallet::initializeDB()
       BinaryWriter bwKey;
       bwKey.put_uint32_t(WALLETNAME_KEY);
 
-      BinaryData walletNameData = name_;
+      BinaryData walletNameData = BinaryData::fromString(name_);
       BinaryWriter bwName;
 //      bwName.put_var_int(walletNameData.getSize());
       bwName.put_BinaryData(walletNameData);
@@ -387,7 +390,7 @@ void hd::Wallet::initializeDB()
       BinaryWriter bwKey;
       bwKey.put_uint32_t(WALLETDESCRIPTION_KEY);
 
-      BinaryData walletDescriptionData = desc_;
+      BinaryData walletDescriptionData = BinaryData::fromString(desc_);
       BinaryWriter bwDesc;
 //      bwDesc.put_var_int(walletDescriptionData.getSize());
       bwDesc.put_BinaryData(walletDescriptionData);
@@ -587,7 +590,12 @@ bool hd::Wallet::changePassword(const bs::wallet::PasswordMetaData &oldPD
    }
 
    try {
-      walletPtr_->changeMasterPassphrase(pd.password);
+      auto newPassCb = [newPass = pd.password]{
+         return newPass;
+      };
+
+      walletPtr_->changePrivateKeyPassphrase(newPassCb);
+
       *itPwdMeta = pd.metaData;
       writeToDB();
       return true;
@@ -610,7 +618,10 @@ bool hd::Wallet::addPassword(const bs::wallet::PasswordData &pd)
       return false;
    }
    try {
-      walletPtr_->addPassphrase(pd.password);
+      auto passCb = [pass = pd.password] {
+         return pass;
+      };
+      walletPtr_->addPrivateKeyPassphrase(passCb);
       pwdMeta_.push_back(pd.metaData);
       writeToDB();
       return true;
@@ -815,7 +826,7 @@ std::shared_ptr<hd::Leaf> hd::Wallet::getSettlementLeaf(const bs::Address &addr)
 std::shared_ptr<AssetEntry> hd::Wallet::getAssetForAddress(
    const bs::Address& addr)
 {
-   auto& idPair = walletPtr_->getAssetIDForAddr(addr.prefixed());
+   auto& idPair = walletPtr_->getAssetIDForScrAddr(addr.prefixed());
    return walletPtr_->getAssetForID(idPair.first);
 }
 

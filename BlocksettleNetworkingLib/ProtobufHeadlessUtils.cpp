@@ -69,7 +69,7 @@ bs::core::wallet::TXSignRequest bs::signer::pbTxRequestToCore(const headless::Si
    }
    for (int i = 0; i < request.inputs_size(); i++) {
       UTXO utxo;
-      utxo.unserialize(request.inputs(i));
+      utxo.unserialize(BinaryData::fromString(request.inputs(i)));
       if (utxo.isInitialized()) {
          txSignReq.inputs.push_back(utxo);
       }
@@ -77,7 +77,7 @@ bs::core::wallet::TXSignRequest bs::signer::pbTxRequestToCore(const headless::Si
 
    uint64_t outputVal = 0;
    for (int i = 0; i < request.recipients_size(); i++) {
-      BinaryData serialized = request.recipients(i);
+      auto serialized = BinaryData::fromString(request.recipients(i));
       const auto recip = ScriptRecipient::deserialize(serialized);
       txSignReq.recipients.push_back(recip);
       outputVal += recip->getValue();
@@ -101,7 +101,7 @@ bs::core::wallet::TXSignRequest bs::signer::pbTxRequestToCore(const headless::Si
    txSignReq.RBF = request.rbf();
 
    if (!request.unsignedstate().empty()) {
-      const BinaryData prevState(request.unsignedstate());
+      const auto prevState = BinaryData::fromString(request.unsignedstate());
       txSignReq.prevStates.push_back(prevState);
       if (!value) {
          bs::CheckRecipSigner signer(prevState);

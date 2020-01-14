@@ -186,7 +186,7 @@ uint64_t CheckRecipSigner::estimateFee(float &feePerByte, uint64_t fixedFee) con
    auto transactions = bs::Address::decorateUTXOsCopy(inputs);
    std::map<unsigned int, std::shared_ptr<ScriptRecipient>> recipientsMap;
    if (recipients_.empty()) {
-      recipientsMap[0] = std::make_shared<Recipient_OPRETURN>(BinaryData("fake recipient"));
+      recipientsMap[0] = std::make_shared<Recipient_OPRETURN>(BinaryData::fromString("fake recipient"));
    }
    else {
       for (unsigned int i = 0; i < recipients_.size(); ++i) {

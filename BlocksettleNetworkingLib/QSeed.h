@@ -56,7 +56,7 @@ public:
    {}
 
    QSeed(const QString &seed, QNetworkType netType)
-      : Seed(seed.toStdString(), fromQNetworkType(netType)) {}
+      : Seed(SecureBinaryData::fromString(seed.toStdString()), fromQNetworkType(netType)) {}
 
    // copy constructors and operator= uses parent implementation
    QSeed(const Seed &seed) : Seed(seed){}

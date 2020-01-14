@@ -583,7 +583,7 @@ std::shared_ptr<hd::Leaf> hd::SettlementGroup::createLeaf(
    */
 
    //grab asset id for address
-   auto& idPair = walletPtr_->getAssetIDForAddr(addr.prefixed());
+   auto& idPair = walletPtr_->getAssetIDForScrAddr(addr.prefixed());
    auto assetPtr = walletPtr_->getAssetForID(idPair.first);
    auto assetSingle = std::dynamic_pointer_cast<AssetEntry_Single>(assetPtr);
    if (assetSingle == nullptr) {

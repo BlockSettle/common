@@ -54,9 +54,9 @@ struct XBTTradeData
 
    // result of TX validation
    // (0; 100]
-   int            averageScore = 0;
-   int            minScore = 0;
-   std::string    scorechainUrl;
+   int                        minScore = 0;
+   std::vector<std::string>   rejectedInputs;
+   std::string                scorechainUrl;
 
    // loadedFromReservation - true if trade was loaded from genoa.
    //                         means that after first check on that settlement address

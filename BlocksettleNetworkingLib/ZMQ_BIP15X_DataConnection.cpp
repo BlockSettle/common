@@ -498,7 +498,7 @@ bool ZmqBIP15XDataConnection::startBIP151Handshake()
 // RETURN: None
 void ZmqBIP15XDataConnection::onRawDataReceived(const string& rawData)
 {
-   BinaryData payload(rawData);
+   auto payload = BinaryData::fromString(rawData);
 
    if (!bip151Connection_) {
       logger_->error("[{}] received {} bytes of data in disconnected state"

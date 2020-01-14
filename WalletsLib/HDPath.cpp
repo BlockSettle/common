@@ -98,7 +98,7 @@ hd::Path::Elem hd::Path::keyToElem(const std::string &key)
    if (isHardened) {
       mutableKey.pop_back();
    }
-   const auto hash = BtcUtils::getSha256(mutableKey);
+   const auto hash = BtcUtils::getSha256(BinaryData::fromString(mutableKey));
    hd::Path::Elem result = 0;
    for (int startIdx = 0; startIdx < hash.getSize() - 4; ++startIdx) {
       result = BinaryData::StrToIntBE<hd::Path::Elem>(hash.getSliceCopy(startIdx, 4));

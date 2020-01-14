@@ -698,7 +698,12 @@ bool ArmoryConnection::getSpentnessForOutputs(const std::map<BinaryData, std::se
          cb({}, std::make_exception_ptr(e));
       }
    };
-   bdv_->getSpentnessForOutputs(outputs, cbWrap);
+   // New ArmoryDB will report error if request is empty (expected bindata for getSpentnessForOutputs)
+   if (outputs.empty()) {
+      cb({}, nullptr);
+   } else {
+      bdv_->getSpentnessForOutputs(outputs, cbWrap);
+   }
    return true;
 }
 
@@ -745,7 +750,12 @@ bool ArmoryConnection::getOutputsForOutpoints(
          cb({}, std::make_exception_ptr(e));
       }
    };
-   bdv_->getOutputsForOutpoints(outpoints, withZc, cbWrap);
+   // ArmoryDB will report error if request is empty (expected bindata for getOutputsForOutpoints)
+   if (outpoints.empty()) {
+      cb({}, nullptr);
+   } else {
+      bdv_->getOutputsForOutpoints(outpoints, withZc, cbWrap);
+   }
    return true;
 }
 

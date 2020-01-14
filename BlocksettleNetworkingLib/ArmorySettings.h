@@ -50,7 +50,7 @@ struct ArmoryServer
       server.armoryDBPort = data.at(3).toInt();
       server.armoryDBKey = data.at(4);
       if (data.size() > 5) {
-         server.password = data.at(5).toStdString();
+         server.password = SecureBinaryData::fromString(data.at(5).toStdString());
       }
       return server;
    }

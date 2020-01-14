@@ -376,7 +376,8 @@ void bs::tradeutils::createPayout(bs::tradeutils::PayoutArgs args, bs::tradeutil
             if (!args.recvAddr.isNull()) {
                recvAddrCb(args.recvAddr);
             } else {
-               args.outputXbtWallet->getNewExtAddress(recvAddrCb);
+               // BST-2474: All addresses related to trading, not just change addresses, should use internal addresses
+               args.outputXbtWallet->getNewIntAddress(recvAddrCb);
             }
          };
 
