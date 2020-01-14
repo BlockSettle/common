@@ -17,15 +17,15 @@ template <typename CarrierType, typename ResultType>
 class ThreadWorkerData {
 public:
 
-   template <typename = std::enable_if<std::is_same<CarrierType, ResultType>::value>::type>
+   template <typename std::enable_if<std::is_same<CarrierType, ResultType>::value>::type>
    ThreadWorkerData(std::function<ResultType()> &&threadFunction, std::function<void(ResultType&)> &&resultCallback)
    {
       threadFunction_ = std::move(threadFunction);
       resultCallback_ = std::move(resultCallback);
    }
 
-   template <typename = std::enable_if<std::is_same<CarrierType, QVariant>::value>::type,
-      typename = std::enable_if<!std::is_same<CarrierType, ResultType>::value>::type>
+   template <typename std::enable_if<std::is_same<CarrierType, QVariant>::value>::type,
+      typename std::enable_if<!std::is_same<CarrierType, ResultType>::value>::type>
    ThreadWorkerData(std::function<ResultType()> &&threadFunction, std::function<void(ResultType&)> &&resultCallback)
    {
       threadFunction_ = [originFunc = std::move(threadFunction)]()->CarrierType {
@@ -34,7 +34,6 @@ public:
          return carrier;
       };
       resultCallback_ = [originFunc = std::move(resultCallback)](const CarrierType& carrier) {
-         assert(carrier.canConvert<ResultType>());
          return originFunc(qvariant_cast<ResultType>(carrier));
       };
    }
