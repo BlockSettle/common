@@ -111,7 +111,7 @@ public:
       return std::atomic_load_explicit(&zcSnapshot_, std::memory_order_acquire);
    }
 
-   CcTrackerClient *parent_{};
+   std::shared_ptr<CcTrackerClient> parent_{};
    uint64_t coinsPerShare_;
    std::atomic_bool isOnline_{false};
    std::vector<bs::Address> originAddresses_;
@@ -230,7 +230,7 @@ std::unique_ptr<ColoredCoinTrackerInterface> CcTrackerClient::createClient(uint6
    auto id = ++nextId_;
 
    auto client = std::make_unique<CcTrackerImpl>();
-   client->parent_ = this;
+   client->parent_ = shared_from_this();
    client->coinsPerShare_ = coinsPerShare;
    client->id_ = id;
 

@@ -42,7 +42,7 @@ namespace bs {
    }
 }
 
-class CcTrackerClient : public DataConnectionListener
+class CcTrackerClient : public DataConnectionListener, public std::enable_shared_from_this<CcTrackerClient>
 {
 public:
    CcTrackerClient(const std::shared_ptr<spdlog::logger> &logger);
