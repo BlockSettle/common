@@ -35,9 +35,10 @@ namespace bs {
          using CbProgress = std::function<void(size_t cur, size_t total)>;
          using WalletPtr = std::shared_ptr<bs::core::hd::Leaf>;
          using HDWalletPtr = std::shared_ptr<bs::core::hd::Wallet>;
+         using CbAsyncLoadResult = std::function<void(bool)>;
 
          WalletsManager(const std::shared_ptr<spdlog::logger> &, unsigned int nbBackups = 10);
-         ~WalletsManager() noexcept = default;
+         ~WalletsManager() noexcept;
 
          WalletsManager(const WalletsManager&) = delete;
          WalletsManager& operator = (const WalletsManager&) = delete;
@@ -46,9 +47,11 @@ namespace bs {
 
          void reset();
 
-         bool walletsLoaded() const { return walletsLoaded_; }
+         bool walletsLoaded() const { return walletsLoaded_ && !loadingWallets_; }
          bool loadWallets(NetworkType, const std::string &walletsPath
             , const SecureBinaryData &ctrlPass = {}, const CbProgress &cb = nullptr);
+         void loadWalletsAsync(NetworkType, const std::string &walletsPath, CbAsyncLoadResult &&resultCb
+            , const SecureBinaryData &ctrlPass = {}, const CbProgress &progressCb = nullptr);
          HDWalletPtr loadWoWallet(NetworkType, const std::string &walletsPath
             , const std::string &walletFileName, const SecureBinaryData &ctrlPass = {});
          void changeControlPassword(const SecureBinaryData &oldPass, const SecureBinaryData &newPass);
@@ -61,7 +64,7 @@ namespace bs {
 
          HDWalletPtr getPrimaryWallet() const;
 
-         size_t getHDWalletsCount() const { return hdWalletsId_.size(); }
+         size_t getHDWalletsCount() const;
          const HDWalletPtr getHDWallet(const unsigned int index) const;
          const HDWalletPtr getHDWalletById(const std::string &walletId) const;
          const HDWalletPtr getHDRootForLeaf(const std::string &walletId) const;
@@ -83,6 +86,7 @@ namespace bs {
          bool isWalletFile(const std::string &fileName) const;
          void saveWallet(const HDWalletPtr &);
          void eraseWallet(const WalletPtr &);
+         bool checkWalletsReady() const;
 
       private:
          std::shared_ptr<spdlog::logger>        logger_;
@@ -93,6 +97,19 @@ namespace bs {
          std::vector<std::string>            hdWalletsId_;
          std::vector<std::string>            ccLeaves_;
          BinaryData     userId_;
+
+         std::thread loadThread_;
+         std::atomic_bool loadingWallets_ = false;
+         std::thread::id loadingThreadId_ = {};
+         
+      };
+
+
+      class WalletsAreNotReady : public std::runtime_error
+      {
+      public:
+         explicit WalletsAreNotReady(): std::runtime_error("Wallets are not ready") {}
+         ~WalletsAreNotReady() throw () override {}
       };
 
    }  //namespace core

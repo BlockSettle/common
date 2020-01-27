@@ -26,8 +26,16 @@ WalletsManager::WalletsManager(const std::shared_ptr<spdlog::logger> &logger, un
    : logger_(logger), nbBackupFilesToKeep_(nbBackups)
 {}
 
+bs::core::WalletsManager::~WalletsManager() noexcept
+{
+   if (loadThread_.joinable()) {
+      loadThread_.join();
+   }
+}
+
 void WalletsManager::reset()
 {
+   checkWalletsReady();
    hdWallets_.clear();
    walletNames_.clear();
    hdWalletsId_.clear();
@@ -37,6 +45,7 @@ void WalletsManager::reset()
 bool WalletsManager::loadWallets(NetworkType netType, const std::string &walletsPath
    , const SecureBinaryData &controlPassphrase, const CbProgress &cbProgress)
 {
+   checkWalletsReady();
    if (walletsPath.empty()) {
       return true;
    }
@@ -78,10 +87,35 @@ bool WalletsManager::loadWallets(NetworkType netType, const std::string &wallets
    return true;
 }
 
+void bs::core::WalletsManager::loadWalletsAsync(NetworkType netType, const std::string &walletsPath, CbAsyncLoadResult &&resultCb,
+   const SecureBinaryData &ctrlPass /*= {}*/, const CbProgress &progressCb /*= nullptr*/)
+{
+   if (loadingWallets_.exchange(true)) {
+      resultCb(false);
+      return;
+   }
+
+   if (loadThread_.joinable()) {
+      loadThread_.join();
+   }
+
+   loadThread_ = std::thread([this, netTypeCopy = netType, walletsPathCopy = walletsPath,
+      resultCbCopy = std::move(resultCb), ctrlPassCopy = ctrlPass,
+      progressCbCopy = std::move(progressCb)]() {
+      loadingThreadId_ = std::this_thread::get_id();
+      bool res = loadWallets(netTypeCopy, walletsPathCopy, ctrlPassCopy, progressCbCopy);
+      loadingThreadId_ = std::thread::id();
+      loadingWallets_.exchange(false);
+      resultCbCopy(res);
+   });
+}
+
 WalletsManager::HDWalletPtr WalletsManager::loadWoWallet(NetworkType netType
    , const std::string &walletsPath, const std::string &fileName
    , const SecureBinaryData &controlPassphrase)
 {
+   checkWalletsReady();
+
    if (walletsPath.empty()) {
       return nullptr;
    }
@@ -113,6 +147,7 @@ WalletsManager::HDWalletPtr WalletsManager::loadWoWallet(NetworkType netType
 
 void WalletsManager::changeControlPassword(const SecureBinaryData &oldPass, const SecureBinaryData &newPass)
 {
+   checkWalletsReady();
    for (const auto &hdWallet : hdWallets_) {
       hdWallet.second->changeControlPassword(oldPass, newPass);
    }
@@ -120,13 +155,21 @@ void WalletsManager::changeControlPassword(const SecureBinaryData &oldPass, cons
 
 void bs::core::WalletsManager::eraseControlPassword(const SecureBinaryData &oldPass)
 {
+   checkWalletsReady();
    for (const auto &hdWallet : hdWallets_) {
       hdWallet.second->eraseControlPassword(oldPass);
    }
 }
 
+size_t bs::core::WalletsManager::getHDWalletsCount() const
+{
+   checkWalletsReady();
+   return hdWalletsId_.size();
+}
+
 void WalletsManager::backupWallet(const HDWalletPtr &wallet, const std::string &targetDir) const
 {
+   checkWalletsReady();
    if (wallet->isWatchingOnly()) {
       logger_->info("No need to backup watching-only wallet {}", wallet->name());
       return;
@@ -165,6 +208,7 @@ bool WalletsManager::isWalletFile(const std::string &fileName) const
 
 WalletsManager::HDWalletPtr WalletsManager::getPrimaryWallet() const
 {
+   checkWalletsReady();
    HDWalletPtr primaryWallet = nullptr;
    int count = 0;
    for (const auto &hdWallet : hdWallets_) {
@@ -182,6 +226,7 @@ WalletsManager::HDWalletPtr WalletsManager::getPrimaryWallet() const
 
 void WalletsManager::saveWallet(const HDWalletPtr &wallet)
 {
+   checkWalletsReady();
    hdWalletsId_.emplace_back(wallet->walletId());
    hdWallets_[wallet->walletId()] = wallet;
    walletNames_.insert(wallet->name());
@@ -189,6 +234,7 @@ void WalletsManager::saveWallet(const HDWalletPtr &wallet)
 
 const WalletsManager::HDWalletPtr WalletsManager::getHDWallet(const unsigned int index) const
 {
+   checkWalletsReady();
    if (index >= hdWalletsId_.size()) {
       return nullptr;
    }
@@ -197,6 +243,7 @@ const WalletsManager::HDWalletPtr WalletsManager::getHDWallet(const unsigned int
 
 const WalletsManager::HDWalletPtr WalletsManager::getHDWalletById(const std::string& walletId) const
 {
+   checkWalletsReady();
    auto it = hdWallets_.find(walletId);
    if (it != hdWallets_.end()) {
       return it->second;
@@ -206,6 +253,7 @@ const WalletsManager::HDWalletPtr WalletsManager::getHDWalletById(const std::str
 
 const WalletsManager::HDWalletPtr WalletsManager::getHDRootForLeaf(const std::string& walletId) const
 {
+   checkWalletsReady();
    for (const auto &hdWallet : hdWallets_) {
       if (hdWallet.second->getLeaf(walletId)) {
          return hdWallet.second;
@@ -216,6 +264,7 @@ const WalletsManager::HDWalletPtr WalletsManager::getHDRootForLeaf(const std::st
 
 WalletsManager::WalletPtr WalletsManager::getWalletById(const std::string& walletId) const
 {
+   checkWalletsReady();
    for (const auto &hdWallet : hdWallets_) {
       auto leafPtr = hdWallet.second->getLeaf(walletId);
       if (leafPtr != nullptr)
@@ -230,6 +279,7 @@ WalletsManager::WalletPtr WalletsManager::getWalletById(const std::string& walle
 
 WalletsManager::WalletPtr WalletsManager::getWalletByAddress(const bs::Address &addr) const
 {
+   checkWalletsReady();
    for (const auto wallet : hdWallets_)
    {
       for (auto& group : wallet.second->getGroups())
@@ -251,6 +301,7 @@ WalletsManager::WalletPtr WalletsManager::getWalletByAddress(const bs::Address &
 
 void WalletsManager::eraseWallet(const WalletPtr &wallet)
 {
+   checkWalletsReady();
    /*if (!wallet) {
       return;
    }
@@ -263,6 +314,8 @@ void WalletsManager::eraseWallet(const WalletPtr &wallet)
 
 bool WalletsManager::deleteWalletFile(const WalletPtr &wallet)
 {
+   checkWalletsReady();
+
    bool isHDLeaf = false;
    logger_->info("Removing wallet {} ({})...", wallet->name(), wallet->walletId());
    for (auto hdWallet : hdWallets_) {
@@ -304,6 +357,7 @@ bool WalletsManager::deleteWalletFile(const WalletPtr &wallet)
 
 bool WalletsManager::deleteWalletFile(const HDWalletPtr &wallet)
 {
+   checkWalletsReady();
    const auto it = hdWallets_.find(wallet->walletId());
    if (it == hdWallets_.end()) {
       logger_->warn("Unknown HD wallet {} ({})", wallet->name(), wallet->walletId());
@@ -333,6 +387,8 @@ WalletsManager::HDWalletPtr WalletsManager::createWallet(
    , wallet::Seed seed, const std::string &folder
    , const bs::wallet::PasswordData &pd, bool primary)
 {
+   checkWalletsReady();
+
    const HDWalletPtr newWallet = std::make_shared<hd::Wallet>(
       name, description, seed, pd, folder, logger_);
 
@@ -393,9 +449,24 @@ WalletsManager::HDWalletPtr WalletsManager::createWallet(
 
 void WalletsManager::addWallet(const HDWalletPtr &wallet)
 {
+   checkWalletsReady();
    if (!wallet) {
       return;
    }
 
    saveWallet(wallet);
+}
+
+bool bs::core::WalletsManager::checkWalletsReady() const
+{
+   if (loadingWallets_) {
+      if (std::this_thread::get_id() == loadingThreadId_) {
+         return true;
+      }
+
+      logger_->error("Trying to access wallet's data while wallets are still loading in async mode", __func__);
+      throw WalletsAreNotReady();
+   }
+
+   return true;
 }
