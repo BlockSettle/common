@@ -147,7 +147,6 @@ void ClientConnectionLogic::onConnected()
    WelcomeRequest welcomeRequest;
    welcomeRequest.set_user_hash(currentUserPtr()->userHash());
    welcomeRequest.set_client_public_key(currentUserPtr()->publicKey().toBinStr());
-   welcomeRequest.set_celer_type(static_cast<int>(currentUserPtr()->celerUserType()));
    welcomeRequest.set_chat_token_data(token_.toBinStr());
    welcomeRequest.set_chat_token_sign(tokenSign_.toBinStr());
 
