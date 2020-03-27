@@ -350,6 +350,9 @@ message UserScoreUpdateEvent
       SignedPayinSentBeforeRequested   = 8;
       DuplicateSignedPayinDelivery     = 9;
       SignedPayinFromUnexpectedUser    = 10;
+
+      PayinPushMempoolConflict         = 11;
+      PayoutPushMempoolConflict        = 12;
    };
 
    string               user_email  = 1;
