@@ -133,6 +133,21 @@ message SaveNewResponse
    bool success = 1;
 }
 
+message CcToken
+{
+   string email = 1;
+   string cc_product = 2;
+   uint32 bs_seed = 3;
+}
+
+enum CcTokenStatus
+{
+   CC_TOKEN_STATUS_FAILED = 0;
+   CC_TOKEN_STATUS_NOT_FOUND = 1;
+   CC_TOKEN_STATUS_FOUND = 2;
+   CC_TOKEN_STATUS_COMPLETE= 3;
+}
+
 message ExportRequestFiles
 {
    string export_path = 1;
@@ -163,6 +178,12 @@ enum RequestStorageMessageType
    RequestCompletedType           = 5;
    PendingRequestsStatistics      = 6;
 
+   AddCcTokenRequest              = 7;
+   AddCcTokenResponse             = 8;
+   VerifyCcTokenRequest           = 9;
+   VerifyCcTokenResponse          = 10;
+   CompleteCcTokenRequest         = 11;
+   CompleteCcTokenResponse        = 12;
 }
 
 enum RequestFileType
@@ -235,6 +256,12 @@ message StorageRequestsMessage
       ExportRequestFilesResponse export_response   = 5;
       RequestCompletedUpdate     completed_request = 6;
       PendingRequestsInfo        pending_requests_statistics = 7;
+      CcToken                    add_cc_token_request          = 9;
+      bool                       add_cc_token_response         = 10;
+      CcToken                    verify_cc_token_request       = 11;
+      CcTokenStatus              verify_cc_token_response      = 12;
+      CcToken                    complete_cc_token_request     = 13;
+      bool                       complete_cc_token_response    = 14;
    }
 }
 
