@@ -351,8 +351,7 @@ message UserScoreUpdateEvent
       DuplicateSignedPayinDelivery     = 9;
       SignedPayinFromUnexpectedUser    = 10;
 
-      PayinPushMempoolConflict         = 11;
-      PayoutPushMempoolConflict        = 12;
+      PayoutPushMempoolConflict        = 11;
    };
 
    string               user_email  = 1;
