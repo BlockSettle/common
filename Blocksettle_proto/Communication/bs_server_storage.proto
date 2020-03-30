@@ -352,6 +352,8 @@ message UserScoreUpdateEvent
       SignedPayinFromUnexpectedUser    = 10;
 
       PayoutPushMempoolConflict        = 11;
+
+      InvalidAuthAddressUsed           = 12;
    };
 
    string               user_email  = 1;
