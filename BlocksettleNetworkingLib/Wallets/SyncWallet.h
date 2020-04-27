@@ -84,12 +84,14 @@ namespace bs {
             , const std::vector<UTXO> &inputs
             , const std::vector<std::shared_ptr<ScriptRecipient>> &
             , const bs::Address &changeAddr = {}
+            , const std::string &changeIndex = {}
             , const uint64_t fee = 0, bool isRBF = false);
 
          bs::core::wallet::TXSignRequest createTXRequest(const std::vector<std::shared_ptr<Wallet>> &wallets
             , const std::vector<UTXO> &inputs
             , const std::vector<std::shared_ptr<ScriptRecipient>> &
             , const bs::Address &changeAddr = {}
+            , const std::string &changeIndex = {}
             , const uint64_t fee = 0, bool isRBF = false);
 
       }  // namepsace wallet
@@ -188,7 +190,7 @@ namespace bs {
          virtual core::wallet::TXSignRequest createTXRequest(const std::vector<UTXO> &
             , const std::vector<std::shared_ptr<ScriptRecipient>> &
             , const uint64_t fee = 0, bool isRBF = false
-            , const bs::Address &changeAddress = {});
+            , const bs::Address &changeAddress = {}, const std::string &changeIndex = {});
          virtual core::wallet::TXSignRequest createPartialTXRequest(uint64_t spendVal
             , const std::vector<UTXO> &inputs, bs::Address changeAddress = {}
             , float feePerByte = 0

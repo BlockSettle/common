@@ -214,7 +214,7 @@ void bs::tradeutils::createPayin(bs::tradeutils::PayinArgs args, bs::tradeutils:
                         auto recipients = std::vector<std::shared_ptr<ScriptRecipient>>(1, recipient);
                         try {
                            result.signRequest = bs::sync::wallet::createTXRequest(args.inputXbtWallets, selectedInputs
-                              , recipients, changeAddr, fee, false);
+                              , recipients, changeAddr, {}, fee, false);
                            result.preimageData = preimages;
                            result.payinHash = result.signRequest.txId(resolver);
 

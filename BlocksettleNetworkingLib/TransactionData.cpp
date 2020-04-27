@@ -736,7 +736,7 @@ std::vector<std::shared_ptr<ScriptRecipient>> TransactionData::GetRecipientList(
 }
 
 bs::core::wallet::TXSignRequest TransactionData::createTXRequest(bool isRBF
-   , const bs::Address &changeAddr) const
+   , const bs::Address& changeAddr, const std::string& changeIndex) const
 {
    std::vector<std::shared_ptr<bs::sync::Wallet>> wallets;
    if (group_) {
@@ -751,25 +751,15 @@ bs::core::wallet::TXSignRequest TransactionData::createTXRequest(bool isRBF
       return {};
    }
 
-   if (!changeAddr.empty()) {
-      bool changeAddrFound = false;
-      for (const auto &wallet : wallets) {
-         if (!wallet->getAddressIndex(changeAddr).empty()) {
-            wallet->setAddressComment(changeAddr, bs::sync::wallet::Comment::toString(bs::sync::wallet::Comment::ChangeAddress));
-            changeAddrFound = true;
-            break;
-         }
-      }
-      if (!changeAddrFound) {
-         SPDLOG_LOGGER_ERROR(logger_, "can't find change address index");
-         return {};
-      }
+   if (!changeAddr.empty() && changeIndex.empty()) {
+      SPDLOG_LOGGER_ERROR(logger_, "can't find change address index");
+      return {};
    }
 
    const auto fee = summary_.totalFee ? summary_.totalFee : totalFee();
 
    auto txReq = bs::sync::wallet::createTXRequest(wallets, inputs(), GetRecipientList()
-      , changeAddr, fee, isRBF);
+      , changeAddr, changeIndex, fee, isRBF);
    if (group_) {
       txReq.walletIds.clear();
       std::set<std::string> walletIds;

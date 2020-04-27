@@ -127,7 +127,7 @@ public:
 
    // If there is change then changeAddr must be set
    bs::core::wallet::TXSignRequest createTXRequest(bool isRBF = false
-      , const bs::Address &changeAddr = {}) const;
+      , const bs::Address& changeAddr = {}, const std::string& changeIndex = {}) const;
 
    std::shared_ptr<SelectedTransactionInputs> getSelectedInputs() { return selectedInputs_; }
    TransactionSummary GetTransactionSummary() const;
