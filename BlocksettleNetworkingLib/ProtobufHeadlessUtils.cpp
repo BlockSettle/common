@@ -94,10 +94,9 @@ bs::core::wallet::TXSignRequest pbTxRequestToCoreImpl(const headless::SignTxRequ
       }
    }
    for (const auto &inputIndex : request.input_indices()) {
-      if (!inputIndex.empty()) {
-         if (bs::hd::Path::fromString(inputIndex).length() != kValidPathLength) {
-            throw std::runtime_error("unexpected path length for UTXO input address");
-         }
+      // Index must be set only for offline wallets, so just check length if set
+      if (!inputIndex.empty() && bs::hd::Path::fromString(inputIndex).length() != kValidPathLength) {
+         throw std::runtime_error("unexpected path length for UTXO input address");
       }
       txSignReq.inputIndices.push_back(inputIndex);
    }
@@ -117,7 +116,8 @@ bs::core::wallet::TXSignRequest pbTxRequestToCoreImpl(const headless::SignTxRequ
    }
 
    if (request.has_change()) {
-      if (bs::hd::Path::fromString(request.change().index()).length() != kValidPathLength) {
+      // Index must be set only for offline wallets, so just check length if set
+      if (!request.change().index().empty() && bs::hd::Path::fromString(request.change().index()).length() != kValidPathLength) {
          throw std::runtime_error("unexpected path length for change address");
       }
       txSignReq.change.address = bs::Address::fromAddressString(request.change().address());
