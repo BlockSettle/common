@@ -776,6 +776,42 @@ bool hd::Wallet::addPassword(const bs::wallet::PasswordData &pd)
    }
 }
 
+bool hd::Wallet::removePassword(const bs::wallet::PasswordMetaData &removedPD)
+{
+   auto findCb = [&removedPD](const bs::wallet::PasswordMetaData &item) {
+      return item.encKey == removedPD.encKey;
+   };
+
+   auto count = std::count_if(pwdMeta_.begin(), pwdMeta_.end(), findCb);
+   if (count == 0) {
+      SPDLOG_LOGGER_ERROR(logger_, "can't find metadata to remove password");
+      return false;
+   }
+   if (count > 1) {
+      SPDLOG_LOGGER_ERROR(logger_, "duplicated metadata found");
+      return false;
+   }
+   if (pwdMeta_.size() == 1) {
+      SPDLOG_LOGGER_ERROR(logger_, "can't remove password as there is only one encryption key set");
+      return false;
+   }
+   auto it = std::find_if(pwdMeta_.begin(), pwdMeta_.end(), findCb);
+   if (it == pwdMeta_.end()) {
+      SPDLOG_LOGGER_ERROR(logger_, "can't find requested password");
+      return false;
+   }
+
+   try {
+      // FIXME: This will remove active password while removedPD should be actually removed
+      walletPtr_->erasePrivateKeyPassphrase();
+      pwdMeta_.erase(it);
+      return true;
+   } catch (const std::exception &e) {
+      SPDLOG_LOGGER_ERROR(logger_, "removing password failed: {}", e.what());
+      return false;
+   }
+}
+
 bool hd::Wallet::isPrimary() const
 {
    if ((getGroup(bs::hd::CoinType::BlockSettle_Auth) != nullptr)

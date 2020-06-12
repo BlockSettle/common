@@ -113,6 +113,7 @@ namespace bs {
             bool changePassword(const bs::wallet::PasswordMetaData &oldPD
                , const bs::wallet::PasswordData &newPass);
             bool addPassword(const bs::wallet::PasswordData &);
+            bool removePassword(const bs::wallet::PasswordMetaData &removedPD);
 
             void pushPasswordPrompt(const std::function<SecureBinaryData()> &);
             void popPasswordPrompt();
