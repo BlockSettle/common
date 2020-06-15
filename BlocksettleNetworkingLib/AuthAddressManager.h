@@ -88,28 +88,28 @@ public:
    void SetState(const bs::Address &addr, AddressVerificationState state);
 
    void setDefault(const bs::Address &addr);
+
    bs::Address getDefault() const;
    virtual size_t getDefaultIndex() const;
 
-   virtual bool HaveAuthWallet() const;
-   virtual bool HasAuthAddr() const;
+   bool HaveAuthWallet() const;
+   bool HasAuthAddr() const;
 
    void createAuthWallet(const std::function<void()> &);
-   virtual bool CreateNewAuthAddress();
+   bool CreateNewAuthAddress();
 
    bool hasSettlementLeaf(const bs::Address &) const;
    void createSettlementLeaf(const bs::Address &, const std::function<void()> &);
 
-   virtual void SubmitForVerification(const std::weak_ptr<BsClient> &bsClient, const bs::Address &address);
-   virtual void ConfirmSubmitForVerification(const std::weak_ptr<BsClient> &bsClient, const bs::Address &address);
+   void ConfirmSubmitForVerification(const std::weak_ptr<BsClient> &bsClient, const bs::Address &address);
 
-   virtual bool RevokeAddress(const bs::Address &address);
+   bool RevokeAddress(const bs::Address &address);
 
-   virtual ReadyError readyError() const;
+   ReadyError readyError() const;
 
-   virtual void OnDisconnectedFromCeler();
+   void OnDisconnectedFromCeler();
 
-   virtual std::vector<bs::Address> GetVerifiedAddressList() const;
+   std::vector<bs::Address> GetVerifiedAddressList() const;
    bool isAtLeastOneAwaitingVerification() const;
    bool isAllLoadded() const;
    size_t FromVerifiedIndex(size_t index) const;
@@ -137,13 +137,12 @@ signals:
    void ConnectionComplete();
    void Error(const QString &errorText) const;
    void Info(const QString &info);
-   void AuthAddrSubmitError(const QString &address, const QString &error);
-   void AuthConfirmSubmitError(const QString &address, const QString &error);
-   void AuthAddrSubmitSuccess(const QString &address);
+
+   void AuthAddressSubmitError(const QString &address, const QString &error);
+   void AuthAddressSubmitSuccess(const QString &address);
    void AuthAddressSubmitCancelled(const QString &address);
    void AuthRevokeTxSent();
    void gotBsAddressList();
-   void AuthAddressConfirmationRequired(float validationAmount);
 
 private:
    void SetAuthWallet();

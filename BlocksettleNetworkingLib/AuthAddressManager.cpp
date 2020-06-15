@@ -166,45 +166,6 @@ bool AuthAddressManager::HasAuthAddr() const
    return (HaveAuthWallet() && (authWallet_->getUsedAddressCount() > 0));
 }
 
-void AuthAddressManager::SubmitForVerification(const std::weak_ptr<BsClient> &bsClient, const bs::Address &address)
-{
-   auto bsClientPtr = bsClient.lock();
-   if (!bsClientPtr) {
-      return;
-   }
-
-   if (!hasSettlementLeaf(address)) {
-      SPDLOG_LOGGER_ERROR(logger_, "can't submit without existing settlement leaf");
-      emit Error(tr("Settlement leaf does not exist"));
-      return;
-   }
-   const auto state = GetState(address);
-   if (state != AddressVerificationState::NotSubmitted) {
-      SPDLOG_LOGGER_ERROR(logger_, "refuse to submit address in state: {}", (int)state);
-      emit Error(tr("Address must be not submitted"));
-      return;
-   }
-
-   bsClientPtr->submitAuthAddress(address, [this, address](const BsClient::AuthAddrSubmitResponse &response) {
-      if (!response.success) {
-         SPDLOG_LOGGER_ERROR(logger_, "auth address {} rejected, errorMsg: '{}'"
-            , address.display(), response.errorMsg);
-         if (response.errorMsg.empty()) {
-            emit Error(tr("Authentication Address rejected"));
-         } else {
-            emit Error(tr("Authentication Address rejected: %1").arg(QString::fromStdString(response.errorMsg)));
-         }
-         return;
-      }
-
-      if (response.confirmationRequired) {
-         emit AuthAddressConfirmationRequired(response.validationAmountCents / 100.0f);
-      } else {
-         markAsSubmitted(address);
-      }
-   });
-}
-
 bool AuthAddressManager::CreateNewAuthAddress()
 {
    const auto &cbAddr = [this](const bs::Address &) {
@@ -322,7 +283,7 @@ void AuthAddressManager::ConfirmSubmitForVerification(const std::weak_ptr<BsClie
 
       if (!response.success) {
          SPDLOG_LOGGER_ERROR(logger_, "signing auth address failed: {}", response.errorMsg);
-         emit AuthConfirmSubmitError(QString::fromStdString(address.display()), QString::fromStdString(response.errorMsg));
+         emit AuthAddressSubmitError(QString::fromStdString(address.display()), QString::fromStdString(response.errorMsg));
          return;
       }
 
@@ -337,7 +298,7 @@ void AuthAddressManager::ConfirmSubmitForVerification(const std::weak_ptr<BsClie
       bsClientPtr->confirmAuthAddress(address, [this, address] (const BsClient::BasicResponse &response) {
          if (!response.success) {
             SPDLOG_LOGGER_ERROR(logger_, "confirming auth address failed: {}", response.errorMsg);
-            emit AuthConfirmSubmitError(QString::fromStdString(address.display()), QString::fromStdString(response.errorMsg));
+            emit AuthAddressSubmitError(QString::fromStdString(address.display()), QString::fromStdString(response.errorMsg));
             return;
          }
 
@@ -705,7 +666,7 @@ void AuthAddressManager::markAsSubmitted(const bs::Address &address)
    SubmitToCeler(address);
    SetState(address, AddressVerificationState::Submitted);
    emit AddressListUpdated();
-   emit AuthAddrSubmitSuccess(QString::fromStdString(address.display()));
+   emit AuthAddressSubmitSuccess(QString::fromStdString(address.display()));
 }
 
 template <typename TVal> TVal AuthAddressManager::lookup(const bs::Address &key, const std::map<bs::Address, TVal> &container) const
