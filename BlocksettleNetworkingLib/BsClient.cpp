@@ -202,34 +202,6 @@ void BsClient::celerSend(CelerAPI::CelerMessageType messageType, const std::stri
    sendMessage(&request);
 }
 
-void BsClient::submitAuthAddress(const bs::Address address, const AuthAddrSubmitCb &cb)
-{
-   auto processCb = [this, cb, address](const Response &response) {
-      if (!response.has_submit_auth_address()) {
-         SPDLOG_LOGGER_ERROR(logger_, "unexpected response from BsProxy, expected submit_auth_address response");
-         cb(errorResponse<AuthAddrSubmitResponse>(kServerError));
-         return;
-      }
-
-      const auto &d = response.submit_auth_address();
-      AuthAddrSubmitResponse result;
-      result.success = d.basic().success();
-      result.errorMsg = d.basic().error_msg();
-      result.validationAmountCents = d.validation_amount_cents();
-      result.confirmationRequired = d.confirmation_required();
-      cb(result);
-   };
-
-   auto timeoutCb = [cb] {
-      cb(errorResponse<AuthAddrSubmitResponse>(kTimeoutError));
-   };
-
-   Request request;
-   auto d = request.mutable_submit_auth_address();
-   d->set_address(address.display());
-   sendRequest(&request, std::chrono::seconds(10), std::move(timeoutCb), std::move(processCb));
-}
-
 void BsClient::signAuthAddress(const bs::Address address, const SignCb &cb)
 {
    cancelActiveSign();
@@ -484,7 +456,6 @@ void BsClient::OnDataReceived(const std::string &data)
             return;
 
          case Response::kGetEmailHash:
-         case Response::kSubmitAuthAddress:
          case Response::kSignAuthAddress:
          case Response::kConfirmAuthSubmit:
          case Response::kSubmitCcAddress:
