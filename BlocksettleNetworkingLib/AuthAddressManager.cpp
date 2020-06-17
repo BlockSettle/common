@@ -577,6 +577,31 @@ size_t AuthAddressManager::getDefaultIndex() const
    return 0;
 }
 
+std::vector<bs::Address> AuthAddressManager::GetSubmittedAddressList() const
+{
+   std::vector<bs::Address> list;
+   {
+      list.reserve(addresses_.size());
+
+      FastLock locker(lockList_);
+      for (const auto& address : addresses_) {
+         const auto addressState = GetState(address);
+
+         if (   addressState == AddressVerificationState::Submitted
+             || addressState == AddressVerificationState::PendingVerification
+             || addressState == AddressVerificationState::VerificationSubmitted
+             || addressState == AddressVerificationState::Verified) {
+
+         }
+
+         if (GetState(address) == AddressVerificationState::Verified) {
+            list.emplace_back(address);
+         }
+      }
+   }
+   return list;
+}
+
 std::vector<bs::Address> AuthAddressManager::GetVerifiedAddressList() const
 {
    std::vector<bs::Address> list;

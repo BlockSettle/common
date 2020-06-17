@@ -109,7 +109,8 @@ public:
 
    void OnDisconnectedFromCeler();
 
-   std::vector<bs::Address> GetVerifiedAddressList() const;
+   std::vector<bs::Address> GetSubmittedAddressList() const;
+
    bool isAtLeastOneAwaitingVerification() const;
    bool isAllLoadded() const;
    size_t FromVerifiedIndex(size_t index) const;
@@ -168,6 +169,8 @@ private:
    void onStateChanged(ArmoryState) override;
 
    void markAsSubmitted(const bs::Address &address);
+
+   std::vector<bs::Address> GetVerifiedAddressList() const;
 
 protected:
    std::shared_ptr<spdlog::logger>        logger_;
