@@ -442,8 +442,6 @@ enum GenoaType
    GenoaSendCCToken              = 24;
    GenoaReserveCC                = 25;
    GenoaCompleteCCReserve        = 26;
-   GenoaAuthFeeMake              = 27;
-   GenoaAuthFeeConfirm           = 28;
    GenoaGetUserAccounts          = 29;
    GenoaGetAccountBalance        = 30;
    GenoaEODUpdate                = 31;
@@ -671,33 +669,6 @@ message GenoaAccountMessage
    }
 }
 
-message GenoaAuthFeeMakeRequest
-{
-   string email      = 1;
-   string auth_address = 2;
-   uint64 xbt_amount = 3;
-}
-
-message GenoaAuthFeeMakeResponse
-{
-   bool success         = 1;
-   string error_msg     = 2;
-   float eur_emount     = 3;
-   uint64 xbt_amount    = 4;
-   string error_code    = 5;
-}
-
-message GenoaAuthFeeConfirmRequest
-{
-   string      auth_address   = 1;
-}
-
-message GenoaAuthFeeUpdateResponse
-{
-   bool success         = 1;
-   string error_msg     = 2;
-}
-
 message GenoaAccountData
 {
    string email = 1;
@@ -771,10 +742,6 @@ message GenoaMessage
       GenoaSendCCTokenRequest          cc_token                   = 21;
       TradeInfoCcData                  cc_reserve                 = 22;
       string                           settlement_id              = 23;
-      GenoaAuthFeeMakeRequest          auth_fee_make_request      = 24;
-      GenoaAuthFeeMakeResponse         auth_fee_make_response     = 25;
-      GenoaAuthFeeConfirmRequest       auth_fee_confirm_request   = 26;
-      GenoaAuthFeeUpdateResponse       auth_fee_confirm_response  = 27;
       string                           user_email                 = 28;
       GenoaAccountInfoResponse         user_account_response      = 29;
       GenoaAccountBalanceRequest       acc_balance_request        = 30;

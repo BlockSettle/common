@@ -67,68 +67,30 @@ enum StorageMessageType
    StorageDataAvail   = 4;
 }
 
-message StorageAuthReservation
-{
-   enum AuthReservationState
-   {
-      AuthReservationUndefined         = 0;
-      AuthReservationPendingApproval   = 1;
-      AuthReservationReserved          = 2;
-      AuthReservationRejected          = 3;
-      AuthReservationConfirmed         = 4;
-   }
 
-   string               address     = 1;
-   string               user        = 2;
-   uint64               xbt_amount  = 3;
-   double               eur_amount  = 4;
-   AuthReservationState state       = 5;
+message AuthAddress
+{
+   string   auth_address   = 1;
+   string   user_name      = 2;
 }
 
-message StorageAuthAddressState
+message AuthAddressInfo
 {
-   enum AuthAddressStatus
-   {
-      AuthAddressFunded       = 0;
-      AuthAddressRevoked      = 1;
-      AuthAddressBlacklisted  = 2;
-      AuthAddressUnknown      = 3;
-   }
-
-   string            address  = 1;
-   string            user     = 2;
-   AuthAddressStatus status   = 3;
-}
-
-message StorageAuthReservationResponse
-{
-   bool                    result            = 1;
-   string                  error_message     = 2;
-   StorageAuthReservation  reservation_info  = 3;
-}
-
-message StorageAuthAddressStateResponse
-{
-   bool     result         = 1;
-   string   error_message  = 2;
+   string   auth_address   = 1;
+   string   user_name      = 2;
+   int32    address_state  = 3;
 }
 
 message StorageAddressMessage
 {
-   enum StorageAddressDomain
+   oneof data
    {
-      StorageAddressReservationDefinition    = 0;
-      StorageAddressReservationUpdateState   = 1;
-      StorageAddressAuthStatus               = 2;
-   }
+      AuthAddress       submit_auth_address  = 1;
+      AuthAddress       fund_auth_address    = 2;
+      string            auth_address         = 3;
 
-   StorageAddressDomain domain = 1;
-
-   oneof data {
-      StorageAuthReservation           auth_reservation        = 2;
-      StorageAuthReservationResponse   put_reservation_result  = 3;
-      StorageAuthAddressState          auth_address            = 4;
-      StorageAuthAddressStateResponse  pub_auth_address_result = 5;
+      AuthAddressInfo   address_info         = 4;
+      bool              put_result           = 5;
    }
 }
 
