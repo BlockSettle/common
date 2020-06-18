@@ -90,8 +90,19 @@ bool AuthAddressManager::setup()
          return;
       }
       if (GetState(address) != state) {
-         logger_->info("Address verification {} for {}", to_string(state), address.display());
-         SetState(address, state);
+         logger_->info("Address verification on chain {} for {}", to_string(state), address.display());
+
+         if (state == AddressVerificationState::NotSubmitted) {
+            const auto &submittedAddresses = celerClient_->GetSubmittedAuthAddressSet();
+            if (submittedAddresses.find(address.display()) != submittedAddresses.end()) {
+               SetState(address, AddressVerificationState::Submitted);
+            } else {
+               SetState(address, state);
+            }
+         } else {
+            SetState(address, state);
+         }
+
          emit AddressListUpdated();
          if (state == AddressVerificationState::Verified) {
             emit VerifiedAddressListUpdated();
@@ -348,15 +359,10 @@ void AuthAddressManager::VerifyWalletAddressesFunction()
    }
    bool updated = false;
 
-   const auto &submittedAddresses = celerClient_->GetSubmittedAuthAddressSet();
-
    if (!WalletAddressesLoaded()) {
       if (authWallet_ != nullptr) {
          for (const auto &addr : authWallet_->getUsedAddressList()) {
             AddAddress(addr);
-            if (submittedAddresses.find(addr.display()) != submittedAddresses.end()) {
-               SetState(addr, AddressVerificationState::Submitted);
-            }
          }
       }
       else {
@@ -590,11 +596,8 @@ std::vector<bs::Address> AuthAddressManager::GetSubmittedAddressList() const
          if (   addressState == AddressVerificationState::Submitted
              || addressState == AddressVerificationState::PendingVerification
              || addressState == AddressVerificationState::VerificationSubmitted
-             || addressState == AddressVerificationState::Verified) {
-
-         }
-
-         if (GetState(address) == AddressVerificationState::Verified) {
+             || addressState == AddressVerificationState::Verified)
+         {
             list.emplace_back(address);
          }
       }
@@ -644,22 +647,6 @@ bool AuthAddressManager::isAllLoadded() const
       }
    }
    return true;
-}
-
-size_t AuthAddressManager::FromVerifiedIndex(size_t index) const
-{
-   if (index < addresses_.size()) {
-      size_t nbVerified = 0;
-      for (size_t i = 0; i < addresses_.size(); i++) {
-         if (GetState(addresses_[i]) == AddressVerificationState::Verified) {
-            if (nbVerified == index) {
-               return i;
-            }
-            nbVerified++;
-         }
-      }
-   }
-   return UINT32_MAX;
 }
 
 void AuthAddressManager::SetBSAddressList(const std::unordered_set<std::string>& bsAddressList)
