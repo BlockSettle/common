@@ -47,24 +47,28 @@ namespace bs {
          return (value_ != UINT64_MAX);
       }
 
-      bool operator==(const XBTAmount &other) const
+      bool operator == (const XBTAmount &other) const
       {
          return (value_ == other.value_);
       }
-      bool operator!=(const XBTAmount &other) const
+      bool operator != (const XBTAmount &other) const
       {
          return (value_ != other.value_);
       }
-      bool operator>(const BTCNumericTypes::satoshi_type other) const
+      bool operator > (const BTCNumericTypes::satoshi_type other) const
       {
          return (value_ > other);
       }
+      bool operator > (const XBTAmount& other) const
+      {
+         return (value_ > other.value_);
+      }
 
-      XBTAmount operator+(const XBTAmount &other) const
+      XBTAmount operator + (const XBTAmount &other) const
       {
          return XBTAmount(value_ + other.value_);
       }
-      int64_t operator-(const XBTAmount &other) const
+      int64_t operator - (const XBTAmount &other) const
       {
          return (int64_t)value_ - (int64_t)other.value_;
       }
