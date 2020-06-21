@@ -1436,3 +1436,18 @@ message RelayedMessage
    RelayUser user = 1;
    bytes data = 2;
 }
+
+message AuthManaging
+{
+   message AuthAddressConfirm
+   {
+      string   user     = 1;
+      string   address  = 2;
+   }
+
+   oneof data
+   {
+      AuthAddressConfirm   auth_confirm_request    = 1;
+      bool                 auth_confirm_response   = 2;
+   }
+}

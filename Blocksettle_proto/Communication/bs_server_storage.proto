@@ -81,6 +81,17 @@ message AuthAddressInfo
    int32    address_state  = 3;
 }
 
+message SubmittedAddressQuery
+{
+   string user_name  = 1;
+}
+
+message SubmittedAddressResponse
+{
+   string            user_name   = 1;
+   repeated string   address     = 2;
+}
+
 message StorageAddressMessage
 {
    oneof data
@@ -91,6 +102,9 @@ message StorageAddressMessage
 
       AuthAddressInfo   address_info         = 4;
       bool              put_result           = 5;
+
+      SubmittedAddressQuery      get_submitted_auth_list = 6;
+      SubmittedAddressResponse   address_list            = 7;
    }
 }
 
@@ -390,6 +404,9 @@ message UserScoreUpdateEvent
       UnexpectedDealerCCHalf           = 29;
       UnexpectedRequesterCCHalf        = 30;
       UnexpectedCCCancel               = 31;
+
+      // Auth address submit events
+      StolenAuthAddressSubmitted       = 32;
    };
 
    string               user_email     = 1;
