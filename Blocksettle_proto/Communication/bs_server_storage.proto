@@ -104,7 +104,10 @@ message StorageAddressMessage
       bool              put_result           = 5;
 
       SubmittedAddressQuery      get_submitted_auth_list = 6;
-      SubmittedAddressResponse   address_list            = 7;
+      SubmittedAddressResponse   submitted_address_list  = 7;
+
+      SubmittedAddressQuery      get_submitted_auth_count = 8;
+      int64                      submitted_address_count  = 9;
    }
 }
 
