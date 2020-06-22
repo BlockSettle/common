@@ -92,22 +92,53 @@ message SubmittedAddressResponse
    repeated string   address     = 2;
 }
 
+message LoadActiveAddressRequest
+{
+   // empty
+}
+
+message ActiveAddressListResponse
+{
+   message ActiveAddressInfo
+   {
+      string   user_name         = 1;
+      string   address           = 2;
+      int32    address_state     = 3;
+      int64    settlement_count  = 4;
+   }
+
+   repeated ActiveAddressInfo active_address = 1;
+}
+
+message SetXbtSettlementCountRequest
+{
+   string   auth_address         = 1;
+   int64    new_settlement_count = 2;
+}
+
 message StorageAddressMessage
 {
    oneof data
    {
       AuthAddress       submit_auth_address  = 1;
       AuthAddress       fund_auth_address    = 2;
-      string            auth_address         = 3;
+      AuthAddress       revoke_auth_address  = 3;
+      string            auth_address         = 4;
 
-      AuthAddressInfo   address_info         = 4;
-      bool              put_result           = 5;
+      AuthAddressInfo   address_info         = 5;
+      bool              put_result           = 6;
 
-      SubmittedAddressQuery      get_submitted_auth_list = 6;
-      SubmittedAddressResponse   submitted_address_list  = 7;
+      SubmittedAddressQuery      get_submitted_auth_list    = 7;
+      SubmittedAddressResponse   submitted_address_list     = 8;
 
-      SubmittedAddressQuery      get_submitted_auth_count = 8;
-      int64                      submitted_address_count  = 9;
+      SubmittedAddressQuery      get_submitted_auth_count   = 9;
+      int64                      submitted_address_count    = 10;
+
+      LoadActiveAddressRequest   get_active_address_list    = 11;
+      ActiveAddressListResponse  active_address_list        = 12;
+
+      SetXbtSettlementCountRequest  update_settlement_count          = 13;
+      bool                          update_settlement_count_result   = 14;
    }
 }
 
