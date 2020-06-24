@@ -1445,9 +1445,21 @@ message AuthManaging
       string   address  = 2;
    }
 
+   message SettledXbtTradeNotification
+   {
+      string settlement_id       = 1;
+
+      string requester_user      = 2;
+      string requester_address   = 3;
+      string dealer_user         = 4;
+      string dealer_address      = 5;
+   }
+
    oneof data
    {
       AuthAddressConfirm   auth_confirm_request    = 1;
       bool                 auth_confirm_response   = 2;
+
+      SettledXbtTradeNotification   settled_xbt_trade  = 3;
    }
 }
