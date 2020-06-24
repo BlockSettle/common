@@ -117,6 +117,8 @@ message Response
         float fee_rate = 9;
 
         string terminal_user_id = 10;
+
+        bs.types.TradeSettings trade_settings = 11;
     }
 
     message Celer

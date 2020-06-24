@@ -24,6 +24,7 @@
 #include "CelerMessageMapper.h"
 #include "CommonTypes.h"
 #include "DataConnectionListener.h"
+#include "TradeSettings.h"
 #include "ValidityFlag.h"
 #include "autheid_utils.h"
 
@@ -73,6 +74,7 @@ struct BsClientLoginResult
    BinaryData ccAddressesSigned;
    bool enabled{};
    float feeRatePb{};
+   bs::TradeSettings tradeSettings;
 };
 
 class BsClient : public QObject, public DataConnectionListener

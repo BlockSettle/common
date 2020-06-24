@@ -542,6 +542,7 @@ void BsClient::processGetLoginResult(const Response_GetLoginResult &response)
    result.ccAddressesSigned = BinaryData::fromString(response.cc_addresses_signed());
    result.enabled = response.enabled();
    result.feeRatePb = response.fee_rate();
+   result.tradeSettings = bs::TradeSettings::fromPb(response.trade_settings());
    emit getLoginResultDone(result);
 }
 

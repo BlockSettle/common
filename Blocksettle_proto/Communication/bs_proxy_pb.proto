@@ -55,6 +55,7 @@ message Request
    {
       bytes auth_addresses_signed = 1;
       bytes cc_addresses_signed = 2;
+      bs.types.TradeSettings trade_settings = 3;
    }
 
    message TermRep
