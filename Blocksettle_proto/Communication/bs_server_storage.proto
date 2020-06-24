@@ -110,10 +110,23 @@ message ActiveAddressListResponse
    repeated ActiveAddressInfo active_address = 1;
 }
 
-message SetXbtSettlementCountRequest
+message UpdateXbtSettlementCountRequest
 {
-   string   auth_address         = 1;
-   int64    new_settlement_count = 2;
+   string settlement_id          = 1;
+   string requester_auth_address = 2;
+   string dealer_auth_address    = 3;
+}
+
+message UpdateXbtSettlementCountResponse
+{
+   bool  processed         = 1;
+   bool  counters_updated  = 2;
+
+   string   requester_auth_address     = 3;
+   int64    requester_settlement_count = 4;
+
+   string   dealer_auth_address        = 5;
+   int64    dealer_settlement_count    = 6;
 }
 
 message StorageAddressMessage
@@ -137,8 +150,8 @@ message StorageAddressMessage
       LoadActiveAddressRequest   get_active_address_list    = 11;
       ActiveAddressListResponse  active_address_list        = 12;
 
-      SetXbtSettlementCountRequest  update_settlement_count          = 13;
-      bool                          update_settlement_count_result   = 14;
+      UpdateXbtSettlementCountRequest  update_settlement_count          = 13;
+      UpdateXbtSettlementCountResponse update_settlement_count_result   = 14;
    }
 }
 
