@@ -1449,10 +1449,8 @@ message AuthManaging
    {
       string settlement_id       = 1;
 
-      string requester_user      = 2;
-      string requester_address   = 3;
-      string dealer_user         = 4;
-      string dealer_address      = 5;
+      string requester_address   = 2;
+      string dealer_address      = 3;
    }
 
    oneof data
