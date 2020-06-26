@@ -19,6 +19,7 @@ void TradeSettings::toPb(types::TradeSettings &msg)
    msg.set_xbt_tier1_limit(xbtTier1Limit);
    msg.set_xbt_price_band(xbtPriceBand);
    msg.set_auth_required_settled_trades(authRequiredSettledTrades);
+   msg.set_auth_submit_address_limit(authSubmitAddressLimit);
 }
 
 TradeSettings TradeSettings::fromPb(const types::TradeSettings &msg)
@@ -27,5 +28,6 @@ TradeSettings TradeSettings::fromPb(const types::TradeSettings &msg)
    result.xbtTier1Limit = msg.xbt_tier1_limit();
    result.xbtPriceBand = msg.xbt_price_band();
    result.authRequiredSettledTrades = msg.auth_required_settled_trades();
+   result.authSubmitAddressLimit = msg.auth_submit_address_limit();
    return result;
 }
