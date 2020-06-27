@@ -57,9 +57,16 @@ void AuthAddressManager::init(const std::shared_ptr<ApplicationSettings>& appSet
    ArmoryCallbackTarget::init(armory_.get());
 }
 
-void AuthAddressManager::setCelerClient(const std::shared_ptr<BaseCelerClient>& celerClient)
+void AuthAddressManager::initLogin(const std::shared_ptr<BaseCelerClient> &celerClient
+   , const std::shared_ptr<bs::TradeSettings> &tradeSettings)
 {
    celerClient_ = celerClient;
+   tradeSettings_ = tradeSettings;
+}
+
+const std::shared_ptr<bs::TradeSettings>& AuthAddressManager::tradeSettings() const
+{
+   return tradeSettings_;
 }
 
 void AuthAddressManager::SetAuthWallet()
