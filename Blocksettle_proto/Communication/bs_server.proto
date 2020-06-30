@@ -70,7 +70,7 @@ enum ArmoryMessageType
    ArmoryStopSettlement    = 11;
    ArmoryGetSpentness      = 12;
    ArmoryGetTxByHash       = 13;
-   ArmoryValidateAuthAddr  = 14;
+   ArmoryAuthWalletLoaded  = 14;
    ArmoryBroadcastTimeout  = 15;
    ArmoryGetOutpointsForAddrList = 16;
    ArmoryUpdateAuthAddrs   = 17;
@@ -210,18 +210,9 @@ message ArmoryGetTxResponse
    string error_text = 2;
 }
 
-message ArmoryValidateAuthRequest
+message ArmoryAuthAddresses
 {
    repeated string addresses = 1;
-}
-
-message ArmoryValidateAuthResponse
-{
-   message ValidateAuthResult {
-      string address = 1;
-      int32  result = 3;
-   }
-   repeated ValidateAuthResult results = 1;
 }
 
 message ArmoryUpdateAuthAddrsRequest
@@ -276,8 +267,7 @@ message ArmoryMessage
       ArmorySpentnessResponse                spentness_response      = 13;
       ArmoryGetTxRequest                     tx_request              = 14;
       ArmoryGetTxResponse                    tx_response             = 15;
-      ArmoryValidateAuthRequest              auth_request            = 16;
-      ArmoryValidateAuthResponse             auth_response           = 17;
+      ArmoryAuthAddresses                    auth_addresses          = 16;
       ArmoryGetOutpointsForAddrListRequest   out_points_request      = 19;
       ArmoryGetOutpointsForAddrListResponse  out_points_response     = 20;
       ArmoryUpdateAuthAddrsRequest           update_auth_addrs       = 21;
@@ -1453,11 +1443,18 @@ message AuthManaging
       string dealer_address      = 3;
    }
 
+   message FilterAuthFundUTXOs
+   {
+      repeated bytes utxos = 1;
+   }
+
    oneof data
    {
       AuthAddressConfirm   auth_confirm_request    = 1;
       bool                 auth_confirm_response   = 2;
 
       SettledXbtTradeNotification   settled_xbt_trade  = 3;
+
+      FilterAuthFundUTXOs  auth_fund_utxos = 4;
    }
 }
