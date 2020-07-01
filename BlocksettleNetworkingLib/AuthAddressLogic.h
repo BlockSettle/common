@@ -154,6 +154,7 @@ private:
    ArmoryThreading::BlockingQueue<std::shared_ptr<DBNotificationStruct>> notifQueue_;
    std::thread processThr_;
 
+protected:
    std::weak_ptr<AuthValidatorCallbacks>  callbacks_;
 };
 
