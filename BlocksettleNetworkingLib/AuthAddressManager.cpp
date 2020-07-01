@@ -594,7 +594,7 @@ size_t AuthAddressManager::getDefaultIndex() const
    return 0;
 }
 
-std::vector<bs::Address> AuthAddressManager::GetSubmittedAddressList() const
+std::vector<bs::Address> AuthAddressManager::GetSubmittedAddressList(bool includeVerified /* = true */) const
 {
    std::vector<bs::Address> list;
    {
@@ -607,7 +607,7 @@ std::vector<bs::Address> AuthAddressManager::GetSubmittedAddressList() const
          if (   addressState == AddressVerificationState::Submitted
              || addressState == AddressVerificationState::PendingVerification
              || addressState == AddressVerificationState::VerificationSubmitted
-             || addressState == AddressVerificationState::Verified)
+             || (includeVerified && addressState == AddressVerificationState::Verified))
          {
             list.emplace_back(address);
          }

@@ -112,7 +112,7 @@ public:
 
    void OnDisconnectedFromCeler();
 
-   std::vector<bs::Address> GetSubmittedAddressList() const;
+   std::vector<bs::Address> GetSubmittedAddressList(bool includeVerified = true) const;
 
    bool isAtLeastOneAwaitingVerification() const;
    bool isAllLoadded() const;
