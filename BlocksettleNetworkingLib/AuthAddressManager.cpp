@@ -558,7 +558,11 @@ bs::Address AuthAddressManager::getDefault() const
       if (!defaultAuthAddrStr.empty()) {
          defaultAddr_ = bs::Address::fromAddressString(defaultAuthAddrStr);
       }
-      const auto &verifAddresses = GetVerifiedAddressList();
+      auto verifAddresses = GetVerifiedAddressList();
+      if (verifAddresses.empty()) {
+         verifAddresses = GetSubmittedAddressList();
+      }
+
       if (verifAddresses.empty()) {
          defaultAddr_.clear();
          return {};
