@@ -29,7 +29,7 @@ AddressVerificator::AddressVerificator(const std::shared_ptr<spdlog::logger>& lo
    , const std::shared_ptr<ArmoryConnection> &armory, VerificationCallback callback)
    : ArmoryCallbackTarget()
    , logger_(logger)
-   , validationMgr_(new ValidationAddressManager(armory))
+   , validationMgr_(std::make_unique<ValidationAddressManager>(armory))
    , userCallback_(std::move(callback))
    , stopExecution_(false)
 {
@@ -132,8 +132,7 @@ void AddressVerificator::startAddressVerification()
 
    AddCommandToQueue([this] {
       try {
-         auto rc = validationMgr_->goOnline();
-         if (rc == 0) {
+         if (!validationMgr_->goOnline()) {
             SPDLOG_LOGGER_ERROR(logger_, "goOnline failed");
             return;
          }

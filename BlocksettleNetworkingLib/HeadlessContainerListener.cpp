@@ -733,20 +733,14 @@ bool HeadlessContainerListener::onSignAuthAddrRevokeRequest(const std::string &c
          return;
       }
 
-      ValidationAddressManager validationMgr(nullptr);
-      auto addrObj = bs::Address::fromAddressString(request.validation_address());
-      validationMgr.addValidationAddress(addrObj);
-
       try {
-         {
-            const bs::core::WalletPasswordScoped passLock(walletsMgr_->getPrimaryWallet(), pass);
-            const auto lock = wallet->lockDecryptedContainer();
-            auto authAddr = bs::Address::fromAddressString(request.auth_address());
-            auto validationAddr = bs::Address::fromAddressString(request.validation_address());
-            const auto tx = AuthAddressLogic::revoke(authAddr, wallet->getResolver()
-               , validationAddr, utxo);
-            SignTXResponse(clientId, id, reqType, ErrorCode::NoError, tx);
-         }
+         const bs::core::WalletPasswordScoped passLock(walletsMgr_->getPrimaryWallet(), pass);
+         const auto lock = wallet->lockDecryptedContainer();
+         auto authAddr = bs::Address::fromAddressString(request.auth_address());
+         auto validationAddr = bs::Address::fromAddressString(request.validation_address());
+         const auto tx = AuthAddressLogic::revoke(authAddr, wallet->getResolver()
+            , validationAddr, utxo);
+         SignTXResponse(clientId, id, reqType, ErrorCode::NoError, tx);
       } catch (const std::exception &e) {
          logger_->error("[HeadlessContainerListener] failed to sign payout TX request: {}", e.what());
          SignTXResponse(clientId, id, reqType, ErrorCode::InternalError);
