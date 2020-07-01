@@ -436,6 +436,7 @@ enum GenoaType
    GenoaGetAccountBalance        = 30;
    GenoaEODUpdate                = 31;
    GenoaMigrateUserIds           = 32;
+   GenoaApiKey                   = 33;
 }
 
 message GenoaConnectedBroadcast
@@ -706,6 +707,18 @@ message GenoaEODUpdateMessage
    repeated GenoaPrice  prices   = 2;
 }
 
+message GenoaApiKeyCheckRequest
+{
+   string api_key = 1;
+   string ip_addr = 2;
+}
+
+message GenoaApiKeyCheckResponse
+{
+   string api_key = 1;
+   string email = 2;
+}
+
 message GenoaMessage
 {
    GenoaType type = 1;
@@ -737,6 +750,8 @@ message GenoaMessage
       GenoaAccountBalanceRequest       acc_balance_request        = 30;
       GenoaAccountBalanceResponse      acc_balance_response       = 31;
       GenoaEODUpdateMessage            eod_update                 = 32;
+      GenoaApiKeyCheckRequest          api_key_request            = 33;
+      GenoaApiKeyCheckResponse         api_key_response           = 34;
    }
 }
 

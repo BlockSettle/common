@@ -34,6 +34,11 @@ message Request
         string email = 1;
     }
 
+    message Authorize
+    {
+        string api_key = 1;
+    }
+
     message Celer
     {
         int32 message_type = 1;
@@ -77,6 +82,7 @@ message Request
         SubmitCcAddress submit_cc_address    = 18;
         Address         sign_cc_address      = 19;
         Address         confirm_cc_address   = 20;
+        Authorize       authorize            = 21;
 
         // Messages
         Empty cancel_login = 30;
@@ -92,6 +98,11 @@ message Response
     message StartLogin
     {
         AuthEidError error = 1;
+    }
+
+    message Authorize
+    {
+        string email = 1;
     }
 
     message GetLoginResult
@@ -197,6 +208,7 @@ message Response
         Basic              submit_cc_address    = 18;
         Sign               sign_cc_address      = 19;
         Basic              confirm_cc_address   = 20;
+        Authorize          authorize            = 21;
 
         // Messages
         Celer              celer                = 30;

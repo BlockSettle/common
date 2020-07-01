@@ -68,6 +68,17 @@ void BsClient::startLogin(const std::string &email)
    });
 }
 
+void BsClient::authorize(const std::string &apiKey)
+{
+   Request request;
+   auto d = request.mutable_authorize();
+   d->set_api_key(apiKey);
+
+   sendRequest(&request, std::chrono::seconds(10), [this] {
+      emit authorizeDone(false);
+   });
+}
+
 void BsClient::sendPbMessage(std::string data)
 {
    Request request;
@@ -430,6 +441,9 @@ void BsClient::OnDataReceived(const std::string &data)
          case Response::kStartLogin:
             processStartLogin(response->start_login());
             return;
+         case Response::kAuthorize:
+            processAuthorize(response->authorize());
+            return;
          case Response::kGetLoginResult:
             processGetLoginResult(response->get_login_result());
             return;
@@ -528,6 +542,11 @@ void BsClient::sendMessage(Request *request)
 void BsClient::processStartLogin(const Response_StartLogin &response)
 {
    emit startLoginDone(AutheIDClient::ErrorType(response.error().error_code()));
+}
+
+void BsClient::processAuthorize(const Response_Authorize &response)
+{
+   emit authorizeDone(!response.email().empty(), response.email());
 }
 
 void BsClient::processGetLoginResult(const Response_GetLoginResult &response)

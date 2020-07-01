@@ -37,6 +37,7 @@ namespace Blocksettle {
          class Request;
          class Response;
          class Response_StartLogin;
+         class Response_Authorize;
          class Response_GetLoginResult;
          class Response_Celer;
          class Response_ProxyPb;
@@ -108,6 +109,7 @@ public:
    void setConnection(std::unique_ptr<DataConnection>);
 
    void startLogin(const std::string &email);
+   void authorize(const std::string &apiKey);
 
    void sendPbMessage(std::string data);
 
@@ -151,6 +153,7 @@ public slots:
 
 signals:
    void startLoginDone(AutheIDClient::ErrorType status);
+   void authorizeDone(bool success, const std::string &email = {});
    void getLoginResultDone(const BsClientLoginResult &result);
 
    void celerRecv(CelerAPI::CelerMessageType messageType, const std::string &data);
@@ -191,6 +194,7 @@ private:
    void sendMessage(Blocksettle::Communication::ProxyTerminal::Request *request);
 
    void processStartLogin(const Blocksettle::Communication::ProxyTerminal::Response_StartLogin &response);
+   void processAuthorize(const Blocksettle::Communication::ProxyTerminal::Response_Authorize &response);
    void processGetLoginResult(const Blocksettle::Communication::ProxyTerminal::Response_GetLoginResult &response);
    void processCeler(const Blocksettle::Communication::ProxyTerminal::Response_Celer &response);
    void processProxyPb(const Blocksettle::Communication::ProxyTerminal::Response_ProxyPb &response);
