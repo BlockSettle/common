@@ -198,7 +198,7 @@ protected:
 
    std::shared_ptr<SignContainer>      signingContainer_;
    std::unordered_set<unsigned int>    signIdsRevoke_;
-   std::shared_ptr<bs::TradeSettings>  tradeSettings_{nullptr};
+   std::shared_ptr<bs::TradeSettings>  tradeSettings_;
 
 };
 
