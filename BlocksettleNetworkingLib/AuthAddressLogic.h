@@ -248,7 +248,7 @@ public:
    allows for coverage of the db data flow.
    */
    bool goOnline(void);
-   void update(void);
+   unsigned update(void);
 
    bool isReady() const { return ready_; }
 

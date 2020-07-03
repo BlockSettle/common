@@ -118,6 +118,10 @@ void ValidationAddressACT::stop()
 
 void AuthValidatorCallbacks::setTarget(AuthAddressValidator *target)
 {
+   //don't overwrite existing target
+   if (onUpdate)
+      return;
+
    if (!target) {
       return;
    }
@@ -397,10 +401,10 @@ bool AuthAddressValidator::goOnline()
 }
 
 ////
-void AuthAddressValidator::update()
+unsigned AuthAddressValidator::update()
 {
    if (!lambdas_) {
-      return;
+      return 0;
    }
    std::vector<BinaryData> addrVec;
    for (auto& addrPair : validationAddresses_) {
@@ -486,6 +490,8 @@ void AuthAddressValidator::update()
    //update cutoffs
    topBlock_ = batch.heightCutoff_ + 1;
    zcIndex_ = batch.zcIndexCutoff_;
+
+   return opCount;
 }
 
 ////
@@ -742,7 +748,7 @@ BinaryData AuthAddressValidator::revokeValidationAddress(
 
    UTXO firstUtxo;
    for (const auto &utxo : utxos) {
-      if (!maStructPtr->isFirstOutpoint(
+      if (maStructPtr->isFirstOutpoint(
          utxo.getTxHash(), utxo.getTxOutIndex())) {
          firstUtxo = utxo;
          break;
