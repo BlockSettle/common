@@ -248,6 +248,13 @@ namespace bs {
             , const std::string &txData);
       };
 
+      struct MDInfo {
+         double   bidPrice{};
+         double   askPrice{};
+         double   lastPrice{};
+
+         void merge(const MDInfo &other);
+      };
 
       struct MDField;
       using MDFields = std::vector<MDField>;
@@ -280,6 +287,7 @@ namespace bs {
          static Type fromCeler(com::celertech::marketdata::api::enums::marketdataentrytype::MarketDataEntryType mdType);
 
          static MDField get(const MDFields &fields, Type type);
+         static MDInfo  get(const MDFields &fields);
       };
 
 

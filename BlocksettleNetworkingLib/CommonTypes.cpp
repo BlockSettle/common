@@ -102,6 +102,15 @@ MDField MDField::get(const MDFields &fields, MDField::Type type) {
    return { MDField::Unknown, 0, QString() };
 }
 
+bs::network::MDInfo bs::network::MDField::get(const MDFields &fields)
+{
+   MDInfo mdInfo;
+   mdInfo.bidPrice = std::max(.0, bs::network::MDField::get(fields, bs::network::MDField::PriceBid).value);
+   mdInfo.askPrice = std::max(.0, bs::network::MDField::get(fields, bs::network::MDField::PriceOffer).value);
+   mdInfo.lastPrice = std::max(.0, bs::network::MDField::get(fields, bs::network::MDField::PriceLast).value);
+   return mdInfo;
+}
+
 Side::Type Side::fromCeler(com::celertech::marketmerchant::api::enums::side::Side side) {
    switch (side) {
       case com::celertech::marketmerchant::api::enums::side::BUY:    return Buy;
@@ -224,5 +233,18 @@ bool bs::network::isTradingEnabled(UserType userType)
          return true;
       default:
          return false;
+   }
+}
+
+void bs::network::MDInfo::merge(const MDInfo &other)
+{
+   if (other.bidPrice > 0) {
+      bidPrice = other.bidPrice;
+   }
+   if (other.askPrice > 0) {
+      askPrice = other.askPrice;
+   }
+   if (other.lastPrice > 0) {
+      lastPrice = other.lastPrice;
    }
 }
