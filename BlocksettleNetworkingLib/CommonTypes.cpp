@@ -105,9 +105,9 @@ MDField MDField::get(const MDFields &fields, MDField::Type type) {
 bs::network::MDInfo bs::network::MDField::get(const MDFields &fields)
 {
    MDInfo mdInfo;
-   mdInfo.bidPrice = std::max(.0, bs::network::MDField::get(fields, bs::network::MDField::PriceBid).value);
-   mdInfo.askPrice = std::max(.0, bs::network::MDField::get(fields, bs::network::MDField::PriceOffer).value);
-   mdInfo.lastPrice = std::max(.0, bs::network::MDField::get(fields, bs::network::MDField::PriceLast).value);
+   mdInfo.bidPrice = bs::network::MDField::get(fields, bs::network::MDField::PriceBid).value;
+   mdInfo.askPrice = bs::network::MDField::get(fields, bs::network::MDField::PriceOffer).value;
+   mdInfo.lastPrice = bs::network::MDField::get(fields, bs::network::MDField::PriceLast).value;
    return mdInfo;
 }
 
