@@ -1257,15 +1257,9 @@ enum TerminalMessageType
    TerminalOTCcTrade             = 19;
 }
 
-message PreimageData {
-   string address = 1;
-   bytes data = 2;
-}
-
 message TerminalUnsignedPayin
 {
    string settlement_id = 1;
-   repeated PreimageData preimage_data = 2;
    bytes unsigned_payin = 3;
 }
 
@@ -1306,7 +1300,6 @@ message TerminalOtcVerifyRequest
    string chat_id_seller = 8;
    string chat_id_buyer = 9;
    bytes  unsigned_payin = 10;
-   repeated PreimageData preimage_data = 11;
 }
 
 message TerminalOtcUpdateMessage

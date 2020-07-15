@@ -12,7 +12,6 @@ syntax = "proto3";
 
 package Blocksettle.Server.Matching;
 
-import "bs_server.proto";
 
 message XbtMatchedRequest
 {
@@ -41,7 +40,6 @@ message XbtUnsignedPayinRequest
    string email = 1;
    string settlement_id = 2;
    bytes unsigned_payin = 3;
-   repeated PreimageData preimage_data = 4;
 }
 
 message XbtUnsignedPayinResponse

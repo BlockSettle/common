@@ -954,7 +954,10 @@ Signer Wallet::getSigner(const wallet::TXSignRequest &request,
          if (request.RBF) {
             spender->setSequence(UINT32_MAX - 2);
          }
-         signer.addSpender(spender);
+         try {
+            signer.addSpender(spender);
+         }
+         catch (const ScriptException &) {}  // ignoring existing spender
       }
    }
 
