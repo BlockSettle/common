@@ -876,7 +876,7 @@ bool hd::Leaf::getSpendableTxOutList(const ArmoryConnection::UTXOsCb &cb, uint64
          }
       }
       if (cb) {
-         cb(bs::selectUtxoForAmount(std::move(filteredUTXOs), val));
+         cb(bs::selectUtxoForAmount(filteredUTXOs, val));
       }
    };
    return bs::sync::Wallet::getSpendableTxOutList(cbWrap, std::numeric_limits<uint64_t>::max(), excludeReservation);
@@ -931,13 +931,15 @@ bool hd::Leaf::isExternalAddress(const bs::Address &addr) const
    return (path.get(-2) == addrTypeExternal);
 }
 
-void hd::Leaf::merge(const std::shared_ptr<Wallet> walletPtr)
+void hd::Leaf::merge(const std::shared_ptr<Wallet> &walletPtr)
 {
+   bs::sync::Wallet::merge(walletPtr);
+
    //rudimentary implementation, flesh it out on the go
    auto leafPtr = std::dynamic_pointer_cast<hd::Leaf>(walletPtr);
-   if (leafPtr == nullptr)
+   if (leafPtr == nullptr) {
       throw std::runtime_error("sync::Wallet child class mismatch");
-
+   }
    addrComments_.insert(
       leafPtr->addrComments_.begin(), leafPtr->addrComments_.end());
    txComments_.insert(

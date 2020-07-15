@@ -333,7 +333,6 @@ namespace bs {
       struct UnsignedPayinData
       {
          std::string    unsignedPayin;
-         std::map<bs::Address, BinaryData>   preimageData;
       };
 
    }  //namespace network

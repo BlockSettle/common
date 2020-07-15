@@ -494,26 +494,6 @@ void InprocSigner::syncNewAddresses(const std::string &walletId
    }
 }
 
-void InprocSigner::getAddressPreimage(const std::map<std::string, std::vector<bs::Address>> &inputs
-   , const std::function<void(const std::map<bs::Address, BinaryData> &)> &cb)
-{
-   std::map<bs::Address, BinaryData> result;
-   for (const auto &input : inputs) {
-      const auto wallet = walletsMgr_->getWalletById(input.first);
-      if (wallet) {
-         for (const auto &addr : input.second) {
-            const auto addrEntry = wallet->getAddressEntryForAddr(addr.prefixed());
-            if (addrEntry) {
-               result[addr] = addrEntry->getPreimage();
-            }
-         }
-      }
-   }
-   if (cb) {
-      cb(result);
-   }
-}
-
 void InprocSigner::extendAddressChain(
    const std::string &walletId, unsigned count, bool extInt,
    const std::function<void(const std::vector<std::pair<bs::Address, std::string>> &)> &cb)

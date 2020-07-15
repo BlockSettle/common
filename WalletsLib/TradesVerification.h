@@ -70,7 +70,6 @@ namespace bs {
          , std::string *errorMsg = nullptr, const BinaryData& payinHash = {});
 
       static std::shared_ptr<Result> verifyUnsignedPayin(const Codec_SignerState::SignerState &unsignedPayin
-         , const std::map<std::string, BinaryData>& preimageData
          , float feePerByte, const std::string &settlementAddress, uint64_t tradeAmount);
 
       static std::shared_ptr<Result> verifySignedPayout(const BinaryData &signedPayout
@@ -82,7 +81,7 @@ namespace bs {
 
       // preImages - key: address, value:preimage script
       // required for P2SH addresses only
-      static bool XBTInputsAcceptable(const std::vector<UTXO>& utxoList, const std::map<std::string, BinaryData>& preImages);
+      static bool XBTInputsAcceptable(const std::vector<UTXO>& utxoList);
 
       static float getAllowedFeePerByteMin(float feePerByte);
 

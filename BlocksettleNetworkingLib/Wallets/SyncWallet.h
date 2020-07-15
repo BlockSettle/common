@@ -209,7 +209,7 @@ namespace bs {
             , const Codec_SignerState::SignerState &prevPart = {});
 
          virtual bool deleteRemotely() { return false; } //stub
-         virtual void merge(const std::shared_ptr<Wallet>) = 0;
+         virtual void merge(const std::shared_ptr<Wallet> &) {};
 
          void newAddresses(const std::vector<std::string> &inData, const CbAddresses &cb);
          void trackChainAddressUse(const std::function<void(bs::sync::SyncState)> &cb);

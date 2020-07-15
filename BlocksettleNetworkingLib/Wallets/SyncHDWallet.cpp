@@ -309,7 +309,6 @@ std::vector<std::string> hd::Wallet::registerWallet(
       if (leaf->type() == bs::core::wallet::Type::Settlement) {
          continue;
       }
-
       const auto &regIDs = leaf->registerWallet(armory, asNew);
       result.insert(result.end(), regIDs.begin(), regIDs.end());
    }
@@ -412,11 +411,9 @@ std::vector<BinaryData> hd::Wallet::encryptionKeys() const
 void hd::Wallet::merge(const Wallet& rhs)
 {
    //rudimentary implementation, flesh it out on the go
-   for (auto& leafPair : rhs.leaves_)
-   {
+   for (const auto &leafPair : rhs.leaves_) {
       auto iter = leaves_.find(leafPair.first);
-      if (iter == leaves_.end())
-      {
+      if (iter == leaves_.end()) {
          leaves_.insert(leafPair);
          continue;
       }

@@ -100,7 +100,8 @@ void BsClient::sendCancelOnXBTTrade(const std::string& settlementId)
    sendPbMessage(request.SerializeAsString());
 }
 
-void BsClient::sendUnsignedPayin(const std::string& settlementId, const bs::network::UnsignedPayinData& unsignedPayinData)
+void BsClient::sendUnsignedPayin(const std::string& settlementId
+   , const bs::network::UnsignedPayinData& unsignedPayinData)
 {
    SPDLOG_LOGGER_DEBUG(logger_, "send unsigned payin {}", settlementId);
 
@@ -109,13 +110,6 @@ void BsClient::sendUnsignedPayin(const std::string& settlementId, const bs::netw
    auto data = request.mutable_unsigned_payin();
    data->set_settlement_id(settlementId);
    data->set_unsigned_payin(unsignedPayinData.unsignedPayin);
-
-   for (const auto &preImageIt : unsignedPayinData.preimageData) {
-      auto preImage = data->add_preimage_data();
-
-      preImage->set_address(preImageIt.first.display());
-      preImage->set_preimage_script(preImageIt.second.toBinStr());
-   }
 
    sendPbMessage(request.SerializeAsString());
 }

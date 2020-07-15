@@ -14,7 +14,6 @@
 
 #include "BinaryData.h"
 #include "CheckRecipSigner.h"
-#include "PublicResolver.h"
 #include "SettableField.h"
 
 namespace {
@@ -198,7 +197,6 @@ bs::PayoutSignatureType bs::TradesVerification::whichSignature(const Tx &tx, uin
 
 std::shared_ptr<bs::TradesVerification::Result> bs::TradesVerification::verifyUnsignedPayin(
    const Codec_SignerState::SignerState &unsignedPayin
-   , const std::map<std::string, BinaryData>& preimageData
    , float feePerByte, const std::string &settlementAddress, uint64_t tradeAmount)
 {
    if (!unsignedPayin.IsInitialized()) {
@@ -268,11 +266,6 @@ std::shared_ptr<bs::TradesVerification::Result> bs::TradesVerification::verifyUn
          return Result::error("Pay-In could not be RBF transaction");
       }
 
-      if (!preimageData.empty()) {
-         const auto resolver = std::make_shared<PublicResolver>(preimageData);
-         deserializedSigner.setFeed(resolver);
-      }
-
       const uint64_t totalFee = totalInput - totalOutputAmount;
       float feePerByteMin = getAllowedFeePerByteMin(feePerByte);
       const uint64_t estimatedFeeMin = deserializedSigner.estimateFee(feePerByteMin, totalFee);
@@ -299,10 +292,9 @@ std::shared_ptr<bs::TradesVerification::Result> bs::TradesVerification::verifyUn
 
       result->payinHash = deserializedSigner.getTxId();
 
-      if (!XBTInputsAcceptable(result->utxos, preimageData)) {
+      if (!XBTInputsAcceptable(result->utxos)) {
          return Result::error("Not supported input type used");
       }
-
       return result;
 
    } catch (const std::exception &e) {
@@ -314,7 +306,8 @@ std::shared_ptr<bs::TradesVerification::Result> bs::TradesVerification::verifyUn
 
 std::shared_ptr<bs::TradesVerification::Result> bs::TradesVerification::verifySignedPayout(const BinaryData &signedPayout
    , const std::string &buyAuthKeyHex, const std::string &sellAuthKeyHex
-   , const BinaryData &payinHash, uint64_t tradeAmount, float feePerByte, const std::string &settlementId, const std::string &settlementAddress)
+   , const BinaryData &payinHash, uint64_t tradeAmount, float feePerByte, const std::string &settlementId
+   , const std::string &settlementAddress)
 {
    if (signedPayout.empty()) {
       return Result::error("signed payout is not provided");
@@ -460,7 +453,7 @@ std::shared_ptr<bs::TradesVerification::Result> bs::TradesVerification::verifySi
 }
 
 //only  TXOUT_SCRIPT_P2WPKH and (TXOUT_SCRIPT_P2SH | TXOUT_SCRIPT_P2WPKH) accepted
-bool bs::TradesVerification::XBTInputsAcceptable(const std::vector<UTXO>& utxoList, const std::map<std::string, BinaryData>& preImages)
+bool bs::TradesVerification::XBTInputsAcceptable(const std::vector<UTXO>& utxoList)
 try {
    for (const auto& input : utxoList) {
       const auto scrType = BtcUtils::getTxOutScriptType(input.getScript());
@@ -472,6 +465,7 @@ try {
          return false;
       }
 
+#if 0    // no further preimage checks as it's not passed anymore
       // check underlying script type
       auto address = bs::Address::fromScript(input.getScript());
 
@@ -497,6 +491,7 @@ try {
       if (prefixedHash != address.prefixed()) {
          return false;
       }
+#endif   //0
    }
 
    return true;

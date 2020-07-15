@@ -241,6 +241,13 @@ void wallet::TXSignRequest::resetSigner()
    getSigner();
 }
 
+void wallet::TXSignRequest::setSignerState(const Codec_SignerState::SignerState &state)
+{
+   signer_.reset();
+   signer_.deserializeState(state);
+   signerCreated_ = true;
+}
+
 Signer wallet::TXSignRequest::getSigner(const std::shared_ptr<ResolverFeed> &resolver) const
 {
    if (!signerCreated_) {
@@ -1218,7 +1225,12 @@ void wallet::TXSignRequest::DebugPrint(const std::string& prefix, const std::sha
    std::stringstream ss;
 
    // wallet ids
-   ss << "   TXSignRequest TX ID:   " << txId(resolver).toHexStr(true) << "\n";
+   try {
+      ss << "   TXSignRequest TX ID:   " << txId(resolver).toHexStr(true) << "\n";
+   }
+   catch (const std::exception &) { // don't abort process on attempt to get txId
+      ss << "   TXSignRequest TX ID:   not exists, yet\n";
+   }
 
    uint64_t inputAmount = 0;
    ss << "      Inputs: " << inputs.size() << '\n';

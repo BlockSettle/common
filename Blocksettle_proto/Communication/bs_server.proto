@@ -1047,12 +1047,6 @@ message TradeDataMessage
    uint32 trade_timestamp = 14;
 }
 
-message AddressPreimageData
-{
-   string address = 1;
-   bytes  pi_data = 2;
-}
-
 message BalanceData
 {
    string currency = 1;
@@ -1099,7 +1093,6 @@ message TradeDataXbtMessage
    string scorechain_url = 23;
    bool   loaded_from_genoa = 24;
    string last_status = 25;
-   repeated AddressPreimageData preimage_data = 26;
    bool   saved_in_history = 27;
    int32  trade_state = 28;
    bool payin_broadcasted_by_user = 29;

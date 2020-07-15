@@ -16,7 +16,6 @@
 #include "ColoredCoinLogic.h"
 #include "ColoredCoinServer.h"
 #include "FastLock.h"
-#include "PublicResolver.h"
 #include "SyncHDWallet.h"
 
 #include <QCoreApplication>
@@ -230,7 +229,13 @@ void WalletsManager::addWallet(const WalletPtr &wallet, bool isHDLeaf)
 
    {
       QMutexLocker lock(&mtxWallets_);
-      wallets_[wallet->walletId()] = wallet;
+      auto &itWallet = wallets_.find(wallet->walletId());
+      if (itWallet != wallets_.end()) {
+         itWallet->second->merge(wallet);
+      }
+      else {
+         wallets_[wallet->walletId()] = wallet;
+      }
    }
 
    if (isHDLeaf && (wallet->type() == bs::core::wallet::Type::Authentication)) {
@@ -294,8 +299,6 @@ void WalletsManager::saveWallet(const HDWalletPtr &wallet)
 
 void WalletsManager::walletCreated(const std::string &walletId)
 {
-   logger_->debug("[{}] walletId={}", __func__, walletId);
-   return;
    const auto &lbdMaint = [this, walletId] {
       for (const auto &hdWallet : hdWallets_) {
          const auto leaf = hdWallet->getLeaf(walletId);
@@ -1821,23 +1824,6 @@ bool WalletsManager::createAuthLeaf(const std::function<void()> &cb)
    };
    return signContainer_->createHDLeaf(primaryWallet->walletId(), authPath, { pwdData }
       , dialogData, createAuthLeafCb);
-}
-
-std::map<std::string, std::vector<bs::Address>> WalletsManager::getAddressToWalletsMapping(
-   const std::vector<UTXO> &utxos) const
-{
-   std::map<std::string, std::vector<bs::Address>> result;
-   for (const auto &utxo : utxos) {
-      const auto addr = bs::Address::fromUTXO(utxo);
-      const auto wallet = getWalletByAddress(addr);
-      result[wallet ? wallet->walletId() : ""].push_back(addr);
-   }
-   return result;
-}
-
-std::shared_ptr<ResolverFeed> WalletsManager::getPublicResolver(const std::map<bs::Address, BinaryData> &piMap)
-{
-   return std::make_shared<bs::PublicResolver>(piMap);
 }
 
 std::shared_ptr<bs::sync::hd::SettlementLeaf> WalletsManager::getSettlementLeaf(const bs::Address &addr) const

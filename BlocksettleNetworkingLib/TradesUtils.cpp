@@ -217,25 +217,30 @@ void bs::tradeutils::createPayin(bs::tradeutils::PayinArgs args, bs::tradeutils:
                         }
                      }
 
-                     const auto cbPreimage = [args, settlAddr, cb, recipient, xbtWallet, selectedInputs, fee, changeAddr]
-                        (const std::map<bs::Address, BinaryData> &preimages)
+                     auto recipients = std::vector<std::shared_ptr<ScriptRecipient>>(1, recipient);
+                     auto txReq = std::make_shared<bs::core::wallet::TXSignRequest>(
+                        bs::sync::wallet::createTXRequest(args.inputXbtWallets
+                           , selectedInputs, recipients, false, changeAddr, fee, false));
+
+                     const auto cbResolvePubData = [args, settlAddr, cb, txReq, xbtWallet, changeAddr]
+                        (bs::error::ErrorCode errCode, const Codec_SignerState::SignerState &state)
                      {
                         PayinResult result;
                         result.settlementAddr = settlAddr;
                         result.success = true;
 
-                        const auto resolver = bs::sync::WalletsManager::getPublicResolver(preimages);
+                        if (errCode == bs::error::ErrorCode::NoError) {
+                           txReq->setSignerState(state);
+                        }
 
-                        auto recipients = std::vector<std::shared_ptr<ScriptRecipient>>(1, recipient);
                         try {
-                           result.signRequest = bs::sync::wallet::createTXRequest(args.inputXbtWallets, selectedInputs
-                              , recipients, false, changeAddr, fee, false);
-                           result.preimageData = preimages;
-                           result.payinHash = result.signRequest.txId(resolver);
+                           result.signRequest = *txReq;
+                           result.payinHash = txReq->txId();
                            result.signRequest.txHash = result.payinHash;
 
                            if (!changeAddr.empty()) {
-                              xbtWallet->setAddressComment(changeAddr, bs::sync::wallet::Comment::toString(bs::sync::wallet::Comment::ChangeAddress));
+                              xbtWallet->setAddressComment(changeAddr
+                                 , bs::sync::wallet::Comment::toString(bs::sync::wallet::Comment::ChangeAddress));
                            }
 
                         } catch (const std::exception &e) {
@@ -275,10 +280,9 @@ void bs::tradeutils::createPayin(bs::tradeutils::PayinArgs args, bs::tradeutils:
                      };
 
                      if (p2shInputs.empty()) {
-                        cbPreimage({});
+                        cbResolvePubData(bs::error::ErrorCode::WrongAddress, {});
                      } else {
-                        const auto addrMapping = args.walletsMgr->getAddressToWalletsMapping(p2shInputs);
-                        args.signContainer->getAddressPreimage(addrMapping, cbPreimage);
+                        args.signContainer->resolvePublicSpenders(*txReq, cbResolvePubData);
                      }
                   };
 

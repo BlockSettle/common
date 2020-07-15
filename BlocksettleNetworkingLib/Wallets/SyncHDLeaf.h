@@ -100,7 +100,7 @@ namespace bs {
             std::vector<BinaryData> getAddrHashesExt() const;
             std::vector<BinaryData> getAddrHashesInt() const;
 
-            virtual void merge(const std::shared_ptr<Wallet>) override;
+            virtual void merge(const std::shared_ptr<Wallet> &) override;
             void scan(const std::function<void(bs::sync::SyncState)> &cb) override;
 
             virtual std::vector<std::string> setUnconfirmedTarget(void);

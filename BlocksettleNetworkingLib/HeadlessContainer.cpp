@@ -947,56 +947,6 @@ void HeadlessContainer::syncAddressBatch(
    });
 }
 
-void HeadlessContainer::getAddressPreimage(const std::map<std::string, std::vector<bs::Address>> &inputs
-   , const std::function<void(const std::map<bs::Address, BinaryData> &)> &cb)
-{
-   headless::AddressPreimageRequest request;
-   for (const auto &input : inputs) {
-      auto req = request.add_request();
-      req->set_wallet_id(input.first);
-      for (const auto &addr : input.second) {
-         req->add_address(addr.display());
-      }
-   }
-   headless::RequestPacket packet;
-   packet.set_type(headless::AddressPreimageType);
-   packet.set_data(request.SerializeAsString());
-   const auto reqId = Send(packet);
-   if (!reqId) {
-      if (cb) {
-         cb({});
-      }
-      return;
-   }
-   cbAddrPreimageMap_[reqId] = cb;
-}
-
-void HeadlessContainer::ProcessAddrPreimageResponse(unsigned int id, const std::string &data)
-{
-   headless::AddressPreimageResponse response;
-   if (!response.ParseFromString(data)) {
-      logger_->error("[HeadlessContainer::ProcessAddrPreimageResponse] Failed to parse reply");
-      emit Error(id, "failed to parse");
-      return;
-   }
-   std::map<bs::Address, BinaryData> result;
-   for (int i = 0; i < response.response_size(); ++i) {
-      const auto resp = response.response(i);
-      for (int j = 0; j < resp.preimages_size(); ++j) {
-         const auto piData = resp.preimages(j);
-         auto addrObj = bs::Address::fromAddressString(piData.address());
-         result[addrObj] = BinaryData::fromString(piData.preimage());
-      }
-   }
-   const auto itCb = cbAddrPreimageMap_.find(id);
-   if (itCb == cbAddrPreimageMap_.end()) {
-      emit Error(id, "no callback found for id " + std::to_string(id));
-      return;
-   }
-   itCb->second(result);
-   cbAddrPreimageMap_.erase(itCb);
-}
-
 void HeadlessContainer::ProcessUpdateStatus(const std::string &data)
 {
    headless::UpdateStatus evt;
@@ -1609,10 +1559,6 @@ void RemoteSigner::onPacketReceived(headless::RequestPacket packet)
    case headless::WalletsListUpdatedType:
       logger_->debug("received WalletsListUpdatedType message");
       emit walletsListUpdated();
-      break;
-
-   case headless::AddressPreimageType:
-      ProcessAddrPreimageResponse(packet.id(), packet.data());
       break;
 
    case headless::UpdateStatusType:

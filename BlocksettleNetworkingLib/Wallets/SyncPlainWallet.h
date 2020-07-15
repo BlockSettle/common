@@ -62,7 +62,7 @@ namespace bs {
 
          bool deleteRemotely() override;
 
-         void merge(const std::shared_ptr<Wallet>) override
+         void merge(const std::shared_ptr<Wallet> &) override
          {
             throw std::runtime_error("not implemented yet. not sure is necessary");
          }

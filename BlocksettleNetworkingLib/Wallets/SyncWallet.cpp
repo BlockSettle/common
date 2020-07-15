@@ -215,6 +215,7 @@ bool Wallet::updateBalances(const std::function<void(void)> &cb)
    get methods to grab the individual balances
    ***/
    if (!armory_) {
+      std::cout << "no armory\n";
       return false;
    }
 

@@ -344,6 +344,7 @@ namespace bs {
             bool isSourceOfTx(const Tx &signedTx) const;
 
             void resetSigner();
+            void setSignerState(const Codec_SignerState::SignerState &);
             void DebugPrint(const std::string& prefix, const std::shared_ptr<spdlog::logger>& logger, bool serializeAndPrint, const std::shared_ptr<ResolverFeed> &resolver=nullptr);
 
          private:
