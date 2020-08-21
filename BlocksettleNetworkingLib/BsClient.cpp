@@ -9,12 +9,14 @@
 
 */
 #include "BsClient.h"
-#include "FutureValue.h"
 
+#include <spdlog/spdlog.h>
 #include <QTimer>
 
+#include "FutureValue.h"
 #include "ProtobufUtils.h"
-#include "ZMQ_BIP15X_DataConnection.h"
+#include "WsDataConnection.h"
+
 #include "bs_proxy_terminal.pb.h"
 #include "bs_proxy_terminal_pb.pb.h"
 
@@ -37,26 +39,22 @@ namespace {
 }
 
 BsClient::BsClient(const std::shared_ptr<spdlog::logger> &logger
-   , const BsClientParams &params, QObject *parent)
+   , QObject *parent)
    : QObject(parent)
    , logger_(logger)
-   , params_(params)
 {
-   ZmqBIP15XDataConnectionParams zmqBipParams;
-   zmqBipParams.ephemeralPeers = true;
-   connection_ = std::make_unique<ZmqBIP15XDataConnection>(logger, zmqBipParams);
-
-   connection_->setCBs(params_.newServerKeyCallback);
-
-   // This should not ever fail
-   bool result = connection_->openConnection(params_.connectAddress, std::to_string(params_.connectPort), this);
-   assert(result);
 }
 
 BsClient::~BsClient()
 {
    // Stop receiving events from DataConnectionListener before BsClient is partially destroyed
    connection_.reset();
+}
+
+void BsClient::setConnection(std::unique_ptr<DataConnection> connection)
+{
+   assert(!connection_);
+   connection_ = std::move(connection);
 }
 
 void BsClient::startLogin(const std::string &email)
@@ -66,7 +64,18 @@ void BsClient::startLogin(const std::string &email)
    d->set_email(email);
 
    sendRequest(&request, std::chrono::seconds(10), [this] {
-      emit startLoginDone(AutheIDClient::NetworkError);
+      emit startLoginDone(false, kTimeoutError);
+   });
+}
+
+void BsClient::authorize(const std::string &apiKey)
+{
+   Request request;
+   auto d = request.mutable_authorize();
+   d->set_api_key(apiKey);
+
+   sendRequest(&request, std::chrono::seconds(10), [this] {
+      emit authorizeDone(false);
    });
 }
 
@@ -102,7 +111,8 @@ void BsClient::sendCancelOnXBTTrade(const std::string& settlementId)
    sendPbMessage(request.SerializeAsString());
 }
 
-void BsClient::sendUnsignedPayin(const std::string& settlementId, const bs::network::UnsignedPayinData& unsignedPayinData)
+void BsClient::sendUnsignedPayin(const std::string& settlementId
+   , const bs::network::UnsignedPayinData& unsignedPayinData)
 {
    SPDLOG_LOGGER_DEBUG(logger_, "send unsigned payin {}", settlementId);
 
@@ -111,13 +121,6 @@ void BsClient::sendUnsignedPayin(const std::string& settlementId, const bs::netw
    auto data = request.mutable_unsigned_payin();
    data->set_settlement_id(settlementId);
    data->set_unsigned_payin(unsignedPayinData.unsignedPayin);
-
-   for (const auto &preImageIt : unsignedPayinData.preimageData) {
-      auto preImage = data->add_preimage_data();
-
-      preImage->set_address(preImageIt.first.display());
-      preImage->set_preimage_script(preImageIt.second.toBinStr());
-   }
 
    sendPbMessage(request.SerializeAsString());
 }
@@ -183,7 +186,7 @@ void BsClient::getLoginResult()
    // Add some time to be able get timeout error from the server
    sendRequest(&request, autheidLoginTimeout() + std::chrono::seconds(3), [this] {
       BsClientLoginResult result;
-      result.status = AutheIDClient::NetworkError;
+      result.errorMsg = kTimeoutError;
       emit getLoginResultDone(result);
    });
 }
@@ -202,34 +205,6 @@ void BsClient::celerSend(CelerAPI::CelerMessageType messageType, const std::stri
    d->set_message_type(int(messageType));
    d->set_data(data);
    sendMessage(&request);
-}
-
-void BsClient::submitAuthAddress(const bs::Address address, const AuthAddrSubmitCb &cb)
-{
-   auto processCb = [this, cb, address](const Response &response) {
-      if (!response.has_submit_auth_address()) {
-         SPDLOG_LOGGER_ERROR(logger_, "unexpected response from BsProxy, expected submit_auth_address response");
-         cb(errorResponse<AuthAddrSubmitResponse>(kServerError));
-         return;
-      }
-
-      const auto &d = response.submit_auth_address();
-      AuthAddrSubmitResponse result;
-      result.success = d.basic().success();
-      result.errorMsg = d.basic().error_msg();
-      result.validationAmountCents = d.validation_amount_cents();
-      result.confirmationRequired = d.confirmation_required();
-      cb(result);
-   };
-
-   auto timeoutCb = [cb] {
-      cb(errorResponse<AuthAddrSubmitResponse>(kTimeoutError));
-   };
-
-   Request request;
-   auto d = request.mutable_submit_auth_address();
-   d->set_address(address.display());
-   sendRequest(&request, std::chrono::seconds(10), std::move(timeoutCb), std::move(processCb));
 }
 
 void BsClient::signAuthAddress(const bs::Address address, const SignCb &cb)
@@ -261,24 +236,22 @@ void BsClient::signAuthAddress(const bs::Address address, const SignCb &cb)
    lastSignRequestId_ = sendRequest(&request, autheidAuthAddressTimeout() + std::chrono::seconds(5), std::move(timeoutCb), std::move(processCb));
 }
 
-void BsClient::confirmAuthAddress(const bs::Address address, const BsClient::BasicCb &cb)
+void BsClient::confirmAuthAddress(const bs::Address address, const BsClient::AuthConfirmCb &cb)
 {
    auto processCb = [this, cb, address](const Response &response) {
       if (!response.has_confirm_auth_submit()) {
          SPDLOG_LOGGER_ERROR(logger_, "unexpected response from BsProxy, expected confirm_auth_submit response");
-         cb(errorResponse<BasicResponse>(kServerError));
+         cb(bs::error::AuthAddressSubmitResult::ServerError);
          return;
       }
 
       const auto &d = response.confirm_auth_submit();
-      BasicResponse result;
-      result.success = d.success();
-      result.errorMsg = d.error_msg();
-      cb(result);
+
+      cb(static_cast<bs::error::AuthAddressSubmitResult>(d.status_code()));
    };
 
    auto timeoutCb = [cb] {
-      cb(errorResponse<BasicResponse>(kTimeoutError));
+      cb(bs::error::AuthAddressSubmitResult::RequestTimeout);
    };
 
    Request request;
@@ -460,6 +433,9 @@ void BsClient::OnDataReceived(const std::string &data)
          case Response::kStartLogin:
             processStartLogin(response->start_login());
             return;
+         case Response::kAuthorize:
+            processAuthorize(response->authorize());
+            return;
          case Response::kGetLoginResult:
             processGetLoginResult(response->get_login_result());
             return;
@@ -481,9 +457,11 @@ void BsClient::OnDataReceived(const std::string &data)
          case Response::kUpdateBalance:
             processBalanceUpdate(response->update_balance());
             return;
+         case Response::kTradingEnabled:
+            processTradingEnabledStatus(response->trading_enabled());
+            return;
 
          case Response::kGetEmailHash:
-         case Response::kSubmitAuthAddress:
          case Response::kSignAuthAddress:
          case Response::kConfirmAuthSubmit:
          case Response::kSubmitCcAddress:
@@ -555,13 +533,20 @@ void BsClient::sendMessage(Request *request)
 
 void BsClient::processStartLogin(const Response_StartLogin &response)
 {
-   emit startLoginDone(AutheIDClient::ErrorType(response.error().error_code()));
+   bool success = response.error().error_code() == 0;
+   emit startLoginDone(success, response.error().message());
+}
+
+void BsClient::processAuthorize(const Response_Authorize &response)
+{
+   emit authorizeDone(!response.email().empty(), response.email());
 }
 
 void BsClient::processGetLoginResult(const Response_GetLoginResult &response)
 {
    BsClientLoginResult result;
    result.status = static_cast<AutheIDClient::ErrorType>(response.error().error_code());
+   result.errorMsg = response.error().message();
    result.userType = static_cast<bs::network::UserType>(response.user_type());
    result.celerLogin = response.celer_login();
    result.chatTokenData = BinaryData::fromString(response.chat_token_data());
@@ -570,6 +555,7 @@ void BsClient::processGetLoginResult(const Response_GetLoginResult &response)
    result.ccAddressesSigned = BinaryData::fromString(response.cc_addresses_signed());
    result.enabled = response.enabled();
    result.feeRatePb = response.fee_rate();
+   result.tradeSettings = bs::TradeSettings::fromPb(response.trade_settings());
    emit getLoginResultDone(result);
 }
 
@@ -628,4 +614,9 @@ BsClient::RequestId BsClient::newRequestId()
 {
    lastRequestId_ += 1;
    return lastRequestId_;
+}
+
+void BsClient::processTradingEnabledStatus(bool tradingEnabled)
+{
+   emit tradingStatusChanged(tradingEnabled);
 }

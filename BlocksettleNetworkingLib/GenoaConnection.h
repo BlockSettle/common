@@ -16,14 +16,18 @@
 #include <string>
 #include <memory>
 
+namespace spdlog {
+   class logger;
+}
+
 template<class _S>
 class GenoaConnection : public _S
 {
 public:
-   GenoaConnection(const std::shared_ptr<spdlog::logger>& logger)
+   GenoaConnection(const std::shared_ptr<spdlog::logger> &logger)
       : _S(logger)
    {}
-   GenoaConnection(const std::shared_ptr<spdlog::logger>& logger, bool monitored)
+   GenoaConnection(const std::shared_ptr<spdlog::logger> &logger, bool monitored)
       : _S(logger, monitored)
    {}
 

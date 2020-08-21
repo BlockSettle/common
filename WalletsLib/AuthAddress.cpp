@@ -17,15 +17,24 @@ AuthAddress::AuthAddress(const bs::Address &chainedAddr, AddressVerificationStat
 
 std::string to_string(AddressVerificationState state)
 {
-   static const std::string stateStrings[] = { "VerificationFailed"
-                                             , "InProgress"
-                                             , "NotSubmitted"
-                                             , "Submitted"
-                                             , "PendingVerification"
-                                             , "VerificationSubmitted"
-                                             , "Verified"
-                                             , "Revoked"
-                                             , "RevokedByBS"};
-
-   return stateStrings[(size_t)state];
+   switch(state) {
+   case AddressVerificationState::VerificationFailed:
+      return "VerificationFailed";
+   case AddressVerificationState::Virgin:
+      return "Virgin";
+   case AddressVerificationState::Tainted:
+      return "Tainted";
+   case AddressVerificationState::Verifying:
+      return "Verifying";
+   case AddressVerificationState::Verified:
+      return "Verified";
+   case AddressVerificationState::Revoked:
+      return "Revoked";
+   case AddressVerificationState::Invalidated_Explicit:
+      return "Invalidated_Explicit";
+   case AddressVerificationState::Invalidated_Implicit:
+      return "Invalidated_Implicit";
+   default:
+      return "Unknown state enum value";
+   }
 }

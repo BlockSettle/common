@@ -262,10 +262,6 @@ namespace bs {
          struct TXSignRequest
          {
             std::vector<std::string>   walletIds;
-            std::vector<UTXO>          inputs;
-            std::vector<std::string>   inputIndices;
-            std::vector<std::shared_ptr<ScriptRecipient>>   recipients;
-            std::map<BinaryData, BinaryData> supportingTXs;
             OutputSortOrder   outSortOrder{ OutputOrderType::PrevState
                , OutputOrderType::Recipients, OutputOrderType::Change };
             struct {
@@ -275,51 +271,58 @@ namespace bs {
             }  change;
             uint64_t    fee{ 0 };
             bool        RBF{ false };
-            std::vector<Codec_SignerState::SignerState>  prevStates;
             BinaryData  serializedTx;
-            bool        populateUTXOs{ false };
+
             std::string comment;
             // true for normal transactions, false for offline OTC
             bool allowBroadcasts{false};
             // timestamp when settlement TX sign expires
             std::chrono::system_clock::time_point expiredTimestamp{};
+            BinaryData txHash;
+
+            ArmorySigner::Signer armorySigner_;
 
             TXSignRequest() {}
             TXSignRequest(const TXSignRequest &other)
             {
-               *this = std::move(other);
+               *this = other;
             }
 
             TXSignRequest &operator=(const TXSignRequest &other)
             {
+               if (&other == this) {
+                  return *this;
+               }
+
+               armorySigner_ = other.armorySigner_;
                walletIds = other.walletIds;
-               inputs = other.inputs;
-               inputIndices = other.inputIndices;
-               recipients = other.recipients;
-               supportingTXs = other.supportingTXs;
                outSortOrder = other.outSortOrder;
                change = other.change;
                fee = other.fee;
                RBF = other.RBF;
-               prevStates = other.prevStates;
-               populateUTXOs = other.populateUTXOs;
                comment = other.comment;
-               serializedTx = other.serializedTx;
                allowBroadcasts = other.allowBroadcasts;
                expiredTimestamp = other.expiredTimestamp;
-               signer_.reset();
-               signerCreated_ = false;
+               txHash = other.txHash;
                return *this;
             }
             bool isValid() const noexcept;
-            Codec_SignerState::SignerState serializeState(const std::shared_ptr<ResolverFeed> &resolver = nullptr) const {
-               return getSigner(resolver).serializeState();
+            Codec_SignerState::SignerState serializeState(void) const {
+               return armorySigner_.serializeState();
             }
-            BinaryData txId(const std::shared_ptr<ResolverFeed> &resolver=nullptr) const {
-               return getSigner(resolver).getTxId();
+            BinaryData txId(const std::shared_ptr<ArmorySigner::ResolverFeed> &resolver=nullptr) {
+               if (resolver != nullptr) {
+                  armorySigner_.resetFeed();
+                  armorySigner_.setFeed(resolver);
+               }
+               return armorySigner_.getTxId();
             }
-            void resolveSpenders(const std::shared_ptr<ResolverFeed> &resolver = nullptr) const {
-               getSigner(resolver).resolveSpenders();
+            void resolveSpenders(const std::shared_ptr<ArmorySigner::ResolverFeed> &resolver = nullptr) {
+               if (resolver != nullptr) {
+                  armorySigner_.resetFeed();
+                  armorySigner_.setFeed(resolver);
+               }
+               armorySigner_.resolvePublicData();
             }
             size_t estimateTxVirtSize() const;
 
@@ -337,36 +340,26 @@ namespace bs {
             uint64_t getFee() const;
 
             std::vector<UTXO> getInputs(const ContainsAddressCb &containsAddressCb) const;
-            std::vector<std::shared_ptr<ScriptRecipient>> getRecipients(const ContainsAddressCb &containsAddressCb) const;
+            std::vector<std::shared_ptr<ArmorySigner::ScriptRecipient>> getRecipients(const ContainsAddressCb &containsAddressCb) const;
 
             bool isSourceOfTx(const Tx &signedTx) const;
 
-            void resetSigner();
-            void DebugPrint(const std::string& prefix, const std::shared_ptr<spdlog::logger>& logger, bool serializeAndPrint, const std::shared_ptr<ResolverFeed> &resolver=nullptr);
+            void DebugPrint(const std::string& prefix, const std::shared_ptr<spdlog::logger>& logger, bool serializeAndPrint, const std::shared_ptr<ArmorySigner::ResolverFeed> &resolver=nullptr);
 
          private:
-            Signer getSigner(const std::shared_ptr<ResolverFeed> &resolver = nullptr) const;
-
-         private:
-            mutable bs::CheckRecipSigner  signer_;
-            mutable bool   signerCreated_{ false };
+            ArmorySigner::Signer& getSigner(void);
          };
 
 
          struct TXMultiSignRequest
          {
-            struct UtxoData {
-               UTXO utxo;
-               std::string walletId;
-            };
-
-            std::vector<UtxoData>  inputs;     // per-wallet UTXOs
-            std::vector<std::shared_ptr<ScriptRecipient>>   recipients;
-            Codec_SignerState::SignerState   prevState;
+            std::set<std::string> walletIDs_;
+            ArmorySigner::Signer armorySigner_;
             bool RBF;
 
             bool isValid() const noexcept;
-            void addInput(const UTXO &utxo, const std::string &walletId) { inputs.push_back({ utxo, walletId }); }
+            void addWalletId(const std::string &walletId) 
+            { walletIDs_.insert(walletId); }
          };
 
 
@@ -473,8 +466,8 @@ namespace bs {
          ***/
          virtual std::vector<bs::Address> extendAddressChain(unsigned count, bool extInt) = 0;
 
-         virtual std::shared_ptr<ResolverFeed> getResolver(void) const = 0;
-         virtual std::shared_ptr<ResolverFeed> getPublicResolver(void) const = 0;
+         virtual std::shared_ptr<ArmorySigner::ResolverFeed> getResolver(void) const = 0;
+         virtual std::shared_ptr<ArmorySigner::ResolverFeed> getPublicResolver(void) const = 0;
          virtual ReentrantLock lockDecryptedContainer() = 0;
 
          virtual BinaryData signTXRequest(const wallet::TXSignRequest &
@@ -494,7 +487,7 @@ namespace bs {
          //find the path for a set of prefixed scrAddr
          virtual std::map<BinaryData, bs::hd::Path> indexPath(const std::set<BinaryData>&) = 0;
 
-         Signer getSigner(const wallet::TXSignRequest &,
+         ArmorySigner::Signer getSigner(const wallet::TXSignRequest &,
             bool keepDuplicatedRecipients = false);
 
       protected:

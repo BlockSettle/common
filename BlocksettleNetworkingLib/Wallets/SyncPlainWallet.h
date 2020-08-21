@@ -58,11 +58,11 @@ namespace bs {
          size_t getUsedAddressCount() const override { return usedAddresses_.size(); }
          std::string getAddressIndex(const bs::Address &) override;
 
-         std::shared_ptr<ResolverFeed> getPublicResolver() const override { return nullptr; }   // not needed, yet
+         std::shared_ptr<ArmorySigner::ResolverFeed> getPublicResolver() const override { return nullptr; }   // not needed, yet
 
          bool deleteRemotely() override;
 
-         void merge(const std::shared_ptr<Wallet>) override
+         void merge(const std::shared_ptr<Wallet> &) override
          {
             throw std::runtime_error("not implemented yet. not sure is necessary");
          }

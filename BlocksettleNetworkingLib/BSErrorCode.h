@@ -42,6 +42,16 @@ namespace bs {
          // Other codes
          AutoSignDisabled
       };
+
+      enum class AuthAddressSubmitResult
+      {
+         Success = 0,
+         SubmitLimitExceeded,
+         ServerError,
+         AlreadyUsed,
+         RequestTimeout,
+         AuthRequestSignFailed
+      };
    }
 }
 

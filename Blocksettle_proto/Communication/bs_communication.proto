@@ -14,27 +14,15 @@ package Blocksettle.Communication;
 
 enum RequestType
 {
-   GetBSFundingAddressListType          = 2;
-   ErrorMessageResponseType             = 3;
-   GetCCGenesisAddressesType            = 5;
-   SubmitCCAddrInitialDistribType       = 6;
-   GenerateCCSeedRequestType            = 7;
-   RevokeAuthAddressRequestType         = 8;
-   ConfirmAuthAddressSubmitType         = 9;
-   FundCCGenAddrRequestType             = 11;
-   GetNetworkSettingsType               = 12;
-}
-
-enum AddressNetworkType
-{
-   MainNetType = 1;
-   TestNetType = 2;
-}
-
-// type of address used for verifications ( bitcoin, colored coin etc)
-enum AddressType
-{
-   BitcoinsAddressType        = 1;
+   GetBSFundingAddressListType         = 2;
+   ErrorMessageResponseType            = 3;
+   GetCCGenesisAddressesType           = 5;
+   SubmitCCAddrInitialDistribType      = 6;
+   GenerateCCSeedRequestType           = 7;
+   RevokeAuthAddressRequestType        = 8;
+   ConfirmAuthAddressSubmitType        = 9;
+   CreateCCDefinitionRequestType       = 10;
+   GetNetworkSettingsType              = 12;
 }
 
 // copy of autheid.rp.GetResultResponse.SignatureResult
@@ -79,17 +67,16 @@ message ResponsePacket
    optional bytes       dataSignature = 3;
 }
 
-message GetBSFundingAddressListRequest
+message WalletInfoContainer
 {
-   required AddressType       addressListType = 1;
+   required bytes validation_addresses_info  = 1;
+   required bytes cc_definitions_info        = 2;
 }
 
 message GetBSFundingAddressListResponse
 {
-   required AddressType       addressListType         = 1;
-   // for now it will be always of type AddressList.
-   // use bytes just to simplify signature verification
-   repeated bytes             addressList             = 2;
+   required bool     is_testnet           = 1;
+   repeated string   validation_address   = 2;
 }
 
 message ErrorMessageResponse
@@ -123,24 +110,17 @@ message ClientAddress
    optional string countryCode = 10;
 }
 
-message GetCCGenesisAddressesRequest
-{
-   required AddressNetworkType   networkType = 1;
-   optional int32                hasRevision = 2;
-}
-
 message GetCCGenesisAddressesResponse
 {
-   required AddressNetworkType   networkType  = 1;
-   required int32                revision     = 2;
-   repeated CCSecurityDefinition ccSecurities = 3;
+   required bool                 is_testnet     = 1;
+   required int32                revision       = 2;
+   repeated CCSecurityDefinition ccSecurities   = 3;
 
    message CCSecurityDefinition {
       required string securityId  = 1;
       required string product     = 2;
       required string genesisAddr = 3;
       required uint64 satoshisNb  = 4;
-      optional string description = 5;
    }
 }
 
@@ -162,8 +142,13 @@ message GenerateCCSeedRequest
 {
    required string userName = 1;
    required string ccProduct = 2;
-   optional double amount = 3;
-   optional uint32 lotSize = 4;
+   required uint32 amount = 3;
+}
+
+message CreateCCDefinitionRequest
+{
+   required string cc_name       = 1;
+   required uint32 lot_size      = 2;
 }
 
 message CCSeedResponse
@@ -171,15 +156,6 @@ message CCSeedResponse
    required uint32 bsSeed = 1;
    required string ccProduct = 2;
 }
-
-message FundCCGenAddrRequest
-{
-   required string   cc_product = 1;
-   required uint32   amount = 2;
-   required uint32   lot_size = 3;
-   optional string   reference = 4;
-}
-
 
 message GetNetworkSettingsResponse
 {

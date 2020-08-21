@@ -79,7 +79,7 @@ bool HeadlessContainerListener::sendData(const std::string &data, const std::str
    bool sentOk = false;
    if (clientId.empty()) {
       for (const auto &clientId : connectedClients_) {
-         if (connection_->SendDataToClient(clientId, data)) {
+         if (connection_->SendDataToClient(clientId.first, data)) {
             sentOk = true;
          }
       }
@@ -95,13 +95,16 @@ void HeadlessContainerListener::SetLimits(const bs::signer::Limits &limits)
    limits_ = limits;
 }
 
-void HeadlessContainerListener::OnClientConnected(const std::string &clientId)
+void HeadlessContainerListener::OnClientConnected(const std::string &clientId, const Details &details)
 {
    logger_->debug("[HeadlessContainerListener] client {} connected", bs::toHex(clientId));
 
-   queue_->dispatch([this, clientId] {
-      connectedClients_.insert(clientId);
+   queue_->dispatch([this, clientId, details] {
+      connectedClients_.insert(std::make_pair(clientId, details));
       sendUpdateStatuses(clientId);
+      if (callbacks_) {
+         callbacks_->clientConn(clientId, details);
+      }
    });
 }
 
@@ -111,7 +114,6 @@ void HeadlessContainerListener::OnClientDisconnected(const std::string &clientId
 
    queue_->dispatch([this, clientId] {
       connectedClients_.erase(clientId);
-
       if (callbacks_) {
          callbacks_->clientDisconn(clientId);
       }
@@ -131,36 +133,14 @@ void HeadlessContainerListener::OnDataFromClient(const std::string &clientId, co
    });
 }
 
-void HeadlessContainerListener::OnPeerConnected(const std::string &ip)
+void HeadlessContainerListener::onClientError(const std::string &clientId, ServerConnectionListener::ClientError errorCode, const Details &details)
 {
-   logger_->debug("[{}] IP {} connected", __func__, ip);
-   queue_->dispatch([this, ip] {
-      if (callbacks_) {
-         callbacks_->peerConn(ip);
-      }
-   });
-}
-
-void HeadlessContainerListener::OnPeerDisconnected(const std::string &ip)
-{
-   logger_->debug("[{}] IP {} disconnected", __func__, ip);
-   queue_->dispatch([this, ip] {
-      if (callbacks_) {
-         callbacks_->peerDisconn(ip);
-      }
-   });
-}
-
-void HeadlessContainerListener::onClientError(const std::string &clientId, ServerConnectionListener::ClientError errorCode, int socket)
-{
-
    switch (errorCode) {
       case ServerConnectionListener::HandshakeFailed: {
-         // Not 100% correct because socket's FD might be already closed or even reused, but should be good enough
-         std::string peerAddress = bs::network::peerAddressString(socket);
-         queue_->dispatch([this, peerAddress] {
+         queue_->dispatch([this, details] {
             if (callbacks_) {
-               callbacks_->terminalHandshakeFailed(peerAddress);
+               auto ipAddrIt = details.find(Detail::IpAddr);
+               callbacks_->terminalHandshakeFailed(ipAddrIt != details.end() ? ipAddrIt->second : "Unknown");
             }
          });
          break;
@@ -177,7 +157,6 @@ bool HeadlessContainerListener::onRequestPacket(const std::string &clientId, hea
       return false;
    }
 
-   connection_->GetClientInfo(clientId);
    switch (packet.type()) {
    case headless::AuthenticationRequestType:
       return AuthResponse(clientId, packet);
@@ -256,9 +235,6 @@ bool HeadlessContainerListener::onRequestPacket(const std::string &clientId, hea
 
    case headless::ExecCustomDialogRequestType:
       return onExecCustomDialog(clientId, packet);
-
-   case headless::AddressPreimageType:
-      return onAddrPreimage(clientId, packet);
 
    case headless::ChatNodeRequestType:
       return onChatNodeRequest(clientId, packet);
@@ -339,6 +315,14 @@ bool HeadlessContainerListener::onSignTxRequest(const std::string &clientId, con
       return false;
    }
 
+   bool isLegacy = !txSignReq.armorySigner_.isSegWit();
+
+   if (!isLegacy && !partial && txSignReq.txHash.empty()) {
+      SPDLOG_LOGGER_ERROR(logger_, "expected tx hash must be set before sign");
+      SignTXResponse(clientId, packet.id(), reqType, ErrorCode::TxInvalidRequest);
+      return false;
+   }
+
    std::vector<std::shared_ptr<bs::core::hd::Leaf>> wallets;
    std::string rootWalletId;
    uint64_t amount = 0;
@@ -409,8 +393,8 @@ bool HeadlessContainerListener::onSignTxRequest(const std::string &clientId, con
       return false;
    }
 
-   const auto onPassword = [this, autoSign, wallets, txSignReq, rootWalletId, clientId, id = packet.id(), partial
-      , reqType, amount
+   auto onPassword = [this, autoSign, wallets, txSignReq, rootWalletId, clientId, id = packet.id(), partial
+      , reqType, amount, isLegacy
       , keepDuplicatedRecipients = request.keepduplicatedrecipients()]
       (bs::error::ErrorCode result, const SecureBinaryData &pass)
    {
@@ -433,7 +417,25 @@ bool HeadlessContainerListener::onSignTxRequest(const std::string &clientId, con
          // from signer ui instead of password
          if (rootWallet->isHardwareWallet()) {
             bs::core::WalletPasswordScoped lock(rootWallet, pass);
-            auto signedTx = rootWallet->signTXRequestWithWallet(txSignReq);
+            //this needs to be a shared_ptr
+            auto signReqCopy = txSignReq;
+            auto signedTx = rootWallet->signTXRequestWithWallet(signReqCopy);
+
+            if (!isLegacy) {
+               try {
+                  Tx t(signedTx);
+                  if (t.getThisHash() != txSignReq.txHash) {
+                     SPDLOG_LOGGER_ERROR(logger_, "unexpected tx hash: {}, expected: {}"
+                        , t.getThisHash().toHexStr(true), txSignReq.txHash.toHexStr(true));
+                     throw std::logic_error("unexpected tx hash");
+                  }
+               } catch (const std::exception &e) {
+                  SPDLOG_LOGGER_ERROR(logger_, "signed tx verification failed for HW wallet: {}", e.what());
+                  SignTXResponse(clientId, id, reqType, ErrorCode::InternalError);
+                  return;
+               }
+            }
+
             SignTXResponse(clientId, id, reqType, ErrorCode::NoError, signedTx);
          }
          else {
@@ -458,24 +460,28 @@ bool HeadlessContainerListener::onSignTxRequest(const std::string &clientId, con
          if (wallets.size() == 1) {
             const auto wallet = wallets.front();
             const bs::core::WalletPasswordScoped passLock(rootWallet, pass);
-            const auto tx = partial ? BinaryData::fromString(wallet->signPartialTXRequest(txSignReq).SerializeAsString())
-               : wallet->signTXRequest(txSignReq, keepDuplicatedRecipients);
+            auto txSignCopy = txSignReq; //TODO: txSignReq should be passed as a shared_ptr instead
+            const auto tx = partial ? BinaryData::fromString(wallet->signPartialTXRequest(txSignCopy).SerializeAsString())
+               : wallet->signTXRequest(txSignCopy, keepDuplicatedRecipients);
+            if (!partial) {
+               Tx t(tx);
+               if (t.getThisHash() != txSignReq.txHash) {
+                  SPDLOG_LOGGER_ERROR(logger_, "unexpected tx hash: {}, expected: {}"
+                     , t.getThisHash().toHexStr(true), txSignReq.txHash.toHexStr(true));
+                  throw std::logic_error("unexpected tx hash");
+               }
+            }
             SignTXResponse(clientId, id, reqType, ErrorCode::NoError, tx);
          }
          else {
             bs::core::wallet::TXMultiSignRequest multiReq;
-            multiReq.recipients = txSignReq.recipients;
-            if (txSignReq.change.value) {
-               multiReq.recipients.push_back(txSignReq.change.address.getRecipient(bs::XBTAmount{ txSignReq.change.value }));
-            }
-            if (!txSignReq.prevStates.empty()) {
-               multiReq.prevState = txSignReq.prevStates.front();
-            }
-            multiReq.RBF = txSignReq.RBF;
+            multiReq.armorySigner_.merge(txSignReq.armorySigner_);
+            multiReq.RBF |= txSignReq.RBF;
 
             bs::core::WalletMap wallets;
-            for (const auto &input : txSignReq.inputs) {
-               const auto addr = bs::Address::fromUTXO(input);
+            for (unsigned i=0; i<txSignReq.armorySigner_.getTxInCount(); i++) {
+               const auto& utxo = txSignReq.armorySigner_.getSpender(i)->getUtxo();
+               const auto addr = bs::Address::fromUTXO(utxo);
                const auto wallet = walletsMgr_->getWalletByAddress(addr);
                if (!wallet) {
                   logger_->error("[{}] failed to find wallet for input address {}"
@@ -483,7 +489,7 @@ bool HeadlessContainerListener::onSignTxRequest(const std::string &clientId, con
                   SignTXResponse(clientId, id, reqType, ErrorCode::WalletNotFound);
                   return;
                }
-               multiReq.addInput(input, wallet->walletId());
+               multiReq.addWalletId(wallet->walletId());
                wallets[wallet->walletId()] = wallet;
             }
 
@@ -492,6 +498,14 @@ bool HeadlessContainerListener::onSignTxRequest(const std::string &clientId, con
             {
                const bs::core::WalletPasswordScoped passLock(rootWallet, pass);
                tx = bs::core::SignMultiInputTX(multiReq, wallets, partial);
+               if (!partial) {
+                  Tx t(tx);
+                  if (t.getThisHash() != txSignReq.txHash) {
+                     SPDLOG_LOGGER_ERROR(logger_, "unexpected tx hash: {}, expected: {}"
+                        , t.getThisHash().toHexStr(true), txSignReq.txHash.toHexStr(true));
+                     throw std::logic_error("unexpected tx hash");
+                  }
+               }
             }
             SignTXResponse(clientId, id, reqType, ErrorCode::NoError, tx);
          }
@@ -586,20 +600,25 @@ bool HeadlessContainerListener::onSignSettlementPayoutTxRequest(const std::strin
    bs::core::wallet::TXSignRequest txSignReq;
    txSignReq.walletIds = { walletsMgr_->getPrimaryWallet()->walletId() };
 
-   UTXO utxo;
-   utxo.unserialize(BinaryData::fromString(request.signpayouttxrequest().input()));
-   if (utxo.isInitialized()) {
-      txSignReq.inputs.push_back(utxo);
+   Codec_SignerState::SignerState msgSignerState;
+   if (!msgSignerState.ParseFromString(request.signpayouttxrequest().signerstate())) {
+      logger_->error("[{}] failed to parse signer state", __func__);
+      SignTXResponse(clientId, packet.id(), reqType, ErrorCode::FailedToParse);
+      return false;
    }
-
-   auto serialized = BinaryData::fromString(request.signpayouttxrequest().recipient());
-   const auto recip = ScriptRecipient::deserialize(serialized);
-   txSignReq.recipients.push_back(recip);
+   txSignReq.armorySigner_.deserializeState(msgSignerState);
 
    txSignReq.fee = request.signpayouttxrequest().fee();
+   txSignReq.txHash = BinaryData::fromString(request.signpayouttxrequest().tx_hash());
 
    if (!txSignReq.isValid()) {
       logger_->error("[HeadlessContainerListener] invalid SignTxRequest");
+      SignTXResponse(clientId, packet.id(), reqType, ErrorCode::TxInvalidRequest);
+      return false;
+   }
+
+   if (txSignReq.txHash.empty()) {
+      SPDLOG_LOGGER_ERROR(logger_, "expected tx hash must be set before sign");
       SignTXResponse(clientId, packet.id(), reqType, ErrorCode::TxInvalidRequest);
       return false;
    }
@@ -625,7 +644,8 @@ bool HeadlessContainerListener::onSignSettlementPayoutTxRequest(const std::strin
          }
          {
             const bs::core::WalletPasswordScoped passLock(wallet, pass);
-            const auto tx = wallet->signSettlementTXRequest(txSignReq, sd);
+            auto txSignCopy = txSignReq; //TODO: txSignReq should be a shared_ptr
+            const auto tx = wallet->signSettlementTXRequest(txSignCopy, sd);
             SignTXResponse(clientId, id, reqType, ErrorCode::NoError, tx);
          }
       } catch (const std::exception &e) {
@@ -665,7 +685,8 @@ bool HeadlessContainerListener::onSignAuthAddrRevokeRequest(const std::string &c
    UTXO utxo;
    utxo.unserialize(BinaryData::fromString(request.utxo()));
    if (utxo.isInitialized()) {
-      txSignReq.inputs.push_back(utxo);
+      auto spender = std::make_shared<ArmorySigner::ScriptSpender>(utxo);
+      txSignReq.armorySigner_.addSpender(spender);
    }
    else {
       logger_->error("[{}] failed to parse UTXO", __func__);
@@ -681,20 +702,14 @@ bool HeadlessContainerListener::onSignAuthAddrRevokeRequest(const std::string &c
          return;
       }
 
-      ValidationAddressManager validationMgr(nullptr);
-      auto addrObj = bs::Address::fromAddressString(request.validation_address());
-      validationMgr.addValidationAddress(addrObj);
-
       try {
-         {
-            const bs::core::WalletPasswordScoped passLock(walletsMgr_->getPrimaryWallet(), pass);
-            const auto lock = wallet->lockDecryptedContainer();
-            auto authAddr = bs::Address::fromAddressString(request.auth_address());
-            auto validationAddr = bs::Address::fromAddressString(request.validation_address());
-            const auto tx = AuthAddressLogic::revoke(authAddr, wallet->getResolver()
-               , validationAddr, utxo);
-            SignTXResponse(clientId, id, reqType, ErrorCode::NoError, tx);
-         }
+         const bs::core::WalletPasswordScoped passLock(walletsMgr_->getPrimaryWallet(), pass);
+         const auto lock = wallet->lockDecryptedContainer();
+         auto authAddr = bs::Address::fromAddressString(request.auth_address());
+         auto validationAddr = bs::Address::fromAddressString(request.validation_address());
+         const auto tx = AuthAddressLogic::revoke(authAddr, wallet->getResolver()
+            , validationAddr, utxo);
+         SignTXResponse(clientId, id, reqType, ErrorCode::NoError, tx);
       } catch (const std::exception &e) {
          logger_->error("[HeadlessContainerListener] failed to sign payout TX request: {}", e.what());
          SignTXResponse(clientId, id, reqType, ErrorCode::InternalError);
@@ -716,7 +731,7 @@ bool HeadlessContainerListener::onResolvePubSpenders(const std::string &clientId
    }
 
    bs::core::wallet::TXSignRequest txSignReq = bs::signer::pbTxRequestToCore(request, logger_);
-   if (txSignReq.inputs.empty()) {
+   if (txSignReq.armorySigner_.getTxInCount() == 0) {
       logger_->error("[HeadlessContainerListener::onResolvePubSpenders] invalid SignTxRequest");
       SignTXResponse(clientId, packet.id(), packet.type(), ErrorCode::TxInvalidRequest);
       return false;
@@ -775,7 +790,7 @@ void HeadlessContainerListener::passwordReceived(const std::string &clientId, co
    , bs::error::ErrorCode result, const SecureBinaryData &password)
 {
    if (deferredPasswordRequests_.empty()) {
-      logger_->error("[HeadlessContainerListener::{}] failed to find password received callback {}", __func__);
+      logger_->error("[HeadlessContainerListener::{}] failed to find password received callback", __func__);
       return;
    }
    const PasswordReceivedCb &cb = std::move(deferredPasswordRequests_.front().callback);
@@ -2105,41 +2120,6 @@ bool HeadlessContainerListener::onSyncNewAddr(const std::string &clientId, headl
 
    if (callbacks_) {
       callbacks_->walletChanged(wallet->walletId());
-   }
-
-   packet.set_data(response.SerializeAsString());
-   sendData(packet.SerializeAsString(), clientId);
-   return true;
-}
-
-bool HeadlessContainerListener::onAddrPreimage(const std::string &clientId, headless::RequestPacket packet)
-{
-   headless::AddressPreimageRequest request;
-   if (!request.ParseFromString(packet.data())) {
-      logger_->error("[{}] failed to parse request", __func__);
-      return false;
-   }
-   headless::AddressPreimageResponse response;
-   for (int i = 0; i < request.request_size(); ++i) {
-      const auto req = request.request(i);
-      const auto wallet = walletsMgr_->getWalletById(req.wallet_id());
-      if (wallet == nullptr) {
-         logger_->error("[{}] wallet with ID {} not found", __func__, req.wallet_id());
-         continue;
-      }
-
-      auto resp = response.add_response();
-      resp->set_wallet_id(req.wallet_id());
-
-      for (int j = 0; j < req.address_size(); ++j) {
-         const auto addr = bs::Address::fromAddressString(req.address(j));
-         const auto addrEntry = wallet->getAddressEntryForAddr(addr);
-         if (addrEntry) {
-            auto piData = resp->add_preimages();
-            piData->set_address(addr.display());
-            piData->set_preimage(addrEntry->getPreimage().toBinStr());
-         }
-      }
    }
 
    packet.set_data(response.SerializeAsString());

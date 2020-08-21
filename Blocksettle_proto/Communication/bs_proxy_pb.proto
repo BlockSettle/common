@@ -19,143 +19,166 @@ import "bs_types.proto";
 
 message Request
 {
-    message Terminal
-    {
-        string email = 1;
+   message Terminal
+   {
+      string email = 1;
 
-        // Serialized ProxyTerminalPb.Response
-        bytes data = 2;
-    }
+      // Serialized ProxyTerminalPb.Response
+      bytes data = 2;
+   }
 
-    // Message would be sent after receiving ClientConnected
-    message UserInfo
-    {
-        // Copied as-is from ClientConnected message
-        bytes client_id = 1;
+   // Message would be sent after receiving ClientConnected
+   message UserInfo
+   {
+      // Copied as-is from ClientConnected message
+      bytes client_id = 1;
 
-        string email = 2;
+      string email = 2;
 
-        // bs::network::UserType as int
-        int32 user_type = 3;
+      // bs::network::UserType as int
+      int32 user_type = 3;
 
-        bool enabled = 4;
+      bool enabled = 4;
 
-        string terminal_user_id = 5;
-    }
+      string terminal_user_id = 5;
+   }
 
-    message UserStatusUpdated
-    {
-        string email = 1;
+   message UserStatusUpdated
+   {
+      string email = 1;
 
-        bool enabled = 3;
-    }
+      bool enabled = 3;
+   }
 
-    // PB should send when proxy is connected first time or when CC gen is updated (new product is added)
-    message GenAddrUpdated
-    {
-        bytes auth_addresses_signed = 1;
-        bytes cc_addresses_signed = 2;
-    }
+   // PB should send when proxy is connected first time or when CC gen is updated (new product is added)
+   message GenAddrUpdated
+   {
+      bytes auth_addresses_signed = 1;
+      bytes cc_addresses_signed = 2;
+      bs.types.TradeSettings trade_settings = 3;
+   }
 
-    message TermRep
-    {
-        string email = 1;
-        bool success = 2;
-        string error_msg = 3;
-        int64 internal_request_id = 4;
-    }
+   message TermRep
+   {
+      string email = 1;
+      bool success = 2;
+      string error_msg = 3;
+      int64 internal_request_id = 4;
+   }
 
-    message TermRepSubmitAuthAddr
-    {
-        TermRep term_rep = 1;
-        int32 validation_amount_cents = 2;
-        bool confirmation_required = 3;
-    }
+   message UpdateFeeRate
+   {
+      float fee_rate = 1;
+   }
 
-    message UpdateFeeRate
-    {
-        float fee_rate = 1;
-    }
+   message UpdateBalance
+   {
+      string email = 1;
+      repeated bs.types.Balance balances = 2;
+   }
 
-    message UpdateBalance
-    {
-        string email = 1;
-        repeated bs.types.Balance balances = 2;
-    }
+   message TradingStatus
+   {
+      // if email empty - send to all connected clients
+      string   email             = 1;
+      bool     trading_enabled   = 2;
+   }
 
-    oneof data
-    {
-        // Messages
-        Terminal terminal = 30;
-        UserInfo user_info = 31;
-        TermRepSubmitAuthAddr submit_auth_address = 32;
-        TermRep confirm_auth_address = 33;
-        TermRep submit_cc_address = 34;
-        TermRep confirm_cc_address = 35;
-        UserStatusUpdated user_status_updated = 36;
-        GenAddrUpdated gen_addr_updated = 37;
-        UpdateFeeRate update_fee_rate = 38;
-        UpdateBalance update_balance = 39;
-    }
+   message CheckApiKey
+   {
+      bytes client_id = 1;
+      string api_key = 2;
+      string email = 3;
+   }
+
+   message ConfirmReply
+   {
+      string   email                = 1;
+      int32    status_code          = 2;
+      int64    internal_request_id  = 3;
+   }
+
+   oneof data
+   {
+      // Messages
+      Terminal                terminal                = 30;
+      UserInfo                user_info               = 31;
+      ConfirmReply            confirm_auth_address    = 33;
+      TermRep                 submit_cc_address       = 34;
+      TermRep                 confirm_cc_address      = 35;
+      UserStatusUpdated       user_status_updated     = 36;
+      GenAddrUpdated          gen_addr_updated        = 37;
+      UpdateFeeRate           update_fee_rate         = 38;
+      UpdateBalance           update_balance          = 39;
+      TradingStatus           trading_status_update   = 40;
+      CheckApiKey             check_api_key           = 41;
+   }
 }
 
 // Messages sent from proxy to PB
 message Response
 {
-    message OnlineUsers
-    {
-        int32 chat = 1;
-        int32 market = 2;
-        int32 trading = 3;
-        int32 dealing = 4;
-    }
+   message OnlineUsers
+   {
+      int32 chat = 1;
+      int32 market = 2;
+      int32 trading = 3;
+      int32 dealing = 4;
+   }
 
-    message Terminal
-    {
-        string email = 1;
+   message Terminal
+   {
+      string email = 1;
 
-        // Serialized ProxyTerminalPb.Request
-        bytes data = 2;
-    }
+      // Serialized ProxyTerminalPb.Request
+      bytes data = 2;
+   }
 
-    message ClientConnected
-    {
-        string email = 1;
+   message ClientConnected
+   {
+      string email = 1;
 
-        // If set then PB should send user info back
-        bytes client_id = 2;
-    }
+      // If set then PB should send user info back
+      bytes client_id = 2;
+   }
 
-    message ClientDisconnected
-    {
-        string email = 1;
-    }
+   message ClientDisconnected
+   {
+      string email = 1;
+   }
 
-    message TermReq
-    {
-        // address must be valid
-        string address = 1;
-        string email = 2;
-        int64 internal_request_id = 3;
-    }
+   message TermReq
+   {
+      // address must be valid
+      string address = 1;
+      string email = 2;
+      int64 internal_request_id = 3;
+   }
 
-    message TermReqCc
-    {
-        TermReq term_req = 1;
-        uint32 seed = 2;
-        string cc_product = 3;
-    }
+   message TermReqCc
+   {
+      TermReq term_req = 1;
+      uint32 seed = 2;
+      string cc_product = 3;
+   }
 
-    oneof data
-    {
-        // Messages
-        Terminal terminal = 30;
-        OnlineUsers online_users = 31;
-        ClientConnected client_connected = 32;
-        ClientDisconnected client_disconnected = 33;
-        TermReq submit_auth_address = 34;
-        TermReq confirm_auth_address = 35;
-        TermReqCc submit_cc_address = 36;
-        TermReqCc confirm_cc_address = 37;
-    }
+   message CheckApiKey
+   {
+      bytes client_id = 1;
+      string api_key = 2;
+      string ip_addr = 3;
+   }
+
+   oneof data
+   {
+      // Messages
+      Terminal terminal = 30;
+      OnlineUsers online_users = 31;
+      ClientConnected client_connected = 32;
+      ClientDisconnected client_disconnected = 33;
+      TermReq confirm_auth_address = 35;
+      TermReqCc submit_cc_address = 36;
+      TermReqCc confirm_cc_address = 37;
+      CheckApiKey check_api_key = 38;
+   }
 }

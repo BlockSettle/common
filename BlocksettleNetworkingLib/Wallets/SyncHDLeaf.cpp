@@ -18,11 +18,12 @@
 #include "WalletUtils.h"
 
 #include <unordered_map>
-
+#include <spdlog/spdlog.h>
 #include <QLocale>
 #include <QMutexLocker>
 
-const uint32_t kExtConfCount = 6;
+// BST-2747: Require 1 conf for external addresses too
+const uint32_t kExtConfCount = 1;
 const uint32_t kIntConfCount = 1;
 
 using namespace bs::sync;
@@ -205,14 +206,18 @@ void hd::Leaf::onRefresh(const std::vector<BinaryData> &ids, bool online)
 std::vector<std::string> hd::Leaf::setUnconfirmedTarget()
 {
    std::vector<std::string> regIDs;
-
-   if (btcWallet_) {
-      regIDs.push_back(btcWallet_->setUnconfirmedTarget(kExtConfCount));
+   try {
+      if (btcWallet_) {
+         regIDs.push_back(btcWallet_->setUnconfirmedTarget(kExtConfCount));
+      }
+      if (btcWalletInt_) {
+         regIDs.push_back(btcWalletInt_->setUnconfirmedTarget(kIntConfCount));
+      }
    }
-   if (btcWalletInt_) {
-      regIDs.push_back(btcWalletInt_->setUnconfirmedTarget(kIntConfCount));
+   catch (const LWS_Error &e) {
+      logger_->error("[hd::Leaf::setUnconfirmedTarget] LWS error: {}", e.what());
+      return {};
    }
-
    return regIDs;
 }
 
@@ -221,8 +226,16 @@ void hd::Leaf::postOnline(bool force)
    if ((skipPostOnline_ || firstInit_) && !force) {
       return;
    }
+   if (!armory_ || (armory_->state() == ArmoryState::Offline)) {
+      logger_->error("[hd::Leaf::postOnline] Armory is offline");
+      return;
+   }
 
    unconfTgtRegIds_ = setUnconfirmedTarget();
+   if (unconfTgtRegIds_.empty()) {
+      logger_->error("[hd::Leaf::postOnline] failed to set unconf target[s]");
+      return;
+   }
 
    const auto &cbTrackAddrChain = [this, handle = validityFlag_.handle()](bs::sync::SyncState st) mutable {
       ValidityGuard lock(handle);
@@ -783,7 +796,7 @@ bs::hd::Path hd::Leaf::getPathForAddress(const bs::Address &addr) const
    return index.path;
 }
 
-std::shared_ptr<ResolverFeed> hd::Leaf::getPublicResolver() const
+std::shared_ptr<ArmorySigner::ResolverFeed> hd::Leaf::getPublicResolver() const
 {
    return nullptr;
 }
@@ -863,7 +876,7 @@ bool hd::Leaf::getSpendableTxOutList(const ArmoryConnection::UTXOsCb &cb, uint64
          }
       }
       if (cb) {
-         cb(bs::selectUtxoForAmount(std::move(filteredUTXOs), val));
+         cb(bs::selectUtxoForAmount(filteredUTXOs, val));
       }
    };
    return bs::sync::Wallet::getSpendableTxOutList(cbWrap, std::numeric_limits<uint64_t>::max(), excludeReservation);
@@ -918,13 +931,15 @@ bool hd::Leaf::isExternalAddress(const bs::Address &addr) const
    return (path.get(-2) == addrTypeExternal);
 }
 
-void hd::Leaf::merge(const std::shared_ptr<Wallet> walletPtr)
+void hd::Leaf::merge(const std::shared_ptr<Wallet> &walletPtr)
 {
+   bs::sync::Wallet::merge(walletPtr);
+
    //rudimentary implementation, flesh it out on the go
    auto leafPtr = std::dynamic_pointer_cast<hd::Leaf>(walletPtr);
-   if (leafPtr == nullptr)
+   if (leafPtr == nullptr) {
       throw std::runtime_error("sync::Wallet child class mismatch");
-
+   }
    addrComments_.insert(
       leafPtr->addrComments_.begin(), leafPtr->addrComments_.end());
    txComments_.insert(
@@ -1026,7 +1041,12 @@ std::vector<std::string> hd::CCLeaf::setUnconfirmedTarget()
    if (!btcWallet_) {
       return {};
    }
-   return { btcWallet_->setUnconfirmedTarget(kIntConfCount) };
+   try {
+      return { btcWallet_->setUnconfirmedTarget(kIntConfCount) };
+   }
+   catch (const LWS_Error &) {
+      return {};
+   }
 }
 
 std::map<BinaryData, std::set<unsigned>> hd::CCLeaf::getOutpointMapFromTracker(bool withZC) const

@@ -12,6 +12,7 @@
 #define STRING_UTILS_H
 
 #include <string>
+#include <vector>
 
 namespace bs {
 
@@ -26,6 +27,10 @@ namespace bs {
 
    int convertToInt(const std::string& str, bool& converted);
    bool convertToBool(const std::string& str, bool& converted);
+
+   std::vector<std::string> split(const std::string& str, char separator);
+
+   std::string trim(std::string str);
 
 } // namespace bs
 

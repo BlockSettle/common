@@ -14,7 +14,9 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+
 #include "CommonTypes.h"
+#include "DataConnectionListener.h"
 #include "MarketDataProvider.h"
 
 #include "bs_md.pb.h"
@@ -25,14 +27,14 @@ namespace spdlog
 }
 
 class ConnectionManager;
-class SubscriberConnection;
-class SubscriberConnectionListenerCB;
+class DataConnection;
 
-class BSMarketDataProvider : public MarketDataProvider
+class BSMarketDataProvider : public MarketDataProvider, public DataConnectionListener
 {
 public:
    BSMarketDataProvider(const std::shared_ptr<ConnectionManager>& connectionManager
-      , const std::shared_ptr<spdlog::logger> &, MDCallbackTarget *);
+      , const std::shared_ptr<spdlog::logger> &, MDCallbackTarget *
+      , bool secureConnection, bool acceptUsdPairs);
    ~BSMarketDataProvider() noexcept override = default;
 
    BSMarketDataProvider(const BSMarketDataProvider&) = delete;
@@ -50,9 +52,10 @@ protected:
    void StopMDConnection() override;
 
 private:
-   void onDataFromMD(const std::string& data);
-   void onConnectedToMD();
-   void onDisconnectedFromMD();
+   void OnDataReceived(const std::string& data) override;
+   void OnConnected() override;
+   void OnDisconnected() override;
+   void OnError(DataConnectionError errorCode) override;
 
    void OnFullSnapshot(const std::string& data);
    void OnIncrementalUpdate(const std::string& data);
@@ -71,8 +74,10 @@ private:
 
 private:
    std::shared_ptr<ConnectionManager>  connectionManager_;
-   std::shared_ptr<SubscriberConnection> mdConnection_ = nullptr;
-   std::shared_ptr<SubscriberConnectionListenerCB> listener_ = nullptr;
+   std::shared_ptr<DataConnection> mdConnection_ = nullptr;
+
+   const bool acceptUsdPairs_;
+   const bool secureConnection_;
 };
 
 #endif // __BS_MARKET_DATA_PROVIDER_H__

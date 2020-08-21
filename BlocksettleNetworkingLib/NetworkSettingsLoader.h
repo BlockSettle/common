@@ -14,7 +14,7 @@
 #include <spdlog/spdlog.h>
 #include <memory>
 #include <QObject>
-#include "ZMQ_BIP15X_Helpers.h"
+#include "BIP15xHelpers.h"
 
 class RequestReplyCommand;
 
@@ -45,7 +45,7 @@ class NetworkSettingsLoader : public QObject
 public:
    NetworkSettingsLoader(const std::shared_ptr<spdlog::logger> &logger
       , const std::string &pubHost, const std::string &pubPort
-      , const ZmqBipNewKeyCb &cbApprove, QObject *parent = nullptr);
+      , const bs::network::BIP15xNewKeyCb &, QObject *parent = nullptr);
    ~NetworkSettingsLoader() override;
 
    const NetworkSettings &settings() const { return networkSettings_; }
@@ -62,8 +62,7 @@ private:
    void sendFailedAndReset(const QString &errorMsg);
 
    std::shared_ptr<spdlog::logger> logger_;
-
-   const ZmqBipNewKeyCb cbApprove_;
+   const bs::network::BIP15xNewKeyCb   cbApprove_{ nullptr };
 
    const std::string pubHost_;
    const std::string pubPort_;

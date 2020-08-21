@@ -95,7 +95,6 @@ public:
       notifyOnTX,
       defaultAuthAddr,
       numberOfAuthAddressVisible,
-      bsPublicKey,
       logDefault,
       logMessages,
       txCacheFileName,
@@ -142,6 +141,17 @@ public:
       ccServerPubKey,
       HideLegacyWalletWarning,
       DetailedSettlementTxDialogByDefault,
+      AutoStartRFQScript,
+      CurrentRFQScript,
+      ShowInfoWidget,
+      LoginApiKey,
+      AutoQouting,
+      AutoSigning,
+      ExtConnName,
+      ExtConnHost,
+      ExtConnPort,
+      ExtConnPubKey,
+      SubmittedAddressXbtLimit,
       _last
    };
 
@@ -190,9 +200,7 @@ public:
    std::vector<bs::LogConfig> GetLogsConfig() const;
 
    std::pair<autheid::PrivateKey, autheid::PublicKey> GetAuthKeys();
-
-   std::string pubBridgeHost() const;
-   std::string pubBridgePort() const;
+   std::string GetBlocksettleSignAddress() const;
 
    void selectNetwork();
 

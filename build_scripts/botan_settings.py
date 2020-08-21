@@ -20,7 +20,7 @@ from component_configurator import Configurator
 class BotanSettings(Configurator):
     def __init__(self, settings, enableSqlite = False, enablePKCS11 = False):
         Configurator.__init__(self, settings)
-        self._version = '2.10.0'
+        self._version = '2.15.0'
         self._package_name = 'botan'
         self._script_revision = '2'
         self._enableSqlite = enableSqlite

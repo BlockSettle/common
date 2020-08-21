@@ -62,3 +62,12 @@ message Balance
     string currency = 1;
     double balance = 2;
 }
+
+message TradeSettings
+{
+    uint64 xbt_tier1_limit                   = 1;
+    uint32 xbt_price_band                    = 2;
+    uint32 auth_required_settled_trades      = 3;
+    uint32 auth_submit_address_limit         = 4;
+    uint32 dealer_auth_submit_address_limit  = 5;
+}

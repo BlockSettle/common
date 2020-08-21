@@ -43,7 +43,6 @@ namespace bs {
          virtual std::string nameByWalletIndex(bs::hd::Path::Elem) const = 0;
          virtual uint64_t lotSizeFor(const std::string &cc) const = 0;
          virtual bs::Address genesisAddrFor(const std::string &cc) const = 0;
-         virtual std::string descriptionFor(const std::string &cc) const = 0;
          virtual std::vector<std::string> securities() const = 0;
       };
 
@@ -82,7 +81,7 @@ namespace bs {
          bs::core::wallet::TXSignRequest createTXRequest(const std::vector<std::string> &walletsIds
             , const std::vector<UTXO> &inputs
             , const std::vector<std::string> &inputIndices
-            , const std::vector<std::shared_ptr<ScriptRecipient>> &
+            , const std::vector<std::shared_ptr<ArmorySigner::ScriptRecipient>> &
             , bool allowBroadcasts
             , const bs::Address &changeAddr = {}
             , const std::string &changeIndex = {}
@@ -90,14 +89,14 @@ namespace bs {
 
          bs::core::wallet::TXSignRequest createTXRequest(const std::vector<Wallet*> &wallets
             , const std::vector<UTXO> &inputs
-            , const std::vector<std::shared_ptr<ScriptRecipient>> &
+            , const std::vector<std::shared_ptr<ArmorySigner::ScriptRecipient>> &
             , bool allowBroadcasts
             , const bs::Address &changeAddr = {}
             , const uint64_t fee = 0, bool isRBF = false);
 
          bs::core::wallet::TXSignRequest createTXRequest(const std::vector<std::shared_ptr<Wallet>> &wallets
             , const std::vector<UTXO> &inputs
-            , const std::vector<std::shared_ptr<ScriptRecipient>> &
+            , const std::vector<std::shared_ptr<ArmorySigner::ScriptRecipient>> &
             , bool allowBroadcasts
             , const bs::Address &changeAddr = {}
             , const uint64_t fee = 0, bool isRBF = false);
@@ -106,6 +105,8 @@ namespace bs {
 
       class WalletACT;
       class WalletCallbackTarget;
+
+      using RecipientMap = std::map<unsigned, std::vector<std::shared_ptr<ArmorySigner::ScriptRecipient>>>;
 
       class Wallet
       {
@@ -179,7 +180,7 @@ namespace bs {
 
          virtual std::string getAddressIndex(const bs::Address &) = 0;
 
-         virtual std::shared_ptr<ResolverFeed> getPublicResolver() const = 0;
+         virtual std::shared_ptr<ArmorySigner::ResolverFeed> getPublicResolver() const = 0;
 
          //Adds an arbitrary address identified by index
          virtual int addAddress(const bs::Address &, const std::string &index, bool sync = true);
@@ -196,20 +197,20 @@ namespace bs {
 
          // changeAddress must be set if there is change
          virtual core::wallet::TXSignRequest createTXRequest(const std::vector<UTXO> &
-            , const std::vector<std::shared_ptr<ScriptRecipient>> &
+            , const std::vector<std::shared_ptr<ArmorySigner::ScriptRecipient>> &
             , bool allowBroadcasts
             , const uint64_t fee = 0, bool isRBF = false
             , const bs::Address &changeAddress = {});
          virtual core::wallet::TXSignRequest createPartialTXRequest(uint64_t spendVal
-            , const std::vector<UTXO> &inputs, bs::Address changeAddress = {}
+            , const std::vector<UTXO> &inputs
+            , std::pair<bs::Address, unsigned> changePair = {bs::Address(), UINT32_MAX}
             , float feePerByte = 0
-            , const std::vector<std::shared_ptr<ScriptRecipient>> &recipients = {}
-            , const bs::core::wallet::OutputSortOrder &outSortOrder = { bs::core::wallet::OutputOrderType::PrevState
-               , bs::core::wallet::OutputOrderType::Recipients, bs::core::wallet::OutputOrderType::Change }
-            , const Codec_SignerState::SignerState &prevPart = {});
+            , const RecipientMap &recipients = {}
+            , const Codec_SignerState::SignerState &prevPart = {}
+            , unsigned assumedRecipientCount = UINT32_MAX);
 
          virtual bool deleteRemotely() { return false; } //stub
-         virtual void merge(const std::shared_ptr<Wallet>) = 0;
+         virtual void merge(const std::shared_ptr<Wallet> &) {};
 
          void newAddresses(const std::vector<std::string> &inData, const CbAddresses &cb);
          void trackChainAddressUse(const std::function<void(bs::sync::SyncState)> &cb);

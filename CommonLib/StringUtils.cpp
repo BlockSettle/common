@@ -95,4 +95,27 @@ namespace bs {
       return convertToInt(inStr, converted) != 0;
    }
 
+   std::vector<std::string> split(const std::string &str, char separator)
+   {
+      // Copied from https://stackoverflow.com/questions/14265581/parse-split-a-string-in-c-using-string-delimiter-standard-c
+      std::vector<std::string> result;
+      size_t start = 0;
+      size_t end = str.find(separator);
+      while (end != std::string::npos) {
+          result.push_back(str.substr(start, end - start));
+          start = end + 1;
+          end = str.find(separator, start);
+      }
+      result.push_back(str.substr(start, end));
+      return result;
+   }
+
+   std::string trim(std::string str)
+   {
+      // Copied from https://stackoverflow.com/questions/216823/whats-the-best-way-to-trim-stdstring
+      str.erase(std::find_if(str.rbegin(), str.rend(), [](int ch) { return !std::isspace(ch); }).base(), str.end());
+      str.erase(str.begin(), std::find_if(str.begin(), str.end(), [](int ch) { return !std::isspace(ch); }));
+      return str;
+   }
+
 } // namespace bs

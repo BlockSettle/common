@@ -158,9 +158,19 @@ std::vector<QString> AssetManager::securities(bs::network::Asset::Type assetType
 
 bool AssetManager::securityDef(const std::string &security, bs::network::SecurityDef &sd) const
 {
-   const auto itSec = securities_.find(security);
-   if (itSec == securities_.end())
-      return false;
+   auto itSec = securities_.find(security);
+   if (itSec == securities_.end()) {
+      const CurrencyPair cp(security);
+      if (cp.DenomCurrency() == bs::network::XbtCurrency) {
+         itSec = securities_.find(cp.DenomCurrency() + "/" + cp.NumCurrency());
+         if (itSec == securities_.end()) {
+            return false;
+         }
+      }
+      else {
+         return false;
+      }
+   }
    sd = itSec->second;
    return true;
 }
@@ -172,7 +182,6 @@ bs::network::Asset::Type AssetManager::GetAssetTypeForSecurity(const std::string
    if (securityDef(security, sd)) {
       assetType = sd.assetType;
    }
-
    return assetType;
 }
 

@@ -16,19 +16,19 @@ import "bs_server.proto";
 
 message XbtMatchedRequest
 {
-   string settlement_id = 1;
-   string cl_order_id = 2;
-   string email_requestor = 3;
-   string email_dealer = 4;
-   bool requestor_sell = 5;
-   double price = 6;
-   string security_id = 7;
-   string currency = 8;
-   double qty = 9;
-   double contra_qty = 10;
-   int32  subsystem = 11;
-   string requestor_auth_addr_pubkey_hex = 12;
-   string dealer_auth_addr_pubkey_hex = 13;
+   string   settlement_id                    = 1;
+   string   cl_order_id                      = 2;
+   string   requestor_entity_name            = 3;
+   string   dealer_entity_name               = 4;
+   bool     requestor_sell                   = 5;
+   double   price                            = 6;
+   string   security_id                      = 7;
+   string   currency                         = 8;
+   double   qty                              = 9;
+   double   contra_qty                       = 10;
+   int32    subsystem                        = 11;
+   string   requestor_auth_addr_pubkey_hex   = 12;
+   string   dealer_auth_addr_pubkey_hex      = 13;
 }
 
 message XbtResponseCommon
@@ -54,6 +54,7 @@ message XbtSignedPayoutResponse
 {
    string settlement_id = 1;
    bytes unsigned_payin = 2;
+   bytes payin_hash = 3;
 }
 
 message XbtCancelRequest

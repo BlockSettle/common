@@ -115,8 +115,8 @@ class QtSettings(Configurator):
             command.append('-no-freetype')
 
         if self._project_settings.on_windows():
-            command.append('-IC:\Program Files\MySQL\MySQL Connector C 6.1\include')
-            command.append('-LC:\Program Files\MySQL\MySQL Connector C 6.1\lib')
+            command.append('-IC:\\Program Files\\MySQL\\MySQL Connector C 6.1\\include')
+            command.append('-LC:\\Program Files\\MySQL\\MySQL Connector C 6.1\\lib')
 
         command.append('-nomake')
         command.append('tests')

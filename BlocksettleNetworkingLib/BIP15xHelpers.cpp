@@ -8,30 +8,31 @@
 **********************************************************************************
 
 */
-#include "ZMQ_BIP15X_Helpers.h"
+#include "BIP15xHelpers.h"
 
 #include "EncryptionUtils.h"
 #include "AuthorizedPeers.h"
 #include "FutureValue.h"
 
+using namespace bs::network;
 
-ZmqBIP15XPeer::ZmqBIP15XPeer(const std::string &name, const BinaryData &pubKey)
+BIP15xPeer::BIP15xPeer(const std::string &name, const BinaryData &pubKey)
    : name_(name)
    , pubKey_(pubKey)
 {
-   if (!ZmqBIP15XUtils::isValidPubKey(pubKey)) {
+   if (!bip15x::isValidPubKey(pubKey)) {
       throw std::runtime_error("invalid public key");
    }
 }
 
 // static
-BinaryData ZmqBIP15XUtils::convertKey(const btc_pubkey &pubKey)
+BinaryData bip15x::convertKey(const btc_pubkey &pubKey)
 {
    return BinaryData(pubKey.pubkey, pubKey.compressed
                      ? BTC_ECKEY_COMPRESSED_LENGTH : BTC_ECKEY_UNCOMPRESSED_LENGTH);
 }
 
-BinaryData ZmqBIP15XUtils::convertCompressedKey(const btc_pubkey &pubKey)
+BinaryData bip15x::convertCompressedKey(const btc_pubkey &pubKey)
 {
    if (!pubKey.compressed) {
       return {};
@@ -39,7 +40,7 @@ BinaryData ZmqBIP15XUtils::convertCompressedKey(const btc_pubkey &pubKey)
    return convertKey(pubKey);
 }
 
-bool ZmqBIP15XUtils::isValidPubKey(const BinaryData &pubKey)
+bool bip15x::isValidPubKey(const BinaryData &pubKey)
 {
    // Based on CryptoECDSA::VerifyPublicKeyValid
    btc_pubkey key;
@@ -60,14 +61,14 @@ bool ZmqBIP15XUtils::isValidPubKey(const BinaryData &pubKey)
    return btc_pubkey_is_valid(&key);
 }
 
-bool ZmqBIP15XUtils::addAuthPeer(AuthorizedPeers *authPeers, const ZmqBIP15XPeer &peer)
+bool bip15x::addAuthPeer(AuthorizedPeers *authPeers, const BIP15xPeer &peer)
 {
    authPeers->eraseName(peer.name());
-   authPeers->addPeer(peer.pubKey(), peer.name());
+   authPeers->addPeer(peer.pubKey(), std::vector<std::string>{peer.name()});
    return true;
 }
 
-void ZmqBIP15XUtils::updatePeerKeys(AuthorizedPeers *authPeers_, const std::vector<ZmqBIP15XPeer> &newPeers)
+void bip15x::updatePeerKeys(AuthorizedPeers *authPeers_, const BIP15xPeers &newPeers)
 {
    // Make a copy of peers map!
    const auto oldPeers = authPeers_->getPeerNameMap();
@@ -79,6 +80,6 @@ void ZmqBIP15XUtils::updatePeerKeys(AuthorizedPeers *authPeers_, const std::vect
    }
 
    for (const auto &newPeer : newPeers) {
-      authPeers_->addPeer(newPeer.pubKey(), newPeer.name());
+      authPeers_->addPeer(newPeer.pubKey(), std::vector<std::string>({newPeer.name()}));
    }
 }

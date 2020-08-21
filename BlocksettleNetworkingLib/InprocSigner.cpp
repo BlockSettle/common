@@ -51,6 +51,7 @@ bool InprocSigner::Start()
 bs::signer::RequestId InprocSigner::signTXRequest(const bs::core::wallet::TXSignRequest &txSignReq,
    TXSignMode mode, bool)
 {
+
    if (!txSignReq.isValid()) {
       logger_->error("[{}] Invalid TXSignRequest", __func__);
       return 0;
@@ -78,24 +79,19 @@ bs::signer::RequestId InprocSigner::signTXRequest(const bs::core::wallet::TXSign
          }
          else {
             bs::core::wallet::TXMultiSignRequest multiReq;
-            multiReq.recipients = txSignReq.recipients;
-            if (txSignReq.change.value) {
-               multiReq.recipients.push_back(txSignReq.change.address.getRecipient(bs::XBTAmount{ txSignReq.change.value }));
-            }
-            if (!txSignReq.prevStates.empty()) {
-               multiReq.prevState = txSignReq.prevStates.front();
-            }
+            multiReq.armorySigner_.merge(txSignReq.armorySigner_);
 
             bs::core::WalletMap wallets;
-            for (const auto &input : txSignReq.inputs) {
-               const auto addr = bs::Address::fromUTXO(input);
+            for (unsigned i=0; i<txSignReq.armorySigner_.getTxInCount(); i++) {
+               auto utxo = txSignReq.armorySigner_.getSpender(i)->getUtxo();
+               const auto addr = bs::Address::fromUTXO(utxo);
                const auto wallet = walletsMgr_->getWalletByAddress(addr);
                if (!wallet) {
                   logger_->error("[{}] failed to find wallet for input address {}"
                      , __func__, addr.display());
                   return 0;
                }
-               multiReq.addInput(input, wallet->walletId());
+               multiReq.addWalletId(wallet->walletId());
                wallets[wallet->walletId()] = wallet;
             }
             multiReq.RBF = txSignReq.RBF;
@@ -168,8 +164,9 @@ bs::signer::RequestId InprocSigner::resolvePublicSpenders(const bs::core::wallet
    , const SignerStateCb &cb)
 {
    std::set<std::shared_ptr<bs::core::Wallet>> wallets;
-   for (const auto &input : txReq.inputs) {
-      const auto &addr = bs::Address::fromUTXO(input);
+   for (unsigned i=0; i<txReq.armorySigner_.getTxInCount(); i++) {
+      const auto& utxo = txReq.armorySigner_.getSpender(i)->getUtxo();
+      const auto &addr = bs::Address::fromUTXO(utxo);
       const auto &wallet = walletsMgr_->getWalletByAddress(addr);
       if (wallet) {
          wallets.insert(wallet);
@@ -179,11 +176,15 @@ bs::signer::RequestId InprocSigner::resolvePublicSpenders(const bs::core::wallet
       logger_->error("[{}] failed to find any associated wallets", __func__);
       return 0;
    }
+   
+   ArmorySigner::Signer signer(txReq.armorySigner_);
    const auto reqId = seqId_++;
    for (const auto &wallet : wallets) {
-      txReq.resolveSpenders(wallet->getPublicResolver());
+      signer.resetFeed();
+      signer.setFeed(wallet->getPublicResolver());
+      signer.resolvePublicData();
    }
-   const auto &resolvedState = txReq.serializeState();
+   const auto &resolvedState = signer.serializeState();
    cb(resolvedState.IsInitialized() ? bs::error::ErrorCode::NoError : bs::error::ErrorCode::InternalError
       , resolvedState);
    return reqId;
@@ -489,26 +490,6 @@ void InprocSigner::syncNewAddresses(const std::string &walletId
       result.push_back({ wallet->synchronizeUsedAddressChain(in).first, in });
    }
 
-   if (cb) {
-      cb(result);
-   }
-}
-
-void InprocSigner::getAddressPreimage(const std::map<std::string, std::vector<bs::Address>> &inputs
-   , const std::function<void(const std::map<bs::Address, BinaryData> &)> &cb)
-{
-   std::map<bs::Address, BinaryData> result;
-   for (const auto &input : inputs) {
-      const auto wallet = walletsMgr_->getWalletById(input.first);
-      if (wallet) {
-         for (const auto &addr : input.second) {
-            const auto addrEntry = wallet->getAddressEntryForAddr(addr.prefixed());
-            if (addrEntry) {
-               result[addr] = addrEntry->getPreimage();
-            }
-         }
-      }
-   }
    if (cb) {
       cb(result);
    }

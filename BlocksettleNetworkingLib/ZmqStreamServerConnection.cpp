@@ -84,7 +84,7 @@ void ZmqStreamServerConnection::onZeroFrame(const std::string& clientId)
    }
 
    if (clientConnected) {
-      notifyListenerOnNewConnection(clientId);
+      notifyListenerOnNewConnection(clientId, {});
    } else {
       notifyListenerOnDisconnectedClient(clientId);
    }
@@ -101,38 +101,32 @@ void ZmqStreamServerConnection::onDataFrameReceived(const std::string& clientId,
    }
 }
 
-bool ZmqStreamServerConnection::sendRawData(const std::string& clientId, const std::string& rawData, const SendResultCb &cb)
+bool ZmqStreamServerConnection::sendRawData(const std::string& clientId, const std::string& rawData)
 {
    if (!isActive()) {
       logger_->error("[ZmqStreamServerConnection::sendRawData] cound not send. not connected");
       return false;
    }
 
-   QueueDataToSend(clientId, rawData, cb, true);
+   QueueDataToSend(clientId, rawData, true);
 
    return true;
 }
 
-bool ZmqStreamServerConnection::SendDataToClient(const std::string& clientId, const std::string& data, const SendResultCb &cb)
+bool ZmqStreamServerConnection::SendDataToClient(const std::string& clientId, const std::string& data)
 {
    auto connection = findConnection(clientId);
    if (connection == nullptr) {
       logger_->error("[ZmqStreamServerConnection::SendDataToClient] {} send data to closed connection {}"
          , connectionName_, clientId);
-      if (cb) {
-         cb(clientId, data, false);
-      }
       return false;
    }
 
    const bool result = connection->send(data);
-   if (cb) {
-      cb(clientId, data, result);
-   }
    return result;
 }
 
-bool ZmqStreamServerConnection::SendDataToAllClients(const std::string& data, const SendResultCb &cb)
+bool ZmqStreamServerConnection::SendDataToAllClients(const std::string& data)
 {
    unsigned int successCount = 0;
 
@@ -141,9 +135,6 @@ bool ZmqStreamServerConnection::SendDataToAllClients(const std::string& data, co
       const bool result = it.second->send(data);
       if (result) {
          successCount++;
-      }
-      if (cb) {
-         cb(it.first, data, result);
       }
    }
    return (successCount == activeConnections_.size());

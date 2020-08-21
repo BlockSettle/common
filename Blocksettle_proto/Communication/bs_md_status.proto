@@ -42,25 +42,31 @@ message MDStatusServerStatus
    // FX stream timeouts
    // timeout - time interval since last pair received. in ms
    uint64 eur_gbp_timeout = 4;
-   uint64 eur_sek_timeout = 5;
-   uint64 gbp_sek_timeout = 6;
-   uint64 eur_jpy_timeout = 7;
-   uint64 gbp_jpy_timeout = 8;
-   uint64 jpy_sek_timeout = 9;
-   uint64 eur_usd_timeout = 10;
+   uint64 eur_cad_timeout = 5;
+   uint64 gbp_cad_timeout = 6;
+   uint64 eur_usd_timeout = 7;
+   uint64 gbp_usd_timeout = 8;
+   uint64 usd_cad_timeout = 9;
+   uint64 eur_pln_timeout = 10;
+   uint64 gbp_pln_timeout = 11;
+   uint64 usd_pln_timeout = 12;
+   uint64 cad_pln_timeout = 13;
 
-   bool eur_gbp_from_xbt = 11;
-   bool eur_sek_from_xbt = 12;
-   bool gbp_sek_from_xbt = 13;
-   bool eur_jpy_from_xbt = 14;
-   bool gbp_jpy_from_xbt = 15;
-   bool jpy_sek_from_xbt = 16;
+   bool eur_gbp_from_xbt = 14;
+   bool eur_cad_from_xbt = 15;
+   bool gbp_cad_from_xbt = 16;
    bool eur_usd_from_xbt = 17;
+   bool gbp_usd_from_xbt = 18;
+   bool usd_cad_from_xbt = 19;
+   bool eur_pln_from_xbt = 20;
+   bool gbp_pln_from_xbt = 21;
+   bool usd_pln_from_xbt = 22;
+   bool cad_pln_from_xbt = 23;
 
    // XBT stream timeouts
-   uint64 xbt_gbp_timeout = 18;
-   uint64 xbt_eur_timeout = 19;
-   uint64 xbt_sek_timeout = 20;
-   uint64 xbt_jpy_timeout = 21;
-   uint64 xbt_usd_timeout = 22;
+   uint64 xbt_eur_timeout = 24;
+   uint64 xbt_gbp_timeout = 25;
+   uint64 xbt_pln_timeout = 26;
+   uint64 xbt_cad_timeout = 27;
+   uint64 xbt_usd_timeout = 28;
 }

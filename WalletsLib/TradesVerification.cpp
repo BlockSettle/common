@@ -14,7 +14,6 @@
 
 #include "BinaryData.h"
 #include "CheckRecipSigner.h"
-#include "PublicResolver.h"
 #include "SettableField.h"
 
 namespace {
@@ -198,7 +197,6 @@ bs::PayoutSignatureType bs::TradesVerification::whichSignature(const Tx &tx, uin
 
 std::shared_ptr<bs::TradesVerification::Result> bs::TradesVerification::verifyUnsignedPayin(
    const Codec_SignerState::SignerState &unsignedPayin
-   , const std::map<std::string, BinaryData>& preimageData
    , float feePerByte, const std::string &settlementAddress, uint64_t tradeAmount)
 {
    if (!unsignedPayin.IsInitialized()) {
@@ -207,10 +205,13 @@ std::shared_ptr<bs::TradesVerification::Result> bs::TradesVerification::verifyUn
 
    try {
       bs::CheckRecipSigner deserializedSigner(unsignedPayin);
+      if (!deserializedSigner.isResolved()) {
+         return Result::error("unresolved unsigned payin");
+      }
       auto settlAddressBin = bs::Address::fromAddressString(settlementAddress);
 
       // check that there is only one output of correct amount to settlement address
-      auto recipients = deserializedSigner.recipients();
+      auto recipients = deserializedSigner.getRecipientVector();
       uint64_t settlementAmount = 0;
       uint64_t totalOutputAmount = 0;
       uint64_t settlementOutputsCount = 0;
@@ -230,22 +231,26 @@ std::shared_ptr<bs::TradesVerification::Result> bs::TradesVerification::verifyUn
 
             //fail the check if the settlement isn't the first output of the PayIn tx.
             if (i != 0) {
-               return Result::error(fmt::format("unexpected settlement output id: {}. expected 0", i));
+               return Result::error(fmt::format("unexpected settlement output "
+                  "id: {}, expected 0", i));
             }
 
          } else {
+            if (value <= bs::Address::getNativeSegwitDustAmount()) {
+               return Result::error(fmt::format("output #{} is a dust ({})", i, value));
+            }
             optionalChangeAddr.setValue(addr);
          }
-
          totalOutputCount += 1;
       }
 
       if (settlementOutputsCount != 1) {
-         return Result::error(fmt::format("unexpected settlement outputs count: {}. expected 1", settlementOutputsCount));
+         return Result::error(fmt::format("unexpected settlement outputs count: {}"
+            ", expected 1", settlementOutputsCount));
       }
-
       if (settlementAmount != tradeAmount) {
-         return Result::error(fmt::format("unexpected settlement amount: {}. expected {}", settlementAmount, tradeAmount));
+         return Result::error(fmt::format("unexpected settlement amount: {}, "
+            "expected {}", settlementAmount, tradeAmount));
       }
 
       // check that fee is fine
@@ -262,11 +267,6 @@ std::shared_ptr<bs::TradesVerification::Result> bs::TradesVerification::verifyUn
 
       if (deserializedSigner.isRBF()) {
          return Result::error("Pay-In could not be RBF transaction");
-      }
-
-      if (!preimageData.empty()) {
-         const auto resolver = std::make_shared<PublicResolver>(preimageData);
-         deserializedSigner.setFeed(resolver);
       }
 
       const uint64_t totalFee = totalInput - totalOutputAmount;
@@ -289,16 +289,34 @@ std::shared_ptr<bs::TradesVerification::Result> bs::TradesVerification::verifyUn
 
       result->utxos.reserve(spenders.size());
 
+      std::map<BinaryData, BinaryData> preimages;
       for (const auto& spender : spenders) {
-         result->utxos.push_back(spender->getUtxo());
+         const auto& utxo = spender->getUtxo();
+         result->utxos.push_back(utxo);
+         if (spender->isP2SH()) {
+            //grab serialized input
+            auto inputData = spender->getSerializedInput(false);
+            
+            //extract preimage from it
+            BinaryRefReader brr(inputData.getRef());
+            brr.advance(36); //skip outpoint data
+
+            auto sigScriptLen = brr.get_var_int();
+            auto sigScriptRef = brr.get_BinaryDataRef(sigScriptLen);
+
+            //if this is a p2sh input, it has push data
+            auto pushData = BtcUtils::getLastPushDataInScript(sigScriptRef);
+            
+            auto addr = bs::Address::fromScript(utxo.getScript());
+            preimages.emplace(addr, pushData);
+         }
       }
 
       result->payinHash = deserializedSigner.getTxId();
 
-      if (!XBTInputsAcceptable(result->utxos, preimageData)) {
+      if (!XBTInputsAcceptable(result->utxos, preimages)) {
          return Result::error("Not supported input type used");
       }
-
       return result;
 
    } catch (const std::exception &e) {
@@ -310,7 +328,8 @@ std::shared_ptr<bs::TradesVerification::Result> bs::TradesVerification::verifyUn
 
 std::shared_ptr<bs::TradesVerification::Result> bs::TradesVerification::verifySignedPayout(const BinaryData &signedPayout
    , const std::string &buyAuthKeyHex, const std::string &sellAuthKeyHex
-   , const BinaryData &payinHash, uint64_t tradeAmount, float feePerByte, const std::string &settlementId, const std::string &settlementAddress)
+   , const BinaryData &payinHash, uint64_t tradeAmount, float feePerByte, const std::string &settlementId
+   , const std::string &settlementAddress)
 {
    if (signedPayout.empty()) {
       return Result::error("signed payout is not provided");
@@ -456,7 +475,9 @@ std::shared_ptr<bs::TradesVerification::Result> bs::TradesVerification::verifySi
 }
 
 //only  TXOUT_SCRIPT_P2WPKH and (TXOUT_SCRIPT_P2SH | TXOUT_SCRIPT_P2WPKH) accepted
-bool bs::TradesVerification::XBTInputsAcceptable(const std::vector<UTXO>& utxoList, const std::map<std::string, BinaryData>& preImages)
+bool bs::TradesVerification::XBTInputsAcceptable(
+   const std::vector<UTXO>& utxoList, 
+   const std::map<BinaryData, BinaryData>& preImages)
 try {
    for (const auto& input : utxoList) {
       const auto scrType = BtcUtils::getTxOutScriptType(input.getScript());
@@ -468,11 +489,8 @@ try {
          return false;
       }
 
-      // check underlying script type
-      auto address = bs::Address::fromScript(input.getScript());
-
-      //xxx: shouldn't be using string addresses when this could be binary addresses.
-      const auto it = preImages.find(address.display());
+      auto addr = bs::Address::fromScript(input.getScript());
+      const auto it = preImages.find(addr);
       if (it == preImages.end()) {
          return false;
       }
@@ -482,15 +500,9 @@ try {
          return false;
       }
 
-      // check that preimage belong to that address
+      // check that preimage hashes address
       const auto& hash = BtcUtils::getHash160(it->second);
-
-      BinaryWriter bw;
-      bw.put_uint8_t(NetworkConfig::getScriptHashPrefix());
-      bw.put_BinaryData(hash);
-      const auto& prefixedHash = bw.getData();
-
-      if (prefixedHash != address.prefixed()) {
+      if (hash != addr.unprefixed()) {
          return false;
       }
    }

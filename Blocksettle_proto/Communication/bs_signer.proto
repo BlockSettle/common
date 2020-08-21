@@ -33,7 +33,6 @@ enum PacketType
    SyncWalletInfoType = 9;
    SyncHDWalletType = 10;
    SyncWalletType = 11;
-   CreateWOType = 12;
    GetDecryptedNodeType = 13;
    SetLimitsType = 14;
    PasswordReceivedType = 15;
@@ -158,9 +157,16 @@ enum ControlPasswordStatus
 
 ////////////////////////////////////////////////////////////////////////////////
 
-message PeerEvent
+message ClientConnected
 {
-   string ip_address = 1;
+   bytes client_id = 1;
+   string ip_address = 2;
+   string public_key = 3;
+}
+
+message ClientDisconnected
+{
+   bytes client_id = 1;
 }
 
 message SignTxEvent

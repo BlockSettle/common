@@ -42,8 +42,6 @@ public:
    bool BindConnection(const std::string& host, const std::string& port
       , ServerConnectionListener* listener) override;
 
-   std::string GetClientInfo(const std::string &clientId) const override;
-
    bool SetZMQTransport(ZMQTransport transport);
 
    void SetImmediate(bool flag = true) { immediate_ = flag; }
@@ -62,10 +60,10 @@ protected:
    // interface for active connection listener
    void notifyListenerOnData(const std::string& clientId, const std::string& data);
 
-   void notifyListenerOnNewConnection(const std::string& clientId);
+   void notifyListenerOnNewConnection(const std::string& clientId, const ServerConnectionListener::Details &details);
    void notifyListenerOnDisconnectedClient(const std::string& clientId);
-   void notifyListenerOnClientError(const std::string& clientId, const std::string &error);
-   void notifyListenerOnClientError(const std::string& clientId, ServerConnectionListener::ClientError errorCode, int socket);
+   void notifyListenerOnClientError(const std::string& clientId, ServerConnectionListener::ClientError errorCode
+      , const ServerConnectionListener::Details &details);
 
    virtual ZmqContext::sock_ptr CreateDataSocket() = 0;
    virtual bool ConfigDataSocket(const ZmqContext::sock_ptr& dataSocket);
@@ -74,8 +72,7 @@ protected:
 
    virtual void onPeriodicCheck();
 
-   virtual bool QueueDataToSend(const std::string& clientId, const std::string& data
-      , const SendResultCb &cb, bool sendMore);
+   virtual bool QueueDataToSend(const std::string& clientId, const std::string& data, bool sendMore);
 
    std::shared_ptr<spdlog::logger>  logger_;
    std::shared_ptr<ZmqContext>      context_;
@@ -84,9 +81,6 @@ protected:
 
    // should be accessed only from overloaded ReadFromDataSocket.
    ZmqContext::sock_ptr             dataSocket_;
-   ZmqContext::sock_ptr             monSocket_;
-
-   std::unordered_map<std::string, std::string> clientInfo_; // ClientID & related string
 
    void stopServer();
 
@@ -111,7 +105,6 @@ private:
    {
       std::string    clientId;
       std::string    data;
-      SendResultCb   cb;
       bool           sendMore;
    };
 
@@ -126,8 +119,6 @@ private:
    std::atomic_flag                 dataQueueLock_ = ATOMIC_FLAG_INIT;
    std::deque<DataToSend>           dataQueue_;
    ZMQTransport                     zmqTransport_ = ZMQTransport::TCPTransport;
-   std::unordered_map<int, std::string> connectedPeers_;
-   std::string                      monitorConnectionName_;
    bool        immediate_{ false };
    std::string identity_;
    int sendTimeoutInMs_{ 5000 };

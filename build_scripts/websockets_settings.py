@@ -14,14 +14,17 @@ import shutil
 import subprocess
 
 from component_configurator import Configurator
+from build_scripts.openssl_settings import OpenSslSettings
 
 class WebsocketsSettings(Configurator):
     def __init__(self, settings):
         Configurator.__init__(self, settings)
-        self._version = '3.1.0'
+        self.openssl = OpenSslSettings(settings)
+        self._version = '4.0.15'
         self._package_name = 'libwebsockets'
         self._package_url = 'https://github.com/warmcat/libwebsockets/archive/v' + self._version + '.zip'
-        self._script_revision = '5'
+        self._script_revision = '10'
+        self._sources = os.path.join(self._project_settings.get_sources_dir(), self._package_name + '-' + self._version)
 
     def get_package_name(self):
         return self._package_name + '-' + self._version
@@ -39,17 +42,19 @@ class WebsocketsSettings(Configurator):
         return True
 
     def config(self):
-        # Removing HTTPS is safe for our purposes. WS connections are secured by
-        # BIP 150/151, which basically acts as a lightweight TLS replacement.
+        # LWS_SSL_CLIENT_USE_OS_CA_CERTS is off because it only tries to load CA bundle from OpenSSL build dir (useless feature for us).
+        # As a workaround we embed CA bundle in terminal binary itself.
         command = ['cmake',
-                   os.path.join(self._project_settings.get_sources_dir(), self._package_name + '-' + self._version),
+                   self._sources,
                    '-DLWS_WITHOUT_SERVER=OFF',
-                   '-DLWS_SSL_CLIENT_USE_OS_CA_CERTS=0',
-                   '-DLWS_WITH_SSL=0',
+                   '-DLWS_SSL_CLIENT_USE_OS_CA_CERTS=OFF',
+                   '-DLWS_WITH_SSL=ON',
                    '-DLWS_WITHOUT_TESTAPPS=ON',
                    '-DLWS_WITHOUT_TEST_SERVER=ON',
                    '-DLWS_WITHOUT_TEST_PING=ON',
-                   '-DLWS_WITHOUT_TEST_CLIENT=ON']
+                   '-DLWS_WITHOUT_TEST_CLIENT=ON',
+                   '-DOPENSSL_ROOT_DIR=' + self.openssl.get_install_dir(),
+        ]
 
         # for static lib
         if self._project_settings.on_windows() and self._project_settings.get_link_mode() != 'shared':
@@ -65,6 +70,8 @@ class WebsocketsSettings(Configurator):
         if self._project_settings.on_linux():
             command.append('-DLWS_WITH_STATIC=ON')
             command.append('-DLWS_WITH_SHARED=ON')
+            if self._project_settings.get_build_mode() == 'debug':
+                command.append('-DCMAKE_BUILD_TYPE=Debug')
 
         if self._project_settings.on_windows():
             if self._project_settings.get_link_mode() == 'shared':
@@ -80,11 +87,32 @@ class WebsocketsSettings(Configurator):
         command.append('-DCMAKE_INSTALL_PREFIX=' + self.get_install_dir())
 
         print(command)
+
         env_vars = os.environ.copy()
+        if self._project_settings.on_windows():
+            # Workaround for https://github.com/warmcat/libwebsockets/issues/1916
+            env_vars['LDFLAGS'] = "crypt32.Lib"
+        if self._project_settings.on_osx():
+            env_vars['LDFLAGS'] = "-L" + self.openssl.get_install_dir() + "/lib"
+
+        # Workaround for data race: https://github.com/warmcat/libwebsockets/issues/1836
+        env_vars['CFLAGS'] = "-Dmalloc_usable_size=INVALID_DEFINE_TO_DISABLE_FLAG"
+
         result = subprocess.call(command, env=env_vars)
         return result == 0
 
     def make_windows(self):
+        if self._project_settings.get_build_mode() == 'debug':
+            # Workaroung for failed assert on Windows
+            file_path = self._sources + "\\lib\\tls\\openssl\\openssl-ssl.c"
+            with open(file_path, "r") as sources:
+                lines = sources.readlines()
+            print(lines)
+            with open(file_path, "w") as sources:
+                for line in lines:
+                    if not "assert (errno != 9);" in line:
+                        sources.write(line)
+
         project_name = 'websockets'
         if self._project_settings.get_link_mode() == 'shared':
             project_name = 'websockets_shared'

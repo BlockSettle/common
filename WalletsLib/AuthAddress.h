@@ -18,24 +18,22 @@
 
 enum class AddressVerificationState
 {
-   // VerificationFailed - there were errors/isses while getting address verification state
+   // VerificationFailed - there were errors/issues while getting address verification state
    VerificationFailed = 0,
-   // InProgress - address verification state is not defined yet
-   InProgress,
-   // NotSubmitted - address do not have verification transaction
-   NotSubmitted,
-   // Submitted - there is unconfirmed transaction from BS
-   Submitted,
-   // PendingVerification - there is confirmed transaction from BS, but nothing returned back
-   PendingVerification,
-   // VerificationSubmitted - there is unconfirmed verification from auth address back to validation address
-   VerificationSubmitted,
+   // Virgin - address does not have history
+   Virgin,
+   // Tainted - address has no validation outputs but has history
+   Tainted,
+   // Submitted - address has a validation output without enough confirmations
+   Verifying,
    // Verified - address is verified
    Verified,
-   // Revoked - address is revoked by customer
+   // Revoked - address is revoked (by user)
    Revoked,
-   // evokedByBS - address is revoked by BS
-   RevokedByBS
+   // Invalidated - address was invalidated by a validation address (explicit) or 
+   // validation address for this user address was revoked (implicit)
+   Invalidated_Explicit,
+   Invalidated_Implicit
 };
 
 std::string to_string(AddressVerificationState state);
@@ -43,7 +41,7 @@ std::string to_string(AddressVerificationState state);
 class AuthAddress
 {
 public:
-   AuthAddress(const bs::Address &chainedAddress, AddressVerificationState state = AddressVerificationState::InProgress);
+   AuthAddress(const bs::Address &chainedAddress, AddressVerificationState state = AddressVerificationState::VerificationFailed);
    ~AuthAddress() noexcept = default;
 
    AuthAddress(const AuthAddress&) = default;

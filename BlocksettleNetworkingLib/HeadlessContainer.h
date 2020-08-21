@@ -21,8 +21,7 @@
 
 #include "DataConnectionListener.h"
 #include "WalletSignerContainer.h"
-#include "ZMQ_BIP15X_DataConnection.h"
-#include "ZMQ_BIP15X_Helpers.h"
+#include "BIP15xHelpers.h"
 
 #include "headless.pb.h"
 
@@ -34,6 +33,9 @@ namespace bs {
    namespace hd {
       class Wallet;
    }
+   namespace network {
+      class TransportBIP15xClient;
+   }
 }
 
 class ConnectionManager;
@@ -41,7 +43,6 @@ class DataConnection;
 class HeadlessListener;
 class QProcess;
 class WalletsManager;
-class ZmqBIP15XDataConnection;
 
 class HeadlessContainer : public WalletSignerContainer
 {
@@ -114,8 +115,6 @@ public:
       const std::set<BinaryData>& addrSet, std::function<void(bs::sync::SyncState)>) override;
    void extendAddressChain(const std::string &walletId, unsigned count, bool extInt,
       const std::function<void(const std::vector<std::pair<bs::Address, std::string>> &)> &) override;
-   void getAddressPreimage(const std::map<std::string, std::vector<bs::Address>> &
-      , const std::function<void(const std::map<bs::Address, BinaryData> &)> &) override;
 
    void createSettlementWallet(const bs::Address &authAddr
       , const std::function<void(const SecureBinaryData &)> &) override;
@@ -168,7 +167,6 @@ protected:
    std::map<bs::signer::RequestId, std::function<void(bs::sync::HDWalletData)>>  cbHDWalletMap_;
    std::map<bs::signer::RequestId, std::function<void(bs::sync::WalletData)>>    cbWalletMap_;
    std::map<bs::signer::RequestId, std::function<void(bs::sync::SyncState)>>     cbSyncAddrsMap_;
-   std::map<bs::signer::RequestId, std::function<void(const std::map<bs::Address, BinaryData> &)>> cbAddrPreimageMap_;
    std::map<bs::signer::RequestId, std::function<void(const std::vector<std::pair<bs::Address, std::string>> &)>> cbExtAddrsMap_;
    std::map<bs::signer::RequestId, std::function<void(const std::vector<std::pair<bs::Address, std::string>> &)>> cbNewAddrsMap_;
    std::map<bs::signer::RequestId, SignTxCb> cbSettlementSignTxMap_;
@@ -197,7 +195,7 @@ public:
       , const bool ephemeralDataConnKeys = true
       , const std::string& ownKeyFileDir = ""
       , const std::string& ownKeyFileName = ""
-      , const ZmqBipNewKeyCb& inNewKeyCB = nullptr);
+      , const bs::network::BIP15xNewKeyCb &inNewKeyCB = nullptr);
    ~RemoteSigner() noexcept override = default;
 
    bool Start() override;
@@ -205,7 +203,7 @@ public:
    bool Connect() override;
    bool Disconnect() override;
    bool isOffline() const override;
-   void updatePeerKeys(const ZmqBIP15XPeers &peers);
+   void updatePeerKeys(const bs::network::BIP15xPeers &);
 
 protected slots:
    void onAuthenticated();
@@ -221,14 +219,15 @@ private:
    void ScheduleRestart();
 
 protected:
-   const QString                              host_;
-   const QString                              port_;
-   const NetworkType                          netType_;
-   const bool                                 ephemeralDataConnKeys_;
-   const std::string                          ownKeyFileDir_;
-   const std::string                          ownKeyFileName_;
-   std::shared_ptr<ZmqBIP15XDataConnection>   connection_;
-   const ZmqBipNewKeyCb    cbNewKey_;
+   const QString                       host_;
+   const QString                       port_;
+   const NetworkType                   netType_;
+   const bool                          ephemeralDataConnKeys_;
+   const std::string                   ownKeyFileDir_;
+   const std::string                   ownKeyFileName_;
+   std::shared_ptr<DataConnection>     connection_;
+   std::shared_ptr<bs::network::TransportBIP15xClient>   bip15xTransport_;
+   const bs::network::BIP15xNewKeyCb   cbNewKey_{ nullptr };
 
 private:
    std::shared_ptr<ConnectionManager> connectionManager_;
@@ -248,7 +247,7 @@ public:
       , const std::string& ownKeyFileDir = ""
       , const std::string& ownKeyFileName = ""
       , double asSpendLimit = 0
-      , const ZmqBipNewKeyCb& inNewKeyCB = nullptr);
+      , const bs::network::BIP15xNewKeyCb &inNewKeyCB = nullptr);
    ~LocalSigner() noexcept override;
 
    bool Start() override;

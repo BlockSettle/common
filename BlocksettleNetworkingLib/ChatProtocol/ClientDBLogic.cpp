@@ -18,7 +18,6 @@
 #include "ChatProtocol/CryptManager.h"
 #include "ChatProtocol/Message.h"
 #include "ChatProtocol/ClientParty.h"
-#include "ApplicationSettings.h"
 #include "ProtobufUtils.h"
 
 #include <disable_warnings.h>

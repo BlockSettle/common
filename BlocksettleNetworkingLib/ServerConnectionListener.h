@@ -11,7 +11,7 @@
 #ifndef __SERVER_CONNECTION_LISTENER_H__
 #define __SERVER_CONNECTION_LISTENER_H__
 
-#include <memory>
+#include <map>
 #include <string>
 
 class ServerConnectionListener
@@ -19,11 +19,17 @@ class ServerConnectionListener
 public:
    enum ClientError
    {
-      NoError = 0,
-
       // Reported when client do not have valid credentials (unknown public key)
       HandshakeFailed = 1,
+      Timeout = 2,
    };
+
+   enum class Detail
+   {
+      IpAddr = 1,
+      PublicKey = 2,
+   };
+   using Details = std::map<Detail, std::string>;
 
    ServerConnectionListener() = default;
    virtual ~ServerConnectionListener() noexcept = default;
@@ -37,14 +43,10 @@ public:
 public:
    virtual void OnDataFromClient(const std::string& clientId, const std::string& data) = 0;
 
-   virtual void OnClientConnected(const std::string& clientId) = 0;
+   virtual void OnClientConnected(const std::string &clientId, const Details &details) = 0;
    virtual void OnClientDisconnected(const std::string& clientId) = 0;
 
-   virtual void OnPeerConnected(const std::string &) {}
-   virtual void OnPeerDisconnected(const std::string &) {}
-
-   virtual void onClientError(const std::string &clientId, const std::string &error) {}
-   virtual void onClientError(const std::string &clientId, ClientError errorCode, int socket) {}
+   virtual void onClientError(const std::string &clientId, ClientError error, const Details &details) {}
 };
 
 #endif // __SERVER_CONNECTION_LISTENER_H__

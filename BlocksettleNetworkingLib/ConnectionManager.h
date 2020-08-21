@@ -16,9 +16,14 @@
 #include <string>
 #include <spdlog/logger.h>
 
-#include "ZMQ_BIP15X_Helpers.h"
-#include "ZMQ_BIP15X_DataConnection.h"
+#include "BIP15xHelpers.h"
+#include "TransportBIP15x.h"
 
+namespace bs {
+   namespace network {
+      class TransportBIP15xClient;
+   }
+}
 class ArmoryServersProvider;
 class DataConnection;
 class PublisherConnection;
@@ -26,15 +31,13 @@ class ServerConnection;
 class SubscriberConnection;
 class ZmqContext;
 class QNetworkAccessManager;
-class ZmqBIP15XDataConnection;
-class ZmqBIP15XServerConnection;
 
 class ConnectionManager
 {
 public:
    ConnectionManager(const std::shared_ptr<spdlog::logger>& logger);
    ConnectionManager(const std::shared_ptr<spdlog::logger>& logger
-      , const ZmqBIP15XPeers &zmqTrustedTerminals);
+      , const bs::network::BIP15xPeers &zmqTrustedTerminals);
    ConnectionManager(const std::shared_ptr<spdlog::logger>& logger
       , std::shared_ptr<ArmoryServersProvider> armoryServers);
    virtual ~ConnectionManager() noexcept;
@@ -45,6 +48,7 @@ public:
    ConnectionManager& operator = (ConnectionManager&&) = delete;
 
    bool IsInitialized() const { return isInitialized_; }
+   void setCaBundle(const void *caBundlePtr, size_t caBundleSize);
 
    std::shared_ptr<spdlog::logger>     GetLogger() const;
 
@@ -55,13 +59,6 @@ public:
    std::shared_ptr<DataConnection>     CreateGenoaClientConnection(
       bool monitored = false) const;
 
-   ZmqBIP15XDataConnectionPtr   CreateZMQBIP15XDataConnection(
-         const ZmqBIP15XDataConnectionParams &params) const;
-   ZmqBIP15XDataConnectionPtr   CreateZMQBIP15XDataConnection() const;
-   std::shared_ptr<ZmqBIP15XServerConnection> CreateZMQBIP15XChatServerConnection(
-      bool ephemeral = false, const std::string& ownKeyFileDir = ""
-      , const std::string& ownKeyFileName = "") const;
-
    std::shared_ptr<ServerConnection>   CreatePubBridgeServerConnection() const;
 
    std::shared_ptr<ServerConnection>   CreateMDRestServerConnection() const;
@@ -70,6 +67,11 @@ public:
    std::shared_ptr<SubscriberConnection>  CreateSubscriberConnection() const;
 
    const std::shared_ptr<QNetworkAccessManager> &GetNAM();
+
+   std::shared_ptr<ZmqContext> zmqContext() const { return zmqContext_; }
+
+   std::shared_ptr<DataConnection>  CreateInsecureWsConnection() const;
+   std::shared_ptr<DataConnection>  CreateSecureWsConnection() const;
 
 private:
    bool InitNetworkLibs();
@@ -81,7 +83,10 @@ private:
    std::shared_ptr<ZmqContext>            zmqContext_;
    std::shared_ptr<QNetworkAccessManager> nam_;
    std::shared_ptr<ArmoryServersProvider> armoryServers_;
-   ZmqBIP15XPeers                         zmqTrustedTerminals_;
+   bs::network::BIP15xPeers               zmqTrustedTerminals_;
+
+   const void *caBundlePtr_{};
+   size_t caBundleSize_{};
 };
 
 #endif // __CONNECTION_MANAGER_H__

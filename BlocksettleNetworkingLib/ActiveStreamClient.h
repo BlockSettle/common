@@ -14,8 +14,7 @@
 #include <string>
 #include <memory>
 
-namespace spdlog
-{
+namespace spdlog {
    class logger;
 }
 
@@ -24,7 +23,7 @@ class ZmqStreamServerConnection;
 class ActiveStreamClient
 {
 public:
-   ActiveStreamClient(const std::shared_ptr<spdlog::logger>& logger);
+   ActiveStreamClient(const std::shared_ptr<spdlog::logger> &);
    virtual ~ActiveStreamClient() noexcept = default;
 
    ActiveStreamClient(const ActiveStreamClient&) = delete;

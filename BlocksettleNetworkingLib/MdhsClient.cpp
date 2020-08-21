@@ -38,7 +38,7 @@ void MdhsClient::SendRequest(const MarketDataHistoryRequest& request)
    requestId_ += 1;
    int requestId = requestId_;
 
-   auto apiConnection = connectionManager_->CreateGenoaClientConnection();
+   auto apiConnection = connectionManager_->CreateSecureWsConnection();
    auto command = std::make_unique<RequestReplyCommand>("MdhsClient", apiConnection, logger_);
 
    command->SetReplyCallback([requestId, this](const std::string& data) -> bool {

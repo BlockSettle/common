@@ -11,7 +11,6 @@
 #include "CCPubConnection.h"
 
 #include "RequestReplyCommand.h"
-#include "ZMQ_BIP15X_DataConnection.h"
 
 #include "bs_communication.pb.h"
 

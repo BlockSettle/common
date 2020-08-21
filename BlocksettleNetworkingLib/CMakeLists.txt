@@ -18,6 +18,7 @@ FILE(GLOB SOURCES
    Wallets/*.cpp
    ChatProtocol/*.cpp
    Encryption/*.cpp
+   Message/*.cpp
 )
 
 IF (DISABLE_CELER)
@@ -62,7 +63,8 @@ FILE(GLOB HEADERS
    ChatProtocol/RequestObjects/*.h
    ChatProtocol/ResponseObjects/*.h
    ChatClientTree/*.h
-   Encryption/*.cpp
+   Encryption/*.h
+   Message/*.h
 )
 
 IF (DISABLE_CELER)

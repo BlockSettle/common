@@ -39,15 +39,14 @@ public:
    using CCSecLoadedCb = std::function<void(const bs::network::CCSecurityDef &)>;
    using CCLoadCompleteCb = std::function<void(unsigned int)>;
    CCPubResolver(const std::shared_ptr<spdlog::logger> &logger
-      , const SecureBinaryData &bsPubKey, const CCSecLoadedCb &cbSec
+      , const std::string &signAddress, const CCSecLoadedCb &cbSec
       , const CCLoadCompleteCb &cbLoad)
-      : logger_(logger), pubKey_(bsPubKey), cbSecLoaded_(cbSec)
+      : logger_(logger), signAddress_(signAddress), cbSecLoaded_(cbSec)
       , cbLoadComplete_(cbLoad) {}
 
    std::string nameByWalletIndex(bs::hd::Path::Elem) const override;
    uint64_t lotSizeFor(const std::string &cc) const override;
    bs::Address genesisAddrFor(const std::string &cc) const override;
-   std::string descriptionFor(const std::string &cc) const override;
    std::vector<std::string> securities() const override;
 
    void fillFrom(Blocksettle::Communication::GetCCGenesisAddressesResponse *resp);
@@ -62,7 +61,7 @@ private:
 
 private:
    std::shared_ptr<spdlog::logger>  logger_;
-   const SecureBinaryData           pubKey_;
+   const std::string                signAddress_;
    std::map<std::string, bs::network::CCSecurityDef>  securities_;
    std::map<bs::hd::Path::Elem, std::string>          walletIdxMap_;
    const CCSecLoadedCb     cbSecLoaded_;
@@ -99,14 +98,13 @@ public:
 signals:
    void CCSecurityDef(bs::network::CCSecurityDef);
    void CCSecurityId(const std::string& securityId);
-   void CCSecurityInfo(QString ccProd, QString ccDesc, unsigned long nbSatoshis, QString genesisAddr);
+   void CCSecurityInfo(QString ccProd, unsigned long nbSatoshis, QString genesisAddr);
 
    void CCAddressSubmitted(const QString);
    void CCInitialSubmitted(const QString);
    void CCSubmitFailed(const QString address, const QString &err);
    void Loaded();
    void LoadingFailed();
-   void definitionsLoadedFromPub();
 
 protected:
    void ProcessGenAddressesResponse(const std::string& response, const std::string &sig) override;

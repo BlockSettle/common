@@ -48,12 +48,12 @@ message UTXOFile
 
 enum ResponseEntryType
 {
-   CCTokenEntryType = 1;
+   CCTokenEntryType                       = 1;
    AuthAddressVerificationTransactionType = 3;
-   AuthRevokeTransactionType = 4;
-   CCDistributionTransactionType = 5;
-   AuthAddressVerificationRejectType = 6;
-   FundCCGenAddrTransactionType = 7;
+   AuthRevokeTransactionType              = 4;
+   CCDistributionTransactionType          = 5;
+   AuthAddressVerificationRejectType      = 6;
+   BSAuthRevokeTX                         = 8;
 }
 
 message ResponseEntry

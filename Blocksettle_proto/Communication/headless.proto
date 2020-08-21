@@ -46,7 +46,6 @@ enum RequestType
    SettlGetRootPubkeyType      = 30;
    PromoteHDWalletRequestType  = 31;
    UpdateDialogDataType        = 32; // update fields in password input dialogs in signer ui
-   AddressPreimageType         = 33;
    ChatNodeRequestType         = 34;
    UpdateStatusType            = 35; // sent to terminal with latest status update
    SettlementAuthType          = 36;
@@ -124,6 +123,7 @@ message SignTxRequest
    repeated SupportingTransaction   supportingTxs = 20;
    bool                             allow_broadcasts = 21;
    uint64                           expired_timestamp_ms = 22;
+   bytes                            tx_hash = 23;
 }
 
 message SignTxReply
@@ -152,10 +152,10 @@ message SignSettlementPayoutTxRequest
 
 message SignPayoutTXRequest
 {
-   bytes    input = 1;
-   bytes    recipient = 2;
+   bytes signerState = 1;
    uint64   fee = 3;
    SettlementData settlement_data = 4;
+   bytes tx_hash = 5;
 }
 
 
@@ -480,29 +480,6 @@ message ExtendAddressChainResponse
    string wallet_id = 1;
    repeated AddressPair addresses = 2;
 }
-
-message AddressPreimageRequest
-{
-   message Request {
-      string wallet_id = 1;
-      repeated string address = 2;
-   }
-   repeated Request request = 1;
-}
-
-message AddressPreimageResponse
-{
-   message Response {
-      string wallet_id = 1;
-      message Result {
-         string address = 1;
-         bytes  preimage = 2;
-      }
-      repeated Result preimages = 2;
-   }
-   repeated Response response = 1;
-}
-
 
 message CustomDialogRequest
 {

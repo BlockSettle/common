@@ -23,8 +23,7 @@ XBTAmount::XBTAmount(const BTCNumericTypes::balance_type amount)
 
 XBTAmount::XBTAmount(const BTCNumericTypes::satoshi_type value)
  : value_{value}
-{
-}
+{}
 
 BTCNumericTypes::satoshi_type XBTAmount::GetValue() const
 {
@@ -36,7 +35,7 @@ BTCNumericTypes::balance_type XBTAmount::GetValueBitcoin() const
    return convertFromSatoshiToBitcoin(value_);
 }
 
-void XBTAmount::SetValue(const BTCNumericTypes::balance_type amount)
+void XBTAmount::SetValueBitcoin(const BTCNumericTypes::balance_type amount)
 {
    SetValue(convertFromBitcoinToSatoshi(amount));
 }
@@ -56,7 +55,13 @@ BTCNumericTypes::balance_type XBTAmount::convertFromSatoshiToBitcoin(BTCNumericT
    return static_cast<BTCNumericTypes::balance_type>(value) / BTCNumericTypes::BalanceDivider;
 }
 
-bool XBTAmount::isZero() const
+
+int64_t operator-(const bs::XBTAmount &a, const int64_t b)
 {
-   return value_ == 0;
+   return (int64_t)a.GetValue() - b;
+}
+
+int64_t operator-(const int64_t a, const bs::XBTAmount &b)
+{
+   return a - (int64_t)b.GetValue();
 }

@@ -215,6 +215,7 @@ bool Wallet::updateBalances(const std::function<void(void)> &cb)
    get methods to grab the individual balances
    ***/
    if (!armory_) {
+      std::cout << "no armory\n";
       return false;
    }
 
@@ -762,7 +763,7 @@ void Wallet::init(bool force)
 bs::core::wallet::TXSignRequest wallet::createTXRequest(const std::vector<std::string> &walletsIds
    , const std::vector<UTXO> &inputs
    , const std::vector<std::string> &inputIndices
-   , const std::vector<std::shared_ptr<ScriptRecipient>> &recipients
+   , const std::vector<std::shared_ptr<ArmorySigner::ScriptRecipient>> &recipients
    , bool allowBroadcasts, const bs::Address &changeAddr
    , const std::string &changeIndex
    , const uint64_t fee
@@ -778,22 +779,22 @@ bs::core::wallet::TXSignRequest wallet::createTXRequest(const std::vector<std::s
    }
 
    for (const auto& utxo : inputs) {
+      request.armorySigner_.addSpender(
+         std::make_shared<ArmorySigner::ScriptSpender>(utxo));
       inputAmount += utxo.getValue();
    }
-   request.inputs = inputs;
-   request.inputIndices = inputIndices;
 
    for (const auto& recipient : recipients) {
       if (recipient == nullptr) {
          throw std::logic_error("invalid recipient");
       }
       spendAmount += recipient->getValue();
+      request.armorySigner_.addRecipient(recipient);
    }
    if (inputAmount < spendAmount + fee) {
       throw std::logic_error(fmt::format("input amount {} is less than spend + fee ({})", inputAmount, spendAmount + fee));
    }
 
-   request.recipients = recipients;
    request.RBF = isRBF;
    request.fee = fee;
 
@@ -806,6 +807,9 @@ bs::core::wallet::TXSignRequest wallet::createTXRequest(const std::vector<std::s
       request.change.value = changeAmount;
       request.change.address = changeAddr;
       request.change.index = changeIndex;
+
+      auto changeRecip = changeAddr.getRecipient(bs::XBTAmount(changeAmount));
+      request.armorySigner_.addRecipient(changeRecip);
    }
 
    request.allowBroadcasts = allowBroadcasts;
@@ -815,7 +819,7 @@ bs::core::wallet::TXSignRequest wallet::createTXRequest(const std::vector<std::s
 
 bs::core::wallet::TXSignRequest wallet::createTXRequest(const std::vector<Wallet*> &wallets
    , const std::vector<UTXO> &inputs
-   , const std::vector<std::shared_ptr<ScriptRecipient>> &recipients
+   , const std::vector<std::shared_ptr<ArmorySigner::ScriptRecipient>> &recipients
    , bool allowBroadcasts
    , const bs::Address &changeAddr
    , const uint64_t fee, bool isRBF)
@@ -858,7 +862,7 @@ bs::core::wallet::TXSignRequest wallet::createTXRequest(const std::vector<Wallet
 
 bs::core::wallet::TXSignRequest wallet::createTXRequest(const std::vector<std::shared_ptr<Wallet>> &wallets
    , const std::vector<UTXO> &inputs
-   , const std::vector<std::shared_ptr<ScriptRecipient>> &recipients
+   , const std::vector<std::shared_ptr<ArmorySigner::ScriptRecipient>> &recipients
    , bool allowBroadcasts, const bs::Address &changeAddr
    , const uint64_t fee, bool isRBF)
 {
@@ -870,7 +874,7 @@ bs::core::wallet::TXSignRequest wallet::createTXRequest(const std::vector<std::s
 }
 
 bs::core::wallet::TXSignRequest Wallet::createTXRequest(const std::vector<UTXO> &inputs
-   , const std::vector<std::shared_ptr<ScriptRecipient>> &recipients, bool allowBroadcasts, const uint64_t fee
+   , const std::vector<std::shared_ptr<ArmorySigner::ScriptRecipient>> &recipients, bool allowBroadcasts, const uint64_t fee
    , bool isRBF, const bs::Address &changeAddress)
 {
    if (!changeAddress.empty()) {
@@ -880,18 +884,21 @@ bs::core::wallet::TXSignRequest Wallet::createTXRequest(const std::vector<UTXO> 
 }
 
 bs::core::wallet::TXSignRequest Wallet::createPartialTXRequest(uint64_t spendVal
-   , const std::vector<UTXO> &inputs, bs::Address changeAddress
+   , const std::vector<UTXO> &inputs
+   , std::pair<bs::Address, unsigned> changePair
    , float feePerByte
-   , const std::vector<std::shared_ptr<ScriptRecipient>> &recipients
-   , const bs::core::wallet::OutputSortOrder &outSortOrder
-   , const Codec_SignerState::SignerState &prevPart)
+   , const RecipientMap &recipients
+   , const Codec_SignerState::SignerState &prevPart
+   , unsigned assumedRecipientCount)
 {
    std::map<UTXO, std::string> inputsCopy;
    for (const auto &input : inputs) {
       inputsCopy[input] = walletId();
    }
-   return WalletsManager::createPartialTXRequest(spendVal, inputsCopy, changeAddress, feePerByte
-      , armory_->topBlock(), recipients, outSortOrder, prevPart, false, logger_);
+   return WalletsManager::createPartialTXRequest(
+      spendVal, inputsCopy, changePair.first, feePerByte
+      , armory_->topBlock(), recipients, changePair.second
+      , prevPart, false, assumedRecipientCount, logger_);
 }
 
 void WalletACT::onLedgerForAddress(const bs::Address &addr

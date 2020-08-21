@@ -528,6 +528,7 @@ bool QuoteProvider::onFxOrderSnapshot(const std::string& data)
    Order order;
    order.exchOrderId = QString::number(response.orderid());
    order.clOrderId = response.externalclorderid();
+   order.quoteId = response.quoteid();
    order.dateTime = QDateTime::fromMSecsSinceEpoch(response.createdtimestamputcinmillis());
    order.security = response.securitycode();
    order.quantity = response.qty();
@@ -791,7 +792,7 @@ void QuoteProvider::CleanupXBTOrder(const bs::network::Order& order)
 void QuoteProvider::saveQuoteReqId(const std::string &quoteReqId, const std::string &quoteId)
 {
    quoteIdMap_[quoteId] = quoteReqId;
-   quoteIds_[quoteReqId].push_back(quoteId);
+   quoteIds_[quoteReqId].insert(quoteId);
 }
 
 std::string QuoteProvider::getQuoteReqId(const std::string &quoteId) const

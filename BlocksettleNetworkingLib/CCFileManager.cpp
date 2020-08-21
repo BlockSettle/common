@@ -27,20 +27,6 @@
 
 using namespace Blocksettle::Communication;
 
-namespace {
-
-   AddressNetworkType networkType(NetworkType netType)
-   {
-      return netType == NetworkType::MainNet ? AddressNetworkType::MainNetType : AddressNetworkType::TestNetType;
-   }
-
-   AddressNetworkType networkType(const std::shared_ptr<ApplicationSettings> &settings)
-   {
-      return networkType(settings->get<NetworkType>(ApplicationSettings::netType));
-   }
-
-} // namespace
-
 CCFileManager::CCFileManager(const std::shared_ptr<spdlog::logger> &logger
    , const std::shared_ptr<ApplicationSettings> &appSettings)
    : CCPubConnection(logger)
@@ -49,7 +35,7 @@ CCFileManager::CCFileManager(const std::shared_ptr<spdlog::logger> &logger
    const auto &cbSecLoaded = [this](const bs::network::CCSecurityDef &ccSecDef) {
       emit CCSecurityDef(ccSecDef);
       emit CCSecurityId(ccSecDef.securityId);
-      emit CCSecurityInfo(QString::fromStdString(ccSecDef.product), QString::fromStdString(ccSecDef.description)
+      emit CCSecurityInfo(QString::fromStdString(ccSecDef.product)
          , (unsigned long)ccSecDef.nbSatoshis, QString::fromStdString(ccSecDef.genesisAddr.display()));
    };
    const auto &cbLoadComplete = [this] (unsigned int rev) {
@@ -58,7 +44,7 @@ CCFileManager::CCFileManager(const std::shared_ptr<spdlog::logger> &logger
       emit Loaded();
    };
    resolver_ = std::make_shared<CCPubResolver>(logger_
-      , BinaryData::CreateFromHex(appSettings_->get<std::string>(ApplicationSettings::bsPublicKey))
+      , appSettings_->GetBlocksettleSignAddress()
       , cbSecLoaded, cbLoadComplete);
 
    ccFilePath_ = appSettings->ccFilePath();
@@ -120,13 +106,10 @@ void CCFileManager::ProcessGenAddressesResponse(const std::string& response, con
       return;
    }
 
-   if (genAddrResp.networktype() != networkType(appSettings_)) {
-      logger_->error("[CCFileManager::ProcessCCGenAddressesResponse] network type mismatch in reply: {}"
-         , (int)genAddrResp.networktype());
+   if (genAddrResp.is_testnet() != (appSettings_->get<NetworkType>(ApplicationSettings::netType) == NetworkType::TestNet)) {
+      logger_->error("[CCFileManager::ProcessCCGenAddressesResponse] network type mismatch in reply");
       return;
    }
-
-   emit definitionsLoadedFromPub();
 
    if (currentRev_ > 0 && genAddrResp.revision() == currentRev_) {
       logger_->debug("[CCFileManager::ProcessCCGenAddressesResponse] having the same revision already");
@@ -266,15 +249,6 @@ uint64_t CCPubResolver::lotSizeFor(const std::string &cc) const
    return 0;
 }
 
-std::string CCPubResolver::descriptionFor(const std::string &cc) const
-{
-   const auto &itSec = securities_.find(cc);
-   if (itSec != securities_.end()) {
-      return itSec->second.description;
-   }
-   return {};
-}
-
 bs::Address CCPubResolver::genesisAddrFor(const std::string &cc) const
 {
    const auto &itSec = securities_.find(cc);
@@ -291,7 +265,7 @@ void CCPubResolver::fillFrom(Blocksettle::Communication::GetCCGenesisAddressesRe
       const auto ccSecurity = resp->ccsecurities(i);
 
       bs::network::CCSecurityDef ccSecDef = {
-         ccSecurity.securityid(), ccSecurity.product(), ccSecurity.description(),
+         ccSecurity.securityid(), ccSecurity.product(),
          bs::Address::fromAddressString(ccSecurity.genesisaddr()), ccSecurity.satoshisnb()
       };
       add(ccSecDef);
@@ -337,7 +311,7 @@ bool CCPubResolver::loadFromFile(const std::string &path, NetworkType netType)
       return false;
    }
 
-   if (resp.networktype() != networkType(netType)) {
+   if (resp.is_testnet() != (netType == NetworkType::TestNet)) {
       logger_->error("[CCFileManager::LoadFromFile] wrong network type in {}", path);
       return false;
    }
@@ -368,7 +342,11 @@ bool CCPubResolver::saveToFile(const std::string &path, const std::string &respo
    return true;
 }
 
-bool CCPubResolver::verifySignature(const std::string& data, const std::string& signature) const
+bool CCPubResolver::verifySignature(const std::string& data, const std::string& signatureStr) const
 {
-   return CryptoECDSA().VerifyData(BinaryData::fromString(data), BinaryData::fromString(signature), pubKey_);
+   const auto message = BinaryData::fromString(data);
+   const auto signature = BinaryData::fromString(signatureStr);
+   const auto signAddress = bs::Address::fromAddressString(signAddress_).prefixed();
+
+   return ArmorySigner::Signer::verifyMessageSignature(message, signAddress, signature);
 }

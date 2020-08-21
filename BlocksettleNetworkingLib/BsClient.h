@@ -16,19 +16,23 @@
 #include <map>
 #include <memory>
 #include <string>
+
 #include <QObject>
+
 #include <spdlog/logger.h>
 
 #include "Address.h"
+
+#include "autheid_utils.h"
 #include "AutheIDClient.h"
+#include "BSErrorCode.h"
 #include "CelerMessageMapper.h"
 #include "CommonTypes.h"
 #include "DataConnectionListener.h"
+#include "TradeSettings.h"
 #include "ValidityFlag.h"
-#include "autheid_utils.h"
 
-class ZmqContext;
-class ZmqBIP15XDataConnection;
+class DataConnection;
 template<typename T> class FutureValue;
 
 namespace Blocksettle {
@@ -36,14 +40,15 @@ namespace Blocksettle {
       namespace ProxyTerminal {
          class Request;
          class Response;
-         class Response_StartLogin;
-         class Response_GetLoginResult;
+         class Response_Authorize;
          class Response_Celer;
-         class Response_ProxyPb;
          class Response_GenAddrUpdated;
-         class Response_UserStatusUpdated;
-         class Response_UpdateFeeRate;
+         class Response_GetLoginResult;
+         class Response_ProxyPb;
+         class Response_StartLogin;
          class Response_UpdateBalance;
+         class Response_UpdateFeeRate;
+         class Response_UserStatusUpdated;
       }
    }
 }
@@ -63,24 +68,10 @@ namespace bs {
    }
 }
 
-struct BsClientParams
-{
-   using NewKeyCallback = std::function<void(const std::string &oldKey, const std::string &newKey
-      , const std::string& srvAddrPort, const std::shared_ptr<FutureValue<bool>> &prompt)>;
-
-   std::shared_ptr<ZmqContext> context;
-
-   std::string connectAddress{"127.0.0.1"};
-   int connectPort{10259};
-
-   std::string oldServerKey;
-
-   NewKeyCallback newServerKeyCallback;
-};
-
 struct BsClientLoginResult
 {
    AutheIDClient::ErrorType status{};
+   std::string errorMsg;
    bs::network::UserType userType{};
    std::string celerLogin;
    BinaryData chatTokenData;
@@ -89,6 +80,7 @@ struct BsClientLoginResult
    BinaryData ccAddressesSigned;
    bool enabled{};
    float feeRatePb{};
+   bs::TradeSettings tradeSettings;
 };
 
 class BsClient : public QObject, public DataConnectionListener
@@ -102,18 +94,13 @@ public:
    };
    using BasicCb = std::function<void(BasicResponse)>;
 
+   using AuthConfirmCb = std::function<void(bs::error::AuthAddressSubmitResult)>;
+
    struct SignResponse : public BasicResponse
    {
       bool userCancelled{};
    };
    using SignCb = std::function<void(SignResponse)>;
-
-   struct AuthAddrSubmitResponse : public BasicResponse
-   {
-      int validationAmountCents{};
-      bool confirmationRequired{};
-   };
-   using AuthAddrSubmitCb = std::function<void(AuthAddrSubmitResponse)>;
 
    struct DescCc
    {
@@ -122,13 +109,14 @@ public:
 
    using RequestId = int64_t;
 
-   BsClient(const std::shared_ptr<spdlog::logger>& logger, const BsClientParams &params
+   BsClient(const std::shared_ptr<spdlog::logger>& logger
       , QObject *parent = nullptr);
    ~BsClient() override;
 
-   const BsClientParams &params() const { return params_; }
+   void setConnection(std::unique_ptr<DataConnection>);
 
    void startLogin(const std::string &email);
+   void authorize(const std::string &apiKey);
 
    void sendPbMessage(std::string data);
 
@@ -138,9 +126,8 @@ public:
    void logout();
    void celerSend(CelerAPI::CelerMessageType messageType, const std::string &data);
 
-   void submitAuthAddress(const bs::Address address, const AuthAddrSubmitCb &cb);
    void signAuthAddress(const bs::Address address, const SignCb &cb);
-   void confirmAuthAddress(const bs::Address address, const BasicCb &cb);
+   void confirmAuthAddress(const bs::Address address, const AuthConfirmCb &cb);
 
    void submitCcAddress(const bs::Address address, uint32_t seed, const std::string &ccProduct, const BasicCb &cb);
    void signCcAddress(const bs::Address address, const SignCb &cb);
@@ -172,7 +159,8 @@ public slots:
    void findEmailHash(const std::string &email);
 
 signals:
-   void startLoginDone(AutheIDClient::ErrorType status);
+   void startLoginDone(bool success, const std::string &errorMsg);
+   void authorizeDone(bool success, const std::string &email = {});
    void getLoginResultDone(const BsClientLoginResult &result);
 
    void celerRecv(CelerAPI::CelerMessageType messageType, const std::string &data);
@@ -189,6 +177,8 @@ signals:
    void feeRateReceived(float feeRate);
    void balanceLoaded();
    void balanceUpdated(const std::string &currency, double balance);
+
+   void tradingStatusChanged(bool tradingEnabled);
 
 private:
    using ProcessCb = std::function<void(const Blocksettle::Communication::ProxyTerminal::Response &response)>;
@@ -211,6 +201,7 @@ private:
    void sendMessage(Blocksettle::Communication::ProxyTerminal::Request *request);
 
    void processStartLogin(const Blocksettle::Communication::ProxyTerminal::Response_StartLogin &response);
+   void processAuthorize(const Blocksettle::Communication::ProxyTerminal::Response_Authorize &response);
    void processGetLoginResult(const Blocksettle::Communication::ProxyTerminal::Response_GetLoginResult &response);
    void processCeler(const Blocksettle::Communication::ProxyTerminal::Response_Celer &response);
    void processProxyPb(const Blocksettle::Communication::ProxyTerminal::Response_ProxyPb &response);
@@ -218,21 +209,19 @@ private:
    void processUserStatusUpdated(const Blocksettle::Communication::ProxyTerminal::Response_UserStatusUpdated &response);
    void processUpdateFeeRate(const Blocksettle::Communication::ProxyTerminal::Response_UpdateFeeRate &response);
    void processBalanceUpdate(const Blocksettle::Communication::ProxyTerminal::Response_UpdateBalance &response);
+   void processTradingEnabledStatus(bool tradingEnabled);
 
    RequestId newRequestId();
 
    std::shared_ptr<spdlog::logger> logger_;
 
-   BsClientParams params_;
-
-   std::unique_ptr<ZmqBIP15XDataConnection> connection_;
+   std::unique_ptr<DataConnection> connection_;
 
    std::map<RequestId, ActiveRequest> activeRequests_;
    RequestId lastRequestId_{};
    RequestId lastSignRequestId_{};
 
    bool balanceLoaded_{};
-
 };
 
 #endif

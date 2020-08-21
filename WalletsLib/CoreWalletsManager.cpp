@@ -411,8 +411,8 @@ WalletsManager::HDWalletPtr WalletsManager::createWallet(
             }
          }
 
+         group = newWallet->createGroup(bs::hd::CoinType::BlockSettle_CC);
          if (!ccLeaves_.empty()) {
-            group = newWallet->createGroup(bs::hd::CoinType::BlockSettle_CC);
             for (const auto &cc : ccLeaves_) {
                try {
                   group->createLeaf(AddressEntryType_Default, cc);

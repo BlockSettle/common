@@ -42,22 +42,22 @@ bs::Address RecipientContainer::GetAddress() const
    return bs::Address();
 }
 
-bool RecipientContainer::SetAmount(double amount, bool isMax)
+bool RecipientContainer::SetAmount(const bs::XBTAmount &amount, bool isMax)
 {
-   if (qFuzzyCompare(xbtAmount_.GetValueBitcoin(), amount) && (isMax_ == isMax)) {
+   if ((xbtAmount_ == amount) && (isMax_ == isMax)) {
       return false;
    }
-   xbtAmount_.SetValue(amount);
+   xbtAmount_ = amount;
    isMax_ = isMax;
    return true;
 }
 
-double RecipientContainer::GetAmount() const
+bs::XBTAmount RecipientContainer::GetAmount() const
 {
-   return xbtAmount_.GetValueBitcoin();
+   return xbtAmount_;
 }
 
-std::shared_ptr<ScriptRecipient> RecipientContainer::GetScriptRecipient() const
+std::shared_ptr<ArmorySigner::ScriptRecipient> RecipientContainer::GetScriptRecipient() const
 {
    if (!IsReady()) {
       return nullptr;

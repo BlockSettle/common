@@ -143,7 +143,6 @@ ApplicationSettings::ApplicationSettings(const QString &appName
       { notifyOnTX,              SettingDef(QLatin1String("ShowTxNotification"), true) },
       { defaultAuthAddr,         SettingDef(QLatin1String("DefaultAuthAddress")) },
       { numberOfAuthAddressVisible,         SettingDef(QLatin1String("NumberOfAuthAddressVisible"), 1)},
-      { bsPublicKey,             SettingDef(QString(), QLatin1String("022aa8719eadf13ba5bbced2848fb492a4118087b200fdde8ec68a2f5d105b36fa")) },
       { logDefault,              SettingDef(QLatin1String("LogFile"), QStringList() << LogFileName << QString() << QString() << QLatin1String(DefaultLogLevel)) },
       { logMessages,             SettingDef(QLatin1String("LogMsgFile"), QStringList() << LogMsgFileName << QLatin1String("message") << QLatin1String("%C/%m/%d %H:%M:%S.%e [%L]: %v") << QLatin1String(DefaultLogLevel)) },
       { txCacheFileName,         SettingDef(QString(), AppendToWritableDir(TxCacheFileName)) },
@@ -161,11 +160,11 @@ ApplicationSettings::ApplicationSettings(const QString &appName
       { Filter_MD_QN,            SettingDef(QLatin1String("Filter/MD/QN")) },
       { Filter_MD_QN_cnt,        SettingDef(QLatin1String("Filter/MD/QN/counters")) },
       { ChangeLog_Base_Url,      SettingDef(QString(), QLatin1String("https://cogent-symbol-153209.appspot.com/api/terminal/check"))},
-      { Binaries_Dl_Url,         SettingDef(QString(), QLatin1String("https://pubb.blocksettle.com/downloads/terminal"))},
-      { ResetPassword_Url,       SettingDef(QString(), QLatin1String("https://pubb.blocksettle.com/pub-forgot-password"))},
+      { Binaries_Dl_Url,         SettingDef(QString(), QLatin1String("https://blocksettle.com/downloads/terminal"))},
+      { ResetPassword_Url,       SettingDef(QString(), QLatin1String("https://blocksettle.com/pub-forgot-password"))},
       { GetAccount_UrlProd,      SettingDef(QString(), QLatin1String("http://blocksettle.com")) },
       { GetAccount_UrlTest,      SettingDef(QString(), QLatin1String("https://test.blocksettle.com")) },
-      { GettingStartedGuide_Url, SettingDef(QString(), QLatin1String("http://pubb.blocksettle.com/PDF/BlockSettle%20Getting%20Started.pdf")) },
+      { GettingStartedGuide_Url, SettingDef(QString(), QLatin1String("http://blocksettle.com/PDF/BlockSettle%20Getting%20Started.pdf")) },
       { WalletFiltering,         SettingDef(QLatin1String("WalletWidgetFilteringFlags"), 0x06) },
       { FxRfqLimit,              SettingDef(QLatin1String("FxRfqLimit"), 5) },
       { XbtRfqLimit,             SettingDef(QLatin1String("XbtRfqLimit"), 5) },
@@ -191,7 +190,18 @@ ApplicationSettings::ApplicationSettings(const QString &appName
       { ccServerPubKey,          SettingDef(QLatin1String("CcServerPubKey"), QString(), true) },
       { LastAqDir,               SettingDef(QLatin1String("LastAqDir")) },
       { HideLegacyWalletWarning,             SettingDef(QStringLiteral("HideLegacyWalletWarning")) },
-      { DetailedSettlementTxDialogByDefault, SettingDef(QLatin1String("DetailedSettlementTxDialogByDefault"), false) }
+      { DetailedSettlementTxDialogByDefault, SettingDef(QLatin1String("DetailedSettlementTxDialogByDefault"), false) },
+      { AutoStartRFQScript,      SettingDef(QLatin1String("AutoStartRFQScript"), false) },
+      { CurrentRFQScript,        SettingDef(QLatin1String("CurRFQScript")) },
+      { ShowInfoWidget,          SettingDef(QLatin1String("ShowInfoWidget"), true) },
+      { LoginApiKey,             SettingDef(QLatin1String("LoginApiKey")) },
+      { AutoQouting,             SettingDef(QLatin1String("AutoQuoting"), false) },
+      { AutoSigning,             SettingDef(QLatin1String("AutoSigning"), false) },
+      { ExtConnName,             SettingDef(QLatin1String("ExtConnName")) },
+      { ExtConnHost,             SettingDef(QLatin1String("ExtConnHost")) },
+      { ExtConnPort,             SettingDef(QLatin1String("ExtConnPort")) },
+      { ExtConnPubKey,           SettingDef(QLatin1String("ExtConnPubKey")) },
+      { SubmittedAddressXbtLimit,   SettingDef(QLatin1String("SubmittedAddressXbtLimit"), 100000000) }
    };
 }
 
@@ -348,6 +358,11 @@ template<> NetworkType ApplicationSettings::get<NetworkType>(Setting set, bool g
       return NetworkType::Invalid;
    }
    return static_cast<NetworkType>(result);
+}
+
+template<> uint64_t ApplicationSettings::get<uint64_t>(Setting set, bool getDefaultValue) const
+{
+   return get(set, getDefaultValue).toULongLong();
 }
 
 ApplicationSettings::State ApplicationSettings::getState() const
@@ -684,47 +699,6 @@ std::pair<autheid::PrivateKey, autheid::PublicKey> ApplicationSettings::GetAuthK
    return { authPrivKey_, authPubKey_ };
 }
 
-std::string ApplicationSettings::pubBridgeHost() const
-{
-   auto env = EnvConfiguration(get<int>(ApplicationSettings::envConfiguration));
-
-   switch (env) {
-   case EnvConfiguration::Production:
-         return "185.213.153.36";
-   case EnvConfiguration::Test:
-         return "185.213.153.44";
-#ifndef PRODUCTION_BUILD
-   case EnvConfiguration::Staging:
-         return "185.213.153.45";
-   case EnvConfiguration::Custom:
-         return get<std::string>(ApplicationSettings::customPubBridgeHost);
-#endif
-   }
-
-   assert(false);
-   return "";
-}
-
-std::string ApplicationSettings::pubBridgePort() const
-{
-   auto env = EnvConfiguration(get<int>(ApplicationSettings::envConfiguration));
-
-   switch (env) {
-   case EnvConfiguration::Production:
-   case EnvConfiguration::Test:
-      return "9091";
-#ifndef PRODUCTION_BUILD
-   case EnvConfiguration::Staging:
-      return "9091";
-   case EnvConfiguration::Custom:
-      return get<std::string>(ApplicationSettings::customPubBridgePort);
-#endif
-   }
-
-   assert(false);
-   return "";
-}
-
 void ApplicationSettings::selectNetwork()
 {
    // Set up Armory as needed. Even though the BDMC object isn't used, it sets
@@ -799,5 +773,24 @@ std::string ApplicationSettings::networkName(NetworkType type)
       default:
          assert(false);
          return "unknown";
+   }
+}
+
+std::string ApplicationSettings::GetBlocksettleSignAddress() const
+{
+   auto env = static_cast<ApplicationSettings::EnvConfiguration>(get<int>(ApplicationSettings::envConfiguration));
+
+// NOTE: BlockSettle offline sign address hardcoded here
+   switch (env) {
+      case ApplicationSettings::EnvConfiguration::Production:
+         return "bc1q8e2e3q9rnder5zuam50uurjaxs3xyw6793lxzh";
+      case ApplicationSettings::EnvConfiguration::Test:
+         return "tb1q3ajkr6yyvpdd9rqfm7f2y68etq60237sjq687c";
+#ifndef PRODUCTION_BUILD
+      case ApplicationSettings::EnvConfiguration::Staging:
+         return "tb1q0g3xhhdy5d90dfmcs9zf4vy2hqaeazhhsc8qg0";
+#endif
+      default:
+         return "";
    }
 }

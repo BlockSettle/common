@@ -19,16 +19,16 @@ from component_configurator import Configurator
 class TrezorCommonSettings(Configurator):
     def __init__(self, settings):
         Configurator.__init__(self, settings)
-        self._version = 'master'
-        self._script_revision = '3'
-        self._package_name = 'trezor-common-' + self._version
-        self._package_url = 'https://github.com/trezor/trezor-common/archive/master.zip'
+        self._script_revision = '4'
+        self._git_revision = '74560655e3ef2f2c29901c18ccc1e82cd1424d5b'
+        self._package_name = 'trezor-common'
+        self._package_url = 'https://github.com/trezor/trezor-common/archive/' + self._git_revision + '.zip'
 
     def get_package_name(self):
-        return self._package_name
+        return self._package_name + '-' + self._git_revision
 
     def get_revision_string(self):
-        return self._version + '-' + self._script_revision
+        return self._git_revision + '_' + self._script_revision
 
     def get_url(self):
         return self._package_url

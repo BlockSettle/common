@@ -89,8 +89,8 @@ namespace bs {
             bs::Address getAddressByIndex(unsigned int index, bool ext) const;
 
             SecureBinaryData getPublicKeyFor(const bs::Address &) override;
-            std::shared_ptr<ResolverFeed> getResolver(void) const override;
-            std::shared_ptr<ResolverFeed> getPublicResolver(void) const override;
+            std::shared_ptr<ArmorySigner::ResolverFeed> getResolver(void) const override;
+            std::shared_ptr<ArmorySigner::ResolverFeed> getPublicResolver(void) const override;
             ReentrantLock lockDecryptedContainer() override;
 
             const bs::hd::Path &path() const { return path_; }

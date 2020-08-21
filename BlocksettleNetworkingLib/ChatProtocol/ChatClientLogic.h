@@ -21,15 +21,12 @@
 #include "CommonTypes.h"
 #include "DataConnectionListener.h"
 
-#include <disable_warnings.h>
-#include "ZMQ_BIP15X_DataConnection.h"
-#include "ZMQ_BIP15X_Helpers.h"
-#include <enable_warnings.h>
+#include "BIP15xHelpers.h"
 
-namespace spdlog
-{
+namespace spdlog {
    class logger;
 }
+class DataConnection;
 
 
 namespace Chat
@@ -69,7 +66,8 @@ namespace Chat
 
    public slots:
       void Init(Chat::LoggerPtr loggerPtr, ChatSettings chatSettings);
-      void LoginToServer(const BinaryData &token, const BinaryData &tokenSign, const ZmqBipNewKeyCb& cb);
+      void LoginToServer(const BinaryData &token, const BinaryData &tokenSign
+         , const bs::network::BIP15xNewKeyCb &);
       void LogoutFromServer();
       void SendPartyMessage(const std::string& partyId, const std::string& data);
       void SetMessageSeen(const std::string& partyId, const std::string& messageId);
@@ -118,7 +116,7 @@ namespace Chat
       std::string getChatServerPort() const;
 
       ChatSettings               chatSettings_;
-      ZmqBIP15XDataConnectionPtr connectionPtr_;
+      std::unique_ptr<DataConnection>  connectionPtr_;
       LoggerPtr                  loggerPtr_;
       ChatUserPtr                currentUserPtr_;
       ClientConnectionLogicPtr   clientConnectionLogicPtr_;
@@ -135,5 +133,6 @@ Q_DECLARE_METATYPE(DataConnectionListener::DataConnectionError)
 Q_DECLARE_METATYPE(Chat::ChatClientLogicError)
 Q_DECLARE_METATYPE(Chat::ClientPartyLogicPtr)
 Q_DECLARE_METATYPE(Chat::ChatUserPtr)
+Q_DECLARE_METATYPE(bs::network::BIP15xNewKeyCb)
 
 #endif // CHATCLIENTLOGIC_H

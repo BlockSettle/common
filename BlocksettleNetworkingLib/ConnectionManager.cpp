@@ -16,10 +16,9 @@
 #include "GenoaStreamServerConnection.h"
 #include "PublisherConnection.h"
 #include "SubscriberConnection.h"
+#include "WsDataConnection.h"
 #include "ZmqContext.h"
 #include "ZmqDataConnection.h"
-#include "ZMQ_BIP15X_DataConnection.h"
-#include "ZMQ_BIP15X_ServerConnection.h"
 
 #include <QNetworkAccessManager>
 
@@ -38,7 +37,7 @@ ConnectionManager::ConnectionManager(const std::shared_ptr<spdlog::logger>& logg
 }
 
 ConnectionManager::ConnectionManager(const std::shared_ptr<spdlog::logger>& logger
-   , const ZmqBIP15XPeers &zmqTrustedTerminals)
+   , const bs::network::BIP15xPeers &zmqTrustedTerminals)
    : logger_(logger), zmqTrustedTerminals_(zmqTrustedTerminals)
 {
    // init network
@@ -84,6 +83,12 @@ ConnectionManager::~ConnectionManager() noexcept
    DeinitNetworkLibs();
 }
 
+void ConnectionManager::setCaBundle(const void *caBundlePtr, size_t caBundleSize)
+{
+   caBundlePtr_ = caBundlePtr;
+   caBundleSize_ = caBundleSize;
+}
+
 std::shared_ptr<spdlog::logger> ConnectionManager::GetLogger() const
 {
    return logger_;
@@ -101,7 +106,7 @@ std::shared_ptr<ServerConnection> ConnectionManager::CreateCelerAPIServerConnect
 
 std::shared_ptr<DataConnection> ConnectionManager::CreateCelerClientConnection() const
 {
-   auto connection = std::make_shared< CelerClientConnection<ZmqDataConnection> >(logger_);
+   auto connection = std::make_shared<CelerClientConnection<ZmqDataConnection> >(logger_);
    connection->SetContext(zmqContext_);
 
    return connection;
@@ -109,35 +114,10 @@ std::shared_ptr<DataConnection> ConnectionManager::CreateCelerClientConnection()
 
 std::shared_ptr<DataConnection> ConnectionManager::CreateGenoaClientConnection(bool monitored) const
 {
-   auto connection = std::make_shared< GenoaConnection<ZmqDataConnection> >(logger_, monitored);
+   auto connection = std::make_shared<GenoaConnection<ZmqDataConnection> >(logger_, monitored);
    connection->SetContext(zmqContext_);
 
    return connection;
-}
-
-std::shared_ptr<ZmqBIP15XServerConnection> ConnectionManager::CreateZMQBIP15XChatServerConnection(
-   bool ephemeral, const std::string& ownKeyFileDir, const std::string& ownKeyFileName) const
-{
-   auto cbTrustedClients = [this]() {
-      return zmqTrustedTerminals_;
-   };
-
-   return std::make_shared<ZmqBIP15XServerConnection>(logger_, zmqContext_
-      , cbTrustedClients, ephemeral
-      , ownKeyFileDir, ownKeyFileName, false);
-}
-
-ZmqBIP15XDataConnectionPtr ConnectionManager::CreateZMQBIP15XDataConnection(const ZmqBIP15XDataConnectionParams &params) const
-{
-   auto connection = std::make_shared<ZmqBIP15XDataConnection>(logger_, params);
-   return connection;
-}
-
-ZmqBIP15XDataConnectionPtr ConnectionManager::CreateZMQBIP15XDataConnection() const
-{
-   ZmqBIP15XDataConnectionParams params;
-   params.ephemeralPeers = true;
-   return CreateZMQBIP15XDataConnection(params);
 }
 
 std::shared_ptr<ServerConnection> ConnectionManager::CreatePubBridgeServerConnection() const
@@ -169,4 +149,19 @@ const std::shared_ptr<QNetworkAccessManager> &ConnectionManager::GetNAM()
    }
 
    return nam_;
+}
+
+std::shared_ptr<DataConnection> ConnectionManager::CreateInsecureWsConnection() const
+{
+   return std::make_shared<WsDataConnection>(logger_, WsDataConnectionParams{});
+}
+
+std::shared_ptr<DataConnection> ConnectionManager::CreateSecureWsConnection() const
+{
+   assert(caBundlePtr_ != nullptr);
+   WsDataConnectionParams params;
+   params.useSsl = true;
+   params.caBundlePtr = caBundlePtr_;
+   params.caBundleSize = caBundleSize_;
+   return std::make_shared<WsDataConnection>(logger_, params);
 }

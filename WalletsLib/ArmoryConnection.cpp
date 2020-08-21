@@ -21,6 +21,7 @@
 #include "EncryptionUtils.h"
 #include "JSON_codec.h"
 #include "ManualResetEvent.h"
+#include "ScopedFlag.h"
 #include "SocketIncludes.h"
 
 
@@ -98,8 +99,10 @@ bool ArmoryConnection::removeTarget(ArmoryCallbackTarget *act)
       done.set_value(true);
    });
 
-   bool result = doneFut.get();
-   return result;
+   if (doneFut.wait_for(std::chrono::seconds{ 1 }) == std::future_status::ready) {
+      return doneFut.get();
+   }
+   return false;
 }
 
 void ArmoryConnection::threadFunction()
@@ -239,7 +242,8 @@ void ArmoryConnection::setupConnection(NetworkType netType, const std::string &h
       if (connThreadRunning_) {
          return;
       }
-      connThreadRunning_ = true;
+
+      ScopedFlag<decltype(connThreadRunning_)> f{connThreadRunning_};
       setState(ArmoryState::Connecting);
       stopServiceThreads();
 
@@ -247,46 +251,41 @@ void ArmoryConnection::setupConnection(NetworkType netType, const std::string &h
          bdv_->unregisterFromDB();
          bdv_.reset();
       }
-      if (cbRemote_) {
-         cbRemote_.reset();
-      }
       isOnline_ = false;
-      bool connected = false;
-      do {
-         if (needsBreakConnectionLoop_.load()) {
-            setState(ArmoryState::Cancelled);
-            return;
-         }
+      if (needsBreakConnectionLoop_.load()) {
+         setState(ArmoryState::Cancelled);
+         return;
+      }
+      if (!cbRemote_) {
          cbRemote_ = std::make_shared<ArmoryCallback>(this, logger_);
-         logger_->debug("[ArmoryConnection::setupConnection] connecting to Armory {}:{}"
-                        , host, port);
+      }
+      logger_->debug("[ArmoryConnection::setupConnection] connecting to Armory {}:{}"
+                     , host, port);
 
-         // Get Armory BDV (gateway to the remote ArmoryDB instance). Must set
-         // up BIP 150 keys before connecting. BIP 150/151 is transparent to us
-         // otherwise. If it fails, the connection will fail.
-         bdv_ = AsyncClient::BlockDataViewer::getNewBDV(host, port
-            , dataDir, [passphrase](const std::set<BinaryData> &) { return passphrase; }
-            , true // enable ephemeralPeers, because we manage armory keys ourself
-            , cbRemote_);
-         if (!bdv_) {
-            logger_->error("[setupConnection (connectRoutine)] failed to "
-               "create BDV");
-            std::this_thread::sleep_for(std::chrono::seconds(10));
-            continue;
-         }
+      // Get Armory BDV (gateway to the remote ArmoryDB instance). Must set
+      // up BIP 150 keys before connecting. BIP 150/151 is transparent to us
+      // otherwise. If it fails, the connection will fail.
+      bdv_ = AsyncClient::BlockDataViewer::getNewBDV(host, port
+         , dataDir, [passphrase](const std::set<BinaryData> &) { return passphrase; }
+         , true // enable ephemeralPeers, because we manage armory keys ourself
+         , cbRemote_);
+      if (!bdv_) {
+         logger_->error("[setupConnection (connectRoutine)] failed to "
+            "create BDV");
+         setState(ArmoryState::Offline);
+         return;
+      }
 
-         bdv_->setCheckServerKeyPromptLambda(cbBIP151);
-         connected = bdv_->connectToRemote();
-         if (!connected) {
-            logger_->warn("[ArmoryConnection::setupConnection] BDV connection failed");
-            std::this_thread::sleep_for(std::chrono::seconds(30));
-         }
-      } while (!connected);
+      bdv_->setCheckServerKeyPromptLambda(cbBIP151);
+      if (!bdv_->connectToRemote()) {
+         logger_->error("[ArmoryConnection::setupConnection] BDV connection failed");
+         setState(ArmoryState::Offline);
+         return;
+      }
       logger_->debug("[ArmoryConnection::setupConnection] BDV connected");
 
       regThreadRunning_ = true;
       regThread_ = std::thread(registerRoutine);
-      connThreadRunning_ = false;
    };
    std::thread(connectRoutine).detach();
 }

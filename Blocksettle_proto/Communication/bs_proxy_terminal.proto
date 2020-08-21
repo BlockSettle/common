@@ -17,10 +17,11 @@ import "bs_types.proto";
 // Messages sent from terminal to proxy and back.
 // `Request` is sent from terminal (proxy is a server here).
 
-message AuthEidError
+message Error
 {
     // AutheIDClient::ErrorType as int
     int32 error_code = 1;
+    string message = 2;
 }
 
 message Empty
@@ -32,6 +33,11 @@ message Request
     message StartLogin
     {
         string email = 1;
+    }
+
+    message Authorize
+    {
+        string api_key = 1;
     }
 
     message Celer
@@ -69,15 +75,15 @@ message Request
     oneof data
     {
         // Requests (there must be some response after some time)
-        StartLogin start_login = 10;
-        Empty get_login_result = 11;
-        GetEmailHash get_email_hash = 14;
-        Address submit_auth_address = 15;
-        Address sign_auth_address = 16;
-        Address confirm_auth_address = 17;
-        SubmitCcAddress submit_cc_address = 18;
-        Address sign_cc_address = 19;
-        Address confirm_cc_address = 20;
+        StartLogin      start_login          = 10;
+        Empty           get_login_result     = 11;
+        GetEmailHash    get_email_hash       = 14;
+        Address         sign_auth_address    = 16;
+        Address         confirm_auth_address = 17;
+        SubmitCcAddress submit_cc_address    = 18;
+        Address         sign_cc_address      = 19;
+        Address         confirm_cc_address   = 20;
+        Authorize       authorize            = 21;
 
         // Messages
         Empty cancel_login = 30;
@@ -90,120 +96,124 @@ message Request
 
 message Response
 {
-    message StartLogin
-    {
-        AuthEidError error = 1;
-    }
+   message StartLogin
+   {
+      Error error = 1;
+   }
 
-    message GetLoginResult
-    {
-        AuthEidError error = 1;
+   message Authorize
+   {
+      string email = 1;
+   }
 
-        string celer_login = 2;
+   message GetLoginResult
+   {
+      Error          error                   = 1;
+      string         celer_login             = 2;
+      // bs::network::UserType as int
+      int32          user_type               = 3;
+      // serialized bs.types.ChatToken
+      bytes          chat_token_data         = 4;
 
-        // bs::network::UserType as int
-        int32 user_type = 3;
+      // chat_token_data signed by proxy for later chat server verification
+      bytes          chat_token_sign         = 5;
 
-        // serialized bs.types.ChatToken
-        bytes chat_token_data = 4;
+      bytes          auth_addresses_signed   = 6;
+      bytes          cc_addresses_signed     = 7;
+      bool           enabled                 = 8;
+      float          fee_rate                = 9;
+      string         terminal_user_id        = 10;
+      bs.types.TradeSettings trade_settings  = 11;
+   }
 
-        // chat_token_data signed by proxy for later chat server verification
-        bytes chat_token_sign = 5;
+   message Celer
+   {
+      int32 message_type   = 1;
+      bytes data           = 2;
+   }
 
-        bytes auth_addresses_signed = 6;
-        bytes cc_addresses_signed = 7;
+   // Serialized Blocksettle.Communication.ProxyPb.Response
+   message ProxyPb
+   {
+      bytes data = 1;
+   }
 
-        bool enabled = 8;
+   message GetEmailHash
+   {
+      string email   = 1;
+      // empty hash means there was some kind of failure
+      string hash    = 2;
+   }
 
-        float fee_rate = 9;
+   message Basic
+   {
+      bool     success     = 1;
+      string   error_msg   = 2;
+   }
 
-        string terminal_user_id = 10;
-    }
+   message SubmitAuthAddress
+   {
+      Basic    basic                   = 1;
+      int32    validation_amount_cents = 2;
+      bool     confirmation_required   = 3;
+   }
 
-    message Celer
-    {
-        int32 message_type = 1;
-        bytes data = 2;
-    }
+   message Sign
+   {
+      Basic basic = 1;
+      bool user_cancelled = 2;
+   }
 
-    // Serialized Blocksettle.Communication.ProxyPb.Response
-    message ProxyPb
-    {
-        bytes data = 1;
-    }
+   message GenAddrUpdated
+   {
+      bytes auth_addresses_signed = 1;
+      bytes cc_addresses_signed = 2;
+   }
 
-    message GetEmailHash
-    {
-        string email = 1;
+   message UserStatusUpdated
+   {
+      // bs::network::UserType as int
+      int32 user_type   = 1;
+      bool  enabled     = 2;
+   }
 
-        // empty hash means there was some kind of failure
-        string hash = 2;
-    }
+   message UpdateFeeRate
+   {
+      float fee_rate = 1;
+   }
 
-    message Basic
-    {
-        bool success = 1;
-        string error_msg = 2;
-    }
+   message UpdateBalance
+   {
+      repeated bs.types.Balance balances = 1;
+   }
 
-    message SubmitAuthAddress
-    {
-        Basic basic = 1;
-        int32 validation_amount_cents = 2;
-        bool confirmation_required = 3;
-    }
+   message ConfirmAuthResponse
+   {
+      int32 status_code = 1;
+   }
 
-    message Sign
-    {
-        Basic basic = 1;
-        bool user_cancelled = 2;
-    }
+   int64 request_id = 1;
 
-    message GenAddrUpdated
-    {
-        bytes auth_addresses_signed = 1;
-        bytes cc_addresses_signed = 2;
-    }
+   oneof data
+   {
+   // Responses
+   StartLogin           start_login          = 10;
+   GetLoginResult       get_login_result     = 11;
+   GetEmailHash         get_email_hash       = 14;
+   Sign                 sign_auth_address    = 16;
+   ConfirmAuthResponse  confirm_auth_submit  = 17;
+   Basic                submit_cc_address    = 18;
+   Sign                 sign_cc_address      = 19;
+   Basic                confirm_cc_address   = 20;
+   Authorize            authorize            = 21;
 
-    message UserStatusUpdated
-    {
-        // bs::network::UserType as int
-        int32 user_type = 1;
-
-        bool enabled = 2;
-    }
-
-    message UpdateFeeRate
-    {
-        float fee_rate = 1;
-    }
-
-    message UpdateBalance
-    {
-        repeated bs.types.Balance balances = 1;
-    }
-
-    int64 request_id = 1;
-
-    oneof data
-    {
-        // Responses
-        StartLogin start_login = 10;
-        GetLoginResult get_login_result = 11;
-        GetEmailHash get_email_hash = 14;
-        SubmitAuthAddress submit_auth_address = 15;
-        Sign sign_auth_address = 16;
-        Basic confirm_auth_submit = 17;
-        Basic submit_cc_address = 18;
-        Sign sign_cc_address = 19;
-        Basic confirm_cc_address = 20;
-
-        // Messages
-        Celer celer = 30;
-        ProxyPb proxy_pb = 31;
-        GenAddrUpdated gen_addr_updated = 32;
-        UserStatusUpdated user_status_updated = 33;
-        UpdateFeeRate update_fee_rate = 34;
-        UpdateBalance update_balance = 35;
-    }
+   // Messages
+   Celer                celer                = 30;
+   ProxyPb              proxy_pb             = 31;
+   GenAddrUpdated       gen_addr_updated     = 32;
+   UserStatusUpdated    user_status_updated  = 33;
+   UpdateFeeRate        update_fee_rate      = 34;
+   UpdateBalance        update_balance       = 35;
+   bool                 trading_enabled      = 36;
+   }
 }

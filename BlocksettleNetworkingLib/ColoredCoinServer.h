@@ -21,7 +21,7 @@
 #include "DataConnectionListener.h"
 #include "ServerConnectionListener.h"
 #include "DispatchQueue.h"
-#include "ZMQ_BIP15X_Helpers.h"
+#include "BIP15xHelpers.h"
 
 namespace spdlog {
    class logger;
@@ -29,9 +29,8 @@ namespace spdlog {
 class ArmoryConnection;
 class CcTrackerImpl;
 class CcTrackerSrvImpl;
-class ZmqBIP15XDataConnection;
-class ZmqBIP15XServerConnection;
-class ZmqContext;
+class DataConnection;
+class ServerConnection;
 
 namespace bs {
    namespace tracker_server {
@@ -53,7 +52,8 @@ public:
    static std::unique_ptr<ColoredCoinTrackerInterface> createClient(
       const std::shared_ptr<CcTrackerClient> &parent, uint64_t coinsPerShare);
 
-   void openConnection(const std::string &host, const std::string &port, ZmqBipNewKeyCb newKeyCb);
+   void openConnection(const std::string &host, const std::string &port
+      , const bs::network::BIP15xNewKeyCb &);
 
    void OnDataReceived(const std::string& data) override;
    void OnConnected() override;
@@ -90,7 +90,7 @@ private:
    void processParseCcCandidateTx(const bs::tracker_server::Response_ParseCcCandidateTxResult &);
 
    std::shared_ptr<spdlog::logger> logger_;
-   std::unique_ptr<ZmqBIP15XDataConnection> connection_;
+   std::unique_ptr<DataConnection> connection_;
 
    std::set<CcTrackerImpl*> clients_;
    std::map<int, CcTrackerImpl*> clientsById_;
@@ -101,7 +101,7 @@ private:
 
    std::string host_;
    std::string port_;
-   ZmqBipNewKeyCb newKeyCb_;
+   bs::network::BIP15xNewKeyCb   newKeyCb_{ nullptr };
    State state_{State::Offline};
    std::chrono::steady_clock::time_point nextRestart_{};
 };
@@ -109,17 +109,14 @@ private:
 class CcTrackerServer : public ServerConnectionListener
 {
 public:
-   CcTrackerServer(const std::shared_ptr<spdlog::logger> &logger, const std::shared_ptr<ArmoryConnection> &armory);
+   CcTrackerServer(const std::shared_ptr<spdlog::logger> &logger
+      , const std::shared_ptr<ArmoryConnection> &armory, const std::shared_ptr<ServerConnection> &server);
 
    ~CcTrackerServer() override;
 
-   bool startServer(const std::string &host, const std::string &port
-      , const std::shared_ptr<ZmqContext> &context, const std::string &ownKeyFileDir
-      , const std::string &ownKeyFileName);
-
    void OnDataFromClient(const std::string& clientId, const std::string& data) override;
 
-   void OnClientConnected(const std::string& clientId) override;
+   void OnClientConnected(const std::string& clientId, const Details &details) override;
    void OnClientDisconnected(const std::string& clientId) override;
 
 private:
@@ -139,7 +136,7 @@ private:
    std::shared_ptr<spdlog::logger> logger_;
    std::shared_ptr<ArmoryConnection> armory_;
 
-   std::unique_ptr<ZmqBIP15XServerConnection> server_;
+   std::shared_ptr<ServerConnection> server_{};
 
    std::map<std::string, ClientData> connectedClients_;
 

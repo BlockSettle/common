@@ -194,7 +194,8 @@ namespace bs {
             std::string toString() const;
          };
 
-         using Peers = std::vector<Peer*>;
+         using PeerPtr = std::shared_ptr<Peer>;
+         using PeerPtrs = std::vector<PeerPtr>;
 
          double satToBtc(int64_t value);
          double satToBtc(uint64_t value);

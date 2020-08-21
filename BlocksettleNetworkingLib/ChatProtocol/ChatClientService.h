@@ -18,6 +18,7 @@
 #include "CelerClient.h"
 #include "ChatProtocol/ServiceThread.h"
 #include "ChatProtocol/ChatClientLogic.h"
+#include "BIP15xHelpers.h"
 
 namespace Chat
 {
@@ -35,7 +36,8 @@ namespace Chat
    signals:
       ////////// PROXY SIGNALS //////////
       void Init(const Chat::LoggerPtr& loggerPtr, Chat::ChatSettings);
-      void LoginToServer(const BinaryData& token, const BinaryData& tokenSign, const ZmqBipNewKeyCb& cb);
+      void LoginToServer(const BinaryData& token, const BinaryData& tokenSign
+         , const bs::network::BIP15xNewKeyCb &);
       void LogoutFromServer();
       void SendPartyMessage(const std::string& partyId, const std::string& data);
       void RequestPrivateParty(const std::string& userName, const std::string& initialMessage = "");
@@ -67,6 +69,5 @@ namespace Chat
 
 Q_DECLARE_METATYPE(CelerClient::CelerUserType)
 Q_DECLARE_METATYPE(Chat::LoggerPtr)
-Q_DECLARE_METATYPE(ZmqBipNewKeyCb)
 
 #endif // CHATCLIENTSERVICE_H

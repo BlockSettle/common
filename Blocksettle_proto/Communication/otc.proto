@@ -84,6 +84,7 @@ message ContactMessage
         bytes auth_address_seller = 3;
 
         bytes payin_tx_id = 4;
+        bytes payin_tx = 5;
     }
 
     message BuyerAcks

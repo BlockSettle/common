@@ -20,6 +20,7 @@
 #include <botan/data_src.h>
 #include <botan/pubkey.h>
 #include <botan/ocsp.h>
+#include <botan/sha2_32.h>
 #include "rp.pb.h"
 
 using namespace autheid;
@@ -135,6 +136,8 @@ QString AutheIDClient::errorString(AutheIDClient::ErrorType error)
       return tr("Network error");
    case NoNewDeviceAvailable:
       return tr("No new device available");
+   case WrongAccountForDeviceAdding:
+      return tr("Can't add device from different account");
    }
 
    return tr("Unknown error");
@@ -297,12 +300,14 @@ void AutheIDClient::createCreateRequest(const std::string &payload, int expirati
 
 void AutheIDClient::getDeviceKey(RequestType requestType, const std::string &email
    , const std::string &walletId, const QString &authEidMessage
-   , const std::vector<std::string> &knownDeviceIds, int expiration, int timestamp)
+   , const std::vector<std::string> &knownDeviceIds, const std::string &qrSecret, int expiration, int timestamp, const std::string &oldEmail)
 {
    cancel();
 
    email_ = email;
    requestType_ = requestType;
+   qrSecret_ = qrSecret;
+   oldEmail_ = oldEmail;
 
    QString action = getAutheIDClientRequestText(requestType);
    bool newDevice = isAutheIDClientNewDeviceNeeded(requestType);
@@ -317,6 +322,9 @@ void AutheIDClient::getDeviceKey(RequestType requestType, const std::string &ema
    request.set_title(action.toStdString());
    request.set_description(finalMessageChange(authEidMessage, requestType, knownDeviceIds));
    request.set_email(email_);
+   if (email_.empty()) {
+      request.set_use_local_account(true);
+   }
    request.mutable_device_key()->set_use_new_devices(newDevice);
 
    switch (requestType) {
@@ -432,6 +440,7 @@ void AutheIDClient::processCreateReply(const QByteArray &payload, int expiration
    requestId_ = response.request_id();
    expiration_ = expiration;
    emit createRequestDone();
+   emit requestIdReceived(requestId_);
    if (autoRequestResult) {
       requestResult();
    }
@@ -448,11 +457,6 @@ void AutheIDClient::processResultReply(const QByteArray &payload)
 
    requestId_.clear();
 
-   if (reply.has_signature()) {
-      processSignatureReply(reply.signature());
-      return;
-   }
-
    if (reply.status() == rp::RP_CANCELLED || reply.status() == rp::USER_CANCELLED) {
       emit userCancelled();
       return;
@@ -463,50 +467,72 @@ void AutheIDClient::processResultReply(const QByteArray &payload)
       return;
    }
 
-   if (resultAuth_)
-   {
+   if (reply.has_signature()) {
+      processSignatureReply(reply.signature());
+      return;
+   }
+
+   if (resultAuth_) {
       std::string jwtToken = reply.authentication().jwt();
-      if (!jwtToken.empty())
-      {
+      if (!jwtToken.empty()) {
          emit authSuccess(jwtToken);
       }
-      else
-      {
+      else {
          emit failed(ErrorType::NotAuthenticated);
       }
       return;
    }
 
-   if (reply.device_key_enc().empty() || reply.device_id().empty()) {
+   if (reply.device_key().device_key_enc().empty() || reply.device_id().empty()) {
       emit failed(ErrorType::Cancelled);
       return;
    }
 
-   autheid::SecureBytes secureReplyData = autheid::decryptData(reply.device_key_enc().data()
-      , reply.device_key_enc().size(), authKeys_.first);
+   autheid::SecureBytes secureReplyData = autheid::decryptData(reply.device_key().device_key_enc().data()
+      , reply.device_key().device_key_enc().size(), authKeys_.first);
    if (secureReplyData.empty()) {
       emit failed(ErrorType::DecryptError);
       return;
    }
 
-   rp::GetResultResponse::DeviceKeyResult secureReply;
+   rp::GetResultResponse::DeviceKey secureReply;
    if (!secureReply.ParseFromArray(secureReplyData.data(), int(secureReplyData.size()))) {
       emit failed(ErrorType::InvalidSecureReplyError);
       return;
    }
+   if (secureReply.qr_secret() != qrSecret_) {
+      SPDLOG_LOGGER_ERROR(logger_, "invalid QR code secret");
+      emit failed(ErrorType::InvalidSecureReplyError);
+      return;
+   }
 
-   const std::string &deviceKey = secureReply.device_key();
+   // Device adding now works with QR codes and user could add password from some other device.
+   // This check will make sure that new device is from same account.
+   if (!oldEmail_.empty() && reply.email() != oldEmail_) {
+      SPDLOG_LOGGER_ERROR(logger_, "unexpected new email: {}, old email: {}", reply.email(), oldEmail_);
+      emit failed(ErrorType::WrongAccountForDeviceAdding);
+      return;
+   }
 
-   if (deviceKey.size() != kKeySize) {
+   std::string deviceKey1 = secureReply.device_key();
+   std::string deviceKey2 = reply.device_key().device_key_part2();
+   if (deviceKey1.size() != kKeySize || deviceKey2.size() != kKeySize) {
       emit failed(ErrorType::InvalidKeySizeError);
       return;
    }
 
-   std::string encKey = email_
+   Botan::SHA_256 hash;
+   hash.update(deviceKey1);
+   hash.update(deviceKey2);
+   Bytes deviceKey(hash.output_length());
+   hash.final(deviceKey.data());
+
+   // email_ will be empty with local request
+   std::string encKey = (email_.empty() ? reply.email() : email_)
       + kSeparatorSymbol + reply.device_id()
       + kSeparatorSymbol + reply.device_name();
 
-   emit succeeded(encKey, SecureBinaryData::fromString(deviceKey));
+   emit succeeded(encKey, SecureBinaryData(deviceKey.data(), deviceKey.size()));
 }
 
 void AutheIDClient::processNetworkReply(QNetworkReply *reply, int timeoutSeconds, const AutheIDClient::ResultCallback &callback)

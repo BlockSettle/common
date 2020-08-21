@@ -30,6 +30,12 @@
 #include "ValidityFlag.h"
 #include "WalletSignerContainer.h"
 
+
+#define RECIP_GROUP_SPEND_1 0xA000
+#define RECIP_GROUP_CHANG_1 0xA001
+#define RECIP_GROUP_SPEND_2 0xB000
+#define RECIP_GROUP_CHANG_2 0xB001
+
 namespace spdlog {
    class logger;
 }
@@ -51,6 +57,8 @@ namespace bs {
          class Wallet;
       }
       class Wallet;
+
+      using RecipientMap = std::map<unsigned, std::vector<std::shared_ptr<ArmorySigner::ScriptRecipient>>>;
 
       class WalletsManager : public QObject, public ArmoryCallbackTarget, public WalletCallbackTarget
       {
@@ -145,9 +153,6 @@ namespace bs {
          //run after registration to update address chain usage counters
          void trackAddressChainUse(std::function<void(bool)>);
 
-         std::map<std::string, std::vector<bs::Address>> getAddressToWalletsMapping(const std::vector<UTXO> &) const;
-         static std::shared_ptr<ResolverFeed> getPublicResolver(const std::map<bs::Address, BinaryData> &);
-
          std::shared_ptr<bs::sync::hd::SettlementLeaf> getSettlementLeaf(const bs::Address &addr) const;
          bool hasSettlementLeaf(const bs::Address &addr) const { return (getSettlementLeaf(addr) != nullptr); }
 
@@ -157,10 +162,10 @@ namespace bs {
          static core::wallet::TXSignRequest createPartialTXRequest(uint64_t spendVal
             , const std::map<UTXO, std::string> &inputs, bs::Address changeAddress = {}
             , float feePerByte = 0, uint32_t topHeight = 0
-            , const std::vector<std::shared_ptr<ScriptRecipient>> &recipients = {}
-            , const bs::core::wallet::OutputSortOrder &outSortOrder = { bs::core::wallet::OutputOrderType::PrevState
-               , bs::core::wallet::OutputOrderType::Recipients, bs::core::wallet::OutputOrderType::Change }
+            , const RecipientMap &recipients = {}
+            , unsigned changeGroup = UINT32_MAX
             , const Codec_SignerState::SignerState &prevPart = {}, bool useAllInputs = false
+            , unsigned assumedRecipientCount = UINT32_MAX
             , const std::shared_ptr<spdlog::logger> &logger = nullptr);
 
          std::shared_ptr<ColoredCoinTrackerClient> tracker(const std::string &cc) const;
@@ -170,7 +175,6 @@ namespace bs {
          void CCLeafCreateFailed(const std::string& ccName, bs::error::ErrorCode result);
 
          void AuthLeafCreated();
-         void AuthLeafNotCreated();
 
          void walletPromotedToPrimary(const std::string& walletId);
          void walletPromotionFailed(const std::string& walletId, bs::error::ErrorCode result);
@@ -194,9 +198,10 @@ namespace bs {
          void newTransactions(std::vector<bs::TXEntry>) const;
          void invalidatedZCs(const std::set<BinaryData> &ids) const;
          void ccTrackerReady(const std::string &cc);
+         void settlementLeavesLoaded(unsigned int);
 
       public slots:
-         void onCCSecurityInfo(QString ccProd, QString ccDesc, unsigned long nbSatoshis, QString genesisAddr);
+         void onCCSecurityInfo(QString ccProd, unsigned long nbSatoshis, QString genesisAddr);
          void onCCInfoLoaded();
 
       private:
@@ -282,15 +287,12 @@ namespace bs {
             std::string nameByWalletIndex(bs::hd::Path::Elem) const override;
             uint64_t lotSizeFor(const std::string &cc) const override;
             bs::Address genesisAddrFor(const std::string &cc) const override;
-            std::string descriptionFor(const std::string &cc) const override;
             std::vector<std::string> securities() const override;
 
-            void addData(const std::string &cc, uint64_t lotSize, const bs::Address &genAddr
-               , const std::string &desc);
+            void addData(const std::string &cc, uint64_t lotSize, const bs::Address &genAddr);
 
          private:
             struct CCInfo {
-               std::string desc;
                uint64_t    lotSize;
                bs::Address genesisAddr;
             };

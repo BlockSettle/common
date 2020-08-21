@@ -34,8 +34,12 @@ namespace bs {
 }
 class CoinSelection;
 class RecipientContainer;
-class ScriptRecipient;
 class SelectedTransactionInputs;
+
+namespace ArmorySigner
+{
+   class ScriptRecipient;
+};
 
 struct PaymentStruct;
 struct UtxoSelection;
@@ -111,16 +115,16 @@ public:
    std::vector<unsigned int> allRecipientIds() const;
    bool UpdateRecipientAddress(unsigned int recipientId, const bs::Address &);
    void ResetRecipientAddress(unsigned int recipientId);
-   bool UpdateRecipientAmount(unsigned int recipientId, double amount, bool isMax = false);
-   bool UpdateRecipient(unsigned int recipientId, double amount, const bs::Address &);
+   bool UpdateRecipientAmount(unsigned int recipientId, const bs::XBTAmount &, bool isMax = false);
+   bool UpdateRecipient(unsigned int recipientId, const bs::XBTAmount &, const bs::Address &);
    void RemoveRecipient(unsigned int recipientId);
 
    void ClearAllRecipients();
 
    bs::Address GetRecipientAddress(unsigned int recipientId) const;
-   std::shared_ptr<ScriptRecipient> GetScriptRecipient(unsigned int recipientId) const;
-   BTCNumericTypes::balance_type GetRecipientAmount(unsigned int recipientId) const;
-   BTCNumericTypes::balance_type  GetTotalRecipientsAmount() const;
+   std::shared_ptr<ArmorySigner::ScriptRecipient> GetScriptRecipient(unsigned int recipientId) const;
+   bs::XBTAmount GetRecipientAmount(unsigned int recipientId) const;
+   bs::XBTAmount  GetTotalRecipientsAmount() const;
    bool IsMaxAmount(unsigned int recipientId) const;
 
    // If there is change then changeAddr must be set
@@ -133,7 +137,8 @@ public:
    std::shared_ptr<SelectedTransactionInputs> getSelectedInputs() { return selectedInputs_; }
    TransactionSummary GetTransactionSummary() const;
 
-   double CalculateMaxAmount(const bs::Address &recipient = {}, bool force = false) const;
+   bs::XBTAmount CalculateMaxAmount(const bs::Address &recipient = {}
+      , bool force = false) const;
 
    using UtxoHashes = std::vector<std::pair<BinaryData, uint32_t>>;
    void setSelectedUtxo(const UtxoHashes& utxosHashes);
@@ -154,7 +159,7 @@ private:
    // Temporary function until some Armory changes are accepted upstream.
    size_t getVirtSize(const UtxoSelection& inUTXOSel) const;
 
-   std::vector<std::shared_ptr<ScriptRecipient>> GetRecipientList() const;
+   std::vector<std::shared_ptr<ArmorySigner::ScriptRecipient>> GetRecipientList() const;
 
 private:
    onTransactionChanged             changedCallback_;
@@ -167,7 +172,7 @@ private:
    float       feePerByte_;
    uint64_t    totalFee_ = 0;
    uint64_t    minTotalFee_ = 0;
-   mutable double maxAmount_ = 0;
+   mutable bs::XBTAmount maxAmount_{};
    // recipients
    unsigned int nextId_;
    std::unordered_map<unsigned int, std::shared_ptr<RecipientContainer>> recipients_;

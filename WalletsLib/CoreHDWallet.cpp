@@ -94,7 +94,7 @@ void hd::Wallet::initNew(const wallet::Seed &seed
    }
    catch (const WalletException &) {
       //empty account structure, will be set at group creation
-      std::set<std::shared_ptr<AccountType>> accountTypes;
+      std::set<std::shared_ptr<AccountType_BIP32>> accountTypes;
       
       auto& node = seed.getNode();
       if (node.getPrivateKey().getSize() != 32 &&
@@ -103,7 +103,7 @@ void hd::Wallet::initNew(const wallet::Seed &seed
 
       walletPtr_ = AssetWallet_Single::createFromBIP32Node(
          seed.getNode(), accountTypes, pd.password, pd.controlPassword
-         , folder, 0); //no lookup, as there are no accounts
+         , folder); //no lookup, as there are no accounts
    }
    filePathName_ = folder;
    DBUtils::appendPath(filePathName_, walletPtr_->getDbFilename());
@@ -380,7 +380,12 @@ BinaryData bs::core::hd::Wallet::signTXRequestWithWallet(const bs::core::wallet:
             inputSigs[sig.index()] = BinaryData::fromString(sig.data());
          }
 
-         signedTx = leaf->signTXRequestWithWitness(request, inputSigs);
+         try {
+            signedTx = leaf->signTXRequestWithWitness(request, inputSigs);
+         } catch (const std::exception &e) {
+            SPDLOG_LOGGER_ERROR(logger_, "preparing ledger tx failed: {}", e.what());
+            return {};
+         }
       }
    }
    else {
@@ -890,7 +895,7 @@ SecureBinaryData hd::Wallet::getDecryptedRootXpriv(void) const
    
    BIP32_Node node;
    node.initFromPrivateKey(
-      rootBip32->getDepth(), rootBip32->getLeafID(), rootBip32->getFingerPrint(),
+      rootBip32->getDepth(), rootBip32->getLeafID(), rootBip32->getParentFingerprint(),
       decryptedRootPrivKey, rootBip32->getChaincode());
    return node.getBase58();
 }
@@ -1066,7 +1071,7 @@ BinaryData hd::Wallet::signSettlementTXRequest(const wallet::TXSignRequest &txRe
 
    //sign & return
    auto signer = leafPtr->getSigner(txReq, false);
-   signer.resetFeeds();
+   signer.resetFeed();
    signer.setFeed(resolver);
 
    signer.sign();

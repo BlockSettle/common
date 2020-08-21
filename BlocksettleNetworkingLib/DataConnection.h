@@ -41,6 +41,8 @@ public:
                               , DataConnectionListener* listener) = 0;
    virtual bool closeConnection() = 0;
 
+   virtual bool isActive() const = 0;
+
 protected:
    void setListener(DataConnectionListener* listener) {
       listener_ = listener;
@@ -50,15 +52,15 @@ protected:
 
    void detachFromListener();
 
-   virtual void onRawDataReceived(const std::string& rawData) = 0;
+   virtual void onRawDataReceived(const std::string& rawData) {}
 
    void notifyOnData(const std::string& data);
    virtual void notifyOnConnected();
    void notifyOnDisconnected();
    void notifyOnError(DataConnectionListener::DataConnectionError errorCode);
 
-private:
-   DataConnectionListener* listener_;
+protected:
+   DataConnectionListener* listener_{ nullptr };
 };
 
 #endif // __DATA_CONNECTION_H__

@@ -11,13 +11,19 @@
 
 #include "ColoredCoinServer.h"
 
+#include <spdlog/spdlog.h>
+
+#include "Bip15xDataConnection.h"
 #include "ColoredCoinCache.h"
 #include "ColoredCoinLogic.h"
+#include "DataConnection.h"
 #include "DispatchQueue.h"
 #include "FutureValue.h"
+#include "ServerConnection.h"
 #include "StringUtils.h"
-#include "ZMQ_BIP15X_DataConnection.h"
-#include "ZMQ_BIP15X_ServerConnection.h"
+#include "TransportBIP15x.h"
+#include "TransportBIP15xServer.h"
+#include "WsDataConnection.h"
 
 #include "tracker_server.pb.h"
 
@@ -289,7 +295,8 @@ std::unique_ptr<ColoredCoinTrackerInterface> CcTrackerClient::createClient(
    return std::move(client);
 }
 
-void CcTrackerClient::openConnection(const std::string &host, const std::string &port, ZmqBipNewKeyCb newKeyCb)
+void CcTrackerClient::openConnection(const std::string &host, const std::string &port
+   , const bs::network::BIP15xNewKeyCb &newKeyCb)
 {
    dispatchQueue_.dispatch([this, host, port, newKeyCb = std::move(newKeyCb)] {
       assert(state_ == State::Offline);
@@ -445,11 +452,15 @@ void CcTrackerClient::reconnect()
 {
    SPDLOG_LOGGER_DEBUG(logger_, "reconnect...");
    setState(State::Connecting);
-   ZmqBIP15XDataConnectionParams params;
+
+   bs::network::BIP15xParams params;
    params.ephemeralPeers = true;
-   connection_ = std::make_unique<ZmqBIP15XDataConnection>(logger_, params);
-   connection_->setCBs(newKeyCb_);
-   connection_->openConnection(host_, port_, this);
+   const auto &transport = std::make_shared<bs::network::TransportBIP15xClient>(logger_, params);
+   transport->setKeyCb(newKeyCb_);
+   auto wsConn = std::make_unique<WsDataConnection>(logger_, WsDataConnectionParams{});
+   connection_ = std::make_unique<Bip15xDataConnection>(logger_, std::move(wsConn), transport);
+   bool result = connection_->openConnection(host_, port_, this);
+   assert(result);
 }
 
 void CcTrackerClient::parseCcCandidateTx(const std::shared_ptr<ColoredCoinSnapshot> &s
@@ -527,9 +538,10 @@ void CcTrackerClient::processParseCcCandidateTx(const bs::tracker_server::Respon
 
 
 CcTrackerServer::CcTrackerServer(const std::shared_ptr<spdlog::logger> &logger
-   , const std::shared_ptr<ArmoryConnection> &armory)
+   , const std::shared_ptr<ArmoryConnection> &armory, const std::shared_ptr<ServerConnection> &server)
    : logger_(logger)
    , armory_(armory)
+   , server_(server)
 {
    dispatchThread_ = std::thread([this]{
       while (!dispatchQueue_.done()) {
@@ -542,18 +554,6 @@ CcTrackerServer::~CcTrackerServer()
 {
    dispatchQueue_.quit();
    dispatchThread_.join();
-}
-
-bool CcTrackerServer::startServer(const std::string &host, const std::string &port
-   , const std::shared_ptr<ZmqContext> &context
-   , const std::string &ownKeyFileDir, const std::string &ownKeyFileName)
-{
-   auto cbTrustedClients = []() -> ZmqBIP15XPeers{
-      return {};
-   };
-   server_ = std::make_unique<ZmqBIP15XServerConnection>(logger_, context, cbTrustedClients, ownKeyFileDir, ownKeyFileName);
-   bool result = server_->BindConnection(host, port, this);
-   return result;
 }
 
 void CcTrackerServer::OnDataFromClient(const std::string &clientId, const std::string &data)
@@ -585,7 +585,7 @@ void CcTrackerServer::OnDataFromClient(const std::string &clientId, const std::s
    });
 }
 
-void CcTrackerServer::OnClientConnected(const std::string &clientId)
+void CcTrackerServer::OnClientConnected(const std::string &clientId, const Details &details)
 {
    SPDLOG_LOGGER_INFO(logger_, "new client connected: {}", bs::toHex(clientId));
    dispatchQueue_.dispatch([this, clientId] {

@@ -433,12 +433,12 @@ std::pair<std::shared_ptr<hd::Leaf>, BinaryData> hd::Leaf::deserialize(
    return std::make_pair(leafPtr, id);
 }
 
-std::shared_ptr<ResolverFeed> hd::Leaf::getResolver() const
+std::shared_ptr<ArmorySigner::ResolverFeed> hd::Leaf::getResolver() const
 {
    return std::make_shared<ResolverFeed_AssetWalletSingle>(walletPtr_);
 }
 
-std::shared_ptr<ResolverFeed> hd::Leaf::getPublicResolver() const
+std::shared_ptr<ArmorySigner::ResolverFeed> hd::Leaf::getPublicResolver() const
 {
    class PublicResolver : public ResolverFeed_AssetWalletSingle
    {

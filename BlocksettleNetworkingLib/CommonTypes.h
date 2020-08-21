@@ -98,7 +98,7 @@ namespace bs {
          std::string security;
          std::string product;
 
-         Asset::Type assetType;
+         Asset::Type assetType{Asset::Type::Undefined};
          Side::Type  side;
 
          double quantity;
@@ -248,6 +248,13 @@ namespace bs {
             , const std::string &txData);
       };
 
+      struct MDInfo {
+         double   bidPrice{};
+         double   askPrice{};
+         double   lastPrice{};
+
+         void merge(const MDInfo &other);
+      };
 
       struct MDField;
       using MDFields = std::vector<MDField>;
@@ -280,6 +287,7 @@ namespace bs {
          static Type fromCeler(com::celertech::marketdata::api::enums::marketdataentrytype::MarketDataEntryType mdType);
 
          static MDField get(const MDFields &fields, Type type);
+         static MDInfo  get(const MDFields &fields);
       };
 
 
@@ -287,7 +295,6 @@ namespace bs {
       {
          std::string    securityId;
          std::string    product;
-         std::string    description;
          bs::Address    genesisAddr;
          uint64_t       nbSatoshis;
       };
@@ -325,7 +332,6 @@ namespace bs {
       struct UnsignedPayinData
       {
          std::string    unsignedPayin;
-         std::map<bs::Address, BinaryData>   preimageData;
       };
 
    }  //namespace network

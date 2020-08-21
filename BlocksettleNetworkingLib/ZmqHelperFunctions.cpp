@@ -84,6 +84,6 @@ std::string bs::network::peerAddressString(int socket)
    if (rc == 0) {
       return inet_ntoa(peerInfo.sin_addr);
    } else {
-      return "Not detected";
+      return "";
    }
 }

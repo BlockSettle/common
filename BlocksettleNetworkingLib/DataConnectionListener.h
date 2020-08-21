@@ -25,6 +25,7 @@ public:
       SerializationFailed,
       HeartbeatWaitFailed,
       ConnectionTimeout,
+      ProtocolViolation,
    };
 
 public:

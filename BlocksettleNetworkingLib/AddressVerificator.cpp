@@ -29,7 +29,7 @@ AddressVerificator::AddressVerificator(const std::shared_ptr<spdlog::logger>& lo
    , const std::shared_ptr<ArmoryConnection> &armory, VerificationCallback callback)
    : ArmoryCallbackTarget()
    , logger_(logger)
-   , validationMgr_(new ValidationAddressManager(armory))
+   , validationMgr_(std::make_unique<ValidationAddressManager>(armory))
    , userCallback_(std::move(callback))
    , stopExecution_(false)
 {
@@ -132,12 +132,14 @@ void AddressVerificator::startAddressVerification()
 
    AddCommandToQueue([this] {
       try {
-         auto rc = validationMgr_->goOnline();
-         if (rc == 0) {
+         if (!validationMgr_->goOnline([this](bool result) {
+            if (result) {
+               refreshUserAddresses();
+            }
+         })) {
             SPDLOG_LOGGER_ERROR(logger_, "goOnline failed");
             return;
          }
-         refreshUserAddresses();
       }
       catch (const std::exception &e) {
          logger_->error("[AddressVerificator::startAddressVerification] failure: {}", e.what());
@@ -167,7 +169,7 @@ AddressVerificator::ExecutionCommand AddressVerificator::CreateAddressValidation
    auto state = std::make_shared<AddressVerificationData>();
 
    state->address = address;
-   state->currentState = AddressVerificationState::InProgress;
+   state->currentState = AddressVerificationState::VerificationFailed;
 
    return CreateAddressValidationCommand(state);
 }
@@ -224,5 +226,5 @@ std::pair<bs::Address, UTXO> AddressVerificator::getRevokeData(const bs::Address
 
 std::vector<UTXO> AddressVerificator::FilterAuthFundingUTXO(const std::vector<UTXO>& authInputs)
 {
-   return validationMgr_->filterAuthFundingUTXO(authInputs);
+   return validationMgr_->filterVettingUtxos({}, authInputs);
 }

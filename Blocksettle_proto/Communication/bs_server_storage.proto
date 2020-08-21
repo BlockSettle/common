@@ -67,68 +67,124 @@ enum StorageMessageType
    StorageDataAvail   = 4;
 }
 
-message StorageAuthReservation
-{
-   enum AuthReservationState
-   {
-      AuthReservationUndefined         = 0;
-      AuthReservationPendingApproval   = 1;
-      AuthReservationReserved          = 2;
-      AuthReservationRejected          = 3;
-      AuthReservationConfirmed         = 4;
-   }
 
-   string               address     = 1;
-   string               user        = 2;
-   uint64               xbt_amount  = 3;
-   double               eur_amount  = 4;
-   AuthReservationState state       = 5;
+message AuthAddress
+{
+   string   auth_address   = 1;
+   string   user_name      = 2;
 }
 
-message StorageAuthAddressState
+message AuthAddressInfo
 {
-   enum AuthAddressStatus
-   {
-      AuthAddressFunded       = 0;
-      AuthAddressRevoked      = 1;
-      AuthAddressBlacklisted  = 2;
-      AuthAddressUnknown      = 3;
-   }
-
-   string            address  = 1;
-   string            user     = 2;
-   AuthAddressStatus status   = 3;
+   string   auth_address   = 1;
+   string   user_name      = 2;
+   uint32   address_state  = 3;
 }
 
-message StorageAuthReservationResponse
+message SubmittedAddressQuery
 {
-   bool                    result            = 1;
-   string                  error_message     = 2;
-   StorageAuthReservation  reservation_info  = 3;
+   string user_name  = 1;
 }
 
-message StorageAuthAddressStateResponse
+message SubmittedAddressResponse
 {
-   bool     result         = 1;
-   string   error_message  = 2;
+   string            user_name   = 1;
+   repeated string   address     = 2;
+}
+
+message LoadActiveAddressRequest
+{
+   // empty
+}
+
+message ActiveAddressListResponse
+{
+   repeated string address = 1;
+}
+
+message UpdateXbtSettlementCountRequest
+{
+   string settlement_id          = 1;
+   string requester_auth_address = 2;
+   string dealer_auth_address    = 3;
+}
+
+message UpdateXbtSettlementCountResponse
+{
+   bool  processed         = 1;
+   bool  counters_updated  = 2;
+
+   AuthAddressInfo   requester_address_info     = 3;
+   int64             requester_settlement_count = 4;
+
+   AuthAddressInfo   dealer_address_info        = 5;
+   int64             dealer_settlement_count    = 6;
+}
+
+message FundAuthAddress
+{
+   string   auth_address   = 1;
+   uint64   request_id     = 2;
+}
+
+message FundedAddressQuery
+{
+   string user_name  = 1;
+}
+
+message FundedAddressCounts
+{
+   uint32   active         = 1;
+   uint32   all_time       = 2;
+
+   bool     data_loaded    = 3;
+}
+
+message LoadAddressListForFundRequest
+{
+   string user_name  = 1;
+}
+
+message LoadAddressListForFundResponse
+{
+   repeated string address = 1;
 }
 
 message StorageAddressMessage
 {
-   enum StorageAddressDomain
+   oneof data
    {
-      StorageAddressReservationDefinition    = 0;
-      StorageAddressReservationUpdateState   = 1;
-      StorageAddressAuthStatus               = 2;
-   }
+      AuthAddress       submit_auth_address        = 1;
+      bool              submit_result              = 2;
 
-   StorageAddressDomain domain = 1;
+      FundAuthAddress   fund_auth_address_request  = 3;
+      bool              update_fund_request_result = 4;
 
-   oneof data {
-      StorageAuthReservation           auth_reservation        = 2;
-      StorageAuthReservationResponse   put_reservation_result  = 3;
-      StorageAuthAddressState          auth_address            = 4;
-      StorageAuthAddressStateResponse  pub_auth_address_result = 5;
+      string            revoke_auth_address        = 5;
+      bool              revoke_result              = 6;
+
+      string            auth_address               = 7;
+
+      AuthAddressInfo   address_info               = 8;
+      bool              update_address_info_result = 9;
+
+      SubmittedAddressQuery      get_submitted_auth_list    = 10;
+      SubmittedAddressResponse   submitted_address_list     = 11;
+
+      SubmittedAddressQuery      get_submitted_auth_count   = 12;
+      int64                      submitted_address_count    = 13;
+
+      UpdateXbtSettlementCountRequest  update_settlement_count          = 14;
+      UpdateXbtSettlementCountResponse update_settlement_count_result   = 15;
+
+      FundedAddressQuery   get_funded_addresses_count = 16;
+      FundedAddressCounts  funded_addresses_count     = 17;
+
+      LoadActiveAddressRequest   get_active_address_list    = 18;
+      ActiveAddressListResponse  active_address_list        = 19;
+
+      LoadAddressListForFundRequest    load_addresses_for_fund = 20;
+      LoadAddressListForFundResponse   addresses_for_fund_list = 21;
    }
 }
 
@@ -142,7 +198,8 @@ message SaveNewRequest
 
 message SaveNewResponse
 {
-   bool success = 1;
+   bool     success     = 1;
+   uint64   request_id  = 2;
 }
 
 message CcToken
@@ -150,6 +207,12 @@ message CcToken
    string email = 1;
    string cc_product = 2;
    uint32 bs_seed = 3;
+}
+
+message AddCcToken
+{
+   CcToken  cc_token    = 1;
+   string   request_id  = 2;
 }
 
 enum CcTokenStatus
@@ -204,9 +267,7 @@ enum RequestFileType
    RevokeAuthAddressRequestFileType       = 1;
    GenerateCCSeedRequestFileType          = 2;
    CCInitialDistributionRequestFileType   = 3;
-   FundCCGenAddressRequestFileType        = 4;
-
-   RequestFileTypeSize                    = 5;
+   CreateCCDefinitionRequestFileType      = 4;
 }
 
 
@@ -267,8 +328,8 @@ message StorageRequestsMessage
       ExportRequestFiles         export_request    = 4;
       ExportRequestFilesResponse export_response   = 5;
       RequestCompletedUpdate     completed_request = 6;
-      PendingRequestsInfo        pending_requests_statistics = 7;
-      CcToken                    add_cc_token_request          = 9;
+      PendingRequestsInfo        pending_requests_statistics   = 7;
+      AddCcToken                 add_cc_token_request          = 9;
       bool                       add_cc_token_response         = 10;
       CcToken                    verify_cc_token_request       = 11;
       CcTokenStatus              verify_cc_token_response      = 12;
@@ -283,7 +344,6 @@ message PendingRequestsInfo
    int32 revoke_auth_address     = 2;
    int32 generate_cc_seed        = 3;
    int32 cc_initial_distribution = 4;
-   int32 fund_cc_gen_address     = 5;
 }
 
 
@@ -428,6 +488,9 @@ message UserScoreUpdateEvent
       UnexpectedDealerCCHalf           = 29;
       UnexpectedRequesterCCHalf        = 30;
       UnexpectedCCCancel               = 31;
+
+      // Auth address submit events
+      StolenAuthAddressSubmitted       = 32;
    };
 
    string               user_email     = 1;

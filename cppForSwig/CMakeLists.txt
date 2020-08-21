@@ -40,6 +40,7 @@ SET (SOURCES
    ${CPP_FOR_SWIG_ROOT}/log.cpp
    ${CPP_FOR_SWIG_ROOT}/NetworkConfig.cpp
    ${CPP_FOR_SWIG_ROOT}/ReentrantLock.cpp
+   ${CPP_FOR_SWIG_ROOT}/ResolverFeed.cpp
    ${CPP_FOR_SWIG_ROOT}/Script.cpp
    ${CPP_FOR_SWIG_ROOT}/ScriptRecipient.cpp
    ${CPP_FOR_SWIG_ROOT}/SecureBinaryData.cpp
@@ -127,6 +128,7 @@ SET (HEADERS
    ${CPP_FOR_SWIG_ROOT}/lmdb_wrapper.h
    ${CPP_FOR_SWIG_ROOT}/NetworkConfig.h
    ${CPP_FOR_SWIG_ROOT}/ReentrantLock.h
+   ${CPP_FOR_SWIG_ROOT}/ResolverFeed.h
    ${CPP_FOR_SWIG_ROOT}/Script.h
    ${CPP_FOR_SWIG_ROOT}/SecureBinaryData.h
    ${CPP_FOR_SWIG_ROOT}/Signer.h

@@ -70,13 +70,15 @@ enum ArmoryMessageType
    ArmoryStopSettlement    = 11;
    ArmoryGetSpentness      = 12;
    ArmoryGetTxByHash       = 13;
-   ArmoryValidateAuthAddr  = 14;
+   ArmoryAuthWalletLoaded  = 14;
    ArmoryBroadcastTimeout  = 15;
    ArmoryGetOutpointsForAddrList = 16;
    ArmoryUpdateAuthAddrs   = 17;
    ArmoryUpdateCcAddrs     = 18;
    ArmoryPushXbtTXs        = 19;
    ArmoryGetOutputsForOPs  = 20;
+   ArmorySettlementsStatus = 21;
+   ArmoryGetSpendableUTXOs = 22;
 }
 
 enum ArmoryStateData
@@ -209,18 +211,9 @@ message ArmoryGetTxResponse
    string error_text = 2;
 }
 
-message ArmoryValidateAuthRequest
+message ArmoryAuthAddresses
 {
    repeated string addresses = 1;
-}
-
-message ArmoryValidateAuthResponse
-{
-   message ValidateAuthResult {
-      string address = 1;
-      int32  result = 3;
-   }
-   repeated ValidateAuthResult results = 1;
 }
 
 message ArmoryUpdateAuthAddrsRequest
@@ -236,12 +229,19 @@ message ArmoryUpdateCcAddrsRequest
 message ArmoryGetOutpointsForAddrListRequest
 {
    repeated string addresses = 1;
+   uint32 height = 2;
+   uint32 zc_index = 3;
 }
 
 message ArmoryGetOutpointsForAddrListResponse
 {
-   // Add other fields if needed here (isSpent_, value_, heightCutoff_ etc)
-   repeated OutPointData outpoints = 1;
+   message OutPoint {
+      bytes id = 1;
+      repeated OutPointData outpoints = 2;
+   }
+   repeated OutPoint outpoints = 1;
+   uint32 height_cutoff = 2;
+   uint32 zc_index_cutoff = 3;   
 }
 
 message ArmoryGetOutputsForOPsRequest
@@ -257,34 +257,49 @@ message ArmoryGetOutputsForOPsResponse
    string settlement_id = 2;
 }
 
+message ArmoryGetSpendableUTXOsRequest
+{
+   string wallet_id = 1;
+   string address = 2;
+   bool   with_ZC = 3;
+}
+
+message ArmoryGetSpendableUTXOsResponse
+{
+   repeated bytes utxos = 1;
+}
+
 message ArmoryMessage
 {
    ArmoryMessageType type = 1;
    oneof data {
       ArmoryStateBroadcast state = 2;
-      Blocksettle.Communication.pbcli.LoadUTXOResponse utxos = 3;
-      ArmoryNewBlockBroadcast new_block = 4;
-      ArmoryPushTxRequest  push_tx_request = 5;
-      ArmoryPushTxResponse push_tx_response = 6;
-      ArmoryFeeRequest  fee_request = 7;
-      ArmoryFeeResponse fee_response = 8;
-      ArmoryStartSettlementRequest  settlement_request = 9;
-      ArmoryStartSettlementResponse settlement_response = 10;
-      ArmoryStopSettlementRequest   settl_stop_request = 11;
-      ArmorySpentnessRequest  spentness_request = 12;
-      ArmorySpentnessResponse spentness_response = 13;
-      ArmoryGetTxRequest  tx_request = 14;
-      ArmoryGetTxResponse tx_response = 15;
-      ArmoryValidateAuthRequest  auth_request = 16;
-      ArmoryValidateAuthResponse auth_response = 17;
-      ArmoryGetOutpointsForAddrListRequest out_points_request = 19;
-      ArmoryGetOutpointsForAddrListResponse out_points_response = 20;
-      ArmoryUpdateAuthAddrsRequest update_auth_addrs = 21;
-      ArmoryUpdateCcAddrsRequest update_cc_addrs = 22;
-      ArmoryPushXbtTXsRequest push_xbt_txs_request = 23;
-      ArmoryGetOutputsForOPsRequest  outs_for_ops_request = 24;
-      ArmoryGetOutputsForOPsResponse outs_for_ops_response = 25;
-      bytes timeout_id = 26;
+      Blocksettle.Communication.pbcli.LoadUTXOResponse utxos         = 3;
+      ArmoryNewBlockBroadcast                new_block               = 4;
+      ArmoryPushTxRequest                    push_tx_request         = 5;
+      ArmoryPushTxResponse                   push_tx_response        = 6;
+      ArmoryFeeRequest                       fee_request             = 7;
+      ArmoryFeeResponse                      fee_response            = 8;
+      ArmoryStartSettlementRequest           settlement_request      = 9;
+      ArmoryStartSettlementResponse          settlement_response     = 10;
+      ArmoryStopSettlementRequest            settl_stop_request      = 11;
+      ArmorySpentnessRequest                 spentness_request       = 12;
+      ArmorySpentnessResponse                spentness_response      = 13;
+      ArmoryGetTxRequest                     tx_request              = 14;
+      ArmoryGetTxResponse                    tx_response             = 15;
+      ArmoryAuthAddresses                    auth_addresses          = 16;
+      ArmoryGetOutpointsForAddrListRequest   out_points_request      = 19;
+      ArmoryGetOutpointsForAddrListResponse  out_points_response     = 20;
+      ArmoryUpdateAuthAddrsRequest           update_auth_addrs       = 21;
+      ArmoryUpdateCcAddrsRequest             update_cc_addrs         = 22;
+      ArmoryPushXbtTXsRequest                push_xbt_txs_request    = 23;
+      ArmoryGetOutputsForOPsRequest          outs_for_ops_request    = 24;
+      ArmoryGetOutputsForOPsResponse         outs_for_ops_response   = 25;
+      bytes                                  timeout_id              = 26;
+      bool                                   get_all_utxo            = 27;
+      bool                                   settlements_suspended   = 28;
+      ArmoryGetSpendableUTXOsRequest         spendable_utxos_request = 29;
+      ArmoryGetSpendableUTXOsResponse        spendable_utxos_response= 30;
    }
 }
 
@@ -439,12 +454,12 @@ enum GenoaType
    GenoaSendCCToken              = 24;
    GenoaReserveCC                = 25;
    GenoaCompleteCCReserve        = 26;
-   GenoaAuthFeeMake              = 27;
-   GenoaAuthFeeConfirm           = 28;
    GenoaGetUserAccounts          = 29;
    GenoaGetAccountBalance        = 30;
    GenoaEODUpdate                = 31;
    GenoaMigrateUserIds           = 32;
+   GenoaApiKey                   = 33;
+   GetEntityName                 = 34;
 }
 
 message GenoaConnectedBroadcast
@@ -526,7 +541,7 @@ message GenoaCancelCCReservationResponse
 
 message GenoaUserRequest
 {
-   string email = 1;
+   string entity_name = 1;
 }
 
 message GenoaOrderData
@@ -551,20 +566,26 @@ message GenoaFindOrdersResponse
 
 message GenoaTradingStatusResponse
 {
-   bool   success = 1;
-   string error_text = 2;
-   string email = 3;
-   int32  user_type = 4;
+   bool   success       = 1;
+   string error_text    = 2;
+   int32  user_type     = 3;
 }
 
 message GenoaReserveXbtResponse
 {
    string settlement_id = 1;
-   bool   success = 2;
-   int32  error_code = 3;
-   string currency = 4;
-   double new_balance = 5;
+   bool   success       = 2;
+   string error_message = 3;
+   string currency      = 4;
+   double new_balance   = 5;
+
    CustomerAccountData changed_account = 6;
+}
+
+message GeanoReserveCCResponse
+{
+   bool     success        = 1;
+   string   error_message  = 2;
 }
 
 message GenoaUpdateReserveRequest
@@ -668,33 +689,6 @@ message GenoaAccountMessage
    }
 }
 
-message GenoaAuthFeeMakeRequest
-{
-   string email      = 1;
-   string auth_address = 2;
-   uint64 xbt_amount = 3;
-}
-
-message GenoaAuthFeeMakeResponse
-{
-   bool success         = 1;
-   string error_msg     = 2;
-   float eur_emount     = 3;
-   uint64 xbt_amount    = 4;
-   string error_code    = 5;
-}
-
-message GenoaAuthFeeConfirmRequest
-{
-   string      auth_address   = 1;
-}
-
-message GenoaAuthFeeUpdateResponse
-{
-   bool success         = 1;
-   string error_msg     = 2;
-}
-
 message GenoaAccountData
 {
    string email = 1;
@@ -742,6 +736,24 @@ message GenoaEODUpdateMessage
    repeated GenoaPrice  prices   = 2;
 }
 
+message GenoaApiKeyCheckRequest
+{
+   string api_key = 1;
+   string ip_addr = 2;
+}
+
+message GenoaApiKeyCheckResponse
+{
+   string api_key = 1;
+   string email = 2;
+}
+
+message UserEntityInfo
+{
+   string user_email    = 1;
+   string entity_name   = 2;
+}
+
 message GenoaMessage
 {
    GenoaType type = 1;
@@ -768,15 +780,15 @@ message GenoaMessage
       GenoaSendCCTokenRequest          cc_token                   = 21;
       TradeInfoCcData                  cc_reserve                 = 22;
       string                           settlement_id              = 23;
-      GenoaAuthFeeMakeRequest          auth_fee_make_request      = 24;
-      GenoaAuthFeeMakeResponse         auth_fee_make_response     = 25;
-      GenoaAuthFeeConfirmRequest       auth_fee_confirm_request   = 26;
-      GenoaAuthFeeUpdateResponse       auth_fee_confirm_response  = 27;
       string                           user_email                 = 28;
       GenoaAccountInfoResponse         user_account_response      = 29;
       GenoaAccountBalanceRequest       acc_balance_request        = 30;
       GenoaAccountBalanceResponse      acc_balance_response       = 31;
       GenoaEODUpdateMessage            eod_update                 = 32;
+      GenoaApiKeyCheckRequest          api_key_request            = 33;
+      GenoaApiKeyCheckResponse         api_key_response           = 34;
+      UserEntityInfo                   entity_info                = 35;
+      GeanoReserveCCResponse           cc_reserve_response        = 36;
    }
 }
 
@@ -818,17 +830,17 @@ message GenoaServerXbtTradingStatus
 
 message GenoaServerNewCcSeedRequest
 {
-   string      email          = 1;
    string      cc_name        = 2;
    string      correlation_id = 3;
    double      initial_price  = 4;
+   uint32      lot_size       = 5;
 }
 
 message GenoaServerNewCCDepositRequest
 {
    string      entity_name = 1;
    string      cc_name     = 2;
-   double      amount      = 3;
+   uint32      amount      = 3;
    string      correlation_id = 4;
 }
 
@@ -1044,12 +1056,6 @@ message TradeDataMessage
    uint32 trade_timestamp = 14;
 }
 
-message AddressPreimageData
-{
-   string address = 1;
-   bytes  pi_data = 2;
-}
-
 message BalanceData
 {
    string currency = 1;
@@ -1096,7 +1102,6 @@ message TradeDataXbtMessage
    string scorechain_url = 23;
    bool   loaded_from_genoa = 24;
    string last_status = 25;
-   repeated AddressPreimageData preimage_data = 26;
    bool   saved_in_history = 27;
    int32  trade_state = 28;
    bool payin_broadcasted_by_user = 29;
@@ -1128,6 +1133,11 @@ message OutPointData
 {
    bytes  hash = 1;
    uint32 index = 2;
+   uint32 tx_height = 3;
+   uint32 tx_index = 4;
+   uint64 value = 5;
+   bool   spent = 6;
+   bytes  spender_hash = 7;
 }
 
 message TradeDataCcMessage
@@ -1283,6 +1293,7 @@ message TerminalSignPayinRequest
 {
    string settlement_id = 1;
    bytes  unsigned_payin = 2;
+   bytes  payin_hash = 3;
 }
 
 message TerminalOtcStartRequest
@@ -1372,19 +1383,13 @@ message TerminalMessage
 
 enum ProxyMessageType
 {
-   ProxyUnknownType = 0;
-   ProxyConnected    = 1;
-   ProxyDisconnected = 2;
-   ProxyReconnect    = 3;
-   ProxyLoadTrades   = 4;
-   ProxyBlotterUpdates = 5;
-   ProxyOnlineUsers  = 6;
-   ProxyUserStatusUpdated = 7;
-}
-
-message ProxyLoadTradesMessage
-{
-   repeated TradeDataXbtMessage trades = 1;
+   ProxyUnknownType        = 0;
+   ProxyConnected          = 1;
+   ProxyDisconnected       = 2;
+   ProxyReconnect          = 3;
+   ProxyBlotterUpdates     = 4;
+   ProxyOnlineUsers        = 5;
+   ProxyUserStatusUpdated  = 6;
 }
 
 message ProxyOnlineUsersMessage
@@ -1405,9 +1410,8 @@ message ProxyMessage
 {
    ProxyMessageType type = 1;
    oneof data {
-      ProxyLoadTradesMessage  load_trades = 2;
-      ProxyOnlineUsersMessage online_users = 3;
-      ProxyUserStatusUpdatedMessage user_status_updated = 4;
+      ProxyOnlineUsersMessage       online_users         = 2;
+      ProxyUserStatusUpdatedMessage user_status_updated  = 3;
    }
 }
 
@@ -1464,4 +1468,43 @@ message RelayedMessage
 {
    RelayUser user = 1;
    bytes data = 2;
+}
+
+message AuthManaging
+{
+   message AuthAddressConfirm
+   {
+      string   user     = 1;
+      string   address  = 2;
+   }
+
+   message SettledXbtTradeNotification
+   {
+      string settlement_id       = 1;
+
+      string requester_address   = 2;
+      string dealer_address      = 3;
+   }
+
+   message FilterAuthFundUTXOs
+   {
+      repeated bytes utxos = 1;
+   }
+
+   message AuthConfirmResponse
+   {
+      int32 result_code = 1;
+   }
+
+   oneof data
+   {
+      AuthAddressConfirm   auth_confirm_request    = 1;
+      AuthConfirmResponse  auth_confirm_response   = 2;
+
+      SettledXbtTradeNotification   settled_xbt_trade  = 3;
+
+      FilterAuthFundUTXOs  auth_fund_utxos = 4;
+
+      string               user_promoted_to_dealer = 5;
+   }
 }

@@ -14,7 +14,7 @@
 
 #include <spdlog/spdlog.h>
 
-ActiveStreamClient::ActiveStreamClient(const std::shared_ptr<spdlog::logger>& logger)
+ActiveStreamClient::ActiveStreamClient(const std::shared_ptr<spdlog::logger> &logger)
    : logger_(logger)
 {}
 

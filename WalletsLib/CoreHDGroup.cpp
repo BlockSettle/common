@@ -274,7 +274,7 @@ void hd::Group::initLeaf(
       pathInt.push_back(path.get(i));
    }
    //setup address account
-   auto accTypePtr = std::make_shared<AccountType_BIP32_Custom>();
+   auto accTypePtr = std::make_shared<AccountType_BIP32>(pathInt);
    
    //account IDs and nodes
    if (!isExtOnly_)
@@ -305,7 +305,7 @@ void hd::Group::initLeaf(
    // We assume the passphrase prompt lambda is already set.
    auto lock = walletPtr_->lockDecryptedContainer();
 
-   auto accID = walletPtr_->createBIP32Account(nullptr, pathInt, accTypePtr);
+   auto accID = walletPtr_->createBIP32Account(accTypePtr);
    leaf->setPath(path);
    leaf->init(walletPtr_, accID);
 }
@@ -313,27 +313,31 @@ void hd::Group::initLeaf(
 void bs::core::hd::Group::initLeafXpub(const std::string& xpub, std::shared_ptr<hd::Leaf> &leaf, const bs::hd::Path &path,
    unsigned lookup /*= UINT32_MAX*/) const
 {
+   if (lookup == UINT32_MAX)
+      lookup = 10; //need a #define for this
+
    BIP32_Node newPubNode;
    newPubNode.initFromBase58(SecureBinaryData::fromString(xpub));
 
    auto pubkeyCopy = newPubNode.getPublicKey();
    auto chaincodeCopy = newPubNode.getChaincode();
 
-   auto pubRootAsset = std::make_shared<AssetEntry_BIP32Root>(
-      -1, BinaryData(),
-      pubkeyCopy,
-      nullptr,
-      chaincodeCopy,
-      newPubNode.getDepth(), newPubNode.getLeafID(), newPubNode.getFingerPrint()
-      );
+   auto pubRootAsset = std::make_shared<AssetEntry_BIP32Root>(-1, BinaryData()
+      , pubkeyCopy, nullptr, chaincodeCopy, newPubNode.getDepth()
+      , newPubNode.getLeafID(), newPubNode.getParentFingerprint()
+      //need to pass the seed fingerprint for xpub based roots, using UINT32_MAX as
+      //a dummy value for now
+      , UINT32_MAX 
+      , path.toVector());
 
-   auto accTypePtr = std::make_shared<AccountType_BIP32_Custom>(); //empty ctor
+   //no derivation path is passed to the account, it will use the pub root as is
+   auto accTypePtr = std::make_shared<AccountType_BIP32>(std::vector<uint32_t>());
 
    std::set<unsigned> nodes = { BIP32_LEGACY_OUTER_ACCOUNT_DERIVATIONID, BIP32_LEGACY_INNER_ACCOUNT_DERIVATIONID };
    accTypePtr->setNodes(nodes);
    accTypePtr->setAddressTypes({ leaf->addressType() });
    accTypePtr->setDefaultAddressType(leaf->addressType());
-   accTypePtr->setAddressLookup(10);
+   accTypePtr->setAddressLookup(lookup);
    accTypePtr->setOuterAccountID(WRITE_UINT32_BE(*nodes.begin()));
    accTypePtr->setInnerAccountID(WRITE_UINT32_BE(*nodes.rbegin()));
    accTypePtr->setMain(true);
@@ -341,11 +345,9 @@ void bs::core::hd::Group::initLeafXpub(const std::string& xpub, std::shared_ptr<
    // We assume the passphrase prompt lambda is already set.
    auto lock = walletPtr_->lockDecryptedContainer();
 
-   auto accID = walletPtr_->createBIP32Account(
-      pubRootAsset,
-      {},
-      accTypePtr
-   );
+   //we're adding an xpub account to a WO wallet, we cannot derive the account
+   //root from the wallet's seed, we have to provide it along with the account data
+   auto accID = walletPtr_->createBIP32Account_WithParent(pubRootAsset, accTypePtr);
 
    leaf->setPath(path);
    leaf->init(walletPtr_, accID);
@@ -445,7 +447,7 @@ void hd::AuthGroup::initLeaf(std::shared_ptr<hd::Leaf> &leaf
    if (salt_.getSize() != 32) {
       throw AccountException("empty auth group salt");
    }
-   auto accTypePtr = std::make_shared<AccountType_BIP32_Salted>(salt_);
+   auto accTypePtr = std::make_shared<AccountType_BIP32_Salted>(pathInt, salt_);
 
    //account IDs and nodes
    if (!isExtOnly_) {
@@ -474,7 +476,7 @@ void hd::AuthGroup::initLeaf(std::shared_ptr<hd::Leaf> &leaf
    //Lock the underlying armory wallet to allow accounts to derive their root from
    //the wallet's. We assume the passphrase prompt lambda is already set.
    auto lock = walletPtr_->lockDecryptedContainer();
-   auto accID = walletPtr_->createBIP32Account(nullptr, pathInt, accTypePtr);
+   auto accID = walletPtr_->createBIP32Account(accTypePtr);
    
    authLeafPtr->setPath(path);
    authLeafPtr->init(walletPtr_, accID);

@@ -35,8 +35,6 @@ class ValidationAddressManager;
 
 struct AuthOutpoint
 {
-   friend class ValidationAddressManager;
-
 private:
    unsigned txOutIndex_ = UINT32_MAX;
    uint64_t value_ = UINT64_MAX;
@@ -47,7 +45,7 @@ private:
    mutable bool isSpent_ = true;
    mutable BinaryData spenderHash_;
 
-private:
+public:
    bool operator<(const std::shared_ptr<AuthOutpoint>& rhs) const
    {  /*
       Doesnt work for comparing zc with zc, works with. Works
@@ -71,7 +69,6 @@ private:
       return txOutIndex_ < rhs->txOutIndex_;
    }
 
-public:
    AuthOutpoint(
       unsigned txHeight, unsigned txIndex, unsigned txOutIndex,
       uint64_t value, bool isSpent,
@@ -101,6 +98,7 @@ public:
 
    ////
    unsigned txOutIndex(void) const { return txOutIndex_; }
+   unsigned txIndex(void) const { return txIndex_; }
    unsigned txHeight(void) const { return txHeight_; }
 
    const BinaryData& spenderHash(void) const
@@ -123,8 +121,12 @@ public:
       spenderHash_ = rhs.spenderHash_;
       txIndex_ = rhs.txIndex_;
    }
+
+   ////
+   void prettyPrint(std::ostream&) const;
 };
 
+struct AuthValidatorCallbacks;
 ////
 class ValidationAddressACT : public ArmoryCallbackTarget
 {
@@ -147,7 +149,7 @@ public:
    ////
    virtual void start();
    virtual void stop();
-   virtual void setAddressMgr(ValidationAddressManager* vamPtr) { vamPtr_ = vamPtr; }
+   virtual void setCallbacks(const std::shared_ptr<AuthValidatorCallbacks> &cbs) { callbacks_ = cbs; }
 
 private:
    void processNotification(void);
@@ -156,12 +158,18 @@ private:
    ArmoryThreading::BlockingQueue<std::shared_ptr<DBNotificationStruct>> notifQueue_;
    std::thread processThr_;
 
-   ValidationAddressManager* vamPtr_ = nullptr;
+protected:
+   std::weak_ptr<AuthValidatorCallbacks>  callbacks_;
 };
 
 ////
 struct ValidationAddressStruct
 {
+   /*
+   Validation and master addresses are 2 names for the same thing. 
+   Master/Validation addresses are used to validate user addreses.
+   */
+
    //<tx hash, <txoutid, outpoint>>
    std::map<BinaryData,
       std::map<unsigned, std::shared_ptr<AuthOutpoint>>> outpoints_;
@@ -197,10 +205,39 @@ struct ValidationAddressStruct
       return index == firstOutpointIndex_ &&
          hash == firstOutpointHash_;
    }
+   
+   void prettyPrint(void) const;
 };
 
-////
-class ValidationAddressManager
+
+class AuthAddressValidator;
+struct AuthValidatorCallbacks
+{
+   virtual void shutdown() {}
+   virtual bool isInited() const { return true; }
+   virtual void setTarget(AuthAddressValidator *);
+
+   virtual unsigned int topBlock() const = 0;
+   virtual void pushZC(const BinaryData &) = 0;
+   virtual std::string registerAddresses(const std::vector<bs::Address> &) = 0;
+
+   using OutpointsCb = std::function<void(OutpointBatch)>;
+   virtual void getOutpointsForAddresses(const std::vector<bs::Address> &
+      , const OutpointsCb &, unsigned int topBlock = 0, unsigned int zcIndex = 0) = 0;
+
+   using UTXOsCb = std::function<void(const std::vector<UTXO> &)>;
+   virtual void getSpendableTxOuts(const UTXOsCb &) = 0;
+   virtual void getUTXOsForAddress(const bs::Address &, const UTXOsCb &
+      , bool withZC = false) = 0;
+
+   using OnUpdate = std::function<void()>;
+   OnUpdate onUpdate{ nullptr };
+
+   using OnRefresh = std::function<void(const std::vector<BinaryData> &)>;
+   OnRefresh onRefresh{ nullptr };
+};
+
+class AuthAddressValidator
 {  /***
    This class tracks the state of validation addresses, which is
    required to check on the state of a user auth address.
@@ -209,106 +246,158 @@ class ValidationAddressManager
    features in unit tests.
    ***/
 
-private:
-   std::shared_ptr<ArmoryConnection> connPtr_;
-   std::shared_ptr<ValidationAddressACT> actPtr_;
-   std::shared_ptr<AsyncClient::BtcWallet> walletObj_;
-   ArmoryThreading::BlockingQueue<BinaryData> refreshQueue_;
-
-   std::map<BinaryData, std::shared_ptr<ValidationAddressStruct>> validationAddresses_;
-   unsigned topBlock_ = 0;
-   unsigned zcIndex_ = 0;
-
-   std::atomic<bool> ready_;
-   mutable std::mutex vettingMutex_;
-
-private:
-   std::shared_ptr<ValidationAddressStruct>
-      getValidationAddress(const BinaryData&);
-
-   UTXO getVettingUtxo(const bs::Address &validationAddr
-      , const std::vector<UTXO> &, size_t nbOutputs = 1) const;
-   std::vector<UTXO> filterVettingUtxos(const bs::Address &validationAddr
-      , const std::vector<UTXO> &) const;
-
-   const std::shared_ptr<ValidationAddressStruct>
-      getValidationAddress(const BinaryData&) const;
-
-   void waitOnRefresh(const std::string&);
-
 public:
-   ValidationAddressManager(std::shared_ptr<ArmoryConnection>);
-   ~ValidationAddressManager(void)
-   {  //unregister wallet
-      //shutdown act
-      if (actPtr_ != nullptr) {
-         actPtr_->stop();
-      }
-   }
+   AuthAddressValidator(const std::shared_ptr<AuthValidatorCallbacks> &callbacks)
+      : lambdas_(callbacks)
+   {}
+   virtual ~AuthAddressValidator(void);
 
    void addValidationAddress(const bs::Address &);
-
-   void setCustomACT(const std::shared_ptr<ValidationAddressACT> &);
 
    /*
    These methods return the amount of outpoints received. It
    allows for coverage of the db data flow.
    */
-   unsigned goOnline(void);
+   using ResultCb = std::function<void(bool)>;
+   bool goOnline(const ResultCb &);
+
    unsigned update(void);
+   unsigned update(const OutpointBatch &);
 
    bool isReady() const { return ready_; }
 
    //utility methods
-   std::shared_ptr<ArmoryConnection> connPtr(void) const { return connPtr_; }
-   void pushRefreshID(std::vector<BinaryData>&);
+   void pushRefreshID(const std::vector<BinaryData> &);
 
    //validation address logic
-   bool isValid(const bs::Address&) const;
-   bool isValid(const BinaryData&) const;
+   bool isValidMasterAddress(const bs::Address&) const;
 
    bool hasSpendableOutputs(const bs::Address&) const;
    bool hasZCOutputs(const bs::Address&) const;
 
-   bool getOutpointBatch(const bs::Address &, const std::function<void(const OutpointBatch &)> &) const;
-   bool getSpendableTxOutFor(const bs::Address &, const std::function<void(const UTXO &)> &, size_t nbOutputs = 1) const;
-   bool getVettingUTXOsFor(const bs::Address &, const std::function<void(const std::vector<UTXO> &)> &) const;
-
-   const BinaryData& findValidationAddressForUTXO(const UTXO&) const;
-   const BinaryData& findValidationAddressForTxHash(const BinaryData&) const;
+   const bs::Address &findValidationAddressForUTXO(const UTXO&) const;
+   const bs::Address &findValidationAddressForTxHash(const BinaryData&) const;
 
    //tx generating methods
-   BinaryData fundUserAddress(const bs::Address&, std::shared_ptr<ResolverFeed>,
+   BinaryData fundUserAddress(const bs::Address&, std::shared_ptr<ArmorySigner::ResolverFeed>,
       const bs::Address& validationAddr = bs::Address()) const;
-   BinaryData fundUserAddress(const bs::Address&, std::shared_ptr<ResolverFeed>,
+   BinaryData fundUserAddress(const bs::Address&, std::shared_ptr<ArmorySigner::ResolverFeed>,
       const UTXO &) const;
    BinaryData fundUserAddresses(const std::vector<bs::Address> &, const bs::Address &validationAddress
-      , std::shared_ptr<ResolverFeed>, const std::vector<UTXO> &, int64_t totalFee) const;
-   BinaryData vetUserAddress(const bs::Address&, std::shared_ptr<ResolverFeed>,
+      , std::shared_ptr<ArmorySigner::ResolverFeed>, const std::vector<UTXO> &, int64_t totalFee) const;
+   BinaryData vetUserAddress(const bs::Address&, std::shared_ptr<ArmorySigner::ResolverFeed>,
       const bs::Address& validationAddr = bs::Address()) const;
    BinaryData revokeValidationAddress(
-      const bs::Address&, std::shared_ptr<ResolverFeed>) const;
+      const bs::Address&, std::shared_ptr<ArmorySigner::ResolverFeed>) const;
    BinaryData revokeUserAddress(
-      const bs::Address&, std::shared_ptr<ResolverFeed>);
+      const bs::Address&, std::shared_ptr<ArmorySigner::ResolverFeed>);
 
-   std::vector<UTXO> filterAuthFundingUTXO(const std::vector<UTXO>& authInputs);
+   std::vector<UTXO> filterVettingUtxos(const bs::Address &validationAddr
+      , const std::vector<UTXO> &) const;
+
+   unsigned int topBlock() const;
+
+   OutpointBatch getOutpointsFor(const bs::Address &) const;
+   void getOutpointsFor(const bs::Address &
+      , const std::function<void(const OutpointBatch &)> &) const;
+   std::vector<UTXO> getUTXOsFor(const bs::Address &, bool withZC = false) const;
+   void pushZC(const BinaryData &tx) const;
+   void getValidationOutpointsBatch(const std::function<void(OutpointBatch)> &);
+
+protected:
+   virtual void prepareCallbacks() {}
+
+protected:
+   std::shared_ptr<AuthValidatorCallbacks>   lambdas_;
+
+private:
+   std::shared_ptr<ValidationAddressStruct>
+      getValidationAddress(const bs::Address &) const;
+
+   UTXO getVettingUtxo(const bs::Address &validationAddr
+      , const std::vector<UTXO> &, size_t nbOutputs = 1) const;
+
+   void waitOnRefresh(const std::string&);
+
+   OutpointBatch getOutpointsForAddresses(const std::vector<bs::Address> &
+      , unsigned int topBlock = 0, unsigned int zcIndex = 0) const;
+   std::vector<UTXO> getSpendableTxOuts() const;
+   std::vector<UTXO> getUTXOsForAddress(const bs::Address &
+      , bool withZC = false) const;
+
+private:
+   ArmoryThreading::TimedQueue<BinaryData> refreshQueue_;
+
+   std::map<bs::Address, std::shared_ptr<ValidationAddressStruct>>   validationAddresses_;
+   unsigned topBlock_ = 0;
+   unsigned zcIndex_ = 0;
+
+   std::atomic_bool  ready_{ false };
+   std::atomic_bool  stopped_{ false };
+   mutable std::mutex vettingMutex_;
+   std::mutex  updateMutex_;
+   std::thread updateThread_;
+   std::atomic_bool  updateThreadRunning_{ false };
+};
+
+////
+class ValidationAddressManager : public AuthAddressValidator
+{  /***
+   This class tracks the state of validation addresses, which is
+   required to check on the state of a user auth address.
+
+   It uses a blocking model for the purpose of demonstrating the
+   features in unit tests.
+   ***/
+
+public:
+   ValidationAddressManager(const std::shared_ptr<ArmoryConnection> &);
+   virtual ~ValidationAddressManager();
+
+   void setCustomACT(const std::shared_ptr<ValidationAddressACT> &);
+
+protected:
+   void prepareCallbacks() override;
+
+private:
+   std::shared_ptr<ValidationAddressACT> actPtr_;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-struct AuthAddressLogic
+namespace AuthAddressLogic
 {
-   static AddressVerificationState getAuthAddrState(const ValidationAddressManager &
+   struct AddrPathsStatus
+   {
+      /*
+      Paths are signified by the order of outputs on the address
+      */
+      unsigned pathCount_ = UINT32_MAX;
+      std::map<unsigned, OutpointData> validPaths_;
+      std::vector<unsigned> invalidPaths_;
+      std::vector<unsigned> revokedPaths_;
+
+      bool isInitialized(void) const;
+      bool isValid(void) const;
+      const OutpointData& getValidationOutpoint(void) const;
+   };
+
+   AddressVerificationState getAuthAddrState(const AuthAddressValidator &
       , const bs::Address &);
-   static bool isValid(const ValidationAddressManager &vam, const bs::Address &addr) {
-      return (getAuthAddrState(vam, addr) == AddressVerificationState::Verified);
-   }
-   static std::vector<OutpointData> getValidPaths(
-      const ValidationAddressManager&, const bs::Address&, size_t &nbPaths);
-   static BinaryData revoke(const ValidationAddressManager&, const bs::Address&,
-      std::shared_ptr<ResolverFeed>);
-   static std::pair<bs::Address, UTXO> getRevokeData(const ValidationAddressManager &
+   AddressVerificationState getAuthAddrState(const AuthAddressValidator &
+      , const OutpointBatch &);
+
+   bool isValid(const AuthAddressValidator &, const bs::Address &);
+
+   AddrPathsStatus getAddrPathsStatus(const AuthAddressValidator &
+      , const bs::Address &);
+   AddrPathsStatus getAddrPathsStatus(const AuthAddressValidator &
+      , const OutpointBatch &);
+   BinaryData revoke(const AuthAddressValidator &, const bs::Address &
+      , const std::shared_ptr<ArmorySigner::ResolverFeed> &);
+   std::pair<bs::Address, UTXO> getRevokeData(const AuthAddressValidator &
       , const bs::Address &authAddr);
-   static BinaryData revoke(const bs::Address &, const std::shared_ptr<ResolverFeed> &
+   BinaryData revoke(const bs::Address & 
+      , const std::shared_ptr<ArmorySigner::ResolverFeed> &
       , const bs::Address &validationAddr, const UTXO &);
 };
 

@@ -23,7 +23,6 @@
 
 #include "SignerDefs.h"
 #include "SignerUiDefs.h"
-#include "ZMQ_BIP15X_DataConnection.h"
 
 #include "PasswordDialogData.h"
 
@@ -53,9 +52,6 @@ public:
    enum class OpMode {
       Local = 1,
       Remote,
-      // RemoteInproc - should be used for testing only, when you need to have signer and listener
-      // running in same process and could not use TCP for any reason
-      RemoteInproc,
       LocalInproc
    };
    enum class TXSignMode {
@@ -132,8 +128,6 @@ public:
       , const std::function<void(const bs::Address &)> &);
    virtual void syncNewAddresses(const std::string &walletId, const std::vector<std::string> &
       , const std::function<void(const std::vector<std::pair<bs::Address, std::string>> &)> &, bool persistent = true) = 0;
-   virtual void getAddressPreimage(const std::map<std::string, std::vector<bs::Address>> &
-      , const std::function<void(const std::map<bs::Address, BinaryData> &)> &) = 0;
 
    const OpMode &opMode() const { return mode_; }
    virtual bool isReady() const { return true; }

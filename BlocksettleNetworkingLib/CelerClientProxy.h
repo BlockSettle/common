@@ -16,11 +16,13 @@
 
 class CelerClientProxy : public BaseCelerClient
 {
+   Q_OBJECT
 public:
    CelerClientProxy(const std::shared_ptr<spdlog::logger> &logger, bool userIdRequired = true);
    ~CelerClientProxy() override;
 
    bool LoginToServer(BsClient *client, const std::string& login, const std::string& email);
+
 private:
    void onSendData(CelerAPI::CelerMessageType messageType, const std::string &data) override;
 

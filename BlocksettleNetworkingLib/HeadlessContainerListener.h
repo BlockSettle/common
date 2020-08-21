@@ -50,8 +50,7 @@ class HeadlessContainerCallbacks
 public:
    virtual ~HeadlessContainerCallbacks() = default;
 
-   virtual void peerConn(const std::string &) = 0;
-   virtual void peerDisconn(const std::string &) = 0;
+   virtual void clientConn(const std::string &, const ServerConnectionListener::Details &details) = 0;
    virtual void clientDisconn(const std::string &) = 0;
 
    virtual void decryptWalletRequest(Blocksettle::Communication::signer::PasswordDialogType dialogType
@@ -127,12 +126,10 @@ protected:
 
    void onXbtSpent(const int64_t value, bool autoSign);
 
-   void OnClientConnected(const std::string &clientId) override;
+   void OnClientConnected(const std::string &clientId, const Details &details) override;
    void OnClientDisconnected(const std::string &clientId) override;
    void OnDataFromClient(const std::string &clientId, const std::string &data) override;
-   void OnPeerConnected(const std::string &ip) override;
-   void OnPeerDisconnected(const std::string &ip) override;
-   void onClientError(const std::string &clientId, ServerConnectionListener::ClientError errorCode, int socket) override;
+   void onClientError(const std::string &clientId, ClientError errorCode, const Details &details) override;
 
 private:
    void passwordReceived(const std::string &clientId, const std::string &walletId
@@ -161,7 +158,6 @@ private:
    bool onSyncAddresses(const std::string &clientId, Blocksettle::Communication::headless::RequestPacket packet);
    bool onExtAddrChain(const std::string &clientId, Blocksettle::Communication::headless::RequestPacket packet);
    bool onSyncNewAddr(const std::string &clientId, Blocksettle::Communication::headless::RequestPacket packet);
-   bool onAddrPreimage(const std::string &clientId, Blocksettle::Communication::headless::RequestPacket packet);
    bool onChatNodeRequest(const std::string &clientId, Blocksettle::Communication::headless::RequestPacket packet);
    bool onSettlAuthRequest(const std::string &clientId, Blocksettle::Communication::headless::RequestPacket packet);
    bool onSettlCPRequest(const std::string &clientId, Blocksettle::Communication::headless::RequestPacket packet);
@@ -217,7 +213,7 @@ private:
    const std::string                   backupPath_;
    const NetworkType                   netType_;
    bs::signer::Limits                  limits_;
-   std::unordered_set<std::string>     connectedClients_;
+   std::unordered_map<std::string, ServerConnectionListener::Details>     connectedClients_;
 
    std::unordered_map<std::string, SecureBinaryData>                 passwords_;
    //std::unordered_set<std::string>  autoSignPwdReqs_;

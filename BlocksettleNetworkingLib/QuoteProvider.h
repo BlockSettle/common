@@ -119,7 +119,7 @@ private:
    std::unordered_map<std::string, bs::network::RFQ>   submittedRFQs_;
 
    std::unordered_map<std::string, std::string> quoteIdMap_;
-   std::unordered_map<std::string, std::vector<std::string>>   quoteIds_;
+   std::unordered_map<std::string, std::unordered_set<std::string>>  quoteIds_;
 
    // key - quoteRequestId
    using quoteNotificationsCollection = std::unordered_map<std::string, bs::network::QuoteNotification>;

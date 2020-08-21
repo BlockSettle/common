@@ -12,6 +12,8 @@
 #include "BlockDataManagerConfig.h"
 #include <bech32.h>
 
+using namespace ArmorySigner;
+
 bs::Address::Address(const BinaryDataRef& data) :
    BinaryData(data)
 {
@@ -291,6 +293,9 @@ uint64_t bs::Address::getFeeForMaxVal(const std::vector<UTXO> &utxos, size_t txO
 
 std::string bs::Address::display() const
 {
+   if (empty()) {
+      return {};
+   }
    const auto fullAddress = prefixed();
    std::string result;
 
@@ -574,4 +579,9 @@ bs::Address bs::Address::fromMultisigScript(const BinaryData& data, AddressEntry
    }
 
    return bs::Address(hash, aet);
+}
+
+bs::Address bs::Address::fromPrefixed(const BinaryData &prefixed)
+{
+   return bs::Address(prefixed);
 }
