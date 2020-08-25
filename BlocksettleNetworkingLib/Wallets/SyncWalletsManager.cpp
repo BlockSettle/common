@@ -1212,6 +1212,8 @@ void WalletsManager::onCCInfoLoaded()
       const auto ccWallet = std::dynamic_pointer_cast<bs::sync::hd::CCLeaf>(wallet.second);
       if (ccWallet) {
          ccWallet->setCCDataResolver(ccResolver_);
+         // Update CC tracker one more time because ccWallet->suffix_ could be updated here
+         updateTracker(ccWallet);
       }
       else {
          logger_->warn("[{}] invalid CC leaf {}", __func__, wallet.second->walletId());

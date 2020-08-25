@@ -104,6 +104,7 @@ message Response
    message Authorize
    {
       string email = 1;
+      bs.types.ApiKeyError error = 2;
    }
 
    message GetLoginResult

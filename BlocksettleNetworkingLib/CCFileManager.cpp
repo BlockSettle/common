@@ -67,8 +67,9 @@ void CCFileManager::setCcAddressesSigned(const BinaryData &data)
 
 void CCFileManager::LoadSavedCCDefinitions()
 {
-   if (!resolver_->loadFromFile(ccFilePath_.toStdString(), appSettings_->get<NetworkType>(ApplicationSettings::netType))) {
-      emit LoadingFailed();
+   auto loadError = resolver_->loadFromFile(ccFilePath_.toStdString(), appSettings_->get<NetworkType>(ApplicationSettings::netType));
+   if (loadError != CcGenFileError::NoError) {
+      emit LoadingFailed(loadError);
       QFile::remove(ccFilePath_);
    }
 }
@@ -274,50 +275,50 @@ void CCPubResolver::fillFrom(Blocksettle::Communication::GetCCGenesisAddressesRe
    cbLoadComplete_(resp->revision());
 }
 
-bool CCPubResolver::loadFromFile(const std::string &path, NetworkType netType)
+CcGenFileError CCPubResolver::loadFromFile(const std::string &path, NetworkType netType)
 {
    QFile f(QString::fromStdString(path));
    if (!f.exists()) {
       logger_->debug("[CCFileManager::LoadFromFile] no cc file to load at {}", path);
-      return true;
+      return CcGenFileError::ReadError;
    }
    if (!f.open(QIODevice::ReadOnly)) {
       logger_->error("[CCFileManager::LoadFromFile] failed to open file {} for reading", path);
-      return false;
+      return CcGenFileError::ReadError;
    }
 
    const auto buf = f.readAll();
    if (buf.isEmpty()) {
       logger_->error("[CCFileManager::LoadFromFile] failed to read from {}", path);
-      return false;
+      return CcGenFileError::ReadError;
    }
 
    Blocksettle::Storage::CCDefinitions msg;
    bool result = msg.ParseFromArray(buf.data(), buf.size());
    if (!result) {
       SPDLOG_LOGGER_ERROR(logger_, "failed to parse storage file");
-      return false;
+      return CcGenFileError::InvalidFormat;
    }
 
    result = verifySignature(msg.response(), msg.signature());
    if (!result) {
       logger_->error("[CCFileManager::LoadFromFile] signature verification failed for {}", path);
-      return false;
+      return CcGenFileError::InvalidSign;
    }
 
    GetCCGenesisAddressesResponse resp;
    if (!resp.ParseFromString(msg.response())) {
       logger_->error("[CCFileManager::LoadFromFile] failed to parse {}", path);
-      return false;
+      return CcGenFileError::InvalidFormat;
    }
 
    if (resp.is_testnet() != (netType == NetworkType::TestNet)) {
       logger_->error("[CCFileManager::LoadFromFile] wrong network type in {}", path);
-      return false;
+      return CcGenFileError::InvalidFormat;
    }
 
    fillFrom(&resp);
-   return true;
+   return CcGenFileError::NoError;
 }
 
 bool CCPubResolver::saveToFile(const std::string &path, const std::string &response, const std::string &sig)

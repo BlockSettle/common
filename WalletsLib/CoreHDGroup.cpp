@@ -112,13 +112,14 @@ std::shared_ptr<hd::Leaf> hd::Group::createLeaf(AddressEntryType aet
    return createLeaf(aet, bs::hd::Path::keyToElem(key), lookup);
 }
 
-std::shared_ptr<bs::core::hd::Leaf> bs::core::hd::Group::createLeafFromXpub(const std::string& xpub, AddressEntryType aet
+std::shared_ptr<bs::core::hd::Leaf> bs::core::hd::Group::createLeafFromXpub(
+   const std::string& xpub, unsigned seedFingerprint, AddressEntryType aet
    , bs::hd::Path::Elem elem, unsigned lookup/*= UINT32_MAX*/)
 {
    bs::hd::Path pathLeaf = getPath(aet, elem);
 
    auto result = newLeaf(aet);
-   initLeafXpub(xpub, result, pathLeaf, lookup);
+   initLeafXpub(xpub, seedFingerprint, result, pathLeaf, lookup);
    addLeaf(result);
    {
       const auto tx = walletPtr_->beginSubDBTransaction(BS_WALLET_DBNAME, true);
@@ -310,7 +311,9 @@ void hd::Group::initLeaf(
    leaf->init(walletPtr_, accID);
 }
 
-void bs::core::hd::Group::initLeafXpub(const std::string& xpub, std::shared_ptr<hd::Leaf> &leaf, const bs::hd::Path &path,
+void bs::core::hd::Group::initLeafXpub(
+   const std::string& xpub, unsigned seedFingerprint,
+   std::shared_ptr<hd::Leaf> &leaf, const bs::hd::Path &path,
    unsigned lookup /*= UINT32_MAX*/) const
 {
    if (lookup == UINT32_MAX)
@@ -325,9 +328,7 @@ void bs::core::hd::Group::initLeafXpub(const std::string& xpub, std::shared_ptr<
    auto pubRootAsset = std::make_shared<AssetEntry_BIP32Root>(-1, BinaryData()
       , pubkeyCopy, nullptr, chaincodeCopy, newPubNode.getDepth()
       , newPubNode.getLeafID(), newPubNode.getParentFingerprint()
-      //need to pass the seed fingerprint for xpub based roots, using UINT32_MAX as
-      //a dummy value for now
-      , UINT32_MAX 
+      , seedFingerprint 
       , path.toVector());
 
    //no derivation path is passed to the account, it will use the pub root as is

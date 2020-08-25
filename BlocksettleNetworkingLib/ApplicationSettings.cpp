@@ -116,20 +116,11 @@ ApplicationSettings::ApplicationSettings(const QString &appName
       { armoryDbIp,              SettingDef(QLatin1String("ArmoryDBIP"), QLatin1String(MAINNET_ARMORY_BLOCKSETTLE_ADDRESS)) },
       { armoryDbPort,            SettingDef(QLatin1String("ArmoryDBPort"), MAINNET_ARMORY_BLOCKSETTLE_PORT) },
       { armoryPathName,          SettingDef(QString(), armoryDBAppPathName) },
-      { customPubBridgeHost,     SettingDef(QLatin1String("CustomPubBridgeHost"), QString()) },
-      { customPubBridgePort,     SettingDef(QLatin1String("CustomPubBridgePort"), 9091) },
-      { pubBridgePubKey,         SettingDef(QLatin1String("PubBridgePubKey"), QString(), true) },
    #ifdef PRODUCTION_BUILD
       { envConfiguration,        SettingDef(QLatin1String("envConfiguration"), static_cast<int>(EnvConfiguration::Production)) },
    #else
       { envConfiguration,        SettingDef(QLatin1String("envConfiguration"), static_cast<int>(EnvConfiguration::Staging)) },
    #endif
-      { mdServerHost,            SettingDef(QString()) },
-      { mdServerPort,            SettingDef(QString()) },
-      { mdhsHost,                SettingDef(QString()) },
-      { mdhsPort,                SettingDef(QString()) },
-      { chatServerHost,          SettingDef(QString()) },
-      { chatServerPort,          SettingDef(QString()) },
       { chatServerPubKey,        SettingDef(QLatin1String("ChatServerPubKey"), QString(), true) },
       { chatDbFile,              SettingDef(QString(), AppendToWritableDir(QLatin1String("chat2.db"))) },
       { celerUsername,           SettingDef(QLatin1String("MatchSystemUsername")) },
@@ -201,7 +192,8 @@ ApplicationSettings::ApplicationSettings(const QString &appName
       { ExtConnHost,             SettingDef(QLatin1String("ExtConnHost")) },
       { ExtConnPort,             SettingDef(QLatin1String("ExtConnPort")) },
       { ExtConnPubKey,           SettingDef(QLatin1String("ExtConnPubKey")) },
-      { SubmittedAddressXbtLimit,   SettingDef(QLatin1String("SubmittedAddressXbtLimit"), 100000000) }
+      { SubmittedAddressXbtLimit,   SettingDef(QLatin1String("SubmittedAddressXbtLimit"), 100000000) },
+      { ExtConnOwnPubKey,        SettingDef(QLatin1String("ExtConnOwnPubKey")) }
    };
 }
 
@@ -429,14 +421,6 @@ bool ApplicationSettings::LoadApplicationSettings(const QStringList& argList)
    }
 
 #ifndef NDEBUG
-   if (parser.isSet(chatServerIPName)) {
-      QString vcip = parser.value(chatServerIPName);
-      set(chatServerHost, vcip);
-   }
-   if (parser.isSet(chatServerPortName)) {
-      int vcp = parser.value(chatServerPortName).toInt();
-      set(chatServerPort, vcp);
-   }
    if (parser.isSet(localSignerPortName)) {
       int value = parser.value(localSignerPortName).toInt();
       set(localSignerPort, value);
@@ -452,8 +436,6 @@ bool ApplicationSettings::LoadApplicationSettings(const QStringList& argList)
 void ApplicationSettings::SetDefaultSettings(bool toFile)
 {
    reset(envConfiguration, toFile);
-   reset(customPubBridgeHost, toFile);
-   reset(customPubBridgePort, toFile);
 
    reset(launchToTray, toFile);
    reset(minimizeToTray, toFile);

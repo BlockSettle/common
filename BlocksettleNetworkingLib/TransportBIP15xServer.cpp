@@ -56,9 +56,15 @@ TransportBIP15xServer::TransportBIP15xServer(
    , useClientIDCookie_(readClientCookie)
    , makeServerIDCookie_(makeServerCookie)
 {
-   if (!ephemeralPeers && (ownKeyFileDir.empty() || ownKeyFileName.empty())) {
-      throw std::runtime_error("Client requested static ID key but no key " \
-         "wallet file is specified.");
+   if (ownKeyFileDir.empty() != ownKeyFileName.empty()) {
+      throw std::runtime_error("ownKeyFileDir and ownKeyFileName must be set/unset at the same time");
+   }
+
+   if (ephemeralPeers && !ownKeyFileName.empty()) {
+      throw std::runtime_error("ownKeyFileName must be empty when ephemeralPeers is used");
+   }
+   if (!ephemeralPeers && ownKeyFileName.empty()) {
+      throw std::runtime_error("ownKeyFileName must be set when ephemeralPeers is not used");
    }
 
    if (makeServerIDCookie_ && readClientCookie) {
@@ -108,6 +114,10 @@ TransportBIP15xServer::TransportBIP15xServer(const std::shared_ptr<spdlog::logge
    , useClientIDCookie_(readClientCookie)
    , makeServerIDCookie_(makeServerCookie)
 {
+   if (ownKeyFileDir.empty() != ownKeyFileName.empty()) {
+      throw std::runtime_error("ownKeyFileDir and ownKeyFileName must be set/unset at the same time");
+   }
+
    if (makeServerIDCookie_ && readClientCookie) {
       throw std::runtime_error("Cannot read client ID cookie and create ID " \
          "cookie at the same time. Connection is incomplete.");

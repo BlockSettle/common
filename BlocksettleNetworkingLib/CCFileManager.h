@@ -33,9 +33,17 @@ namespace Blocksettle {
 class ApplicationSettings;
 class BaseCelerClient;
 
+enum class CcGenFileError : int {
+   NoError,
+   ReadError,
+   InvalidFormat,
+   InvalidSign,
+};
+
 class CCPubResolver : public bs::sync::CCDataResolver
 {
 public:
+
    using CCSecLoadedCb = std::function<void(const bs::network::CCSecurityDef &)>;
    using CCLoadCompleteCb = std::function<void(unsigned int)>;
    CCPubResolver(const std::shared_ptr<spdlog::logger> &logger
@@ -50,7 +58,7 @@ public:
    std::vector<std::string> securities() const override;
 
    void fillFrom(Blocksettle::Communication::GetCCGenesisAddressesResponse *resp);
-   bool loadFromFile(const std::string &path, NetworkType netType);
+   CcGenFileError loadFromFile(const std::string &path, NetworkType netType);
    bool saveToFile(const std::string &path, const std::string &response
       , const std::string &signature);
 
@@ -104,7 +112,7 @@ signals:
    void CCInitialSubmitted(const QString);
    void CCSubmitFailed(const QString address, const QString &err);
    void Loaded();
-   void LoadingFailed();
+   void LoadingFailed(CcGenFileError);
 
 protected:
    void ProcessGenAddressesResponse(const std::string& response, const std::string &sig) override;

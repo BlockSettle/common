@@ -72,16 +72,7 @@ public:
       armoryDbIp,
       armoryDbPort,
       armoryPathName,
-      customPubBridgeHost,
-      customPubBridgePort,
-      pubBridgePubKey,
       envConfiguration,
-      mdServerHost,
-      mdServerPort,
-      mdhsHost,
-      mdhsPort,
-      chatServerHost,
-      chatServerPort,
       chatServerPubKey,
       chatDbFile,
       celerUsername,
@@ -152,6 +143,7 @@ public:
       ExtConnPort,
       ExtConnPubKey,
       SubmittedAddressXbtLimit,
+      ExtConnOwnPubKey,
       _last
    };
 

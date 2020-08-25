@@ -21,8 +21,6 @@ using namespace bs::network;
 
 namespace {
 
-   const auto kPeriodicCheckTimeout = std::chrono::seconds(120);
-
    int callback(lws *wsi, lws_callback_reasons reason, void *user, void *in, size_t len)
    {
       return SslDataConnection::callbackHelper(wsi, reason, user, in, len);
@@ -258,7 +256,7 @@ int SslDataConnection::callback(lws *wsi, int reason, void *user, void *in, size
       }
 
       case LWS_CALLBACK_CLIENT_CONNECTION_ERROR: {
-         listener_->OnError(DataConnectionListener::UndefinedSocketError);
+         reportFatalError(DataConnectionListener::UndefinedSocketError);
          break;
       }
    }
@@ -288,7 +286,7 @@ void SslDataConnection::listenFunction()
    wsi_ = lws_client_connect_via_info(&i);
 
    while (!stopped_.load()) {
-      lws_service(context_, kPeriodicCheckTimeout / std::chrono::milliseconds(1));
+      lws_service(context_, 0);
    }
 
    wsi_ = nullptr;

@@ -75,7 +75,7 @@ void BsClient::authorize(const std::string &apiKey)
    d->set_api_key(apiKey);
 
    sendRequest(&request, std::chrono::seconds(10), [this] {
-      emit authorizeDone(false);
+      emit authorizeDone(AuthorizeError::Timeout, {});
    });
 }
 
@@ -539,7 +539,24 @@ void BsClient::processStartLogin(const Response_StartLogin &response)
 
 void BsClient::processAuthorize(const Response_Authorize &response)
 {
-   emit authorizeDone(!response.email().empty(), response.email());
+   if (response.error() || response.email().empty()) {
+      AuthorizeError error{};
+      switch (response.error()) {
+         case bs::types::API_KEY_ERROR_UNKNOWN_KEY:
+            error = AuthorizeError::UnknownApiKey;
+            break;
+         case bs::types::API_KEY_ERROR_UNKNOWN_IP_ADDR:
+            error = AuthorizeError::UnknownIpAddr;
+            break;
+         default:
+            error = AuthorizeError::ServerError;
+            break;
+      }
+      emit authorizeDone(error, {});
+      return;
+   }
+
+   emit authorizeDone(AuthorizeError::NoError, response.email());
 }
 
 void BsClient::processGetLoginResult(const Response_GetLoginResult &response)

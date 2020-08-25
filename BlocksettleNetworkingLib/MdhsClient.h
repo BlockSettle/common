@@ -17,21 +17,16 @@
 #include <memory>
 #include "market_data_history.pb.h"
 
-class ApplicationSettings;
 class ConnectionManager;
 class RequestReplyCommand;
 
-namespace spdlog
-{
+namespace spdlog {
 	class logger;
 }
 
-namespace Blocksettle
-{
-	namespace Communication
-	{
-		namespace MarketDataHistory
-		{
+namespace Blocksettle {
+   namespace Communication {
+      namespace MarketDataHistory {
 			class MarketDataHistoryRequest;
 		}
 	}
@@ -43,10 +38,8 @@ class MdhsClient : public QObject
 {
 	Q_OBJECT
 public:
-	MdhsClient(
-		const std::shared_ptr<ApplicationSettings>& appSettings,
-		const std::shared_ptr<ConnectionManager>& connectionManager,
-		const std::shared_ptr<spdlog::logger>& logger,
+   MdhsClient(const std::shared_ptr<ConnectionManager>& connectionManager,
+		const std::shared_ptr<spdlog::logger>& logger, const std::string &host, const std::string &port,
 		QObject* pParent = nullptr);
 
    ~MdhsClient() noexcept override;
@@ -62,12 +55,14 @@ signals:
 	void DataReceived(const std::string& data);
 
 private:
-	std::shared_ptr<ApplicationSettings>	appSettings_;
 	std::shared_ptr<ConnectionManager>		connectionManager_;
 	std::shared_ptr<spdlog::logger>			logger_;
 
    std::map<int, std::unique_ptr<RequestReplyCommand>> activeCommands_;
    int requestId_{};
+   std::string host_;
+   std::string port_;
+
 };
 
 #endif // MDHS_CLIENT_H

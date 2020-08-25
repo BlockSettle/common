@@ -371,12 +371,13 @@ WalletsManager::HDWalletPtr WalletsManager::createWallet(
    , wallet::Seed seed, const std::string &folder
    , const bs::wallet::PasswordData &pd, bool primary)
 {
+   if (hdWallets_.find(seed.getWalletId()) != hdWallets_.end()) {
+      throw std::runtime_error("HD wallet with id " + seed.getWalletId() + " already exists");
+   }
+
    const HDWalletPtr newWallet = std::make_shared<hd::Wallet>(
       name, description, seed, pd, folder, logger_);
-
-   if (hdWallets_.find(newWallet->walletId()) != hdWallets_.end()) {
-      throw std::runtime_error("HD wallet with id " + newWallet->walletId() + " already exists");
-   }
+   assert(newWallet->walletId() == seed.getWalletId());
 
    {
       const bs::core::WalletPasswordScoped lock(newWallet, pd.password);

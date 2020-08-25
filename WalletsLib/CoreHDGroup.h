@@ -52,7 +52,8 @@ namespace bs {
             virtual std::shared_ptr<Leaf> createLeaf(AddressEntryType
                , const std::string &key, unsigned lookup = UINT32_MAX);
             
-            std::shared_ptr<Leaf> createLeafFromXpub(const std::string&, AddressEntryType
+            std::shared_ptr<Leaf> createLeafFromXpub(
+               const std::string&, unsigned, AddressEntryType
                , bs::hd::Path::Elem, unsigned lookup = UINT32_MAX);
             
             virtual std::shared_ptr<Leaf> newLeaf(AddressEntryType) const;
@@ -78,7 +79,9 @@ namespace bs {
             virtual void initLeaf(std::shared_ptr<Leaf> &, const bs::hd::Path &, 
                unsigned lookup = UINT32_MAX) const;
 
-            void initLeafXpub(const std::string& xpub, std::shared_ptr<Leaf> &, const bs::hd::Path &,
+            void initLeafXpub(
+               const std::string& xpub, unsigned seedFingerprint,
+               std::shared_ptr<Leaf> &, const bs::hd::Path &,
                unsigned lookup = UINT32_MAX) const;
 
             bs::hd::Path getPath(AddressEntryType aet

@@ -271,10 +271,19 @@ uint64_t wallet::TXSignRequest::amount(const wallet::TXSignRequest::ContainsAddr
    return amountSent(containsAddressCb);
 }
 
-uint64_t wallet::TXSignRequest::inputAmount(const ContainsAddressCb &) const
+uint64_t wallet::TXSignRequest::inputAmount(const ContainsAddressCb &cb) const
 {
    // calculate total input amount based on spenders
-   return armorySigner_.getTotalInputsValue();
+//   return armorySigner_.getTotalInputsValue();
+   uint64_t result = 0;
+   for (unsigned i = 0; i < armorySigner_.getTxInCount(); ++i) {
+      const auto &spender = armorySigner_.getSpender(i);
+      const auto &addr = bs::Address::fromScript(spender->getOutputScript());
+      if (cb && cb(addr)) {
+         result += spender->getValue();
+      }
+   }
+   return result;
 }
 
 uint64_t wallet::TXSignRequest::totalSpent(const ContainsAddressCb &containsAddressCb) const

@@ -746,6 +746,7 @@ message GenoaApiKeyCheckResponse
 {
    string api_key = 1;
    string email = 2;
+   bs.types.ApiKeyError error = 3;
 }
 
 message UserEntityInfo

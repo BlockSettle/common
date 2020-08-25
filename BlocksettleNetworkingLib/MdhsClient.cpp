@@ -10,7 +10,6 @@
 */
 #include "MdhsClient.h"
 
-#include "ApplicationSettings.h"
 #include "ConnectionManager.h"
 #include "FastLock.h"
 #include "RequestReplyCommand.h"
@@ -19,15 +18,16 @@
 
 #include <spdlog/logger.h>
 
-MdhsClient::MdhsClient(
-   const std::shared_ptr<ApplicationSettings>& appSettings,
-   const std::shared_ptr<ConnectionManager>& connectionManager,
-   const std::shared_ptr<spdlog::logger>& logger,
-   QObject* pParent)
+MdhsClient::MdhsClient(const std::shared_ptr<ConnectionManager>& connectionManager
+   , const std::shared_ptr<spdlog::logger>& logger
+   , const std::string &host
+   , const std::string &port
+   , QObject* pParent)
    : QObject(pParent)
-   , appSettings_(appSettings)
    , connectionManager_(connectionManager)
    , logger_(logger)
+   , host_(host)
+   , port_(port)
 {
 }
 
@@ -56,11 +56,7 @@ void MdhsClient::SendRequest(const MarketDataHistoryRequest& request)
       });
    });
 
-   if (!command->ExecuteRequest(
-      appSettings_->get<std::string>(ApplicationSettings::mdhsHost),
-      appSettings_->get<std::string>(ApplicationSettings::mdhsPort),
-      request.SerializeAsString()))
-   {
+   if (!command->ExecuteRequest(host_, port_, request.SerializeAsString())) {
       logger_->error("Failed to send request for mdhs.");
       return;
    }

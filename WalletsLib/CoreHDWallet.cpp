@@ -340,8 +340,16 @@ void bs::core::hd::Wallet::createHwStructure(const bs::core::wallet::HwWalletInf
       { AddressEntryType_P2PKH, walletInfo.xpubLegacy }
    };
 
+   if (walletInfo.xpubRoot.empty())
+      throw std::runtime_error("need root xpub to create public leaf");
+
+   BIP32_Node rootPubNode;
+   auto xpubSbd = SecureBinaryData::fromString(walletInfo.xpubRoot);
+   rootPubNode.initFromBase58(xpubSbd);
+   auto seedFingerprint = rootPubNode.getThisFingerprint();
+
    for (const auto &aet : groupHW->getAddressTypeSet()) {
-      groupHW->createLeafFromXpub(xpubs[aet], aet, 0u, lookup);
+      groupHW->createLeafFromXpub(xpubs[aet], seedFingerprint, aet, 0u, lookup);
    }
    writeToDB();
 }

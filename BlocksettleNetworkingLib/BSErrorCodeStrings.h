@@ -41,6 +41,8 @@ inline QString ErrorCodeToString(bs::error::ErrorCode errorCode) {
       return QObject::tr("Missing Auth wallet");
    case bs::error::ErrorCode::InternalError:
       return QObject::tr("Internal error");
+   case bs::error::ErrorCode::WalletAlreadyPresent:
+      return QObject::tr("Wallet already present");
 
    // TX Signing errors
    case bs::error::ErrorCode::TxInvalidRequest:

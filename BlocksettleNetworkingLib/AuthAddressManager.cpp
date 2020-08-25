@@ -169,10 +169,23 @@ bool AuthAddressManager::HasAuthAddr() const
 
 bool AuthAddressManager::CreateNewAuthAddress()
 {
-   const auto &cbAddr = [this](const bs::Address &) {
-      emit walletsManager_->walletChanged(authWallet_->walletId());
+   const auto &cbCreateAddress = [this]
+   {
+      if (!authWallet_) {
+         logger_->error("[AuthAddressManager::CreateNewAuthAddress] no auth leaf");
+         return;
+      }
+      const auto &cbAddr = [this](const bs::Address &) {
+         emit walletsManager_->walletChanged(authWallet_->walletId());
+      };
+      authWallet_->getNewExtAddress(cbAddr);
    };
-   authWallet_->getNewExtAddress(cbAddr);
+   if (HaveAuthWallet()) {
+      cbCreateAddress();
+   }
+   else {
+      return walletsManager_->createAuthLeaf(cbCreateAddress);
+   }
    return true;
 }
 

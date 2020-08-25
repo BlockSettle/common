@@ -109,6 +109,15 @@ public:
 
    using RequestId = int64_t;
 
+   enum class AuthorizeError : int
+   {
+      NoError,
+      UnknownApiKey,
+      UnknownIpAddr,
+      Timeout,
+      ServerError,
+   };
+
    BsClient(const std::shared_ptr<spdlog::logger>& logger
       , QObject *parent = nullptr);
    ~BsClient() override;
@@ -160,7 +169,7 @@ public slots:
 
 signals:
    void startLoginDone(bool success, const std::string &errorMsg);
-   void authorizeDone(bool success, const std::string &email = {});
+   void authorizeDone(AuthorizeError error, const std::string &email);
    void getLoginResultDone(const BsClientLoginResult &result);
 
    void celerRecv(CelerAPI::CelerMessageType messageType, const std::string &data);

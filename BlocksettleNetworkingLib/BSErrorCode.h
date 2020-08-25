@@ -26,6 +26,7 @@ namespace bs {
          MissingSettlementWallet,
          MissingAuthWallet,
          InternalError,
+         WalletAlreadyPresent,
 
          // TX signing error codes
          TxInvalidRequest,

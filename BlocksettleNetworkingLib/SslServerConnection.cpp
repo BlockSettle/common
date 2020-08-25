@@ -22,8 +22,6 @@ using namespace bs::network;
 
 namespace {
 
-   const auto kPeriodicCheckTimeout = std::chrono::seconds(30);
-
    int callback(lws *wsi, lws_callback_reasons reason, void *user, void *in, size_t len)
    {
       return SslServerConnection::callbackHelper(wsi, reason, user, in, len);
@@ -104,7 +102,7 @@ void SslServerConnection::listenFunction()
    bs::setCurrentThreadName("WsServer");
 
    while (!stopped_.load()) {
-      lws_service(context_, kPeriodicCheckTimeout / std::chrono::milliseconds(1));
+      lws_service(context_, 0);
    }
 }
 

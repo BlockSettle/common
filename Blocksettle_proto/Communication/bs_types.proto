@@ -71,3 +71,11 @@ message TradeSettings
     uint32 auth_submit_address_limit         = 4;
     uint32 dealer_auth_submit_address_limit  = 5;
 }
+
+enum ApiKeyError
+{
+    API_KEY_ERROR_NO_ERROR = 0;
+    API_KEY_ERROR_UNKNOWN_KEY = 1;
+    API_KEY_ERROR_UNKNOWN_IP_ADDR = 2;
+    API_KEY_ERROR_SERVER_ERROR = 3;
+}
