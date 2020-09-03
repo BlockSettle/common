@@ -120,7 +120,7 @@ set(XCB_known_components
     UTIL
     XEVIE
     XF86DRI
-    XINERAMA
+    #XINERAMA
     XINPUT
     XKB
     XPRINT
