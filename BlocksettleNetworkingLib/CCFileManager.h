@@ -74,7 +74,6 @@ public:
    void ConnectToCelerClient(const std::shared_ptr<BaseCelerClient> &);
 
    bool submitAddress(const bs::Address &, uint32_t seed, const std::string &ccProduct);
-   bool wasAddressSubmitted(const bs::Address &);
    void cancelActiveSign();
 
    void setBsClient(const std::weak_ptr<BsClient> &);

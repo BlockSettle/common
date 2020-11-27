@@ -35,9 +35,7 @@ public:
    bool FinishSequence() override;
 
 private:
-   CelerMessage sendGetUserIdRequest();
    CelerMessage sendGetSubmittedAuthAddressListRequest();
-   CelerMessage sendGetSubmittedCCAddressListRequest();
    CelerMessage sendGetBitcoinParticipantRequest();
    CelerMessage sendGetBitcoinDealerRequest();
 

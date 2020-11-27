@@ -15,9 +15,7 @@
 
 namespace CelerUserProperties {
 
-static const std::string UserIdPropertyName = "USER_ID";
 static const std::string SubmittedBtcAuthAddressListPropertyName = "SUBMITTED_BTC_AUTH_ADDRESS";
-static const std::string SubmittedCCAddressListPropertyName = "SUBMITTED_CC_ADDRESS";
 static const std::string MarketSessionPropertyName = "marketmerchant.session";
 static const std::string SocketAccessPropertyName = "SOCKET_ACCESS";
 static const std::string BitcoinParticipantPropertyName = "bitcoin.participant";
@@ -25,8 +23,6 @@ static const std::string BitcoinDealerPropertyName = "bitcoin.dealer";
 
 static const std::string EnablePropertyValue = "true";
 static const std::string DisabledPropertyValue = "false";
-
-std::string GetCelerPropertyDescription(const std::string& propertyName);
 
 }
 // c.  key: bitcoin.dealer value: true (only applicable if the user is enabled as a bitcoin dealer)

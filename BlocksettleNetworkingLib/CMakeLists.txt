@@ -38,7 +38,6 @@ IF (DISABLE_CELER)
    list(REMOVE_ITEM SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/CelerCreateOrderSequence.cpp)
    list(REMOVE_ITEM SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/CelerFindSubledgersForAccountSequence.cpp)
    list(REMOVE_ITEM SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/CelerGetAssignedAccountsListSequence.cpp)
-   list(REMOVE_ITEM SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/CelerGetUserIdSequence.cpp)
    list(REMOVE_ITEM SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/CelerGetUserPropertySequence.cpp)
    list(REMOVE_ITEM SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/CelerLoadMDDefinitionsSequence.cpp)
    list(REMOVE_ITEM SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/CelerLoadUserInfoSequence.cpp)
@@ -84,7 +83,6 @@ IF (DISABLE_CELER)
    list(REMOVE_ITEM HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/CelerCreateOrderSequence.h)
    list(REMOVE_ITEM HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/CelerFindSubledgersForAccountSequence.h)
    list(REMOVE_ITEM HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/CelerGetAssignedAccountsListSequence.h)
-   list(REMOVE_ITEM HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/CelerGetUserIdSequence.h)
    list(REMOVE_ITEM HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/CelerGetUserPropertySequence.h)
    list(REMOVE_ITEM HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/CelerLoadMDDefinitionsSequence.h)
    list(REMOVE_ITEM HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/CelerLoadUserInfoSequence.h)
@@ -128,7 +126,7 @@ TARGET_LINK_LIBRARIES(${BS_NETWORK_LIB_NAME}
    ${BOTAN_LIB}
    ${LIBCP_LIB}
    ${ZMQ_LIB}
-   ${CPP_WALLET_LIB_NAME} 
+   ${CPP_WALLET_LIB_NAME}
    ${AUTH_PROTO_LIB_NAME}
    ${BS_PROTO_LIB_NAME}
    ${CELER_PROTO_LIB_NAME}

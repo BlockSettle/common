@@ -56,7 +56,7 @@ public:
    using message_handler = std::function<bool (const std::string&)>;
 
 public:
-   BaseCelerClient(const std::shared_ptr<spdlog::logger> &logger, bool userIdRequired, bool useRecvTimer);
+   BaseCelerClient(const std::shared_ptr<spdlog::logger> &logger, bool loadUserProperties, bool useRecvTimer);
    ~BaseCelerClient() noexcept override = default;
 
    BaseCelerClient(const BaseCelerClient&) = delete;
@@ -79,7 +79,6 @@ public:
    // Email will be always in lower case here
    const std::string& email() const { return email_; }
 
-   const std::string& userId() const;
    const QString& userType() const { return userType_; }
    CelerUserType celerUserType() const { return celerUserType_; }
 
@@ -87,9 +86,6 @@ public:
 
    std::unordered_set<std::string> GetSubmittedAuthAddressSet() const;
    bool SetSubmittedAuthAddressSet(const std::unordered_set<std::string>& addressSet);
-
-   bool IsCCAddressSubmitted (const std::string &address) const;
-   bool SetCCAddressSubmitted(const std::string &address);
 
    static void UpdateSetFromString(const std::string& value, std::unordered_set<std::string> &set);
    static std::string SetToString(const std::unordered_set<std::string> &set);
@@ -146,6 +142,7 @@ private:
 
    static void AddToSet(const std::string& address, std::unordered_set<std::string> &set);
 
+private:
    QTimer                                 *timerSendHb_{};
    QTimer                                 *timerRecvHb_{};
 
@@ -163,21 +160,17 @@ private:
    std::string email_;
    QString userType_;
    CelerUserType celerUserType_;
-   CelerProperty userId_;
    CelerProperty bitcoinParticipant_;
 
    CelerProperty        submittedAuthAddressListProperty_;
    std::unordered_set<std::string> submittedAuthAddressSet_;
 
-   CelerProperty        submittedCCAddressListProperty_;
-   std::unordered_set<std::string> submittedCCAddressSet_;
-
    std::chrono::seconds    heartbeatInterval_{};
 
    IdStringGenerator       idGenerator_;
-   bool                    userIdRequired_;
+   bool                    loadUserProperties_;
 
-   bool serverNotAvailable_;
+   bool                    serverNotAvailable_;
 };
 
 #endif

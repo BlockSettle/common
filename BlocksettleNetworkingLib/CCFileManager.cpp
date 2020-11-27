@@ -52,11 +52,6 @@ void CCFileManager::ConnectToCelerClient(const std::shared_ptr<BaseCelerClient> 
    celerClient_ = celerClient;
 }
 
-bool CCFileManager::wasAddressSubmitted(const bs::Address &addr)
-{
-   return celerClient_->IsCCAddressSubmitted(addr.display());
-}
-
 void CCFileManager::cancelActiveSign()
 {
    auto bsClient = bsClient_.lock();
@@ -130,11 +125,6 @@ bool CCFileManager::submitAddress(const bs::Address &address, uint32_t seed, con
                SPDLOG_LOGGER_ERROR(logger_, "confirming CC address failed: '{}'", result.errorMsg);
                emit CCSubmitFailed(QString::fromStdString(address.display()), QString::fromStdString(result.errorMsg));
                return;
-            }
-
-            if (!celerClient_->SetCCAddressSubmitted(address.display())) {
-               SPDLOG_LOGGER_WARN(logger_, "failed to save address {} request event to Celer's user storage"
-                  , address.display());
             }
 
             emit CCAddressSubmitted(QString::fromStdString(address.display()));

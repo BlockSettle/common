@@ -27,14 +27,8 @@ CelerLoadUserInfoSequence::CelerLoadUserInfoSequence(const std::shared_ptr<spdlo
    , const onPropertiesRecvd_func& cb)
  : CelerCommandSequence("CelerLoadUserInfoSequence",
       {
-           { false, nullptr, &CelerLoadUserInfoSequence::sendGetUserIdRequest}
+           { false, nullptr, &CelerLoadUserInfoSequence::sendGetSubmittedAuthAddressListRequest}
          , { true, &CelerLoadUserInfoSequence::processGetPropertyResponse, nullptr}
-
-         , { false, nullptr, &CelerLoadUserInfoSequence::sendGetSubmittedAuthAddressListRequest}
-         , { true, &CelerLoadUserInfoSequence::processGetPropertyResponse, nullptr}
-
-         , { false, nullptr, &CelerLoadUserInfoSequence::sendGetSubmittedCCAddressListRequest }
-         , { true, &CelerLoadUserInfoSequence::processGetPropertyResponse, nullptr }
 
          ,{ false, nullptr, &CelerLoadUserInfoSequence::sendGetBitcoinParticipantRequest }
          ,{ true, &CelerLoadUserInfoSequence::processGetPropertyResponse, nullptr }
@@ -57,19 +51,9 @@ bool CelerLoadUserInfoSequence::FinishSequence()
    return true;
 }
 
-CelerMessage CelerLoadUserInfoSequence::sendGetUserIdRequest()
-{
-   return getPropertyRequest(CelerUserProperties::UserIdPropertyName);
-}
-
 CelerMessage CelerLoadUserInfoSequence::sendGetSubmittedAuthAddressListRequest()
 {
    return getPropertyRequest(CelerUserProperties::SubmittedBtcAuthAddressListPropertyName);
-}
-
-CelerMessage CelerLoadUserInfoSequence::sendGetSubmittedCCAddressListRequest()
-{
-   return getPropertyRequest(CelerUserProperties::SubmittedCCAddressListPropertyName);
 }
 
 CelerMessage CelerLoadUserInfoSequence::sendGetBitcoinParticipantRequest()

@@ -14,7 +14,6 @@
 #include "DataConnection.h"
 #include "StringUtils.h"
 
-#include "CelerGetUserIdSequence.h"
 #include "CelerGetUserPropertySequence.h"
 #include "CelerLoadUserInfoSequence.h"
 #include "CelerLoginSequence.h"
@@ -25,12 +24,10 @@
 
 using namespace com::celertech::baseserver::communication::protobuf;
 
-BaseCelerClient::BaseCelerClient(const std::shared_ptr<spdlog::logger> &logger, bool userIdRequired, bool useRecvTimer)
+BaseCelerClient::BaseCelerClient(const std::shared_ptr<spdlog::logger> &logger, bool loadUserProperties, bool useRecvTimer)
    : logger_(logger)
-   , userId_(CelerUserProperties::UserIdPropertyName)
    , submittedAuthAddressListProperty_(CelerUserProperties::SubmittedBtcAuthAddressListPropertyName)
-   , submittedCCAddressListProperty_(CelerUserProperties::SubmittedCCAddressListPropertyName)
-   , userIdRequired_(userIdRequired)
+   , loadUserProperties_(loadUserProperties)
    , serverNotAvailable_(false)
 {
    timerSendHb_ = new QTimer(this);
@@ -83,21 +80,14 @@ void BaseCelerClient::loginSuccessCallback(const std::string& userName, const st
    serverNotAvailable_ = false;
    idGenerator_.setUserName(userName);
 
-   if (userIdRequired_) {
+   if (loadUserProperties_) {
       auto getUserIdSequence = std::make_shared<CelerLoadUserInfoSequence>(logger_, userName, [this](CelerProperties properties) {
-         userId_ = properties[CelerUserProperties::UserIdPropertyName];
          bitcoinParticipant_ = properties[CelerUserProperties::BitcoinParticipantPropertyName];
 
          const auto authIt = properties.find(CelerUserProperties::SubmittedBtcAuthAddressListPropertyName);
          if (authIt != properties.end()) {
             submittedAuthAddressListProperty_ = authIt->second;
             UpdateSetFromString(submittedAuthAddressListProperty_.value, submittedAuthAddressSet_);
-         }
-
-         const auto ccIt = properties.find(CelerUserProperties::SubmittedCCAddressListPropertyName);
-         if (ccIt != properties.end()) {
-            submittedCCAddressListProperty_ = properties[CelerUserProperties::SubmittedCCAddressListPropertyName];
-            UpdateSetFromString(submittedCCAddressListProperty_.value, submittedCCAddressSet_);
          }
 
          const bool bd = (properties[CelerUserProperties::BitcoinDealerPropertyName].value == "true");
@@ -429,11 +419,6 @@ void BaseCelerClient::recvData(CelerAPI::CelerMessageType messageType, const std
    OnDataReceived(messageType, data);
 }
 
-const std::string& BaseCelerClient::userId() const
-{
-   return userId_.value;
-}
-
 std::unordered_set<std::string> BaseCelerClient::GetSubmittedAuthAddressSet() const
 {
    return submittedAuthAddressSet_;
@@ -448,29 +433,6 @@ bool BaseCelerClient::SetSubmittedAuthAddressSet(const std::unordered_set<std::s
    submittedAuthAddressListProperty_.value = stringValue;
    auto command = std::make_shared<CelerSetUserPropertySequence>(logger_, userName_
       , submittedAuthAddressListProperty_);
-
-   return ExecuteSequence(command);
-}
-
-bool BaseCelerClient::IsCCAddressSubmitted(const std::string &address) const
-{
-   const auto it = submittedCCAddressSet_.find(address);
-   if (it != submittedCCAddressSet_.end()) {
-      return true;
-   }
-   return false;
-}
-
-bool BaseCelerClient::SetCCAddressSubmitted(const std::string &address)
-{
-   if (IsCCAddressSubmitted(address)) {
-      return true;
-   }
-
-   submittedCCAddressSet_.insert(address);
-   submittedCCAddressListProperty_.value = SetToString(submittedCCAddressSet_);
-   const auto command = std::make_shared<CelerSetUserPropertySequence>(logger_, userName_
-      , submittedCCAddressListProperty_);
 
    return ExecuteSequence(command);
 }
