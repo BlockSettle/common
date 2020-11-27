@@ -248,7 +248,7 @@ bool InprocSigner::createHDLeaf(const std::string &rootWalletId, const bs::hd::P
    return false;
 }
 
-bool InprocSigner::enableTradingInHDWallet(const std::string &, const BinaryData &
+bool InprocSigner::enableTradingInHDWallet(const std::string &
    , bs::sync::PasswordDialogData , const WalletSignerContainer::UpdateWalletStructureCB &)
 {
    throw std::bad_function_call();
@@ -286,13 +286,6 @@ void InprocSigner::createSettlementWallet(const bs::Address &authAddr
    };
 
    getRootPubkey(priWallet->walletId(), cbWrap);
-}
-
-bs::signer::RequestId InprocSigner::setUserId(const BinaryData &userId, const std::string &walletId)
-{
-   //walletsMgr_->setChainCode(userId);
-   //TODO: add SetUserId implementation here
-   return seqId_++;
 }
 
 bs::signer::RequestId InprocSigner::syncCCNames(const std::vector<std::string> &ccNames)
@@ -378,15 +371,6 @@ void InprocSigner::syncHDWallet(const std::string &id, const std::function<void(
          bs::sync::HDWalletData::Group groupData;
          groupData.type = static_cast<bs::hd::CoinType>(group->index() | bs::hd::hardFlag);
          groupData.extOnly = group->isExtOnly();
-
-         if (groupData.type == bs::hd::CoinType::BlockSettle_Auth) {
-            auto authGroupPtr =
-               std::dynamic_pointer_cast<bs::core::hd::AuthGroup>(group);
-            if (authGroupPtr == nullptr)
-               throw std::runtime_error("unexpected group type");
-
-            groupData.salt = authGroupPtr->getSalt();
-         }
 
          for (const auto &leaf : group->getAllLeaves()) {
             BinaryData extraData;

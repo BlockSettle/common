@@ -199,9 +199,6 @@ bool HeadlessContainerListener::onRequestPacket(const std::string &clientId, hea
    case headless::PromoteWalletToPrimaryType:
       return onPromoteWalletToPrimary(clientId, packet);
 
-   case headless::SetUserIdType:
-      return onSetUserId(clientId, packet);
-
    case headless::SyncCCNamesType:
       return onSyncCCNames(packet);
 
@@ -956,9 +953,6 @@ bool HeadlessContainerListener::RequestPassword(const std::string &rootId, const
          case headless::CreateSettlWalletType:
             callbacks_->decryptWalletRequest(signer::PasswordDialogType::CreateSettlementLeaf, dlgData);
             break;
-         case headless::SetUserIdType:
-            callbacks_->decryptWalletRequest(signer::PasswordDialogType::CreateAuthLeaf, dlgData, txReq);
-            break;
          case headless::SignAuthAddrRevokeType:
             callbacks_->decryptWalletRequest(signer::PasswordDialogType::RevokeAuthAddress, dlgData, txReq);
             break;
@@ -1018,85 +1012,6 @@ void HeadlessContainerListener::RunDeferredPwDialog()
    }
 }
 
-bool HeadlessContainerListener::onSetUserId(const std::string &clientId, headless::RequestPacket &packet)
-{
-   headless::SetUserIdRequest request;
-   if (!request.ParseFromString(packet.data())) {
-      logger_->error("[HeadlessContainerListener] failed to parse SetUserIdRequest");
-      return false;
-   }
-
-   if (request.userid().empty()) {
-      logger_->info("[{}] empty user id - do nothing", __func__);
-      return true;
-   }
-
-   walletsMgr_->setUserId(BinaryData::fromString(request.userid()));
-
-   const auto wallet = walletsMgr_->getPrimaryWallet();
-   if (!wallet) {
-      logger_->info("[{}] no primary wallet - aborting", __func__);
-      return true;
-   }
-   const auto group = wallet->getGroup(bs::hd::BlockSettle_Auth);
-   if (!group) {
-      logger_->error("[{}] primary wallet misses Auth group", __func__);
-      setUserIdResponse(clientId, packet.id(), headless::AWR_NoPrimary);
-      return false;
-   }
-   const auto authGroup = std::dynamic_pointer_cast<bs::core::hd::AuthGroup>(group);
-   if (!authGroup) {
-      logger_->error("[{}] Auth group has wrong type", __func__);
-      setUserIdResponse(clientId, packet.id(), headless::AWR_NoPrimary);
-      return false;
-   }
-   const auto salt = SecureBinaryData::fromString(request.userid());
-
-   if (salt.empty()) {
-      logger_->debug("[{}] unsetting auth salt", __func__);
-      setUserIdResponse(clientId, packet.id(), headless::AWR_UnsetSalt);
-      return true;
-   }
-
-   logger_->debug("[{}] setting salt {}...", __func__, salt.toHexStr());
-   const auto prevSalt = authGroup->getSalt();
-   if (prevSalt.empty()) {
-      try {
-         authGroup->setSalt(salt);
-      } catch (const std::exception &e) {
-         logger_->error("[{}] error setting auth salt: {}", __func__, e.what());
-         setUserIdResponse(clientId, packet.id(), headless::AWR_SaltSetFailed);
-         return false;
-      }
-   }
-   else {
-      if (prevSalt == salt) {
-         logger_->debug("[{}] salts match - ok", __func__);
-      }
-      else {
-         logger_->error("[{}] salts don't match - aborting for now", __func__);
-         setUserIdResponse(clientId, packet.id(), headless::AWR_WrongSalt);
-         return false;
-      }
-   }
-
-   const bs::hd::Path authPath({bs::hd::Purpose::Native, bs::hd::BlockSettle_Auth, 0});
-   auto leaf = authGroup->getLeafByPath(authPath);
-   if (leaf) {
-      const auto authLeaf = std::dynamic_pointer_cast<bs::core::hd::AuthLeaf>(leaf);
-      if (authLeaf && (authLeaf->getSalt() == salt)) {
-         setUserIdResponse(clientId, packet.id(), headless::AWR_NoError, authLeaf->walletId());
-         return true;
-      }
-      else {
-         setUserIdResponse(clientId, packet.id(), headless::AWR_WrongSalt, leaf->walletId());
-         return false;
-      }
-   }
-   setUserIdResponse(clientId, packet.id(), headless::AWR_NoPrimary);
-   return true;
-}
-
 bool HeadlessContainerListener::onSyncCCNames(headless::RequestPacket &packet)
 {
    headless::SyncCCNamesData request;
@@ -1118,20 +1033,6 @@ bool HeadlessContainerListener::onSyncCCNames(headless::RequestPacket &packet)
    }
    walletsMgr_->setCCLeaves(ccNames);
    return true;
-}
-
-void HeadlessContainerListener::setUserIdResponse(const std::string &clientId, unsigned int id
-   , headless::AuthWalletResponseType respType, const std::string &walletId)
-{
-   headless::SetUserIdResponse response;
-   response.set_auth_wallet_id(walletId);
-   response.set_response(respType);
-
-   headless::RequestPacket packet;
-   packet.set_id(id);
-   packet.set_type(headless::SetUserIdType);
-   packet.set_data(response.SerializeAsString());
-   sendData(packet.SerializeAsString(), clientId);
 }
 
 bool HeadlessContainerListener::onCreateHDLeaf(const std::string &clientId
@@ -1173,21 +1074,6 @@ bool HeadlessContainerListener::onCreateHDLeaf(const std::string &clientId
       }
 
       try {
-         if (!salt.empty()) {
-            const auto authGroup = std::dynamic_pointer_cast<bs::core::hd::AuthGroup>(group);
-            if (authGroup) {
-               const auto prevSalt = authGroup->getSalt();
-               if (prevSalt.empty()) {
-                  authGroup->setSalt(salt);
-               }
-               else if (prevSalt != salt) {
-                  logger_->error("[HeadlessContainerListener] auth salts mismatch");
-                  CreateHDLeafResponse(clientId, id, ErrorCode::MissingAuthKeys);
-                  return;
-               }
-            }
-         }
-
          auto leaf = group->getLeafByPath(path);
 
          if (leaf == nullptr) {
@@ -1260,13 +1146,8 @@ bool HeadlessContainerListener::createSettlementLeaves(const std::shared_ptr<bs:
    return true;
 }
 
-bool HeadlessContainerListener::createAuthLeaf(const std::shared_ptr<bs::core::hd::Wallet> &wallet
-   , const BinaryData &salt)
+bool HeadlessContainerListener::createAuthLeaf(const std::shared_ptr<bs::core::hd::Wallet> &wallet)
 {
-   if (salt.empty()) {
-      logger_->error("[{}] can't create auth leaf with empty salt", __func__);
-      return false;
-   }
    const auto group = wallet->getGroup(bs::hd::BlockSettle_Auth);
    if (!group) {
       logger_->error("[{}] primary wallet misses Auth group", __func__);
@@ -1278,32 +1159,10 @@ bool HeadlessContainerListener::createAuthLeaf(const std::shared_ptr<bs::core::h
       return false;
    }
 
-   const auto prevSalt = authGroup->getSalt();
-   if (prevSalt.empty()) {
-      try {
-         authGroup->setSalt(salt);
-      } catch (const std::exception &e) {
-         logger_->error("[{}] error setting auth salt: {}", __func__, e.what());
-         return false;
-      }
-   } else {
-      if (prevSalt != salt) {
-         logger_->error("[{}] salts don't match - aborting", __func__);
-         return false;
-      }
-   }
-
    const bs::hd::Path authPath({ bs::hd::Purpose::Native, bs::hd::BlockSettle_Auth, 0 });
    auto leaf = authGroup->getLeafByPath(authPath);
    if (leaf) {
-      const auto authLeaf = std::dynamic_pointer_cast<bs::core::hd::AuthLeaf>(leaf);
-      if (authLeaf && (authLeaf->getSalt() == salt)) {
-         logger_->debug("[{}] auth leaf for {} aready exists", __func__, salt.toHexStr());
-         return true;
-      } else {
-         logger_->error("[{}] auth leaf salts mismatch", __func__);
-         return false;
-      }
+      return true;
    }
 
    try {
@@ -1354,7 +1213,7 @@ bool HeadlessContainerListener::onEnableTradingInWallet(const std::string& clien
       }
 
       const bs::core::WalletPasswordScoped lock(hdWallet, pass);
-      if (!createAuthLeaf(hdWallet, BinaryData::fromString(userId))) {
+      if (!createAuthLeaf(hdWallet)) {
          logger_->error("[HeadlessContainerListener::onEnableTradingInWallet] failed to create auth leaf");
       }
 
@@ -1929,13 +1788,6 @@ bool HeadlessContainerListener::onSyncHDWallet(const std::string &clientId, head
          auto groupData = response.add_groups();
          groupData->set_type(group->index() | bs::hd::hardFlag);
          groupData->set_ext_only(hdWallet->isExtOnly());
-
-         if (group->index() == bs::hd::CoinType::BlockSettle_Auth) {
-            const auto authGroup = std::dynamic_pointer_cast<bs::core::hd::AuthGroup>(group);
-            if (authGroup) {
-               groupData->set_salt(authGroup->getSalt().toBinStr());
-            }
-         }
 
          if (static_cast<bs::hd::CoinType>(group->index()) == bs::hd::CoinType::BlockSettle_Auth) {
             continue;      // don't sync leaves for auth before setUserId is asked

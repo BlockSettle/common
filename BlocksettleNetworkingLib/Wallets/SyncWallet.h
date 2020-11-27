@@ -132,7 +132,6 @@ namespace bs {
          virtual bool hasId(const std::string &id) const { return (walletId() == id); }
 
          virtual void setArmory(const std::shared_ptr<ArmoryConnection> &);
-         virtual void setUserId(const BinaryData &) {}
          void setTrackLiveAddresses(bool flag) { trackLiveAddresses_ = flag; }
 
          bool operator ==(const Wallet &w) const { return (w.walletId() == walletId()); }
@@ -218,15 +217,15 @@ namespace bs {
          size_t getActiveAddressCount(void);
 
          /***
-         Baseline db fetch methods using combined get logic. These come 
-         with the default implementation but remain virtual to leave 
-         room for custom behavior. 
+         Baseline db fetch methods using combined get logic. These come
+         with the default implementation but remain virtual to leave
+         room for custom behavior.
          ***/
 
          //balance and count
          virtual bool updateBalances(const std::function<void(void)> & = nullptr);
          virtual bool getAddressTxnCounts(const std::function<void(void)> &cb = nullptr);
-         
+
          //utxos
          virtual bool getSpendableTxOutList(const ArmoryConnection::UTXOsCb &, uint64_t val, bool excludeReservation);
          virtual bool getSpendableZCList(const ArmoryConnection::UTXOsCb &) const;

@@ -116,7 +116,6 @@ public:
 
    virtual bs::signer::RequestId CancelSignTx(const BinaryData &txId) = 0;
 
-   virtual bs::signer::RequestId setUserId(const BinaryData &, const std::string &walletId) = 0;
    virtual bs::signer::RequestId syncCCNames(const std::vector<std::string> &) = 0;
 
    virtual bs::signer::RequestId GetInfo(const std::string &rootWalletId) = 0;

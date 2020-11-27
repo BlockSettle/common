@@ -76,15 +76,6 @@ void hd::Wallet::synchronize(const std::function<void()> &cbDone)
          auto group = getGroup(grpData.type);
          if (!group) {
             group = createGroup(grpData.type, grpData.extOnly);
-            if (grpData.type == bs::hd::CoinType::BlockSettle_Auth &&
-               grpData.salt.getSize() == 32) {
-               auto authGroupPtr =
-                  std::dynamic_pointer_cast<hd::AuthGroup>(group);
-               if (authGroupPtr == nullptr)
-                  throw std::runtime_error("unexpected sync group type");
-
-               authGroupPtr->setUserId(grpData.salt);
-            }
          }
          if (!group) {
             LOG(logger_, error, "[hd::Wallet::synchronize] failed to create group {}", (uint32_t)grpData.type);
@@ -243,10 +234,6 @@ std::shared_ptr<hd::Group> hd::Wallet::createGroup(bs::hd::CoinType ct, bool isE
 
 void hd::Wallet::addGroup(const std::shared_ptr<hd::Group> &group)
 {
-   if (!userId_.empty()) {
-      group->setUserId(userId_);
-   }
-
    groups_[group->index()] = group;
 }
 
@@ -277,21 +264,6 @@ void hd::Wallet::walletDestroyed(const std::string &walletId)
    getLeaves();
    if (wct_) {
       wct_->walletDestroyed(walletId);
-   }
-}
-
-void hd::Wallet::setUserId(const BinaryData &userId)
-{
-   userId_ = userId;
-   std::vector<std::shared_ptr<hd::Group>> groups;
-   groups.reserve(groups_.size());
-   {
-      for (const auto &group : groups_) {
-         groups.push_back(group.second);
-      }
-   }
-   for (const auto &group : groups) {
-      group->setUserId(userId);
    }
 }
 

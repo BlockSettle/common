@@ -147,7 +147,6 @@ private:
    bool onCreateHDLeaf(const std::string &clientId, Blocksettle::Communication::headless::RequestPacket &packet);
    bool onEnableTradingInWallet(const std::string& clientId, Blocksettle::Communication::headless::RequestPacket& packet);
    bool onPromoteWalletToPrimary(const std::string& clientId, Blocksettle::Communication::headless::RequestPacket& packet);
-   bool onSetUserId(const std::string &clientId, Blocksettle::Communication::headless::RequestPacket &packet);
    bool onSyncCCNames(Blocksettle::Communication::headless::RequestPacket &packet);
    bool onGetHDWalletInfo(const std::string &clientId, Blocksettle::Communication::headless::RequestPacket &packet);
    bool onCancelSignTx(const std::string &clientId, Blocksettle::Communication::headless::RequestPacket packet);
@@ -181,8 +180,6 @@ private:
    void GetHDWalletInfoResponse(const std::string &clientId, unsigned int id, const std::string &walletId
       , const std::shared_ptr<bs::core::hd::Wallet> &, const std::string &error = {});
    void SyncAddrsResponse(const std::string &clientId, unsigned int id, const std::string &walletId, bs::sync::SyncState);
-   void setUserIdResponse(const std::string &clientId, unsigned int id
-      , Blocksettle::Communication::headless::AuthWalletResponseType, const std::string &walletId = {});
    void AutoSignActivatedEvent(bs::error::ErrorCode result, const std::string &walletId);
 
    bool RequestPasswordIfNeeded(const std::string &clientId, const std::string &walletId
@@ -197,7 +194,7 @@ private:
       , const PasswordReceivedCb &cb);
    void RunDeferredPwDialog();
 
-   bool createAuthLeaf(const std::shared_ptr<bs::core::hd::Wallet> &, const BinaryData &salt);
+   bool createAuthLeaf(const std::shared_ptr<bs::core::hd::Wallet> &);
    bool createSettlementLeaves(const std::shared_ptr<bs::core::hd::Wallet> &wallet
       , const std::vector<bs::Address> &authAddresses);
 

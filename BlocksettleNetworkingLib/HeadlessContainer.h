@@ -79,13 +79,12 @@ public:
 
    bs::signer::RequestId CancelSignTx(const BinaryData &txId) override;
 
-   bs::signer::RequestId setUserId(const BinaryData &, const std::string &walletId) override;
    bs::signer::RequestId syncCCNames(const std::vector<std::string> &) override;
 
    bool createHDLeaf(const std::string &rootWalletId, const bs::hd::Path &
       , const std::vector<bs::wallet::PasswordData>& = {}, bs::sync::PasswordDialogData dialogData = {}, const CreateHDLeafCb &cb = nullptr) override;
 
-   bool enableTradingInHDWallet(const std::string& rootWalletId, const BinaryData &userId
+   bool enableTradingInHDWallet(const std::string& rootWalletId
       , bs::sync::PasswordDialogData dialogData = {}, const UpdateWalletStructureCB& cb = nullptr) override;
 
    bool promoteWalletToPrimary(const std::string& rootWalletId
@@ -151,7 +150,6 @@ protected:
    void ProcessExtAddrChain(unsigned int id, const std::string &data);
    void ProcessSettlWalletCreate(unsigned int id, const std::string &data);
    void ProcessSetSettlementId(unsigned int id, const std::string &data);
-   void ProcessSetUserId(const std::string &data);
    void ProcessGetPayinAddr(unsigned int id, const std::string &data);
    void ProcessSettlGetRootPubkey(unsigned int id, const std::string &data);
    void ProcessAddrPreimageResponse(unsigned int id, const std::string &data);

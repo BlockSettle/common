@@ -189,27 +189,6 @@ hd::AuthGroup::AuthGroup(const std::string &name, const std::string &desc
    scanPortion_ = 5;
 }
 
-void hd::AuthGroup::setUserId(const BinaryData &userId)
-{
-   userId_ = userId;
-   for (auto &leaf : leaves_) {
-      leaf.second->setUserId(userId);
-   }
-
-   if (userId.empty() && !leaves_.empty()) {
-      const auto leaves = leaves_;
-      for (const auto &leaf : leaves) {
-         deleteLeaf(leaf.first);
-      }
-   }
-}
-
-void hd::AuthGroup::initLeaf(std::shared_ptr<hd::Leaf> &leaf, const bs::hd::Path &path) const
-{
-   hd::Group::initLeaf(leaf, path);
-   leaf->setUserId(userId_);
-}
-
 std::shared_ptr<hd::Leaf> hd::AuthGroup::newLeaf(const std::string &walletId) const
 {
    return std::make_shared<hd::AuthLeaf>(walletId, walletName_ + "/" + name_, desc_

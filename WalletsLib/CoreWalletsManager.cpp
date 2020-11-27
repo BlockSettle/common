@@ -373,29 +373,25 @@ void WalletsManager::UpdateWalletToPrimary(const HDWalletPtr& newWallet, const S
    newWallet->createChatPrivKey();
    newWallet->createGroup(bs::hd::CoinType::BlockSettle_Settlement);
 
-   if (!userId_.empty()) {
-      auto group = newWallet->createGroup(bs::hd::CoinType::BlockSettle_Auth);
-      const auto authGroup = std::dynamic_pointer_cast<bs::core::hd::AuthGroup>(group);
-      if (authGroup) {
-         authGroup->setSalt(userId_);
-         const auto authLeaf = authGroup->createLeaf(AddressEntryType_Default, 0, 10);
-         if (authLeaf) {
-            for (const auto &authAddr : authLeaf->getPooledAddressList()) {
-               try {
-                  newWallet->createSettlementLeaf(authAddr);
-                  authLeaf->getNewExtAddress();
-               }
-               catch (const std::exception &e) {
-                  logger_->error("[core::WalletsManager::UpdateWalletToPrimary] failed to create settlement leaf for {}: {}"
-                     , authAddr.display(), e.what());
-               }
+   const auto authGroup = std::dynamic_pointer_cast<bs::core::hd::AuthGroup>(newWallet->createGroup(bs::hd::CoinType::BlockSettle_Auth));
+   if (authGroup) {
+      const auto authLeaf = authGroup->createLeaf(AddressEntryType_Default, 0, 10);
+      if (authLeaf) {
+         for (const auto &authAddr : authLeaf->getPooledAddressList()) {
+            try {
+               newWallet->createSettlementLeaf(authAddr);
+               authLeaf->getNewExtAddress();
             }
-         } else {
-            logger_->error("[core::WalletsManager::UpdateWalletToPrimary] failed to create auth leaf");
+            catch (const std::exception &e) {
+               logger_->error("[core::WalletsManager::UpdateWalletToPrimary] failed to create settlement leaf for {}: {}"
+                  , authAddr.display(), e.what());
+            }
          }
       } else {
-         logger_->error("[core::WalletsManager::UpdateWalletToPrimary] invalid auth group");
+         logger_->error("[core::WalletsManager::UpdateWalletToPrimary] failed to create auth leaf");
       }
+   } else {
+      logger_->error("[core::WalletsManager::UpdateWalletToPrimary] invalid auth group");
    }
 
    auto group = newWallet->createGroup(bs::hd::CoinType::BlockSettle_CC);

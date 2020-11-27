@@ -126,8 +126,6 @@ namespace bs {
          bool deleteWallet(WalletPtr, bool deleteRemotely);
          bool deleteWallet(HDWalletPtr, bool deleteRemotely);
 
-         void setUserId(const BinaryData &userId);
-         bool isUserIdSet() const { return !userId_.empty(); }
          std::shared_ptr<CCDataResolver> ccResolver() const { return ccResolver_; }
 
          bool isArmoryReady() const;
@@ -282,7 +280,6 @@ namespace bs {
          std::set<std::string>               readyWallets_;
          bool     isReady_ = false;
          WalletPtr                           authAddressWallet_;
-         BinaryData                          userId_;
          std::set<std::string>               newWallets_;
          mutable std::unordered_map<std::string, GroupPtr>  groupsByWalletId_;
 

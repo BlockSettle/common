@@ -117,8 +117,6 @@ namespace bs {
 
             void shutdown(void) override;
             std::set<AddressEntryType> getAddressTypeSet(void) const override;
-            void setSalt(const SecureBinaryData&);
-            const SecureBinaryData& getSalt(void) const { return salt_; }
 
             std::shared_ptr<hd::Group> getCopy(
                std::shared_ptr<AssetWallet_Single>) const override;
@@ -129,8 +127,6 @@ namespace bs {
             void initLeaf(std::shared_ptr<Leaf> &, const bs::hd::Path &,
                unsigned lookup = UINT32_MAX) const override;
             void serializeLeaves(BinaryWriter &) const override;
-
-            SecureBinaryData salt_;
 
          private:
             BinaryData serialize() const override;

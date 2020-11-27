@@ -80,7 +80,6 @@ namespace bs {
 
             BTCNumericTypes::balance_type getTotalBalance() const;
 
-            void setUserId(const BinaryData &usedId);
             bool deleteRemotely();
 
             std::vector<std::string> registerWallet(
@@ -132,7 +131,6 @@ namespace bs {
             const std::string name_, desc_;
             NetworkType    netType_ = NetworkType::MainNet;
             std::map<bs::hd::Path::Elem, std::shared_ptr<Group>>        groups_;
-            BinaryData        userId_;
             WalletSignerContainer  *  signContainer_{};
             std::shared_ptr<ArmoryConnection>   armory_;
             std::shared_ptr<spdlog::logger>     logger_;

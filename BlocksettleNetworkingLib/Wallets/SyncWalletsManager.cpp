@@ -225,7 +225,6 @@ void WalletsManager::addWallet(const WalletPtr &wallet, bool isHDLeaf)
       ccLeaf->setCCDataResolver(ccResolver_);
       updateTracker(ccLeaf);
    }
-   wallet->setUserId(userId_);
 
    {
       QMutexLocker lock(&mtxWallets_);
@@ -280,9 +279,6 @@ void WalletsManager::walletReset(const std::string &walletId)
 
 void WalletsManager::saveWallet(const HDWalletPtr &wallet)
 {
-   if (!userId_.empty()) {
-      wallet->setUserId(userId_);
-   }
    const auto existingHdWallet = getHDWalletById(wallet->walletId());
 
    if (existingHdWallet) {    // merge if HD wallet already exists
@@ -393,18 +389,6 @@ bool WalletsManager::isValidCCOutpoint(const std::string &cc, const BinaryData &
       return false;
    }
    return ((value % ccResolver_->lotSizeFor(cc)) == 0);
-}
-
-void WalletsManager::setUserId(const BinaryData &userId)
-{
-   userId_ = userId;
-   for (const auto &hdWallet : hdWallets_) {
-      hdWallet->setUserId(userId);
-   }
-   auto primaryWallet = getPrimaryWallet();
-   if (signContainer_) {
-      signContainer_->setUserId(userId, primaryWallet ? primaryWallet->walletId() : "");
-   }
 }
 
 const WalletsManager::HDWalletPtr WalletsManager::getHDWalletById(const std::string& walletId) const
@@ -1692,7 +1676,7 @@ bool WalletsManager::EnableXBTTradingInWallet(const std::string& walletId
          }
       });
    };
-   return signContainer_->enableTradingInHDWallet(walletId, userId_, dialogData, enableTradingCB);
+   return signContainer_->enableTradingInHDWallet(walletId, dialogData, enableTradingCB);
 }
 
 void WalletsManager::processEnableTrading(bs::error::ErrorCode result, const std::string& walletId)
@@ -1778,11 +1762,6 @@ bool WalletsManager::createAuthLeaf(const std::function<void()> &cb)
       return false;
    }
 
-   if (userId_.empty()) {
-      logger_->error("[WalletsManager::CreateAuthLeaf] can't create auth leaf without user id");
-      return false;
-   }
-
    auto primaryWallet = getPrimaryWallet();
    if (primaryWallet == nullptr) {
       logger_->error("[WalletsManager::CreateAuthLeaf] could not create auth leaf - no primary wallet");
@@ -1791,12 +1770,11 @@ bool WalletsManager::createAuthLeaf(const std::function<void()> &cb)
 
    const bs::hd::Path authPath({ bs::hd::Purpose::Native, bs::hd::CoinType::BlockSettle_Auth, 0 });
    bs::wallet::PasswordData pwdData;
-   pwdData.salt = userId_;
+
    bs::sync::PasswordDialogData dialogData;
    dialogData.setValue(PasswordDialogData::DialogType
       , ui::getPasswordInputDialogName(ui::PasswordInputDialogType::RequestPasswordForAuthLeaf));
    dialogData.setValue(PasswordDialogData::Title, tr("Create Authentication Address Leaf"));
-   dialogData.setValue(PasswordDialogData::Product, QString::fromStdString(userId_.toHexStr()));
 
    const auto &createAuthLeafCb = [this, cb, primaryWallet, authPath]
       (bs::error::ErrorCode result, const std::string &walletId)
@@ -1812,7 +1790,7 @@ bool WalletsManager::createAuthLeaf(const std::function<void()> &cb)
          logger_->error("[WalletsManager::createAuthLeaf] no auth group exists");
          return;
       }
-      authGroup->setUserId(userId_);
+
       const auto leaf = authGroup->createLeaf(authPath, walletId);
       if (!leaf) {
          logger_->error("[WalletsManager::createAuthLeaf] failed to create auth leaf");

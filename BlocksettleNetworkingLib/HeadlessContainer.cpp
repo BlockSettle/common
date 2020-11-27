@@ -389,21 +389,6 @@ void HeadlessContainer::ProcessAutoSignActEvent(unsigned int id, const std::stri
    emit AutoSignStateChanged(static_cast<bs::error::ErrorCode>(event.errorcode()), event.rootwalletid());
 }
 
-void HeadlessContainer::ProcessSetUserId(const std::string &data)
-{
-   headless::SetUserIdResponse response;
-   if (!response.ParseFromString(data)) {
-      logger_->error("[HeadlessContainer::ProcessSetUserId] failed to parse response");
-      return;
-   }
-   if (!response.auth_wallet_id().empty() && (response.response() == headless::AWR_NoError)) {
-      emit AuthLeafAdded(response.auth_wallet_id());
-   }
-   else {   // unset auth wallet
-      emit AuthLeafAdded("");
-   }
-}
-
 bs::signer::RequestId HeadlessContainer::signTXRequest(const bs::core::wallet::TXSignRequest &txSignReq
    , SignContainer::TXSignMode mode, bool keepDuplicatedRecipients)
 {
@@ -570,29 +555,6 @@ bs::signer::RequestId HeadlessContainer::CancelSignTx(const BinaryData &txId)
    return Send(packet);
 }
 
-bs::signer::RequestId HeadlessContainer::setUserId(const BinaryData &userId, const std::string &walletId)
-{
-   if (!listener_) {
-      logger_->warn("[HeadlessContainer::SetUserId] listener not set yet");
-      return 0;
-   }
-
-   bs::sync::PasswordDialogData info;
-   info.setValue(PasswordDialogData::WalletId, QString::fromStdString(walletId));
-
-   headless::SetUserIdRequest request;
-   auto dialogData = request.mutable_passworddialogdata();
-   *dialogData = info.toProtobufMessage();
-   if (!userId.empty()) {
-      request.set_userid(userId.toBinStr());
-   }
-
-   headless::RequestPacket packet;
-   packet.set_type(headless::SetUserIdType);
-   packet.set_data(request.SerializeAsString());
-   return Send(packet);
-}
-
 bs::signer::RequestId HeadlessContainer::syncCCNames(const std::vector<std::string> &ccNames)
 {
    logger_->debug("[HeadlessContainer::syncCCNames] syncing {} CCs", ccNames.size());
@@ -647,13 +609,11 @@ bool HeadlessContainer::createHDLeaf(const std::string &rootWalletId, const bs::
    return true;
 }
 
-bool HeadlessContainer::enableTradingInHDWallet(const std::string& rootWalletId
-   , const BinaryData &userId, bs::sync::PasswordDialogData dialogData
+bool HeadlessContainer::enableTradingInHDWallet(const std::string& rootWalletId, bs::sync::PasswordDialogData dialogData
    , const WalletSignerContainer::UpdateWalletStructureCB& cb)
 {
    headless::EnableTradingInWalletRequest request;
    request.set_rootwalletid(rootWalletId);
-   request.set_user_id(userId.toBinStr());
 
    dialogData.setValue(PasswordDialogData::WalletId, QString::fromStdString(rootWalletId));
 
@@ -1663,10 +1623,6 @@ void RemoteSigner::onPacketReceived(headless::RequestPacket packet)
 
    case headless::GetHDWalletInfoRequestType:
       ProcessGetHDWalletInfoResponse(packet.id(), packet.data());
-      break;
-
-   case headless::SetUserIdType:
-      ProcessSetUserId(packet.data());
       break;
 
    case headless::AutoSignActType:

@@ -72,14 +72,13 @@ public:
 
    bs::signer::RequestId CancelSignTx(const BinaryData &tx) override { return 0; }
 
-   bs::signer::RequestId setUserId(const BinaryData &, const std::string &walletId) override;
    bs::signer::RequestId syncCCNames(const std::vector<std::string> &) override;
 
    // cb is ignored in inproc signer
    bool createHDLeaf(const std::string &rootWalletId, const bs::hd::Path &path
       , const std::vector<bs::wallet::PasswordData> &pwdData = {}
       , bs::sync::PasswordDialogData dialogData = {}, const CreateHDLeafCb &cb = nullptr) override;
-   bool enableTradingInHDWallet(const std::string &, const BinaryData &, bs::sync::PasswordDialogData = {}
+   bool enableTradingInHDWallet(const std::string &, bs::sync::PasswordDialogData = {}
       , const UpdateWalletStructureCB& = nullptr) override;
    bool promoteWalletToPrimary(const std::string& rootWalletId
       , bs::sync::PasswordDialogData dialogData = {}, const UpdateWalletStructureCB& cb = nullptr) override;

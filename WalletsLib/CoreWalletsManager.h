@@ -83,8 +83,6 @@ namespace bs {
          std::vector<std::string> ccLeaves() const { return ccLeaves_; }
          void setCCLeaves(const std::vector<std::string> &ccLeaves) { ccLeaves_ = ccLeaves; }
 
-         void setUserId(const BinaryData &userId) { userId_ = userId; }
-
       private:
          bool isWalletFile(const std::string &fileName) const;
          void saveWallet(const HDWalletPtr &);
@@ -98,7 +96,6 @@ namespace bs {
          std::unordered_set<std::string>     walletNames_;
          std::vector<std::string>            hdWalletsId_;
          std::vector<std::string>            ccLeaves_;
-         BinaryData     userId_;
       };
 
    }  //namespace core

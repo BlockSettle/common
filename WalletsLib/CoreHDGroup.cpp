@@ -435,10 +435,7 @@ void hd::AuthGroup::initLeaf(std::shared_ptr<hd::Leaf> &leaf
       pathInt.push_back(path.get(i));
    }
    //setup address account
-   if (salt_.getSize() != 32) {
-      throw AccountException("empty auth group salt");
-   }
-   auto accTypePtr = std::make_shared<AccountType_BIP32_Salted>(pathInt, salt_);
+   auto accTypePtr = std::make_shared<AccountType_BIP32>(pathInt);
 
    //account IDs and nodes
    if (!isExtOnly_) {
@@ -471,7 +468,6 @@ void hd::AuthGroup::initLeaf(std::shared_ptr<hd::Leaf> &leaf
 
    authLeafPtr->setPath(path);
    authLeafPtr->init(walletPtr_, accID);
-   authLeafPtr->setSalt(salt_);
 }
 
 std::shared_ptr<hd::Leaf> hd::AuthGroup::newLeaf(AddressEntryType) const
@@ -504,22 +500,11 @@ std::set<AddressEntryType> hd::AuthGroup::getAddressTypeSet(void) const
    return { AddressEntryType_P2WPKH };
 }
 
-void hd::AuthGroup::setSalt(const SecureBinaryData& salt)
-{
-   if (salt_.getSize() != 0)
-      throw AccountException("salt already set");
-
-   salt_ = salt;
-}
-
 BinaryData hd::AuthGroup::serialize() const
 {
    BinaryWriter bw;
 
    bw.put_uint8_t(isExtOnly_);
-
-   bw.put_var_int(salt_.getSize());
-   bw.put_BinaryData(salt_);
 
    serializeLeaves(bw);
 
@@ -532,15 +517,12 @@ void hd::AuthGroup::deserialize(BinaryDataRef value)
    index_ = bs::hd::CoinType::BlockSettle_Auth;
    isExtOnly_ = (bool)brrVal.get_uint8_t();
 
-   auto len = brrVal.get_var_int();
-   salt_ = brrVal.get_BinaryData(len);
-
    while (brrVal.getSizeRemaining() > 0) {
       auto key = brrVal.get_uint32_t();
       if (key != AUTH_LEAF_KEY) {
          throw AccountException("unexpected leaf type");
       }
-      len = brrVal.get_var_int();
+      auto len = brrVal.get_var_int();
       const auto serLeaf = brrVal.get_BinaryData(len);
       auto leafPair = hd::Leaf::deserialize(serLeaf, netType_, logger_);
 
@@ -558,7 +540,6 @@ std::shared_ptr<hd::Group> hd::AuthGroup::getCopy(
       wltPtr = walletPtr_;
    }
    auto grpCopy = std::make_shared<hd::AuthGroup>(wltPtr, netType_, logger_);
-   grpCopy->setSalt(salt_);
 
    for (auto& leafPair : leaves_)
    {

@@ -63,8 +63,6 @@ namespace bs {
             std::string name() const { return name_; }
             std::string description() const { return desc_; }
 
-            virtual void setUserId(const BinaryData &) {}
-
             void resetWCT();
          protected:
             using cb_scan_notify = std::function<void(Group *, bs::hd::Path::Elem wallet, bool isValid)>;
@@ -95,11 +93,8 @@ namespace bs {
 
             bs::core::wallet::Type type() const override { return bs::core::wallet::Type::Authentication; }
 
-            void setUserId(const BinaryData &usedId) override;
-
          protected:
             std::shared_ptr<hd::Leaf> newLeaf(const std::string &walletId) const override;
-            void initLeaf(std::shared_ptr<hd::Leaf> &, const bs::hd::Path &) const override;
 
          private:
             BinaryData  userId_;

@@ -411,11 +411,7 @@ std::pair<std::shared_ptr<hd::Leaf>, BinaryData> hd::Leaf::deserialize(
 
    case AUTH_LEAF_KEY:
    {
-      len = brr.get_var_int();
-      auto&& salt = brr.get_BinaryData(len);
-
       auto authPtr = std::make_shared<hd::AuthLeaf>(netType, logger);
-      authPtr->setSalt(salt);
       leafPtr = authPtr;
       break;
    }
@@ -738,11 +734,6 @@ hd::AuthLeaf::AuthLeaf(NetworkType netType, std::shared_ptr<spdlog::logger> logg
    : LeafNative(netType, logger, wallet::Type::Authentication)
 { }
 
-void hd::AuthLeaf::setSalt(const SecureBinaryData& salt)
-{
-   salt_ = salt;
-}
-
 BinaryData hd::AuthLeaf::serialize() const
 {
    BinaryWriter bw;
@@ -764,10 +755,6 @@ BinaryData hd::AuthLeaf::serialize() const
       bw.put_uint32_t(path_.get(i));
    }
 
-   //salt
-   bw.put_var_int(salt_.getSize());
-   bw.put_BinaryData(salt_);
-
    return bw.getData();
 }
 
@@ -778,7 +765,6 @@ std::shared_ptr<hd::Leaf> hd::AuthLeaf::getCopy(
       throw AccountException("empty wallet ptr");
 
    auto leafCopy = std::make_shared<hd::AuthLeaf>(netType_, logger_);
-   leafCopy->setSalt(salt_);
    leafCopy->setPath(path());
    leafCopy->init(wltPtr, getRootId());
 

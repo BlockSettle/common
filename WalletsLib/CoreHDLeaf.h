@@ -216,20 +216,12 @@ namespace bs {
             friend class hd::Leaf;
             friend class hd::AuthGroup;
 
-         private:
-            SecureBinaryData salt_;
-
-         private:
-            void setSalt(const SecureBinaryData& salt);
-
          public:
             AuthLeaf(NetworkType netType, std::shared_ptr<spdlog::logger> logger);
 
             std::shared_ptr<hd::Leaf> getCopy(
                std::shared_ptr<AssetWallet_Single>) const override;
             BinaryData serialize() const override;
-
-            const SecureBinaryData& getSalt(void) const { return salt_; }
          };
 
 
