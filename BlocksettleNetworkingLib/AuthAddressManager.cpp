@@ -500,9 +500,11 @@ void AuthAddressManager::SetValidationState(const bs::Address &addr, AddressVeri
          return;
       }
 
-      const auto &submittedAddresses = celerClient_->GetSubmittedAuthAddressSet();
-      if (submittedAddresses.find(addr.display()) != submittedAddresses.end()) {
-         mappedState = AuthAddressState::Submitted;
+      if (celerClient_) {
+         const auto &submittedAddresses = celerClient_->GetSubmittedAuthAddressSet();
+         if (submittedAddresses.find(addr.display()) != submittedAddresses.end()) {
+            mappedState = AuthAddressState::Submitted;
+         }
       }
    }
 
