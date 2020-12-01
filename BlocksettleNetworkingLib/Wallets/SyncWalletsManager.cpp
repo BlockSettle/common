@@ -77,7 +77,6 @@ void WalletsManager::setSignContainer(const std::shared_ptr<WalletSignerContaine
 {
    signContainer_ = container;
 
-   connect(signContainer_.get(), &WalletSignerContainer::AuthLeafAdded, this, &WalletsManager::onAuthLeafAdded);
    connect(signContainer_.get(), &WalletSignerContainer::walletsListUpdated, this, &WalletsManager::onWalletsListUpdated);
    connect(signContainer_.get(), &WalletSignerContainer::walletsStorageDecrypted, this, &WalletsManager::onWalletsListUpdated);
 }
@@ -207,19 +206,11 @@ bool WalletsManager::isReadyForTrading() const
 
 void WalletsManager::saveWallet(const WalletPtr &newWallet)
 {
-/*   if (hdDummyWallet_ == nullptr) {
-      hdDummyWallet_ = std::make_shared<hd::DummyWallet>(logger_);
-      hdWalletsId_.insert(hdDummyWallet_->walletId());
-      hdWallets_[hdDummyWallet_->walletId()] = hdDummyWallet_;
-   }*/
    addWallet(newWallet);
 }
 
 void WalletsManager::addWallet(const WalletPtr &wallet, bool isHDLeaf)
 {
-/*   if (!isHDLeaf && hdDummyWallet_)
-      hdDummyWallet_->add(wallet);
-*/
    auto ccLeaf = std::dynamic_pointer_cast<bs::sync::hd::CCLeaf>(wallet);
    if (ccLeaf) {
       ccLeaf->setCCDataResolver(ccResolver_);
@@ -598,7 +589,7 @@ void WalletsManager::eraseWallet(const WalletPtr &wallet)
    wallets_.erase(wallet->walletId());
 }
 
-bool WalletsManager::deleteWallet(WalletPtr wallet, bool deleteRemotely)
+bool WalletsManager::deleteWallet(WalletPtr wallet)
 {
    bool isHDLeaf = false;
    logger_->info("[WalletsManager::{}] - Removing wallet {} ({})...", __func__
@@ -609,9 +600,6 @@ bool WalletsManager::deleteWallet(WalletPtr wallet, bool deleteRemotely)
          for (auto group : hdWallet->getGroups()) {
             if (group->deleteLeaf(wallet)) {
                isHDLeaf = true;
-               if (deleteRemotely) {
-                  signContainer_->DeleteHDLeaf(wallet->walletId());
-               }
                eraseWallet(wallet);
                break;
             }
@@ -636,7 +624,7 @@ bool WalletsManager::deleteWallet(WalletPtr wallet, bool deleteRemotely)
    return true;
 }
 
-bool WalletsManager::deleteWallet(HDWalletPtr wallet, bool deleteRemotely)
+bool WalletsManager::deleteWallet(HDWalletPtr wallet)
 {
    const auto itHdWallet = std::find(hdWallets_.cbegin(), hdWallets_.cend(), wallet);
    if (itHdWallet == hdWallets_.end()) {
@@ -659,11 +647,6 @@ bool WalletsManager::deleteWallet(HDWalletPtr wallet, bool deleteRemotely)
    walletNames_.erase(wallet->name());
 
    bool result = true;
-   if (deleteRemotely) {
-      result = wallet->deleteRemotely();
-      logger_->info("[WalletsManager::{}] - Wallet {} ({}) removed: {}", __func__
-         , wallet->name(), wallet->walletId(), result);
-   }
 
    if (!getPrimaryWallet()) {
       authAddressWallet_.reset();
@@ -1093,57 +1076,11 @@ void WalletsManager::onWalletsListUpdated()
       }
       for (const auto &hdWalletId : hdWalletsId) {
          if (hdWallets.find(hdWalletId) == hdWallets.end()) {
-            deleteWallet(getHDWalletById(hdWalletId), false);
+            deleteWallet(getHDWalletById(hdWalletId));
          }
       }
    };
    signContainer_->syncWalletInfo(cbSyncWallets);
-}
-
-void WalletsManager::onAuthLeafAdded(const std::string &walletId)
-{
-   if (walletId.empty()) {
-      if (authAddressWallet_) {
-         logger_->debug("[WalletsManager::onAuthLeafAdded] auth wallet {} unset", authAddressWallet_->walletId());
-         deleteWallet(authAddressWallet_, false);
-      }
-      return;
-   }
-   const auto wallet = getPrimaryWallet();
-   if (!wallet) {
-      logger_->error("[WalletsManager::onAuthLeafAdded] no primary wallet loaded");
-      return;
-   }
-   auto group = wallet->getGroup(bs::hd::CoinType::BlockSettle_Auth);
-   if (!group) {
-      logger_->error("[WalletsManager::onAuthLeafAdded] no auth group in primary wallet");
-      return;
-   }
-
-   const bs::hd::Path authPath({ bs::hd::Purpose::Native, bs::hd::CoinType::BlockSettle_Auth, 0 });
-   logger_->debug("[WalletsManager::onAuthLeafAdded] creating auth leaf with id {}", walletId);
-   auto leaf = group->getLeaf(authPath);
-   if (leaf) {
-      logger_->warn("[WalletsManager::onAuthLeafAdded] auth leaf already exists");
-      group->deleteLeaf(authPath);
-   }
-   try {
-      const bs::hd::Path authPath({ static_cast<bs::hd::Path::Elem>(bs::hd::Purpose::Native)
-         , bs::hd::CoinType::BlockSettle_Auth, 0 });
-      leaf = group->createLeaf(authPath, walletId);
-   }
-   catch (const std::exception &e) {
-      logger_->error("[WalletsManager::onAuthLeafAdded] failed to create auth leaf: {}", e.what());
-      return;
-   }
-   leaf->synchronize([this, leaf] {
-      logger_->debug("[WalletsManager::onAuthLeafAdded sync cb] Synchronized auth leaf has {} address[es]", leaf->getUsedAddressCount());
-      addWallet(leaf, true);
-      authAddressWallet_ = leaf;
-      QMetaObject::invokeMethod(this, [this, walletId=leaf->walletId()] {
-         emit walletChanged(walletId);
-      });
-   });
 }
 
 void WalletsManager::adoptNewWallet(const HDWalletPtr &wallet)
@@ -1753,62 +1690,6 @@ void WalletsManager::checkTrackerUpdate(const std::string &cc)
          break;
       }
    }
-}
-
-bool WalletsManager::createAuthLeaf(const std::function<void()> &cb)
-{
-   if (getAuthWallet() != nullptr) {
-      logger_->error("[WalletsManager::CreateAuthLeaf] auth leaf already exists");
-      return false;
-   }
-
-   auto primaryWallet = getPrimaryWallet();
-   if (primaryWallet == nullptr) {
-      logger_->error("[WalletsManager::CreateAuthLeaf] could not create auth leaf - no primary wallet");
-      return false;
-   }
-
-   const bs::hd::Path authPath({ bs::hd::Purpose::Native, bs::hd::CoinType::BlockSettle_Auth, 0 });
-   bs::wallet::PasswordData pwdData;
-
-   bs::sync::PasswordDialogData dialogData;
-   dialogData.setValue(PasswordDialogData::DialogType
-      , ui::getPasswordInputDialogName(ui::PasswordInputDialogType::RequestPasswordForAuthLeaf));
-   dialogData.setValue(PasswordDialogData::Title, tr("Create Authentication Address Leaf"));
-
-   const auto &createAuthLeafCb = [this, cb, primaryWallet, authPath]
-      (bs::error::ErrorCode result, const std::string &walletId)
-   {
-      if (result != bs::error::ErrorCode::NoError) {
-         logger_->error("[WalletsManager::createAuthLeaf] auth leaf creation failure: {}"
-            , (int)result);
-         return;
-      }
-      const auto group = primaryWallet->getGroup(bs::hd::CoinType::BlockSettle_Auth);
-      const auto authGroup = std::dynamic_pointer_cast<bs::sync::hd::AuthGroup>(group);
-      if (!authGroup) {
-         logger_->error("[WalletsManager::createAuthLeaf] no auth group exists");
-         return;
-      }
-
-      const auto leaf = authGroup->createLeaf(authPath, walletId);
-      if (!leaf) {
-         logger_->error("[WalletsManager::createAuthLeaf] failed to create auth leaf");
-         return;
-      }
-      leaf->synchronize([this, cb, leaf] {
-         authAddressWallet_ = leaf;
-         addWallet(leaf, true);
-         emit AuthLeafCreated();
-         emit authWalletChanged();
-         emit walletChanged(leaf->walletId());
-         if (cb) {
-            cb();
-         }
-      });
-   };
-   return signContainer_->createHDLeaf(primaryWallet->walletId(), authPath, { pwdData }
-      , dialogData, createAuthLeafCb);
 }
 
 std::shared_ptr<bs::sync::hd::SettlementLeaf> WalletsManager::getSettlementLeaf(const bs::Address &addr) const

@@ -1173,10 +1173,10 @@ bool HeadlessContainerListener::createAuthLeaf(const std::shared_ptr<bs::core::h
          }
          return createSettlementLeaves(wallet, leaf->getUsedAddressList());
       } else {
-         logger_->error("[HeadlessContainerListener::onSetUserId] failed to create auth leaf");
+         logger_->error("[HeadlessContainerListener::createAuthLeaf] failed to create auth leaf");
       }
    } catch (const std::exception &e) {
-      logger_->error("[HeadlessContainerListener::onSetUserId] failed to create auth leaf: {}", e.what());
+      logger_->error("[HeadlessContainerListener::createAuthLeaf] failed to create auth leaf: {}", e.what());
    }
    return false;
 }

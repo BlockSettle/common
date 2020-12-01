@@ -13,14 +13,6 @@
 
 #include "AuthAddress.h"
 
-#include <atomic>
-#include <memory>
-#include <set>
-#include <unordered_set>
-#include <vector>
-#include <QObject>
-#include <QThreadPool>
-
 #include "ArmoryConnection.h"
 #include "AutheIDClient.h"
 #include "BSErrorCode.h"
@@ -29,6 +21,15 @@
 #include "WalletEncryption.h"
 
 #include "bs_communication.pb.h"
+
+#include <atomic>
+#include <memory>
+#include <set>
+#include <unordered_set>
+#include <vector>
+
+#include <QObject>
+#include <QThreadPool>
 
 namespace spdlog {
    class logger;
@@ -44,11 +45,12 @@ namespace bs {
    }
    struct TradeSettings;
 }
+
 class AddressVerificator;
 class ApplicationSettings;
 class ArmoryConnection;
-class BsClient;
 class BaseCelerClient;
+class BsClient;
 class RequestReplyCommand;
 class ResolverFeed_AuthAddress;
 class SignContainer;

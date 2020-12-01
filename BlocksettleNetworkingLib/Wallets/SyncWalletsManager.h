@@ -105,7 +105,6 @@ namespace bs {
             , const std::function<void(bs::error::ErrorCode result)> &cb = nullptr);
          bool CreateCCLeaf(const std::string &cc
             , const std::function<void(bs::error::ErrorCode result)> &cb = nullptr);
-         bool createAuthLeaf(const std::function<void()> &);
 
          WalletPtr getCCWallet(const std::string &cc);
          bool isValidCCOutpoint(const std::string &cc, const BinaryData &txHash
@@ -122,9 +121,12 @@ namespace bs {
          bool walletNameExists(const std::string &walletName) const;
          bool isWatchingOnly(const std::string &walletId) const;
 
+      private:
          // Do not use references here (could crash when underlying pointers are cleared)
-         bool deleteWallet(WalletPtr, bool deleteRemotely);
-         bool deleteWallet(HDWalletPtr, bool deleteRemotely);
+         bool deleteWallet(WalletPtr);
+         bool deleteWallet(HDWalletPtr);
+
+      public:
 
          std::shared_ptr<CCDataResolver> ccResolver() const { return ccResolver_; }
 
@@ -215,7 +217,6 @@ namespace bs {
 
       private slots:
          void onWalletsListUpdated();
-         void onAuthLeafAdded(const std::string &walletId);
 
       private:
          void addressAdded(const std::string &) override;
@@ -273,7 +274,6 @@ namespace bs {
          using hd_wallet_container_type = std::vector<HDWalletPtr>;
 
          hd_wallet_container_type            hdWallets_;
-//         std::shared_ptr<hd::DummyWallet>    hdDummyWallet_;
          std::unordered_set<std::string>     walletNames_;
          wallet_container_type               wallets_;
          mutable QMutex                      mtxWallets_;

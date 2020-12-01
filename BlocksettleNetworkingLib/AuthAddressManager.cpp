@@ -9,9 +9,7 @@
 
 */
 #include "AuthAddressManager.h"
-#include <spdlog/spdlog.h>
-#include <memory>
-#include <QtConcurrent/QtConcurrentRun>
+
 #include "AddressVerificator.h"
 #include "ApplicationSettings.h"
 #include "ArmoryConnection.h"
@@ -25,8 +23,13 @@
 #include "Wallets/SyncHDWallet.h"
 #include "Wallets/SyncWalletsManager.h"
 
-using namespace Blocksettle::Communication;
+#include <spdlog/spdlog.h>
 
+#include <memory>
+
+#include <QtConcurrent/QtConcurrentRun>
+
+using namespace Blocksettle::Communication;
 
 AuthAddressManager::AuthAddressManager(const std::shared_ptr<spdlog::logger> &logger
    , const std::shared_ptr<ArmoryConnection> &armory)
@@ -184,7 +187,8 @@ bool AuthAddressManager::CreateNewAuthAddress()
       cbCreateAddress();
    }
    else {
-      return walletsManager_->createAuthLeaf(cbCreateAddress);
+      // this should not be asked if there is no primary wallet
+      return false;
    }
    return true;
 }

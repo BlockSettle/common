@@ -75,7 +75,6 @@ public:
       , bs::sync::PasswordDialogData dialogData = {}, const UpdateWalletStructureCB& cb = nullptr) = 0;
 
 signals:
-   void AuthLeafAdded(const std::string &walletId);
    // Notified from remote/local signer when wallets list is updated
    void walletsListUpdated();
    void walletsStorageDecrypted();
