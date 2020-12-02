@@ -370,11 +370,6 @@ bool hd::Wallet::isPrimary() const
    return getGroup(bs::hd::CoinType::BlockSettle_Settlement) != nullptr;
 }
 
-bool hd::Wallet::tradingEnabled() const
-{
-   return getGroup(bs::hd::CoinType::BlockSettle_Auth) != nullptr;
-}
-
 std::vector<bs::wallet::EncryptionType> hd::Wallet::encryptionTypes() const
 {
    return encryptionTypes_;

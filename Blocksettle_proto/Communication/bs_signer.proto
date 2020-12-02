@@ -76,7 +76,6 @@ enum PasswordDialogType
    CreateAuthLeaf             = 4;
    CreateHDLeaf               = 5;
    CreateSettlementLeaf       = 6;
-   EnableTrading              = 7;
    RevokeAuthAddress	         = 8;
    PromoteToPrimary           = 9;
 }

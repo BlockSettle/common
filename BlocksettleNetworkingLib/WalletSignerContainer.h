@@ -68,9 +68,6 @@ public:
 
    using UpdateWalletStructureCB = std::function<void(bs::error::ErrorCode, const std::string &leafWalletId)>;
 
-   virtual bool enableTradingInHDWallet(const std::string& rootWalletId
-      , bs::sync::PasswordDialogData dialogData = {}, const UpdateWalletStructureCB& cb = nullptr) = 0;
-
    virtual bool promoteWalletToPrimary(const std::string& rootWalletId
       , bs::sync::PasswordDialogData dialogData = {}, const UpdateWalletStructureCB& cb = nullptr) = 0;
 

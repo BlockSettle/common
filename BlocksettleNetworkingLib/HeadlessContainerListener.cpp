@@ -193,9 +193,6 @@ bool HeadlessContainerListener::onRequestPacket(const std::string &clientId, hea
    case headless::CreateHDLeafRequestType:
       return onCreateHDLeaf(clientId, packet);
 
-   case headless::EnableTradingInWalletType:
-      return onEnableTradingInWallet(clientId, packet);
-
    case headless::PromoteWalletToPrimaryType:
       return onPromoteWalletToPrimary(clientId, packet);
 
@@ -956,9 +953,6 @@ bool HeadlessContainerListener::RequestPassword(const std::string &rootId, const
          case headless::SignAuthAddrRevokeType:
             callbacks_->decryptWalletRequest(signer::PasswordDialogType::RevokeAuthAddress, dlgData, txReq);
             break;
-         case headless::EnableTradingInWalletType:
-            callbacks_->decryptWalletRequest(signer::PasswordDialogType::EnableTrading, dlgData);
-            break;
          case headless::PromoteWalletToPrimaryType:
             callbacks_->decryptWalletRequest(signer::PasswordDialogType::PromoteToPrimary, dlgData);
             break;
@@ -1181,67 +1175,6 @@ bool HeadlessContainerListener::createAuthLeaf(const std::shared_ptr<bs::core::h
    return false;
 }
 
-bool HeadlessContainerListener::onEnableTradingInWallet(const std::string& clientId, headless::RequestPacket& packet)
-{
-   headless::EnableTradingInWalletRequest request;
-   if (!request.ParseFromString(packet.data())) {
-      logger_->error("[HeadlessContainerListener::onEnableTradingInWallet] failed to parse EnableTradingInWalletRequest");
-      return false;
-   }
-
-   const std::string &walletId = request.rootwalletid();
-   const auto hdWallet = walletsMgr_->getHDWalletById(walletId);
-   if (!hdWallet) {
-      logger_->error("[HeadlessContainerListener::onEnableTradingInWallet] failed to find root HD wallet by id {}", walletId);
-      CreateEnableTradingResponse(clientId, packet.id(), ErrorCode::WalletNotFound, walletId);
-      return false;
-   }
-
-   const auto onPassword = [this, hdWallet, walletId, clientId, id = packet.id(), userId=request.user_id()]
-      (bs::error::ErrorCode result, const SecureBinaryData &pass)
-   {
-      std::shared_ptr<bs::core::hd::Node> leafNode;
-      if (result != ErrorCode::NoError) {
-         logger_->error("[HeadlessContainerListener::onEnableTradingInWallet] no password for encrypted wallet");
-         CreateEnableTradingResponse(clientId, id, result, walletId);
-         return;
-      }
-
-      auto group = hdWallet->getGroup(bs::hd::BlockSettle_Auth);
-      if (!group) {
-         group = hdWallet->createGroup(bs::hd::BlockSettle_Auth);
-      }
-
-      const bs::core::WalletPasswordScoped lock(hdWallet, pass);
-      if (!createAuthLeaf(hdWallet)) {
-         logger_->error("[HeadlessContainerListener::onEnableTradingInWallet] failed to create auth leaf");
-      }
-
-      if (!walletsMgr_->ccLeaves().empty()) {
-         logger_->debug("[HeadlessContainerListener::onEnableTradingInWallet] creating {} CC leaves"
-            , walletsMgr_->ccLeaves().size());
-         group = hdWallet->createGroup(bs::hd::BlockSettle_CC);
-         if (group) {
-            for (const auto &cc : walletsMgr_->ccLeaves()) {
-               try {
-                  group->createLeaf(AddressEntryType_P2WPKH, cc);
-               }  // existing leaf creation failure is ignored
-               catch (...) {}
-            }
-         }
-         else {
-            logger_->error("[HeadlessContainerListener::onEnableTradingInWallet] failed to create CC group");
-         }
-      }
-      CreateEnableTradingResponse(clientId, id, ErrorCode::NoError, walletId);
-      walletsListUpdated();
-   };
-
-   RequestPasswordIfNeeded(clientId, request.rootwalletid(), {}, headless::EnableTradingInWalletType
-      , request.passworddialogdata(), onPassword);
-   return true;
-}
-
 bool HeadlessContainerListener::onPromoteWalletToPrimary(const std::string& clientId, Blocksettle::Communication::headless::RequestPacket& packet)
 {
    headless::PromoteWalletToPrimaryRequest request;
@@ -1310,23 +1243,6 @@ void HeadlessContainerListener::CreateHDLeafResponse(const std::string &clientId
    }
 }
 
-void HeadlessContainerListener::CreateEnableTradingResponse(const std::string& clientId, unsigned int id
-   , ErrorCode result, const std::string& walletId)
-{
-   headless::EnableTradingInWalletResponse response;
-   response.set_rootwalletid(walletId);
-   response.set_errorcode(static_cast<uint32_t>(result));
-
-   headless::RequestPacket packet;
-   packet.set_id(id);
-   packet.set_type(headless::EnableTradingInWalletType);
-   packet.set_data(response.SerializeAsString());
-
-   if (!sendData(packet.SerializeAsString(), clientId)) {
-      logger_->error("[HeadlessContainerListener::CreateEnableTradingResponse] failed to send response EnableTradingInWallet packet");
-   }
-}
-
 void HeadlessContainerListener::CreatePromoteWalletResponse(const std::string& clientId, unsigned int id
    , ErrorCode result, const std::string& walletId)
 {
@@ -1336,11 +1252,11 @@ void HeadlessContainerListener::CreatePromoteWalletResponse(const std::string& c
 
    headless::RequestPacket packet;
    packet.set_id(id);
-   packet.set_type(headless::EnableTradingInWalletType);
+   packet.set_type(headless::PromoteWalletToPrimaryType);
    packet.set_data(response.SerializeAsString());
 
    if (!sendData(packet.SerializeAsString(), clientId)) {
-      logger_->error("[HeadlessContainerListener::CreatePromoteWalletResponse] failed to send response EnableTradingInWallet packet");
+      logger_->error("[HeadlessContainerListener::CreatePromoteWalletResponse] failed to send response PromoteWalletToPrimaryResponse packet");
    }
 }
 

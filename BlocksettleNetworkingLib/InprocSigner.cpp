@@ -248,12 +248,6 @@ bool InprocSigner::createHDLeaf(const std::string &rootWalletId, const bs::hd::P
    return false;
 }
 
-bool InprocSigner::enableTradingInHDWallet(const std::string &
-   , bs::sync::PasswordDialogData , const WalletSignerContainer::UpdateWalletStructureCB &)
-{
-   throw std::bad_function_call();
-}
-
 bool InprocSigner::promoteWalletToPrimary(const std::string&
       , bs::sync::PasswordDialogData, const UpdateWalletStructureCB&)
 {

@@ -285,44 +285,6 @@ void HeadlessContainer::ProcessCreateHDLeafResponse(unsigned int id, const std::
    }
 }
 
-void HeadlessContainer::ProcessEnableTradingInWalletResponse(unsigned int id, const std::string& data)
-{
-   headless::EnableTradingInWalletResponse response;
-
-   auto it = cbUpdateWalletMap_.find(id);
-   WalletSignerContainer::UpdateWalletStructureCB cb = nullptr;
-
-   if (it != cbUpdateWalletMap_.end()) {
-      cb = it->second;
-      cbUpdateWalletMap_.erase(it);
-   } else {
-      logger_->debug("[HeadlessContainer::ProcessEnableTradingInWalletResponse] no CB for promote HD Wallet response");
-   }
-
-   if (!response.ParseFromString(data)) {
-      logger_->error("[HeadlessContainer::ProcessEnableTradingInWalletResponse] Failed to parse EnableXBTTradingCb reply");
-
-      if (cb) {
-         cb(bs::error::ErrorCode::FailedToParse, {});
-      }
-
-      return;
-   }
-
-   bs::error::ErrorCode result = static_cast<bs::error::ErrorCode>(response.errorcode());
-
-   if (result == bs::error::ErrorCode::NoError) {
-      logger_->debug("[HeadlessContainer::ProcessEnableTradingInWalletResponse] HDWallet {} updated", response.rootwalletid());
-   } else {
-      logger_->error("[HeadlessContainer::ProcessEnableTradingInWalletResponse] failed to update: {}"
-                     , response.errorcode());
-   }
-
-   if (cb) {
-      cb(result, response.rootwalletid());
-   }
-}
-
 void HeadlessContainer::ProcessPromoteWalletResponse(unsigned int id, const std::string &data)
 {
    headless::PromoteWalletToPrimaryResponse response;
@@ -606,34 +568,6 @@ bool HeadlessContainer::createHDLeaf(const std::string &rootWalletId, const bs::
       logger_->warn("[HeadlessContainer::createHDLeaf] cb not set for leaf creation {}"
                      , path.toString());
    }
-   return true;
-}
-
-bool HeadlessContainer::enableTradingInHDWallet(const std::string& rootWalletId, bs::sync::PasswordDialogData dialogData
-   , const WalletSignerContainer::UpdateWalletStructureCB& cb)
-{
-   headless::EnableTradingInWalletRequest request;
-   request.set_rootwalletid(rootWalletId);
-
-   dialogData.setValue(PasswordDialogData::WalletId, QString::fromStdString(rootWalletId));
-
-   auto requestDialogData = request.mutable_passworddialogdata();
-   *requestDialogData = dialogData.toProtobufMessage();
-
-   headless::RequestPacket packet;
-   packet.set_type(headless::EnableTradingInWalletType);
-   packet.set_data(request.SerializeAsString());
-   auto requestId = Send(packet);
-
-   if (requestId == 0) {
-      logger_->error("[HeadlessContainer::enableTradingInHDWallet] failed to send request");
-      return false;
-   }
-
-   if (cb) {
-      cbUpdateWalletMap_.emplace(requestId, cb);
-   }
-
    return true;
 }
 
@@ -1611,10 +1545,6 @@ void RemoteSigner::onPacketReceived(headless::RequestPacket packet)
 
    case headless::CreateHDLeafRequestType:
       ProcessCreateHDLeafResponse(packet.id(), packet.data());
-      break;
-
-   case headless::EnableTradingInWalletType:
-      ProcessEnableTradingInWalletResponse(packet.id(), packet.data());
       break;
 
    case headless::PromoteWalletToPrimaryType:

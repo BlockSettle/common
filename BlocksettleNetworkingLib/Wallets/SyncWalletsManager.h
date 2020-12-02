@@ -101,8 +101,6 @@ namespace bs {
 
          bool PromoteWalletToPrimary(const std::string& walletId);
 
-         bool EnableXBTTradingInWallet(const std::string& walletId
-            , const std::function<void(bs::error::ErrorCode result)> &cb = nullptr);
          bool CreateCCLeaf(const std::string &cc
             , const std::function<void(bs::error::ErrorCode result)> &cb = nullptr);
 
@@ -257,7 +255,6 @@ namespace bs {
          void processCreatedCCLeaf(const std::string &cc, bs::error::ErrorCode result
             , const std::string &walletId);
 
-         void processEnableTrading(bs::error::ErrorCode result, const std::string& walletId);
          void processPromoteWallet(bs::error::ErrorCode result, const std::string& walletId);
 
          void startTracker(const std::string &cc);

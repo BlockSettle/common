@@ -43,7 +43,6 @@ enum RequestType
    SyncCCNamesType               = 28;
    GetSettlPayinAddrType         = 29;
    SettlGetRootPubkeyType        = 30;
-   EnableTradingInWalletType     = 31;
    UpdateDialogDataType          = 32; // update fields in password input dialogs in signer ui
    ChatNodeRequestType           = 34;
    UpdateStatusType              = 35; // sent to terminal with latest status update
@@ -268,19 +267,6 @@ message CreateHDLeafResponse
 {
    uint32    errorCode   = 1;
    HDLeafWO  leaf        = 2;
-}
-
-message EnableTradingInWalletRequest
-{
-   string   rootWalletId = 1;
-   bytes    user_id = 2;
-   Blocksettle.Communication.Internal.PasswordDialogData passwordDialogData = 3;
-}
-
-message EnableTradingInWalletResponse
-{
-   uint32    errorCode   = 1;
-   string    rootWalletId = 2;
 }
 
 message PromoteWalletToPrimaryRequest

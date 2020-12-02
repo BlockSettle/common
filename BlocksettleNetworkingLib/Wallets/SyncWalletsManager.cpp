@@ -1589,43 +1589,6 @@ void WalletsManager::processPromoteWallet(bs::error::ErrorCode result, const std
    }
 }
 
-bool WalletsManager::EnableXBTTradingInWallet(const std::string& walletId
-   , const std::function<void(bs::error::ErrorCode result)> &cb)
-{
-   bs::sync::PasswordDialogData dialogData;
-   dialogData.setValue(PasswordDialogData::Title, tr("Enable Trading"));
-   dialogData.setValue(PasswordDialogData::XBT, tr("Authentification Addresses"));
-
-   const auto& enableTradingCB = [this, cb](bs::error::ErrorCode result
-      , const std::string &walletId) {
-      const auto wallet = getHDWalletById(walletId);
-      if (!wallet) {
-         logger_->error("[WalletsManager::EnableXBTTradingInWallet] failed to find wallet {}", walletId);
-         if (cb) {
-            cb(bs::error::ErrorCode::WalletNotFound);
-         }
-         return;
-      }
-      wallet->synchronize([this, cb, result, walletId] {
-         processEnableTrading(result, walletId);
-         if (cb) {
-            cb(result);
-         }
-      });
-   };
-   return signContainer_->enableTradingInHDWallet(walletId, dialogData, enableTradingCB);
-}
-
-void WalletsManager::processEnableTrading(bs::error::ErrorCode result, const std::string& walletId)
-{
-   if (result == bs::error::ErrorCode::NoError) {
-      emit walletChanged(walletId);
-   } else {
-      logger_->error("[WalletsManager::processEnableTrading] Wallet {} promotion failed: {}"
-                     , walletId, static_cast<int>(result));
-   }
-}
-
 void WalletsManager::startTracker(const std::string &cc)
 {
    std::unique_ptr<ColoredCoinTrackerInterface> trackerSnapshots;

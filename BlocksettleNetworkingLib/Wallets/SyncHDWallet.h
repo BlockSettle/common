@@ -54,7 +54,6 @@ namespace bs {
             std::vector<BinaryData> encryptionKeys() const;
             bs::wallet::KeyRank encryptionRank() const { return encryptionRank_; }
             bool isPrimary() const;
-            bool tradingEnabled() const;
             bool isOffline() const { return isOffline_; }
             bool isHardwareWallet() const; // WO wallet could be signed with hw device
             bool isHardwareOfflineWallet() const; // WO wallet couldn't be signed with hw device

@@ -622,8 +622,6 @@ QString AutheIDClient::getAutheIDClientRequestText(RequestType requestType)
       return tr("Create authentication leaf");
    case CreateSettlementLeaf:
       return tr("Create settlement leaf");
-   case EnableTrading:
-      return tr("Enable Trading");
    case PromoteWallet:
       return tr("Promote Wallet");
    case EnableAutoSign:

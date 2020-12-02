@@ -145,7 +145,6 @@ private:
    bool onSignAuthAddrRevokeRequest(const std::string &clientId, const Blocksettle::Communication::headless::RequestPacket &);
    bool onResolvePubSpenders(const std::string &clientId, const Blocksettle::Communication::headless::RequestPacket &packet);
    bool onCreateHDLeaf(const std::string &clientId, Blocksettle::Communication::headless::RequestPacket &packet);
-   bool onEnableTradingInWallet(const std::string& clientId, Blocksettle::Communication::headless::RequestPacket& packet);
    bool onPromoteWalletToPrimary(const std::string& clientId, Blocksettle::Communication::headless::RequestPacket& packet);
    bool onSyncCCNames(Blocksettle::Communication::headless::RequestPacket &packet);
    bool onGetHDWalletInfo(const std::string &clientId, Blocksettle::Communication::headless::RequestPacket &packet);
@@ -173,8 +172,6 @@ private:
       , bs::error::ErrorCode errorCode, const BinaryData &tx = {});
    void CreateHDLeafResponse(const std::string &clientId, unsigned int id, bs::error::ErrorCode result
       , const std::shared_ptr<bs::core::hd::Leaf>& leaf = nullptr);
-   void CreateEnableTradingResponse(const std::string& clientId, unsigned int id, bs::error::ErrorCode result,
-                                const std::string& walletId);
    void CreatePromoteWalletResponse(const std::string& clientId, unsigned int id, bs::error::ErrorCode result,
                                 const std::string& walletId);
    void GetHDWalletInfoResponse(const std::string &clientId, unsigned int id, const std::string &walletId

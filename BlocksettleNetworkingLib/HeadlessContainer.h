@@ -84,9 +84,6 @@ public:
    bool createHDLeaf(const std::string &rootWalletId, const bs::hd::Path &
       , const std::vector<bs::wallet::PasswordData>& = {}, bs::sync::PasswordDialogData dialogData = {}, const CreateHDLeafCb &cb = nullptr) override;
 
-   bool enableTradingInHDWallet(const std::string& rootWalletId
-      , bs::sync::PasswordDialogData dialogData = {}, const UpdateWalletStructureCB& cb = nullptr) override;
-
    bool promoteWalletToPrimary(const std::string& rootWalletId
       , bs::sync::PasswordDialogData dialogData = {}, const UpdateWalletStructureCB& cb = nullptr) override;
 
@@ -139,7 +136,6 @@ protected:
    void ProcessSettlementSignTXResponse(unsigned int id, const std::string &data);
    void ProcessPubResolveResponse(unsigned int id, const std::string &data);
    void ProcessCreateHDLeafResponse(unsigned int id, const std::string &data);
-   void ProcessEnableTradingInWalletResponse(unsigned int id, const std::string& data);
    void ProcessPromoteWalletResponse(unsigned int id, const std::string& data);
    void ProcessGetHDWalletInfoResponse(unsigned int id, const std::string &data);
    void ProcessAutoSignActEvent(unsigned int id, const std::string &data);
