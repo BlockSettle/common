@@ -150,9 +150,12 @@ int SslServerConnection::callback(lws *wsi, int reason, void *user, void *in, si
       }
       case LWS_CALLBACK_EVENT_WAIT_CANCELLED: {
          std::queue<WsServerDataToSend> packets;
+         std::queue<std::string> forceClosingClients;
          {  std::lock_guard<std::recursive_mutex> lock(mutex_);
             std::swap(packets, packets_);
+            std::swap(forceClosingClients, forceClosingClients_);
          }
+
          while (!packets.empty()) {
             auto data = std::move(packets.front());
             packets.pop();
@@ -175,6 +178,21 @@ int SslServerConnection::callback(lws *wsi, int reason, void *user, void *in, si
             client.packets.push(std::move(data.packet));
             lws_callback_on_writable(client.wsi);
          }
+
+         while (!forceClosingClients.empty()) {
+            auto clientId = std::move(forceClosingClients.front());
+            forceClosingClients.pop();
+
+            auto clientIt = clients_.find(clientId);
+            if (clientIt != clients_.end()) {
+               SPDLOG_LOGGER_DEBUG(logger_, "force close client {}", bs::toHex(clientId));
+               auto clientWsi = clientIt->second.wsi;
+               assert(clientWsi);
+               lws_close_reason(clientWsi, LWS_CLOSE_STATUS_PROTOCOL_ERR, nullptr, 0);
+               lws_set_timeout(clientWsi, PENDING_TIMEOUT_USER_OK, LWS_TO_KILL_SYNC);
+            }
+         }
+
          break;
       }
 
@@ -256,6 +274,11 @@ int SslServerConnection::callback(lws *wsi, int reason, void *user, void *in, si
    return 0;
 }
 
+bool SslServerConnection::isActive() const
+{
+   return listenThread_.joinable();
+}
+
 std::string SslServerConnection::nextClientId()
 {
    nextClientId_ += 1;
@@ -276,6 +299,17 @@ bool SslServerConnection::SendDataToClient(const std::string &clientId, const st
 bool SslServerConnection::SendDataToAllClients(const std::string &data)
 {
    return SendDataToClient(kAllClientsId, data);
+}
+
+bool SslServerConnection::closeClient(const std::string &clientId)
+{
+   if (!isActive()) {
+      return false;
+   }
+   std::lock_guard<std::recursive_mutex> lock(mutex_);
+   forceClosingClients_.push(clientId);
+   lws_cancel_service(context_);
+   return true;
 }
 
 int SslServerConnection::callbackHelper(lws *wsi, int reason, void *user, void *in, size_t len)
