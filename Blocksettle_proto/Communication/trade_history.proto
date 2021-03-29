@@ -14,9 +14,11 @@ package Blocksettle.Communication.TradeHistory;
 
 enum TradeHistoryTradeType
 {
-   FXTradeType    = 0;
-   XBTTradeType   = 1;
-   PMTradeType    = 2;
+   FXTradeType                = 0;
+   XBTTradeType               = 1;
+   PMTradeType                = 2;
+   OneDayDeliverableTradeType = 3;
+   OneDayCashSettledTradeType = 4;
 }
 
 enum TradeHistoryRequestType
@@ -54,6 +56,8 @@ enum TradeHistoryResponseType
    EODSavedUpdateType                           = 10;
    // EODSnapshotResponseType - payload is EODSnapshotResponse
    EODSnapshotResponseType                      = 11;
+   LoadFuturesPriceBookResponseType             = 12;
+   PriceBookUpdateType                          = 13;
 }
 
 message TradeHistoryRequest
@@ -109,6 +113,16 @@ message PMTradeRecord
 {
    double   price       = 1;
    uint64   amount      = 2;
+   string   product     = 3;
+   bool     is_sell     = 4;
+   uint64   timestamp   = 5;
+   string   trade_id    = 6;
+}
+
+message OnedayTradeRecord
+{
+   double   price       = 1;
+   uint64   xbt_amount  = 2;
    string   product     = 3;
    bool     is_sell     = 4;
    uint64   timestamp   = 5;
@@ -186,9 +200,11 @@ message EODPrice
 
 message EODSnapshot
 {
-   repeated EODPrice fx_prices      = 3;
-   repeated EODPrice xbt_prices     = 4;
-   repeated EODPrice pm_prices      = 5;
+   repeated EODPrice fx_prices            = 3;
+   repeated EODPrice xbt_prices           = 4;
+   repeated EODPrice pm_prices            = 5;
+   repeated EODPrice cash_settled_prices  = 6;
+   repeated EODPrice deliverable_prices   = 7;
 }
 
 message LoadEODPricesResponse
@@ -215,4 +231,24 @@ message EODSnapshotResponse
    DateContainer           since_date     = 1;
    repeated EODSavedUpdate eod            = 2;
    string                  debug_message  = 3;
+}
+
+enum PriceBookType
+{
+   CashSettlePriceBook  = 0;
+   DeliverablePriceBook = 1;
+}
+
+message PriceBookUpdate
+{
+   message Entry
+   {
+      string volume  = 1;
+      double bid     = 2;
+      double ask     = 3;
+   }
+
+   string         product_name   = 1;
+   PriceBookType  book_type      = 2;
+   repeated Entry prices         = 3;
 }

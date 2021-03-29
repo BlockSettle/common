@@ -34,7 +34,9 @@ enum CLIRequestType
    SetConfigType                    = 22;
    MigrateUserIds                   = 23;
    BroadcastBSAuthRevokeTX          = 24;
-   SyncGenoaUsers                   = 25;
+   BSDeliveryTransactionType        = 25;
+   SyncGenoaUsers                   = 26;
+   UsersImInfoType                  = 27;
 }
 
 enum ArmoryConnectionState
@@ -171,10 +173,11 @@ message AuthVerificationRejectReponse
 
 message GetRequestsStatResopnse
 {
-   required uint32 submit_auth_count = 1;
-   required uint32 revoke_auth_count = 2;
-   required uint32 generate_cc_seed_count = 4;
-   required uint32 cc_initial_distribution_count = 5;
+   required uint32 submit_auth_count               = 1;
+   required uint32 revoke_auth_count               = 2;
+   required uint32 generate_cc_seed_count          = 4;
+   required uint32 cc_initial_distribution_count   = 5;
+   required uint32 delivery_tx_count               = 6;
 }
 
 message ProductStatistics

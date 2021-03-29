@@ -108,6 +108,7 @@ public:
       FxRfqLimit,
       XbtRfqLimit,
       PmRfqLimit,
+      FuturesLimit,
       DisableBlueDotOnTabOfRfqBlotter,
       PriceUpdateInterval,
       ShowQuoted,

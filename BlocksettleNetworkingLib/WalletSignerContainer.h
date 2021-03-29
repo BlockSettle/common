@@ -49,12 +49,14 @@ public:
    virtual void createSettlementWallet(const bs::Address &authAddr
       , const std::function<void(const SecureBinaryData &)> &) = 0;
    virtual void setSettlementID(const std::string &walletId, const SecureBinaryData &id
-      , const std::function<void(bool)> &) = 0;
+      , const std::function<void(bool, const SecureBinaryData&)> &) = 0;
    virtual void getSettlementPayinAddress(const std::string &walletID
       , const bs::core::wallet::SettlementData &
       , const std::function<void(bool, bs::Address)> &) = 0;
    virtual void getRootPubkey(const std::string &walletID
       , const std::function<void(bool, const SecureBinaryData &)> &) = 0;
+   virtual void getAddressPubkey(const std::string& walletID, const std::string& address
+      , const std::function<void(const SecureBinaryData&)>&) = 0;
 
    virtual void getChatNode(const std::string &walletID
       , const std::function<void(const BIP32_Node &)> &) = 0;

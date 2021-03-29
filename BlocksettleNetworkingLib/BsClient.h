@@ -22,7 +22,7 @@
 #include <spdlog/logger.h>
 
 #include "Address.h"
-
+#include "AuthAddress.h"
 #include "autheid_utils.h"
 #include "AutheIDClient.h"
 #include "BSErrorCode.h"
@@ -32,6 +32,9 @@
 #include "DataConnectionListener.h"
 #include "TradeSettings.h"
 #include "ValidityFlag.h"
+
+#include "bs_proxy_terminal.pb.h"
+#include "bs_proxy_terminal_pb.pb.h"
 
 template<typename T> class FutureValue;
 
@@ -49,18 +52,19 @@ namespace Blocksettle {
          class Response_UpdateBalance;
          class Response_UpdateFeeRate;
          class Response_UserStatusUpdated;
+         class Response_WhitelistAddrs;
       }
    }
 }
 
-namespace Blocksettle {
+/*namespace Blocksettle {
    namespace Communication {
       namespace ProxyTerminalPb {
          class Request;
          class Response;
       }
    }
-}
+}*/
 
 namespace bs {
    namespace network {
@@ -102,7 +106,6 @@ struct BsClientCallbackTarget
    virtual void onGetLoginResultDone(const BsClientLoginResult&) {}
 
    virtual void onCelerRecv(CelerAPI::CelerMessageType messageType, const std::string& data) {}
-   // Register Blocksettle::Communication::ProxyTerminalPb::Response with qRegisterMetaType() if queued connection is needed
    virtual void onProcessPbMessage(const Blocksettle::Communication::ProxyTerminalPb::Response& message) {}
 
    virtual void Connected() {}
@@ -115,9 +118,12 @@ struct BsClientCallbackTarget
    virtual void onFeeRateReceived(float feeRate) {}
    virtual void onBalanceLoaded() {}
    virtual void onBalanceUpdated(const std::string& currency, double balance) {}
+   virtual void onAddrWhitelisted(const std::map<bs::Address, AddressVerificationState>&) {}
 
    virtual void onTradingStatusChanged(bool tradingEnabled) {}
 };
+Q_DECLARE_METATYPE(BsClientCallbackTarget::AuthorizeError)
+Q_DECLARE_METATYPE(Blocksettle::Communication::ProxyTerminalPb::Response)
 
 class BsClient : public DataConnectionListener
 {
@@ -172,7 +178,10 @@ public:
 
    void cancelActiveSign();
 
-   virtual void sendUnsignedPayin(const std::string& settlementId, const bs::network::UnsignedPayinData& unsignedPayinData);
+   void setFuturesDeliveryAddr(const std::string &addr);
+   virtual void sendFutureRequest(const bs::network::FutureRequest& details);
+
+   virtual void sendUnsignedPayin(const std::string& settlementId, const bs::network::UnsignedPayinData&);
    virtual void sendSignedPayin(const std::string& settlementId, const BinaryData& signedPayin);
    virtual void sendSignedPayout(const std::string& settlementId, const BinaryData& signedPayout);
 
@@ -180,6 +189,7 @@ public:
    virtual void sendCancelOnCCTrade(const std::string& clOrdId);
 
    virtual void findEmailHash(const std::string& email);
+   virtual void whitelistAddress(const std::string& addrStr);
 
    static std::chrono::seconds autheidLoginTimeout();
    static std::chrono::seconds autheidAuthAddressTimeout();
@@ -260,6 +270,7 @@ public slots:
    void sendCancelOnXBTTrade(const std::string& settlementId) override { BsClient::sendCancelOnXBTTrade(settlementId); }
    void sendCancelOnCCTrade(const std::string& clOrdId) override { BsClient::sendCancelOnCCTrade(clOrdId); }
    void findEmailHash(const std::string& email) override { BsClient::findEmailHash(email); }
+   void sendFutureRequest(const bs::network::FutureRequest& details) override { BsClient::sendFutureRequest(details); }
 
 signals:
    void startLoginDone(bool success, const std::string &errorMsg);

@@ -71,8 +71,10 @@ CelerMessage SubmitRFQSequence::submitRFQ()
 
    leg->set_settlementdate(QDate::currentDate().toString(Qt::ISODate).toStdString());
 
-   if (rfq_.assetType == bs::network::Asset::PrivateMarket) {
+   if (!rfq_.receiptAddress.empty()) {
       request.set_receiptaddress(rfq_.receiptAddress);
+   }
+   if (rfq_.assetType == bs::network::Asset::PrivateMarket) {
       group->set_cointransactioninput(rfq_.coinTxInput);
    }
 

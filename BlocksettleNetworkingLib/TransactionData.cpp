@@ -850,9 +850,10 @@ bs::core::wallet::TXSignRequest TransactionData::createTXRequest(bool isRBF
                break;
             }
          }
-         if (!changeAddrFound) {
-            SPDLOG_LOGGER_ERROR(logger_, "can't find change address index");
-            return {};
+         if (!changeAddrFound) { // shouldn't return if change address is not from our wallet
+            if (logger_) {
+               SPDLOG_LOGGER_ERROR(logger_, "can't find change address index");
+            }
          }
       }
 

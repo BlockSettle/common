@@ -118,7 +118,7 @@ private:
    std::shared_ptr<CelerClientQt>   celerClient_;
    std::unordered_map<std::string, bs::network::RFQ>   submittedRFQs_;
 
-   std::unordered_map<std::string, std::string> quoteIdMap_;
+   std::unordered_map<std::string, std::string>                      quoteIdMap_;
    std::unordered_map<std::string, std::unordered_set<std::string>>  quoteIds_;
 
    // key - quoteRequestId

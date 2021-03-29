@@ -64,17 +64,18 @@ namespace bs {
          , const BinaryData &buyAuthKey, const BinaryData &sellAuthKey);
 
       static PayoutSignatureType whichSignature(const Tx &tx
-         , uint64_t value
-         , const bs::Address &settlAddr
+         , uint64_t value, const bs::Address &settlAddr
          , const BinaryData &buyAuthKey, const BinaryData &sellAuthKey
-         , std::string *errorMsg = nullptr, const BinaryData& payinHash = {});
+         , std::string *errorMsg = nullptr, const BinaryData& payinHash = {}
+         , const UTXO &utxo = {});
 
       static std::shared_ptr<Result> verifyUnsignedPayin(const Codec_SignerState::SignerState &unsignedPayin
          , float feePerByte, const std::string &settlementAddress, uint64_t tradeAmount);
 
       static std::shared_ptr<Result> verifySignedPayout(const BinaryData &signedPayout
          , const std::string &buyAuthKeyHex, const std::string &sellAuthKeyHex,  const BinaryData &payinHash
-         , uint64_t tradeAmount, float feePerByte, const std::string &settlementId, const std::string &settlementAddress);
+         , uint64_t tradeAmount, float feePerByte, const std::string &settlementId
+         , const std::string& settlementAddress, const UTXO& utxo = {});
 
       static std::shared_ptr<Result> verifySignedPayin(const BinaryData &signedPayin
          , const BinaryData &payinHash, const std::vector<UTXO> &origUtxos);

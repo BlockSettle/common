@@ -1310,7 +1310,7 @@ bool WalletsAdapter::processCreateExtAddress(const bs::message::Envelope& env
 {
    auto wallet = getWalletById(walletId);
    if (!wallet) {
-      const auto& hdWallet = getHDWalletById(walletId);
+      const auto& hdWallet = walletId.empty() ? getPrimaryWallet() : getHDWalletById(walletId);
       if (!hdWallet) {
          logger_->error("[{}] failed to find wallet {}", __func__, walletId);
          sendAddresses(env, walletId, {});
@@ -1999,25 +1999,37 @@ bool WalletsAdapter::processAuthKey(const bs::message::Envelope& env
       cbPubKey({});
       return true;
    }
-   const auto &group = priWallet->getGroup(bs::hd::BlockSettle_Settlement);
-   std::shared_ptr<bs::sync::hd::SettlementLeaf> settlLeaf;
-   if (group) {
-      const auto settlGroup = std::dynamic_pointer_cast<bs::sync::hd::SettlementGroup>(group);
-      if (!settlGroup) {
-         logger_->error("[WalletsAdapter::processAuthKey] wrong settlement group type");
-         return true;
+   const auto& addrWallet = getWalletByAddress(authAddr);
+   if (addrWallet->type() == bs::core::wallet::Type::Authentication) {
+      const auto& group = priWallet->getGroup(bs::hd::BlockSettle_Settlement);
+      std::shared_ptr<bs::sync::hd::SettlementLeaf> settlLeaf;
+      if (group) {
+         const auto settlGroup = std::dynamic_pointer_cast<bs::sync::hd::SettlementGroup>(group);
+         if (!settlGroup) {
+            logger_->error("[WalletsAdapter::processAuthKey] wrong settlement group type");
+            return true;
+         }
+         settlLeaf = settlGroup->getLeaf(authAddr);
       }
-      settlLeaf = settlGroup->getLeaf(authAddr);
+      if (settlLeaf) {
+         settlLeaf->getRootPubkey(cbPubKey);
+      } else {
+         const auto& cbWrap = [this, priWallet, cbPubKey](const SecureBinaryData& pubKey)
+         {
+            cbPubKey(pubKey);
+            priWallet->synchronize([] {});
+         };
+         signerClient_->createSettlementWallet(authAddr, cbWrap);
+      }
    }
-   if (settlLeaf) {
-      settlLeaf->getRootPubkey(cbPubKey);
-   } else {
-      const auto& cbWrap = [this, priWallet, cbPubKey](const SecureBinaryData& pubKey)
-      {
-         cbPubKey(pubKey);
-         priWallet->synchronize([] {});
-      };
-      signerClient_->createSettlementWallet(authAddr, cbWrap);
+   else if (addrWallet->type() == bs::core::wallet::Type::Bitcoin) { // easy settlement auth address
+      signerClient_->getAddressPubkey(addrWallet->walletId(), address, cbPubKey);
+   }
+   else {
+      logger_->error("[WalletsAdapter::processAuthKey] invalid wallet type {} "
+         "for auth address {}", (int)addrWallet->type(), address);
+      cbPubKey({});
+      return true;
    }
    return true;
 }
@@ -2220,12 +2232,6 @@ bool WalletsAdapter::processPayin(const bs::message::Envelope& env
       sendResponse({}, {}, "no primary wallet");
       return true;
    }
-   const auto group = std::dynamic_pointer_cast<bs::sync::hd::SettlementGroup>(
-      priWallet->getGroup(bs::hd::BlockSettle_Settlement));
-   if (!group) {
-      sendResponse({}, {}, "no settlement group in primary wallet");
-      return true;
-   }
    bs::Address ownAuthAddr;
    try {
       ownAuthAddr = bs::Address::fromAddressString(request.own_auth_address());
@@ -2234,150 +2240,189 @@ bool WalletsAdapter::processPayin(const bs::message::Envelope& env
       sendResponse({}, {}, "invalid own auth address");
       return true;
    }
-   const auto &settlLeaf = group->getLeaf(ownAuthAddr);
+   const auto& settlementId = SecureBinaryData::fromString(request.settlement_id());
+   const auto &group = std::dynamic_pointer_cast<bs::sync::hd::SettlementGroup>(
+      priWallet->getGroup(bs::hd::BlockSettle_Settlement));
+   std::shared_ptr<bs::sync::hd::SettlementLeaf> settlLeaf;
+   if (group) {
+      settlLeaf = group->getLeaf(ownAuthAddr);
+   }
+
+   const auto &cbSettlAddr = [this, sendResponse, inputs, request, walletIds]
+      (const bs::Address& settlAddr)
+   {
+      if (settlAddr.empty()) {
+         sendResponse({}, {}, "invalid settlement address");
+         return;
+      }
+      auto utxos = bs::Address::decorateUTXOsCopy(inputs);
+      std::map<unsigned, std::vector<std::shared_ptr<ArmorySigner::ScriptRecipient>>> recipientsMap;
+      std::vector<std::shared_ptr<ArmorySigner::ScriptRecipient>> recVec({
+         settlAddr.getRecipient(bs::XBTAmount{request.amount()}) });
+      recipientsMap.emplace(0, recVec);
+      const auto& payment = PaymentStruct(recipientsMap, 0, settlementFee_, 0);
+      const auto& coinSelection = CoinSelection(nullptr, {}, request.amount(), topBlock_);
+      uint64_t utxoAmount = 0;
+      for (const auto& utxo : utxos) {
+         utxoAmount += utxo.getValue();
+      }
+      logger_->debug("[WalletsAdapter::processPayin] UTXOs have {} for amount {}"
+         , utxoAmount, request.amount());
+
+      try { // since we always use reservation, all supplied inputs should be used
+         UtxoSelection selection;
+         selection = UtxoSelection(utxos);
+         selection.fee_byte_ = settlementFee_;
+         selection.computeSizeAndFee(payment);
+         auto selectedInputs = selection.utxoVec_;
+         auto fee = selection.fee_;
+         bool needChange = true;
+
+         uint64_t inputAmount = 0;
+         for (const auto& utxo : selectedInputs) {
+            inputAmount += utxo.getValue();
+         }
+         const int64_t changeAmount = inputAmount - request.amount() - fee;
+         if (changeAmount < 0) {
+            throw std::runtime_error("negative change amount");
+         }
+         if (changeAmount <= bs::Address::getNativeSegwitDustAmount()) {
+            needChange = false;
+            fee += changeAmount;
+         }
+
+         std::vector<std::shared_ptr<bs::sync::Wallet>> inputXbtWallets;
+         for (const auto& walletId : walletIds) {
+            const auto& wallet = getWalletById(walletId);
+            if (wallet) {
+               inputXbtWallets.push_back(wallet);
+            } else {
+               const auto& hdWallet = getHDWalletById(walletId);
+               if (!hdWallet) {
+                  logger_->warn("[WalletsAdapter::processPayin] failed to find "
+                     "wallet {}", walletId);
+                  sendResponse({}, {}, "invalid input wallets");
+                  return;
+               }
+               const auto& xbtGroup = hdWallet->getGroup(hdWallet->getXBTGroupType());
+               const auto& xbtLeaves = xbtGroup->getAllLeaves();
+               inputXbtWallets.insert(inputXbtWallets.cend(), xbtLeaves.cbegin()
+                  , xbtLeaves.cend());
+            }
+         }
+         const auto& xbtWallet = inputXbtWallets[0];
+
+         const auto& changeCb = [this, sendResponse, selectedInputs, fee
+            , settlAddr, recVec, inputXbtWallets, xbtWallet]
+            (const bs::Address& changeAddr)
+         {
+            auto txReq = std::make_shared<bs::core::wallet::TXSignRequest>(
+               bs::sync::wallet::createTXRequest(inputXbtWallets, selectedInputs
+                  , recVec, false, changeAddr, fee, false));
+
+            const auto& cbResolvePubData = [this, settlAddr, sendResponse, txReq
+               , xbtWallet, changeAddr]
+               (bs::error::ErrorCode errCode, const Codec_SignerState::SignerState& state)
+            {
+               try {
+                  txReq->armorySigner_.merge(state);
+                  if (!changeAddr.empty()) {
+                     xbtWallet->setAddressComment(changeAddr
+                        , bs::sync::wallet::Comment::toString(bs::sync::wallet::Comment::ChangeAddress));
+                  }
+               } catch (const std::exception& e) {
+                  sendResponse(settlAddr, {}, "signer merge failed");
+                  return;
+               }
+
+               const auto& cbTXs = [sendResponse, txReq, settlAddr]
+               (const std::vector<Tx>& txs)
+               {
+                  for (const auto& tx : txs) {
+                     txReq->armorySigner_.addSupportingTx(tx);
+                  }
+                  if (!txReq->isValid()) {
+                     sendResponse(settlAddr, {}, "invalid pay-in transaction");
+                     return;
+                  }
+                  sendResponse(settlAddr, *txReq);
+               };
+               ArmoryMessage msg;
+               auto msgReq = msg.mutable_get_txs_by_hash();
+               for (unsigned i = 0; i < txReq->armorySigner_.getTxInCount(); i++) {
+                  auto spender = txReq->armorySigner_.getSpender(i);
+                  msgReq->add_tx_hashes(spender->getOutputHash().toBinStr());
+               }
+               Envelope envReq{ 0, ownUser_, blockchainUser_, {}, {}
+                  , msg.SerializeAsString(), true };
+               if (pushFill(envReq)) {
+                  payinTXsCbMap_[envReq.id] = cbTXs;
+               }
+            };
+            //resolve in all circumstances
+            signerClient_->resolvePublicSpenders(*txReq, cbResolvePubData);
+         };
+
+         if (needChange) {
+            xbtWallet->getNewIntAddress(changeCb);
+         } else {
+            changeCb({});
+         }
+      } catch (const std::exception& e) {
+         sendResponse(settlAddr, {}, fmt::format("internal error: {}", e.what()));
+         return;
+      }
+   };
+#if 0 //old settlement code
+   if (!group) {
+      sendResponse({}, {}, "no settlement group in primary wallet");
+      return true;
+   }
    if (!settlLeaf) {
       sendResponse({}, {}, fmt::format("no settlement leaf for address {}"
          , ownAuthAddr.display()));
       return true;
    }
-   const auto& settlementId = SecureBinaryData::fromString(request.settlement_id());
-   settlLeaf->setSettlementID(settlementId
-      , [this, sendResponse, priWallet, request, settlementId, inputs, walletIds](bool result) {
+   settlLeaf->setSettlementID(settlementId, [this, cbSettlAddr](bool result)
+   {
       if (!result) {
          sendResponse({}, {}, "failed to set settlement id");
          return;
       }
-      auto cbSettlAddr = [this, sendResponse, inputs, request, walletIds]
-         (const bs::Address& settlAddr)
-      {
-         if (settlAddr.empty()) {
-            sendResponse({}, {}, "invalid settlement address");
-            return;
-         }
-         auto utxos = bs::Address::decorateUTXOsCopy(inputs);
-         std::map<unsigned, std::vector<std::shared_ptr<ArmorySigner::ScriptRecipient>>> recipientsMap;
-         std::vector<std::shared_ptr<ArmorySigner::ScriptRecipient>> recVec({
-            settlAddr.getRecipient(bs::XBTAmount{request.amount()}) });
-         recipientsMap.emplace(0, recVec);
-         const auto &payment = PaymentStruct(recipientsMap, 0, settlementFee_, 0);
-         const auto& coinSelection = CoinSelection(nullptr, {}, request.amount(), topBlock_);
-         uint64_t utxoAmount = 0;
-         for (const auto& utxo : utxos) {
-            utxoAmount += utxo.getValue();
-         }
-         logger_->debug("[WalletsAdapter::processPayin] UTXOs have {} for amount {}"
-            , utxoAmount, request.amount());
-
-         try { // since we always use reservation, all supplied inputs should be used
-            UtxoSelection selection;
-            selection = UtxoSelection(utxos);
-            selection.fee_byte_ = settlementFee_;
-            selection.computeSizeAndFee(payment);
-            auto selectedInputs = selection.utxoVec_;
-            auto fee = selection.fee_;
-            bool needChange = true;
-
-            uint64_t inputAmount = 0;
-            for (const auto& utxo : selectedInputs) {
-               inputAmount += utxo.getValue();
-            }
-            const int64_t changeAmount = inputAmount - request.amount() - fee;
-            if (changeAmount < 0) {
-               throw std::runtime_error("negative change amount");
-            }
-            if (changeAmount <= bs::Address::getNativeSegwitDustAmount()) {
-               needChange = false;
-               fee += changeAmount;
-            }
-
-            std::vector<std::shared_ptr<bs::sync::Wallet>> inputXbtWallets;
-            for (const auto& walletId : walletIds) {
-               const auto& wallet = getWalletById(walletId);
-               if (wallet) {
-                  inputXbtWallets.push_back(wallet);
-               }
-               else {
-                  const auto& hdWallet = getHDWalletById(walletId);
-                  if (!hdWallet) {
-                     logger_->warn("[WalletsAdapter::processPayin] failed to find "
-                        "wallet {}", walletId);
-                     sendResponse({}, {}, "invalid input wallets");
-                     return;
-                  }
-                  const auto& xbtGroup = hdWallet->getGroup(hdWallet->getXBTGroupType());
-                  const auto& xbtLeaves = xbtGroup->getAllLeaves();
-                  inputXbtWallets.insert(inputXbtWallets.cend(), xbtLeaves.cbegin()
-                     , xbtLeaves.cend());
-               }
-            }
-            const auto& xbtWallet = inputXbtWallets[0];
-
-            const auto& changeCb = [this, sendResponse, selectedInputs, fee
-               , settlAddr, recVec, inputXbtWallets, xbtWallet]
-               (const bs::Address& changeAddr)
-            {
-               auto txReq = std::make_shared<bs::core::wallet::TXSignRequest>(
-                  bs::sync::wallet::createTXRequest(inputXbtWallets, selectedInputs
-                     , recVec, false, changeAddr, fee, false));
-
-               const auto& cbResolvePubData = [this, settlAddr, sendResponse, txReq
-                  , xbtWallet, changeAddr]
-                  (bs::error::ErrorCode errCode, const Codec_SignerState::SignerState& state)
-               {
-                  try {
-                     txReq->armorySigner_.merge(state);
-                     if (!changeAddr.empty()) {
-                        xbtWallet->setAddressComment(changeAddr
-                           , bs::sync::wallet::Comment::toString(bs::sync::wallet::Comment::ChangeAddress));
-                     }
-                  } catch (const std::exception& e) {
-                     sendResponse(settlAddr, {}, "signer merge failed");
-                     return;
-                  }
-
-                  const auto &cbTXs = [sendResponse, txReq, settlAddr]
-                     (const std::vector<Tx> &txs)
-                  {
-                     for (const auto& tx : txs) {
-                        txReq->armorySigner_.addSupportingTx(tx);
-                     }
-                     if (!txReq->isValid()) {
-                        sendResponse(settlAddr, {}, "invalid pay-in transaction");
-                        return;
-                     }
-                     sendResponse(settlAddr, *txReq);
-                  };
-                  ArmoryMessage msg;
-                  auto msgReq = msg.mutable_get_txs_by_hash();
-                  for (unsigned i = 0; i < txReq->armorySigner_.getTxInCount(); i++) {
-                     auto spender = txReq->armorySigner_.getSpender(i);
-                     msgReq->add_tx_hashes(spender->getOutputHash().toBinStr());
-                  }
-                  Envelope envReq{ 0, ownUser_, blockchainUser_, {}, {}
-                     , msg.SerializeAsString(), true };
-                  if (pushFill(envReq)) {
-                     payinTXsCbMap_[envReq.id] = cbTXs;
-                  }
-               };
-               //resolve in all circumstances
-               signerClient_->resolvePublicSpenders(*txReq, cbResolvePubData);
-            };
-
-            if (needChange) {
-               xbtWallet->getNewIntAddress(changeCb);
-            } else {
-               changeCb({});
-            }
-         } catch (const std::exception& e) {
-            sendResponse(settlAddr, {}, fmt::format("internal error: {}", e.what()));
-            return;
-         }
-      };
       const auto& counterPubKey = SecureBinaryData::fromString(request.counter_auth_pubkey());
       const bool myKeyFirst = false;
       priWallet->getSettlementPayinAddress(settlementId, counterPubKey, cbSettlAddr
          , myKeyFirst);
    });
+#endif   //0
+   const auto& counterPubKey = SecureBinaryData::fromString(request.counter_auth_pubkey());
+   if (settlLeaf) {  // we're dealer
+      settlLeaf->setSettlementID(settlementId, [sendResponse, cbSettlAddr, counterPubKey]
+         (bool result, const SecureBinaryData& pubKey)
+      {
+         if (!result) {
+            sendResponse({}, {}, "failed to set settlement id");
+            return;
+         }
+         cbSettlAddr(bs::tradeutils::createEasySettlAddress(counterPubKey, pubKey));
+      });
+   }
+   else {
+      const auto& wallet = getWalletByAddress(ownAuthAddr);
+      if (!wallet) {
+         sendResponse({}, {}, "unknown auth address wallet");
+         return true;
+      }
+      signerClient_->getAddressPubkey(wallet->walletId(), request.own_auth_address()
+         , [sendResponse, cbSettlAddr, counterPubKey](const SecureBinaryData& pubKey)
+      {
+         if (pubKey.empty()) {
+            sendResponse({}, {}, "no pubkey for auth address");
+            return;
+         }
+         cbSettlAddr(bs::tradeutils::createEasySettlAddress(counterPubKey, pubKey));
+      });
+   }
    return true;
 }
 
@@ -2472,30 +2517,86 @@ bool WalletsAdapter::processPayout(const bs::message::Envelope& env
       return true;
    }
 
-   settlLeaf->setSettlementID(settlementId
-      , [this, sendResponse, priWallet, request, settlementId, recvAddr](bool result) {
+#if 0 // old settlement code
+   const auto& cbSettlAddr = [this, sendResponse, request, recvAddr]
+      (const bs::Address& settlAddr)
+   {
+      if (settlAddr.empty()) {
+         sendResponse({}, {}, "invalid settlement address");
+         return;
+      }
+
+      const auto& payinTxHash = BinaryData::fromString(request.payin_hash());
+      auto payinUTXO = bs::tradeutils::getInputFromTX(settlAddr, payinTxHash
+         , 0, bs::XBTAmount{ request.amount() });
+
+      const auto& txReq = bs::tradeutils::createPayoutTXRequest(
+         payinUTXO, recvAddr, settlementFee_, topBlock_);
+      sendResponse(settlAddr, txReq);
+   };
+   settlLeaf->setSettlementID(settlementId, [sendResponse, cbSettlAddr, priWallet
+      , request, settlementId](bool result, const SecureBinaryData&)
+   {
       if (!result) {
          sendResponse({}, {}, "failed to set settlement id");
          return;
       }
-      const auto &cbSettlAddr = [this, sendResponse, request, recvAddr]
-         (const bs::Address& settlAddr)
-      {
-         if (settlAddr.empty()) {
-            sendResponse({}, {}, "invalid settlement address");
-            return;
-         }
-
-         const auto& payinTxHash = BinaryData::fromString(request.payin_hash());
-         auto payinUTXO = bs::tradeutils::getInputFromTX(settlAddr, payinTxHash
-            , 0, bs::XBTAmount{ request.amount() });
-
-         const auto &txReq = bs::tradeutils::createPayoutTXRequest(
-            payinUTXO, recvAddr, settlementFee_, topBlock_);
-         sendResponse(settlAddr, txReq);
-      };
       const auto& cpAuthPubKey = BinaryData::fromString(request.counter_auth_pubkey());
       priWallet->getSettlementPayinAddress(settlementId, cpAuthPubKey, cbSettlAddr);
    });
+#endif   //0
+
+   const auto& counterPubKey = SecureBinaryData::fromString(request.counter_auth_pubkey());
+   const auto& createPayout = [this, sendResponse, request, recvAddr]
+      (const bs::Address& settlAddr, SecureBinaryData ownPubKey
+         , const std::shared_ptr<bs::sync::Wallet>& authWallet = {})
+   {
+      if (settlAddr.empty()) {
+         sendResponse({}, {}, "invalid settlement address");
+         return;
+      }
+      const auto& payinTxHash = BinaryData::fromString(request.payin_hash());
+      const auto& asset = std::make_shared<AssetEntry_Single>(0, BinaryData(), ownPubKey, nullptr);
+      const auto& addrSingle = std::make_shared<AddressEntry_P2WPKH>(asset);
+      const auto& addrP2shSingle = std::make_shared<AddressEntry_P2SH>(addrSingle);
+      const auto& payoutUtxo = UTXO(request.amount(), UINT32_MAX, UINT32_MAX, 0
+         , payinTxHash, addrP2shSingle->getPreimage());
+
+      auto txReq = bs::tradeutils::createPayoutTXRequest(
+         payoutUtxo, recvAddr, settlementFee_, topBlock_);
+      if (authWallet) {
+         txReq.walletIds = { authWallet->walletId() };
+      }
+      sendResponse(settlAddr, txReq);
+   };
+
+   if (settlLeaf) {  // we're dealer
+      settlLeaf->setSettlementID(settlementId, [sendResponse, createPayout, counterPubKey]
+      (bool result, const SecureBinaryData& pubKey)
+      {
+         if (!result) {
+            sendResponse({}, {}, "failed to set settlement id");
+            return;
+         }
+         createPayout(bs::tradeutils::createEasySettlAddress(counterPubKey, pubKey), pubKey);
+      });
+   } else {
+      const auto& wallet = getWalletByAddress(ownAuthAddr);
+      if (!wallet) {
+         sendResponse({}, {}, "unknown auth address wallet");
+         return true;
+      }
+      signerClient_->getAddressPubkey(wallet->walletId(), request.own_auth_address()
+         , [sendResponse, createPayout, counterPubKey, wallet]
+         (const SecureBinaryData& pubKey)
+      {
+         if (pubKey.empty()) {
+            sendResponse({}, {}, "no pubkey for auth address");
+            return;
+         }
+         createPayout(bs::tradeutils::createEasySettlAddress(counterPubKey, pubKey)
+            , pubKey, wallet);
+      });
+   }
    return true;
 }

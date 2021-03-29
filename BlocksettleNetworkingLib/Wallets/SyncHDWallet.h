@@ -83,7 +83,7 @@ namespace bs {
             void setUserId(const BinaryData &usedId);
             bool deleteRemotely();
 
-            [[deprecated]] std::vector<std::string> registerWallet(
+            std::vector<std::string> registerWallet(
                const std::shared_ptr<ArmoryConnection> &, bool asNew = false);
             [[deprecated]] std::vector<std::string> setUnconfirmedTargets(void);
 

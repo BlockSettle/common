@@ -282,7 +282,7 @@ namespace bs {
             ~SettlementLeaf() override;
 
             void getRootPubkey(const std::function<void(const SecureBinaryData &)> &) const;
-            void setSettlementID(const SecureBinaryData &, const std::function<void(bool)> &);
+            void setSettlementID(const SecureBinaryData &, const std::function<void(bool, const SecureBinaryData&)> &);
 
             [[deprecated]] std::vector<std::string> registerWallet(const std::shared_ptr<ArmoryConnection> &armory = nullptr
                , bool asNew = false) override

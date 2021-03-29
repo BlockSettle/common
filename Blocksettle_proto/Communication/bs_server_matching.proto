@@ -13,6 +13,7 @@ syntax = "proto3";
 package Blocksettle.Server.Matching;
 
 import "bs_server.proto";
+import "bs_types.proto";
 
 message XbtMatchedRequest
 {
@@ -174,6 +175,68 @@ message UserPropertiesSet
    repeated UserProperty properties = 3;
 }
 
+message RFSMarketOrder
+{
+   string entity_name                 = 1;
+   // XBT/EUR
+   uint64         xbt_amount          = 2;
+   bs.types.Side  side                = 3;
+
+   double         user_expected_price = 4;
+   int32          type                = 5;
+   bool           max_amount          = 6;
+}
+
+message RFSMarketOrderResponse
+{
+   string entity_name            = 1;
+   // XBT/EUR
+   uint64         xbt_amount     = 2;
+   bs.types.Side  side           = 3;
+   double         order_price    = 4;
+   bool           matched        = 5;
+   string         error_message  = 6;
+   string         product        = 7;
+}
+
+message EstimateImRequest
+{
+   string entity_name = 1;
+   string product = 2;
+   double qty = 3;
+   bs.types.Side side = 4;
+   double price = 5;
+}
+
+message EstimateImResponse
+{
+   EstimateImRequest request = 1;
+   bool   success = 2;
+   double im_balance = 3;
+   string error_text = 4;
+}
+
+message UsersImInfo
+{
+   message InfoIM {
+      message PerProduct {
+         int32  product_type = 1;
+         double net_exposure = 2;
+         double leverage_ratio = 3;
+      }
+      string account_name = 1;
+      repeated PerProduct per_product = 2;
+      double im_balance = 3;
+      double balance = 4;
+   }
+   repeated InfoIM im_info = 1;
+   repeated string connected_users = 2;
+   repeated string lp_streaming_users = 3;
+   double open_interest_buy = 4;
+   double open_interest_sell = 5;
+}
+
+
 message MatchingMessage
 {
    oneof data {
@@ -197,5 +260,16 @@ message MatchingMessage
       CCTradeResponse            cc_trade_response = 26;
       CCCancelRequest            cc_cancel = 27;
       UserPropertiesSet          user_prop_set = 30;
+   }
+}
+
+message MatchingMarketMessage
+{
+   oneof data {
+      RFSMarketOrder             rfs_market_order = 1;
+      RFSMarketOrderResponse     rfs_market_order_response = 2;
+      EstimateImRequest          estimate_im_request = 3;
+      EstimateImResponse         estimate_im_response = 4;
+      UsersImInfo                users_im_info = 5;
    }
 }

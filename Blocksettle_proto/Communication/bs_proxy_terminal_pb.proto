@@ -19,13 +19,13 @@ import "bs_types.proto";
 
 enum OtcState
 {
-    OTC_STATE_UNKNOWN = 0;
-    OTC_STATE_FAILED = 1;
-    OTC_STATE_WAIT_BUYER_SIGN = 2;
-    OTC_STATE_WAIT_SELLER_SEAL = 3;
-    OTC_STATE_WAIT_SELLER_SIGN = 4;
-    OTC_STATE_CANCELLED = 5;
-    OTC_STATE_SUCCEED = 6;
+   OTC_STATE_UNKNOWN = 0;
+   OTC_STATE_FAILED = 1;
+   OTC_STATE_WAIT_BUYER_SIGN = 2;
+   OTC_STATE_WAIT_SELLER_SEAL = 3;
+   OTC_STATE_WAIT_SELLER_SIGN = 4;
+   OTC_STATE_CANCELLED = 5;
+   OTC_STATE_SUCCEED = 6;
 }
 
 message Request
@@ -104,20 +104,35 @@ message Request
         string client_order_id = 1;
     }
 
-    oneof data
+    message FutureRequest
     {
-        StartOtc              start_otc            = 1;
-        VerifyOtc             verify_otc           = 2;
-        SealPayinValidity     seal_payin_validity  = 3;
-        ProcessTx             process_tx           = 4;
-        Cancel                cancel               = 5;
-
-        XBTUnsignedPayin      unsigned_payin       = 31;
-        XBTSignedPayin        signed_payin         = 32;
-        XBTSignedPayout       signed_payout        = 33;
-        XBTCancelTrade        xbt_cancel           = 34;
-        CCCancelTrade         cc_cancel            = 35;
+        bs.types.Side   side     = 1;
+        double          price    = 2;
+        uint64          amount   = 3;
+        int32           type     = 4;
     }
+
+    message DeliveryAddress
+    {
+        string          addr     = 1;
+    }
+
+   oneof data
+   {
+      StartOtc             start_otc            = 1;
+      VerifyOtc            verify_otc           = 2;
+      SealPayinValidity    seal_payin_validity  = 3;
+      ProcessTx            process_tx           = 4;
+      Cancel               cancel               = 5;
+      DeliveryAddress      delivery_address     = 7;
+
+      XBTUnsignedPayin     unsigned_payin       = 31;
+      XBTSignedPayin       signed_payin         = 32;
+      XBTSignedPayout      signed_payout        = 33;
+      XBTCancelTrade       xbt_cancel           = 34;
+      CCCancelTrade        cc_cancel            = 35;
+      FutureRequest        future_request       = 36;
+   }
 }
 
 message Response
@@ -160,22 +175,70 @@ message Response
         int64   timestamp_ms        = 4;
     }
 
-    // Blotter
+   message DeliveryObligationsRequest
+   {
+      enum Status
+      {
+          INVALID = 0;
+          PENDING = 1;
+          DELIVERED = 2;
+      }
+      string   id                   = 1;
+      int64    to_deliver           = 2;
+      string   bs_address           = 3;
+      double   price                = 4;
+      Status   status               = 5;
+   }
 
-    message UpdateOrders
-    {
-        repeated bs.types.Order orders = 2;
-    }
+   // Blotter
+   message UpdateOrders
+   {
+      repeated bs.types.Order       orders      = 2;
+   }
 
-    oneof data
-    {
-        StartOtc              start_otc            = 1;
-        UpdateOtcState        update_otc_state     = 2;
+   message UpdateOrdersAndObligations
+   {
+      repeated bs.types.Order       orders      = 2;
+      DeliveryObligationsRequest    obligation  = 3;
+   }
 
-        UnsignedPayinRequest  send_unsigned_payin  = 3;
-        SignPayoutRequest     sign_payout          = 4;
-        SignPayinRequest      sign_payin           = 5;
+   message FutureResponse
+   {
+      bool           success     = 1;
+      string         product     = 6;
+      string         error_msg   = 2;
+      bs.types.Side  side        = 3;
+      double         price       = 4;
+      uint64         amount      = 5;
+   }
 
-        UpdateOrders          update_orders        = 20;
-    }
+   message DeliveryAddress
+   {
+      bool           success     = 1;
+      string         error_msg   = 2;
+   }
+
+   message UpdateOrder
+   {
+      bs.types.Order order = 1;
+      bs.types.Action action = 2;
+   }
+
+   oneof data
+   {
+      StartOtc       start_otc         = 1;
+      UpdateOtcState update_otc_state  = 2;
+
+      UnsignedPayinRequest    send_unsigned_payin  = 3;
+      SignPayoutRequest       sign_payout          = 4;
+      SignPayinRequest        sign_payin           = 5;
+      FutureResponse          future_response      = 6;
+      DeliveryAddress         delivery_address     = 7;
+
+      // update_orders - deprecated after 0.91.2
+      UpdateOrders                  update_orders              = 20;
+      UpdateOrdersAndObligations    update_orders_obligations  = 21;
+      DeliveryObligationsRequest    delivery_obligation_update = 22;
+      UpdateOrder                   update_order               = 23;
+   }
 }

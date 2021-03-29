@@ -20,6 +20,16 @@
 #include <QMutex>
 #include <QObject>
 
+namespace Blocksettle {
+   namespace Communication {
+      namespace ProxyTerminalPb {
+         class Response;
+         class Response_UpdateOrdersAndObligations;
+         class Response_UpdateOrder;
+      }
+   }
+}
+
 namespace spdlog {
    class logger;
 }
@@ -27,6 +37,9 @@ namespace bs {
    namespace sync {
       class Wallet;
       class WalletsManager;
+   }
+   namespace types {
+      class Order;
    }
 }
 class MDCallbacksQt;
@@ -55,7 +68,7 @@ public:
       , const std::shared_ptr<MDCallbacksQt> &
       , const std::shared_ptr<CelerClientQt> &);
    AssetManager(const std::shared_ptr<spdlog::logger>&, AssetCallbackTarget *);
-   ~AssetManager() = default;
+   ~AssetManager() override;
 
    virtual void init();
 
@@ -71,6 +84,11 @@ public:
    uint64_t getCCLotSize(const std::string &cc) const;
    bs::Address getCCGenesisAddr(const std::string &cc) const;
 
+   double futuresBalanceDeliverable() const { return futuresBalanceDeliverable_; }
+   double futuresBalanceCashSettled() const { return futuresBalanceCashSettled_; }
+   int64_t futuresXbtAmountDeliverable() const { return futuresXbtAmountDeliverable_; }
+   int64_t futuresXbtAmountCashSettled() const { return futuresXbtAmountCashSettled_; }
+
    bool hasSecurities() const { return securitiesReceived_; }
    std::vector<QString> securities(bs::network::Asset::Type = bs::network::Asset::Undefined) const;
 
@@ -78,6 +96,10 @@ public:
 
    bool HaveAssignedAccount() const { return !assignedAccount_.empty(); }
    std::string GetAssignedAccount() const { return assignedAccount_; }
+
+   static double profitLoss(int64_t futuresXbtAmount, double futuresBalance, double currentPrice);
+   double profitLossDeliverable(double currentPrice);
+   double profitLossCashSettled(double currentPrice);
 
 signals:
    void ccPriceChanged(const std::string& currency);
@@ -87,6 +109,7 @@ signals:
    void fxBalanceCleared();
 
    void balanceChanged(const std::string& currency);
+   void netDeliverableBalanceChanged();
 
    void totalChanged();
    void securitiesChanged();
@@ -97,6 +120,7 @@ signals:
     void onMDSecurityReceived(const std::string &security, const bs::network::SecurityDef &sd);
     void onMDSecuritiesReceived();
     void onAccountBalanceLoaded(const std::string& currency, double value);
+    void onMessageFromPB(const Blocksettle::Communication::ProxyTerminalPb::Response &response);
 
    void onCelerConnected();
    void onCelerDisconnected();
@@ -107,6 +131,8 @@ protected:
 
 private:
   void sendUpdatesOnXBTPrice(const std::string& ccy);
+  void processUpdateOrders(const Blocksettle::Communication::ProxyTerminalPb::Response_UpdateOrdersAndObligations &msg);
+  void processUpdateOrder(const Blocksettle::Communication::ProxyTerminalPb::Response_UpdateOrder &msg);
 
   void onCcPriceChanged(const std::string& currency) override { emit ccPriceChanged(currency); }
   void onXbtPriceChanged(const std::string& currency) override { emit xbtPriceChanged(currency); }
@@ -116,6 +142,8 @@ private:
   void onBalanceChanged(const std::string& currency) override { emit balanceChanged(currency); }
   void onTotalChanged() override { emit totalChanged(); }
   void onSecuritiesChanged() override { emit securitiesChanged(); }
+
+  void updateFuturesBalances();
 
 protected:
    std::shared_ptr<spdlog::logger>        logger_;
@@ -135,6 +163,14 @@ protected:
    std::string assignedAccount_;
 
    std::unordered_map<std::string, QDateTime>  xbtPriceUpdateTimes_;
+
+   std::map<std::string, bs::types::Order> orders_;
+
+   double futuresBalanceDeliverable_{};
+   double futuresBalanceCashSettled_{};
+   int64_t futuresXbtAmountDeliverable_{};
+   int64_t futuresXbtAmountCashSettled_{};
+
 };
 
 #endif // __ASSET__MANAGER_H__

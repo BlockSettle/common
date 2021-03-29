@@ -78,7 +78,7 @@ namespace bs {
 
          // if there is change then changeAddr must be set.
          // inputIndices required for HW wallets only.
-         bs::core::wallet::TXSignRequest createTXRequest(const std::vector<std::string> &walletsIds
+         [[nodiscard]] bs::core::wallet::TXSignRequest createTXRequest(const std::vector<std::string> &walletsIds
             , const std::vector<UTXO> &inputs
             , const std::vector<std::shared_ptr<ArmorySigner::ScriptRecipient>> &
             , bool allowBroadcasts
@@ -93,7 +93,7 @@ namespace bs {
             , const bs::Address &changeAddr = {}
             , const uint64_t fee = 0, bool isRBF = false);
 
-         bs::core::wallet::TXSignRequest createTXRequest(const std::vector<std::shared_ptr<Wallet>> &wallets
+         [[nodiscard]] bs::core::wallet::TXSignRequest createTXRequest(const std::vector<std::shared_ptr<Wallet>> &wallets
             , const std::vector<UTXO> &inputs
             , const std::vector<std::shared_ptr<ArmorySigner::ScriptRecipient>> &
             , bool allowBroadcasts

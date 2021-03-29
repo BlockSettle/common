@@ -763,6 +763,7 @@ bool BlockchainAdapter::processUnregisterWallets(const bs::message::Envelope& en
 std::string BlockchainAdapter::registerWallet(const std::string &walletId
    , const Wallet &wallet)
 {
+   std::lock_guard<std::recursive_mutex> lock(mutex_);
    if (regMap_.empty()) {
       registrationComplete_ = false;
    }
@@ -775,7 +776,6 @@ std::string BlockchainAdapter::registerWallet(const std::string &walletId
 
    const auto &regId = newWallet.wallet->registerAddresses(newWallet.addresses
       , wallet.asNew);
-   std::lock_guard<std::recursive_mutex> lock(mutex_);
    regMap_[regId] = walletId;
    return regId;
 }

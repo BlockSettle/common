@@ -14,6 +14,31 @@
 using namespace bs::message;
 using namespace BlockSettle::Terminal;
 
+bs::network::Side::Type bs::message::fromBS(const bs::types::Side& side)
+{
+   switch (side) {
+   case bs::types::Side::SIDE_BUY:
+      return bs::network::Side::Buy;
+   case bs::types::Side::SIDE_SELL:
+      return bs::network::Side::Sell;
+   }
+
+   return bs::network::Side::Undefined;
+}
+
+bs::types::Side bs::message::toBS(const bs::network::Side::Type& side)
+{
+   switch (side) {
+   case bs::network::Side::Buy:
+      return bs::types::Side::SIDE_BUY;
+   case bs::network::Side::Sell:
+      return bs::types::Side::SIDE_SELL;
+   }
+
+   return bs::types::Side::SIDE_INVALID;
+}
+
+
 bs::network::RFQ bs::message::fromMsg(const BlockSettle::Terminal::RFQ& msg)
 {
    bs::network::RFQ rfq;
@@ -147,8 +172,8 @@ bs::network::QuoteReqNotification bs::message::fromMsg(const BlockSettle::Termin
    result.settlementId = msg.settlement_id();
    result.sessionToken = msg.session_token();
    result.party = msg.party();
-   result.reason = msg.reason();
-   result.account = msg.account();
+//   result.reason = msg.reason();
+//   result.account = msg.account();
    result.status = static_cast<bs::network::QuoteReqNotification::Status>(msg.status());
    result.expirationTime = msg.expiration_ms();
    result.timestamp = msg.timestamp_ms();
@@ -171,8 +196,8 @@ void bs::message::toMsg(const bs::network::QuoteReqNotification& qrn
    msg->set_settlement_id(qrn.settlementId);
    msg->set_session_token(qrn.sessionToken);
    msg->set_party(qrn.party);
-   msg->set_reason(qrn.reason);
-   msg->set_account(qrn.account);
+//   msg->set_reason(qrn.reason);
+//   msg->set_account(qrn.account);
    msg->set_status((int)qrn.status);
    msg->set_expiration_ms(qrn.expirationTime);
    msg->set_timestamp_ms(qrn.timestamp);
@@ -196,7 +221,7 @@ bs::network::QuoteNotification bs::message::fromMsg(const BlockSettle::Terminal:
    result.price = msg.quote().price();
    result.quantity = msg.quote().quantity();
    result.sessionToken = msg.session_token();
-   result.account = msg.account();
+//   result.account = msg.account();
    result.receiptAddress = msg.dealer_recv_addr();
    return result;
 }
@@ -217,7 +242,7 @@ void bs::message::toMsg(const bs::network::QuoteNotification& qn
    msgQuote->set_price(qn.price);
    msgQuote->set_quantity(qn.quantity);
    msg->set_session_token(qn.sessionToken);
-   msg->set_account(qn.account);
+//   msg->set_account(qn.account);
    msg->set_dealer_recv_addr(qn.receiptAddress);
 
    const auto& timeNow = std::chrono::system_clock::now();

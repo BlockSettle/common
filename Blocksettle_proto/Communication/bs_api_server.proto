@@ -1,0 +1,306 @@
+/*
+
+***********************************************************************************
+* Copyright (C) 2020 - 2020, BlockSettle AB
+* Distributed under the GNU Affero General Public License (AGPL v3)
+* See LICENSE or http://www.gnu.org/licenses/agpl.html
+*
+**********************************************************************************
+
+*/
+syntax = "proto3";
+
+package Blocksettle.Communication.ApiServer;
+
+import "bs_types.proto";
+
+enum EidStatus {
+    EID_STATUS_INVALID = 0;
+    EID_STATUS_WAITING_SIGN = 10;
+    EID_STATUS_TIMEOUT = 20;
+    EID_STATUS_CANCELLED = 21;
+    EID_STATUS_SERVER_ERROR = 22;
+    EID_STATUS_ACCOUNT_NOT_FOUND = 23;
+    EID_STATUS_REGISTRATON_FAILED = 24;
+    EID_STATUS_SUCCESS = 30;
+}
+
+message Order
+{
+   string id = 1;
+   bs.types.OrderStatus status = 2;
+   string status_text = 3;
+   double timestamp = 4;
+   string product_type = 5;
+   bs.types.Side side = 6;
+   double quantity = 8;
+   double price = 9;
+   double cut_off_price = 10;
+   double trade_im = 11;
+}
+
+message Request
+{
+    message Authorize
+    {
+        string api_key = 1;
+    }
+
+    message EidLogin
+    {
+    }
+
+    message EidRegister
+    {
+        message Answer
+        {
+            string question = 1;
+            string answer = 2;
+        }
+
+        repeated Answer answers = 1;
+    }
+
+    message EidCancel
+    {
+    }
+
+    message ResumeSession
+    {
+        string session_id = 1;
+    }
+
+    message Logout
+    {
+    }
+
+    message MarketOrder
+    {
+        double amount = 1;
+        bs.types.Side side = 2;
+        string product_type = 3;
+        double user_expected_price = 4;
+        bool max_amount = 5;
+    }
+
+    message LoadOrders
+    {
+    }
+
+    message LoadBalance
+    {
+    }
+
+    message Subscribe
+    {
+        string product_type = 1;
+    }
+
+    message TradingDay
+    {
+        string product_type = 1;
+    }
+
+    message EstimateIm
+    {
+        string product_type = 1;
+        double qty = 2;
+        bs.types.Side side = 3;
+    }
+
+    message ProductFee
+    {
+        string product_type = 1;
+    }
+
+    message MaxTradeAmount
+    {
+        string product_type = 1;
+        bs.types.Side side = 2;
+    }
+
+    message TradingStats
+    {
+        string product_type = 1;
+    }
+
+    oneof data
+    {
+        Authorize                   authorize           = 10;
+        EidLogin                    eid_login           = 11;
+        EidRegister                 eid_register        = 12;
+        EidCancel                   eid_cancel          = 13;
+        ResumeSession               resume_session      = 14;
+        Logout                      logout              = 15;
+        MarketOrder                 market_order        = 16;
+        LoadOrders                  load_orders         = 17;
+        LoadBalance                 load_balance        = 18;
+        Subscribe                   subscribe           = 19;
+        TradingDay                  trading_day         = 20;
+        EstimateIm                  estimate_im         = 21;
+        ProductFee                  product_fee         = 22;
+        MaxTradeAmount              max_trade_amount    = 23;
+        TradingStats                trading_stats       = 24;
+        bs.types.SubmitPricesData   submit_prices       = 25;
+        bs.types.PullPricesData     pull_prices         = 26;
+    }
+}
+
+message Response
+{
+    message Authorize
+    {
+        bool success = 1;
+        string session_id = 2;
+        string account_name = 3;
+    }
+
+    message EidLogin
+    {
+        string qr_code = 1;
+    }
+
+    message EidRegister
+    {
+        string qr_code = 1;
+    }
+
+    message ResumeSession
+    {
+        bool success = 1;
+        string account_name = 2;
+    }
+
+    message Logout
+    {
+    }
+
+    message MarketOrder
+    {
+        bool success = 1;
+        string order_id = 2;
+        string error_msg = 3;
+        double price = 4;
+    }
+
+    message LoadOrders
+    {
+        repeated Order orders = 1;
+    }
+
+    message LoadBalance
+    {
+        repeated bs.types.Balance balances = 1;
+    }
+
+    message Subscribe
+    {
+        string product_type = 1;
+        bool success = 2;
+        string error_msg = 3;
+    }
+
+    message TradingDay
+    {
+        string product_type = 1;
+        double time_to_cut_off = 2;
+        double cut_off_at = 3;
+        double last_cut_off_price = 4;
+    }
+
+    message EstimateIm
+    {
+        bool success = 1;
+        string error_msg = 2;
+
+        double expected_im_reservation = 10;
+        double fee_amount = 12;
+        string product_type = 14;
+    }
+
+    message ProductFee
+    {
+        bool   success        = 1;
+        string error_msg      = 2;
+        string product_type   = 3;
+        double fee            = 4;
+        string fee_ccy        = 5;
+        double im             = 6;
+    }
+
+    message MaxTradeAmount
+    {
+        string product_type = 1;
+        bs.types.Side side = 2;
+        double qty = 3;
+        double fee = 4;
+    }
+
+    message TradingStats
+    {
+        string product_type = 2;
+        double daily_volume = 4;
+        double open_interest = 5;
+    }
+
+    message OrderUpdate
+    {
+        Order order = 1;
+        bs.types.Action action = 2;
+    }
+
+    message MarketData
+    {
+        message Item
+        {
+            string quantity = 1;
+            double bid = 2;
+            double ask = 3;
+        }
+
+        string product_type = 1;
+        repeated Item items = 2;
+    }
+
+    message EidLoginUpdate
+    {
+        EidStatus status = 1;
+        string session_id = 2;
+        string account_name = 3;
+        string error_msg = 4;
+    }
+
+    message TradingClosed
+    {
+        string product_type = 1;
+    }
+
+    message Error
+    {
+        string error_msg = 1;
+    }
+
+    oneof data
+    {
+        Authorize authorize = 10;
+        EidLogin eid_login = 15;
+        EidRegister eid_register = 24;
+        ResumeSession resume_session = 17;
+        Logout logout = 18;
+        MarketOrder market_order = 11;
+        LoadOrders load_orders = 12;
+        LoadBalance load_balance = 13;
+        Subscribe subscribe = 14;
+        TradingDay trading_day = 16;
+        EstimateIm estimate_im = 19;
+        ProductFee product_fee = 20;
+        MaxTradeAmount max_trade_amount = 21;
+        TradingStats trading_stats = 22;
+
+        MarketData market_data = 50;
+        Error fatal_error = 51;
+        EidLoginUpdate eid_login_update = 52;
+        OrderUpdate order_update = 53;
+        TradingClosed trading_closed = 54;
+    }
+}

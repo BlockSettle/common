@@ -142,6 +142,7 @@ namespace bs {
          bs::Address settlAddr;
          BinaryData usedPayinHash;
          bs::XBTAmount amount;
+         UTXO  utxo; // optional
       };
 
       struct PayoutVerifyResult
@@ -154,6 +155,9 @@ namespace bs {
 
       // Maximum XBT amount multiplier for possible price changes
       double reservationQuantityMultiplier();
+
+      bs::Address createEasySettlAddress(const SecureBinaryData& buyerPubKey
+         , const SecureBinaryData& sellerPubKey);
 
    } // namespace tradeutils
 } // namespace bs

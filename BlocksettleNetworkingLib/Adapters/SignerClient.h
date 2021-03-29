@@ -27,13 +27,14 @@ namespace bs {
 namespace BlockSettle {
    namespace Common {
       class HDWalletData;
+      class SignerMessage_AddressPubKey;
       class SignerMessage_AddressResult;
       class SignerMessage_NewAddressesSynced;
+      class SignerMessage_RootPubKey;
       class SignerMessage_SignerState;
       class SignerMessage_SyncAddrResult;
       class SignerMessage_WalletData;
       class SignerMessage_WalletsInfo;
-      class SignerMessage_RootPubKey;
    }
 }
 
@@ -117,12 +118,14 @@ public:
    void createSettlementWallet(const bs::Address& authAddr
       , const std::function<void(const SecureBinaryData&)>&) override;
    void setSettlementID(const std::string &walletId, const SecureBinaryData &id
-      , const std::function<void(bool)> &) override;
+      , const std::function<void(bool, const SecureBinaryData&)> &) override;
    void getSettlementPayinAddress(const std::string& walletID
       , const bs::core::wallet::SettlementData&
       , const std::function<void(bool, bs::Address)>&) override;
    void getRootPubkey(const std::string &walletID
       , const std::function<void(bool, const SecureBinaryData &)> &) override;
+   void getAddressPubkey(const std::string& walletID, const std::string& address
+      , const std::function<void(const SecureBinaryData&)>&) override;
 
    void getChatNode(const std::string &walletID
       , const std::function<void(const BIP32_Node &)> &) override {}
@@ -154,8 +157,9 @@ private:
    bool processNewAddresses(uint64_t msgId, const BlockSettle::Common::SignerMessage_NewAddressesSynced &);
    bool processWalletSync(uint64_t msgId, const BlockSettle::Common::SignerMessage_WalletData &);
    bool processHdWalletSync(uint64_t msgId, const BlockSettle::Common::HDWalletData &);
-   bool processSetSettlId(uint64_t msgId, bool);
+   bool processSetSettlId(uint64_t msgId, bool, const std::string &pubKey);
    bool processRootPubKey(uint64_t msgId, const BlockSettle::Common::SignerMessage_RootPubKey &);
+   bool processAddrPubKey(uint64_t msgId, const BlockSettle::Common::SignerMessage_AddressPubKey&);
    bool processAuthPubkey(uint64_t msgId, const std::string&);
    bool processAddressResult(uint64_t msgId, const BlockSettle::Common::SignerMessage_AddressResult&);
    bool processSignerState(uint64_t msgId, const BlockSettle::Common::SignerMessage_SignerState&);

@@ -14,11 +14,12 @@
 #include <QTimer>
 
 #include "FutureValue.h"
+#include "MessageUtils.h"
 #include "ProtobufUtils.h"
 #include "WsDataConnection.h"
 
-#include "bs_proxy_terminal.pb.h"
-#include "bs_proxy_terminal_pb.pb.h"
+//#include "bs_proxy_terminal.pb.h"
+//#include "bs_proxy_terminal_pb.pb.h"
 
 using namespace Blocksettle::Communication;
 using namespace Blocksettle::Communication::ProxyTerminal;
@@ -150,18 +151,53 @@ void BsClient::findEmailHash(const std::string &email)
    auto d = request.mutable_get_email_hash();
    d->set_email(email);
 
-   auto timeoutCb = [this, email] {
+   auto timeoutCb = [this, email]
+   {
       SPDLOG_LOGGER_ERROR(logger_, "getting email hash timed out for address: {}", email);
       bct_->onEmailHashReceived(email, "");
    };
-
-   auto processCb = [this, email](const Blocksettle::Communication::ProxyTerminal::Response &response) {
+   auto processCb = [this, email](const ProxyTerminal::Response &response)
+   {
       const auto &hash = response.get_email_hash().hash();
       SPDLOG_LOGGER_DEBUG(logger_, "got email hash address: {}, hash: {}", email, hash);
       bct_->onEmailHashReceived(email, hash);
    };
-
    sendRequest(&request, std::chrono::seconds(10), std::move(timeoutCb), std::move(processCb));
+}
+
+void BsClient::whitelistAddress(const std::string& addrStr)
+{
+   Request request;
+   request.set_whitelist_address(addrStr);
+
+   auto timeoutCb = [this, addrStr]
+   {
+      SPDLOG_LOGGER_ERROR(logger_, "whitelisting address {} timed out", addrStr);
+   };
+   auto processCb = [this](const ProxyTerminal::Response& response)
+   {
+      std::map<bs::Address, AddressVerificationState> result;
+      for (const auto& addr : response.whitelist_addresses().addresses()) {
+         try {
+            const auto& address = bs::Address::fromAddressString(addr.address());
+            result[address] = static_cast<AddressVerificationState>(addr.status());
+         }
+         catch (...) {}
+      }
+      bct_->onAddrWhitelisted(result);
+   };
+   sendRequest(&request, std::chrono::seconds(10), std::move(timeoutCb), std::move(processCb));
+}
+
+void BsClient::sendFutureRequest(const bs::network::FutureRequest &details)
+{
+   ProxyTerminalPb::Request request;
+   auto futureRequest = request.mutable_future_request();
+   futureRequest->set_side(bs::message::toBS(details.side));
+   futureRequest->set_price(details.price);
+   futureRequest->set_amount(details.amount.GetValue());
+   futureRequest->set_type(details.type);
+   sendPbMessage(request.SerializeAsString());
 }
 
 void BsClient::cancelLogin()
@@ -356,6 +392,14 @@ void BsClient::cancelActiveSign()
    }
 }
 
+void BsClient::setFuturesDeliveryAddr(const std::string &addr)
+{
+   ProxyTerminalPb::Request request;
+   auto deliveryMessage = request.mutable_delivery_address();
+   deliveryMessage->set_addr(addr);
+   sendPbMessage(request.SerializeAsString());
+}
+
 // static
 std::chrono::seconds BsClient::autheidLoginTimeout()
 {
@@ -459,6 +503,7 @@ void BsClient::OnDataReceived(const std::string &data)
       case Response::kSubmitCcAddress:
       case Response::kSignCcAddress:
       case Response::kConfirmCcAddress:
+      case Response::kWhitelistAddresses:
          // Will be handled from processCb
          return;
 
@@ -467,7 +512,8 @@ void BsClient::OnDataReceived(const std::string &data)
          return;
    }
 
-   SPDLOG_LOGGER_CRITICAL(logger_, "unknown response was detected!");
+   SPDLOG_LOGGER_CRITICAL(logger_, "unknown response {} {} was detected!"
+      , response->request_id(), response->data_case());
 }
 
 void BsClient::OnConnected()
@@ -581,8 +627,7 @@ void BsClient::processCeler(const Response_Celer &response)
 void BsClient::processProxyPb(const Response_ProxyPb &response)
 {
    Blocksettle::Communication::ProxyTerminalPb::Response message;
-   bool result = message.ParseFromString(response.data());
-   if (!result) {
+   if (!message.ParseFromString(response.data())) {
       SPDLOG_LOGGER_ERROR(logger_, "invalid PB message");
       return;
    }
@@ -635,6 +680,8 @@ BsClientQt::BsClientQt(const std::shared_ptr<spdlog::logger>& logger
    : QObject(parent), BsClient(logger, this)
 {
    qRegisterMetaType<BsClientLoginResult>();
+   qRegisterMetaType<BsClientCallbackTarget::AuthorizeError>();
+   qRegisterMetaType<Blocksettle::Communication::ProxyTerminalPb::Response>();
 }
 
 void BsClientQt::startTimer(std::chrono::milliseconds timeout

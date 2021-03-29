@@ -150,6 +150,42 @@ message LoadAddressListForFundResponse
    repeated string address = 1;
 }
 
+message LoadUserDeliveryAddressRequest
+{
+   repeated string entity_name = 1;
+}
+
+message LoadUserDeliveryAddressResponse
+{
+   message DeliveryAddressData
+   {
+      string entity_name   = 1;
+      string user_address  = 2;
+   }
+
+   repeated DeliveryAddressData user_data = 1;
+}
+
+message SetUserDeliveryAddressRequest
+{
+   string   entity_name    = 1;
+   string   user_address   = 2;
+}
+
+message SetUserDeliveryAddressResponse
+{
+   string   entity_name    = 1;
+   string   user_address   = 2;
+   bool     success        = 3;
+   string   error_msg      = 4;
+}
+
+message WhitelistedAddresses
+{
+   string user_name = 1;
+   repeated string addresses = 2;
+}
+
 message StorageAddressMessage
 {
    oneof data
@@ -185,6 +221,15 @@ message StorageAddressMessage
 
       LoadAddressListForFundRequest    load_addresses_for_fund = 20;
       LoadAddressListForFundResponse   addresses_for_fund_list = 21;
+
+      LoadUserDeliveryAddressRequest   load_user_delivery_addresses  = 22;
+      LoadUserDeliveryAddressResponse  user_delivery_addresses       = 23;
+
+      SetUserDeliveryAddressRequest    set_user_delivery_address          = 24;
+      SetUserDeliveryAddressResponse   set_user_delivery_address_response = 25;
+
+      AuthAddress          whitelist_address = 26;
+      WhitelistedAddresses whitelisted_addresses = 27;
    }
 }
 
@@ -268,6 +313,7 @@ enum RequestFileType
    GenerateCCSeedRequestFileType          = 2;
    CCInitialDistributionRequestFileType   = 3;
    CreateCCDefinitionRequestFileType      = 4;
+   CreateDeliveryTxRequestFileType        = 5;
 }
 
 
@@ -344,6 +390,7 @@ message PendingRequestsInfo
    int32 revoke_auth_address     = 2;
    int32 generate_cc_seed        = 3;
    int32 cc_initial_distribution = 4;
+   int32 delivery_tx             = 5;
 }
 
 
@@ -411,30 +458,42 @@ message StorageTradeHistMessage
       bytes                                     fx_trade                = 1;
       bytes                                     xbt_trade               = 2;
       bytes                                     cc_trade                = 3;
-      bytes                                     trade_info              = 4;	// used as a put response
-      string                                    fx_trade_request        = 5;
-      string                                    xbt_trade_request       = 6;
-      string                                    cc_trade_request        = 7;
-      StorageTradeHistBuySellTrades             fx_buysell_trade        = 8;
-      StorageTradeHistBuySellTrades             xbt_buysell_trade       = 9;
-      StorageTradeHistBuySellTrades             cc_buysell_trade        = 10;
-      StorageTradeHistTrades                    fx_trades               = 11;
-      StorageTradeHistTrades                    xbt_trades              = 12;
-      StorageTradeHistTrades                    cc_trades               = 13;
-      string                                    cc_prices_request       = 14;
-      StorageTradeHistCCPrices                  cc_prices_response      = 15;
-      StorageTradeHistCCPrices                  set_cc_prices_request   = 16;
-      Communication.TradeHistory.DateContainer  eod_snapshot_request    = 17;
-      bytes                                     eod_snapshot_response   = 18;
-      Communication.TradeHistory.DateContainer  eod_snapshots_request   = 19;
-      StorageTradeHistSnapshots                 eod_snapshots_response  = 20;
-      GetLatestEODDate                          last_eod_date           = 21;
-      StorageTradeHistSnapshots                 save_eod_snapshot       = 22;
-      SaveEODSnapshotResponse                   save_eod_result         = 23;
-      Empty                                     last_eur_price_request  = 24;
-      double                                    last_eur_price_response = 25;
-      CreateCcDefinition                        create_cc_definition    = 26;
-      CCRegistrationOnCeler                     cc_celer_registration   = 27;
+      bytes                                     cash_settled_trade      = 4;
+      bytes                                     deliverable_trade       = 5;
+
+      bytes                                     trade_info                 = 6;	// used as a put response
+      string                                    fx_trade_request           = 7;
+      string                                    xbt_trade_request          = 8;
+      string                                    cc_trade_request           = 9;
+      string                                    cash_settled_trade_request = 10;
+      string                                    deliverable_trade_request  = 11;
+
+      StorageTradeHistBuySellTrades             fx_buysell_trade           = 12;
+      StorageTradeHistBuySellTrades             xbt_buysell_trade          = 13;
+      StorageTradeHistBuySellTrades             cc_buysell_trade           = 14;
+      StorageTradeHistBuySellTrades             cash_settled_buysell_trade = 15;
+      StorageTradeHistBuySellTrades             deliverable_buysell_trade  = 16;
+
+      StorageTradeHistTrades                    fx_trades               = 17;
+      StorageTradeHistTrades                    xbt_trades              = 18;
+      StorageTradeHistTrades                    cc_trades               = 19;
+      StorageTradeHistTrades                    cash_settled_trades     = 20;
+      StorageTradeHistTrades                    deliverable_trades      = 21;
+
+      string                                    cc_prices_request       = 22;
+      StorageTradeHistCCPrices                  cc_prices_response      = 23;
+      StorageTradeHistCCPrices                  set_cc_prices_request   = 24;
+      Communication.TradeHistory.DateContainer  eod_snapshot_request    = 25;
+      bytes                                     eod_snapshot_response   = 26;
+      Communication.TradeHistory.DateContainer  eod_snapshots_request   = 27;
+      StorageTradeHistSnapshots                 eod_snapshots_response  = 28;
+      GetLatestEODDate                          last_eod_date           = 29;
+      StorageTradeHistSnapshots                 save_eod_snapshot       = 30;
+      SaveEODSnapshotResponse                   save_eod_result         = 31;
+      Empty                                     last_eur_price_request  = 32;
+      double                                    last_eur_price_response = 33;
+      CreateCcDefinition                        create_cc_definition    = 34;
+      CCRegistrationOnCeler                     cc_celer_registration   = 35;
    }
 }
 

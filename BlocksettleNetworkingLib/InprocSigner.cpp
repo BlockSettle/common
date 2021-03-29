@@ -672,7 +672,7 @@ void InprocSigner::syncAddressBatch(
 }
 
 void InprocSigner::setSettlementID(const std::string& wltId
-   , const SecureBinaryData &settlId, const std::function<void(bool)> &cb)
+   , const SecureBinaryData &settlId, const std::function<void(bool, const SecureBinaryData&)> &cb)
 {  /***
    For remote methods, the caller should wait on return before
    proceeding further with settlement flow.
@@ -681,13 +681,11 @@ void InprocSigner::setSettlementID(const std::string& wltId
    auto leafPtr = walletsMgr_->getWalletById(wltId);
    auto settlLeafPtr =
       std::dynamic_pointer_cast<bs::core::hd::SettlementLeaf>(leafPtr);
-   if (settlLeafPtr == nullptr) {
-      if (cb) {
-         cb(false);
-      }
+   if (!settlLeafPtr && cb) {
+      cb(false, {});
       return;
    }
-   settlLeafPtr->addSettlementID(settlId);
+   const auto addrIndex = settlLeafPtr->addSettlementID(settlId);
 
    /*
    Grab the id so that the address is in the asset map. These
@@ -695,8 +693,9 @@ void InprocSigner::setSettlementID(const std::string& wltId
    aren't registered.
    */
    settlLeafPtr->getNewExtAddress();
+   const auto& asset = settlLeafPtr->getAssetForId(addrIndex);
    if (cb) {
-      cb(true);
+      cb(true, asset ? asset->getPubKey()->getCompressedKey() : SecureBinaryData{});
    }
 }
 
@@ -732,6 +731,33 @@ void InprocSigner::getRootPubkey(const std::string& walletID
    if (cb) {
       cb(true, rootSingle->getPubKey()->getCompressedKey());
    }
+}
+
+void InprocSigner::getAddressPubkey(const std::string& walletID
+   , const std::string& address, const std::function<void(const SecureBinaryData&)>& cb)
+{
+   const auto& wallet = walletsMgr_->getWalletById(walletID);
+   if (!wallet) {
+      logger_->error("[{}] no wallet for {}", __func__, walletID);
+      cb({});
+      return;
+   }
+   bs::Address addr;
+   try {
+      addr = bs::Address::fromAddressString(address);
+   }
+   catch (const std::exception&) {
+      logger_->error("[{}] invalid address {}", __func__, address);
+      cb({});
+      return;
+   }
+   const auto& addrWallet = walletsMgr_->getWalletByAddress(addr);
+   if (!addrWallet || (*wallet != *addrWallet)) {
+      logger_->error("[InprocSigner::getAddressPubkey] wallets mismatch");
+      cb({});
+      return;
+   }
+   cb(wallet->getPublicKeyFor(addr));
 }
 
 void InprocSigner::getChatNode(const std::string &walletID

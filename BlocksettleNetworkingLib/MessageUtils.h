@@ -15,6 +15,8 @@
 #include "Message/Envelope.h"
 #include "CommonTypes.h"
 
+#include "bs_types.pb.h"
+
 namespace BlockSettle {
    namespace Terminal {
       class RFQ;
@@ -26,7 +28,14 @@ namespace BlockSettle {
 }
 
 namespace bs {
+/*   namespace types {
+      enum Side;  //Fwd-decl doesn't work for gcc for some reason
+   }*/
+
    namespace message {
+
+      network::Side::Type fromBS(const types::Side& side);
+      types::Side toBS(const network::Side::Type& side);
 
       bs::network::RFQ fromMsg(const BlockSettle::Terminal::RFQ&);
       void toMsg(const bs::network::RFQ&, BlockSettle::Terminal::RFQ*);

@@ -33,7 +33,8 @@ enum class AddressVerificationState
    // Invalidated - address was invalidated by a validation address (explicit) or 
    // validation address for this user address was revoked (implicit)
    Invalidated_Explicit,
-   Invalidated_Implicit
+   Invalidated_Implicit,
+   Whitelisted
 };
 
 std::string to_string(AddressVerificationState state);

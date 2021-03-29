@@ -11,6 +11,8 @@
 #ifndef __SETTABLE_FIELD_H__
 #define __SETTABLE_FIELD_H__
 
+#include <cassert>
+
 template<class T>
 class SettableField
 {

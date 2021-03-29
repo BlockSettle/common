@@ -156,7 +156,7 @@ private:
    bool onPromoteWalletToPrimary(const std::string& clientId, Blocksettle::Communication::headless::RequestPacket& packet);
    bool onSetUserId(const std::string &clientId, Blocksettle::Communication::headless::RequestPacket &packet);
    bool onSyncCCNames(Blocksettle::Communication::headless::RequestPacket &packet);
-   bool onGetHDWalletInfo(const std::string &clientId, Blocksettle::Communication::headless::RequestPacket &packet);
+   bool onGetHDWalletInfo(const std::string &clientId, const Blocksettle::Communication::headless::RequestPacket &packet);
    bool onCancelSignTx(const std::string &clientId, Blocksettle::Communication::headless::RequestPacket packet);
    bool onUpdateDialogData(const std::string &clientId, Blocksettle::Communication::headless::RequestPacket packet);
    bool onSyncWalletInfo(const std::string &clientId, Blocksettle::Communication::headless::RequestPacket packet);
@@ -170,6 +170,7 @@ private:
    bool onSettlAuthRequest(const std::string &clientId, Blocksettle::Communication::headless::RequestPacket packet);
    bool onSettlCPRequest(const std::string &clientId, Blocksettle::Communication::headless::RequestPacket packet);
    bool onExecCustomDialog(const std::string &clientId, Blocksettle::Communication::headless::RequestPacket packet);
+   bool onAddressPubkey(const std::string& clientId, Blocksettle::Communication::headless::RequestPacket packet);
 
    bool onCreateSettlWallet(const std::string &clientId, Blocksettle::Communication::headless::RequestPacket packet);
    bool onSetSettlementId(const std::string &clientId, Blocksettle::Communication::headless::RequestPacket packet);

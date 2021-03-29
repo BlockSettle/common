@@ -55,17 +55,21 @@ bool RFQ::isXbtBuy() const
 }
 
 
-QuoteNotification::QuoteNotification(const QuoteReqNotification &qrn, const std::string &_authKey, double prc
-   , const std::string &txData)
-   : authKey(_authKey), reqAuthKey(qrn.requestorAuthPublicKey), settlementId(qrn.settlementId), sessionToken(qrn.sessionToken)
-   , quoteRequestId(qrn.quoteRequestId), security(qrn.security), product(qrn.product), account(qrn.account), transactionData(txData)
-   , assetType(qrn.assetType), validityInS(120), price(prc), quantity(qrn.quantity)
+QuoteNotification::QuoteNotification(const QuoteReqNotification &qrn
+   , const std::string &_authKey, double prc, const std::string &txData)
+   : authKey(_authKey), reqAuthKey(qrn.requestorAuthPublicKey)
+   , settlementId(qrn.settlementId), sessionToken(qrn.sessionToken)
+   , quoteRequestId(qrn.quoteRequestId), security(qrn.security), product(qrn.product)
+   , transactionData(txData), assetType(qrn.assetType), validityInS(120)
 {
    side = bs::network::Side::invert(qrn.side);
+   price = prc;
+   quantity = qrn.quantity;
 }
 
 
-MDField MDField::get(const MDFields &fields, MDField::Type type) {
+MDField MDField::get(const MDFields &fields, MDField::Type type)
+{
    for (const auto &field : fields) {
       if (field.type == type) {
          return field;
@@ -83,7 +87,15 @@ bs::network::MDInfo bs::network::MDField::get(const MDFields &fields)
    return mdInfo;
 }
 
-const char *Side::toString(Side::Type side) {
+bool bs::network::MDField::isIndicativeForFutures() const
+{
+   // used for bid/offer only
+   return levelQuantity == QStringLiteral("1");
+}
+
+
+const char *Side::toString(Side::Type side)
+{
    switch (side) {
       case Buy:   return QT_TR_NOOP("BUY");
       case Sell:  return QT_TR_NOOP("SELL");
@@ -91,7 +103,8 @@ const char *Side::toString(Side::Type side) {
    }
 }
 
-const char *Side::responseToString(Side::Type side) {
+const char *Side::responseToString(Side::Type side)
+{
    switch (side) {
       case Buy:   return QT_TR_NOOP("Offer");
       case Sell:  return QT_TR_NOOP("Bid");
@@ -99,7 +112,8 @@ const char *Side::responseToString(Side::Type side) {
    }
 }
 
-Side::Type Side::invert(Side::Type side) {
+Side::Type Side::invert(Side::Type side)
+{
    switch (side) {
       case Buy:   return Sell;
       case Sell:  return Buy;
@@ -107,13 +121,35 @@ Side::Type Side::invert(Side::Type side) {
    }
 }
 
-const char *bs::network::Asset::toString(bs::network::Asset::Type at) {
+const char *bs::network::Asset::toString(bs::network::Asset::Type at)
+{
    switch (at) {
-      case SpotFX:   return QT_TR_NOOP("Spot FX");
-      case SpotXBT:  return QT_TR_NOOP("Spot XBT");
-      case PrivateMarket:  return QT_TR_NOOP("Private Market");
-      default:       return "";
+   case SpotFX:               return QT_TR_NOOP("Spot FX");
+   case DeliverableFutures:   return QT_TR_NOOP("XBT 1-day deliverable");
+   case CashSettledFutures:   return QT_TR_NOOP("XBT 1-day rolling");
+   case SpotXBT:              return QT_TR_NOOP("Spot XBT");
+   case PrivateMarket:        return QT_TR_NOOP("Private Market");
+   default:                   return "";
    }
+}
+
+bool bs::network::Asset::isSpotType(const Type type)
+{
+   switch(type) {
+   case SpotFX:
+   case SpotXBT:
+   case PrivateMarket:
+      return true;
+   case CashSettledFutures:
+   case DeliverableFutures:
+   default:
+      return false;
+   }
+}
+
+bool bs::network::Asset::isFuturesType(const Type type)
+{
+   return !isSpotType(type);
 }
 
 bool bs::network::isTradingEnabled(UserType userType)

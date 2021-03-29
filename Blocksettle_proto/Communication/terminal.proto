@@ -69,34 +69,35 @@ enum SettingIndex
    SetIdx_Limit_FxRFQ = 39;
    SetIdx_Limit_XbtRFQ = 40;
    SetIdx_Limit_CcRFQ = 41;
-   SetIdx_NoNotifyRFQ = 42;
-   SetIdx_PriceUpdateInterval = 43;
-   SetIdx_ShowQuoted = 44;
-   SetIdx_AdvancedTXisDefault = 45;
-   SetIdx_TxFilter = 46;
-   SetIdx_SubscribeMDatStart = 47;
-   SetIdx_MDLicenseAccepted = 48;
-   SetIdx_AuthPrivKey = 49;
-   SetIdx_jwtUsername = 50;
-   SetIdx_LocalSignerPubKeyPath = 51;
-   SetIdx_RemoteSigners = 52;
-   SetIdx_RememberLogin = 53;
-   SetIdx_ArmoryServers = 54;
-   SetIdx_TwoWaySignerAuth = 55;
-   SetIdx_ChartProduct = 56;
-   SetIdx_ChartTimeframe = 57;
-   SetIdx_ChartCandleCount = 58;
-   SetIdx_LastAQDir = 59;
-   SetIdx_HideLegacyWalletWarn = 60;
-   SetIdx_DetailedSettlDisalogByDef = 61;
-   SetIdx_AutoStartRFQScript = 62;
-   SetIdx_CurrentRFQScript = 63;
-   SetIdx_ShowInfoWidget = 64;
-   SetIdx_LoginApiKey = 65;
-   SetIdx_AutoQuoting = 66;
-   SetIdx_AutoSigning = 67;
-   SetIdx_ExtConnPort = 70;
-   SetIdx_SubmittedAddrXbtLimit = 72;
+   SetIdx_Limit_Futures = 42;
+   SetIdx_NoNotifyRFQ = 43;
+   SetIdx_PriceUpdateInterval = 44;
+   SetIdx_ShowQuoted = 45;
+   SetIdx_AdvancedTXisDefault = 46;
+   SetIdx_TxFilter = 47;
+   SetIdx_SubscribeMDatStart = 48;
+   SetIdx_MDLicenseAccepted = 49;
+   SetIdx_AuthPrivKey = 50;
+   SetIdx_jwtUsername = 51;
+   SetIdx_LocalSignerPubKeyPath = 52;
+   SetIdx_RemoteSigners = 53;
+   SetIdx_RememberLogin = 54;
+   SetIdx_ArmoryServers = 55;
+   SetIdx_TwoWaySignerAuth = 56;
+   SetIdx_ChartProduct = 57;
+   SetIdx_ChartTimeframe = 58;
+   SetIdx_ChartCandleCount = 59;
+   SetIdx_LastAQDir = 60;
+   SetIdx_HideLegacyWalletWarn = 61;
+   SetIdx_DetailedSettlDisalogByDef = 62;
+   SetIdx_AutoStartRFQScript = 63;
+   SetIdx_CurrentRFQScript = 64;
+   SetIdx_ShowInfoWidget = 65;
+   SetIdx_LoginApiKey = 66;
+   SetIdx_AutoQuoting = 67;
+   SetIdx_AutoSigning = 68;
+   SetIdx_ExtConnPort = 71;
+   SetIdx_SubmittedAddrXbtLimit = 73;
    SetIdx_BlockSettleSignAddress = 100;
 }
 
@@ -387,6 +388,16 @@ message BsServerMessage
       bytes tx = 2;
    }
 
+
+   message WhitelistAddrs
+   {
+      message AddressStatus {
+         string address = 1;
+         int32  status = 2;
+      }
+      repeated AddressStatus addresses = 1;
+   }   
+
    oneof data
    {
       Empty            open_connection = 1;
@@ -415,6 +426,8 @@ message BsServerMessage
       XbtTransaction   send_unsigned_payin = 25;
       XbtTransaction   send_signed_payin = 26;
       XbtTransaction   send_signed_payout = 27;
+      string           whitelist_address = 28;
+      WhitelistAddrs   whitelist_addresses_result = 29;
    }
 }
 

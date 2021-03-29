@@ -63,8 +63,9 @@ public:
       LocalInproc
    };
    enum class TXSignMode {
-      Full,
-      Partial
+      Full = 1,
+      Partial = 2,
+      AutoSign = 4
    };
    using PasswordType = SecureBinaryData;
 

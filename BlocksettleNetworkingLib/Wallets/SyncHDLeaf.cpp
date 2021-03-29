@@ -1193,13 +1193,11 @@ void hd::SettlementLeaf::topUpAddressPool(bool extInt, const std::function<void(
 }
 
 void hd::SettlementLeaf::setSettlementID(const SecureBinaryData& id
-   , const std::function<void(bool)> &cb)
+   , const std::function<void(bool, const SecureBinaryData&)> &cb)
 {
-   if (signContainer_ == nullptr) {
-      if (cb)
-         cb(false);
+   if (!signContainer_ && cb) {
+      cb(false, {});
    }
-
    signContainer_->setSettlementID(walletId(), id, cb);
 }
 

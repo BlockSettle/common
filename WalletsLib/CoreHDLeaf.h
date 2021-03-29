@@ -264,6 +264,7 @@ namespace bs {
             }
 
             unsigned getIndexForSettlementID(const SecureBinaryData&) const;
+            std::shared_ptr<AssetEntry_Single> getAssetForId(unsigned int) const;
          };
 
       }  //namespace hd

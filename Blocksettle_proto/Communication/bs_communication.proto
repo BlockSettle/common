@@ -22,6 +22,7 @@ enum RequestType
    CreateCCDefinitionRequestType       = 10;
    GetNetworkSettingsType              = 12;
    BootstrapSignedDataType             = 13;
+   CreateDeliveryTxType                = 14;
 }
 
 // copy of autheid.rp.GetResultResponse.SignatureResult
@@ -175,4 +176,26 @@ message BootstrapData
    repeated string   validation_address   = 8;
 
    repeated CCSecurityDefinition cc_securities  = 9;
+}
+
+
+message CreateDeliveryTx
+{
+   required float    fee_rate             = 1;
+   required uint32   used_address_count   = 2;
+
+   message Spender
+   {
+      repeated bytes utxo = 1;
+   }
+
+   repeated Spender  spenders = 3;
+
+   message Recipient
+   {
+      required string   address  = 1;
+      required uint64   amount   = 2;
+   }
+
+   repeated Recipient recipients = 4;
 }

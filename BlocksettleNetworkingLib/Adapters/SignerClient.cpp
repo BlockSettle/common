@@ -77,9 +77,12 @@ bool SignerClient::process(const Envelope &env)
    case SignerMessage::kHdWalletSynced:
       return processHdWalletSync(env.id, msg.hd_wallet_synced());
    case SignerMessage::kSettlIdSet:
-      return processSetSettlId(env.id, msg.settl_id_set());
+      return processSetSettlId(env.id, msg.settl_id_set().success()
+         , msg.settl_id_set().public_key());
    case SignerMessage::kRootPubkey:
       return processRootPubKey(env.id, msg.root_pubkey());
+   case SignerMessage::kAddrPubkey:
+      return processAddrPubKey(env.id, msg.addr_pubkey());
    case SignerMessage::kAuthPubkey:
       return processAuthPubkey(env.id, msg.auth_pubkey());
    case SignerMessage::kWindowVisibleChanged:
@@ -224,15 +227,15 @@ bool SignerClient::processHdWalletSync(uint64_t msgId, const HDWalletData &respo
    return true;
 }
 
-bool SignerClient::processSetSettlId(uint64_t msgId, bool result)
+bool SignerClient::processSetSettlId(uint64_t msgId, bool result, const std::string &pubKey)
 {
-   const auto &itReq = reqSettlIdMap_.find(msgId);
-   if (itReq == reqSettlIdMap_.end()) {
+   const auto &itReq = reqPubKeyMap_.find(msgId);
+   if (itReq == reqPubKeyMap_.end()) {
       logger_->warn("[{}] no mapping for msg #{}", __func__, msgId);
       return false;
    }
-   itReq->second(result);
-   reqSettlIdMap_.erase(itReq);
+   itReq->second(result, SecureBinaryData::fromString(pubKey));
+   reqPubKeyMap_.erase(itReq);
    return true;
 }
 
@@ -246,6 +249,19 @@ bool SignerClient::processRootPubKey(uint64_t msgId
    }
    itReq->second(response.success(), BinaryData::fromString(response.pub_key()));
    reqPubKeyMap_.erase(itReq);
+   return true;
+}
+
+bool SignerClient::processAddrPubKey(uint64_t msgId
+   , const SignerMessage_AddressPubKey& response)
+{
+   const auto& itReq = settlWltMap_.find(msgId);
+   if (itReq == settlWltMap_.end()) {
+      logger_->debug("[{}] no mapping for msg #{}", __func__, msgId);
+      return true;
+   }
+   itReq->second(SecureBinaryData::fromString(response.pub_key()));
+   settlWltMap_.erase(itReq);
    return true;
 }
 
@@ -438,7 +454,7 @@ void SignerClient::createSettlementWallet(const bs::Address& authAddr
 }
 
 void SignerClient::setSettlementID(const std::string &walletId, const SecureBinaryData &id
-   , const std::function<void(bool)> &cb)
+   , const std::function<void(bool, const SecureBinaryData&)> &cb)
 {
    SignerMessage msg;
    auto msgReq = msg.mutable_set_settl_id();
@@ -446,7 +462,7 @@ void SignerClient::setSettlementID(const std::string &walletId, const SecureBina
    msgReq->set_settlement_id(id.toBinStr());
    Envelope env{ 0, clientUser_, signerUser_, {}, {}, msg.SerializeAsString(), true };
    queue_->pushFill(env);
-   reqSettlIdMap_[env.id] = cb;
+   reqPubKeyMap_[env.id] = cb;
 }
 
 void SignerClient::getSettlementPayinAddress(const std::string& walletID
@@ -471,6 +487,18 @@ void SignerClient::getRootPubkey(const std::string &walletID
    Envelope env{ 0, clientUser_, signerUser_, {}, {}, msg.SerializeAsString(), true };
    queue_->pushFill(env);
    reqPubKeyMap_[env.id] = cb;
+}
+
+void SignerClient::getAddressPubkey(const std::string& walletId
+   , const std::string& address, const std::function<void(const SecureBinaryData&)>& cb)
+{
+   SignerMessage msg;
+   auto msgReq = msg.mutable_get_addr_pubkey();
+   msgReq->set_wallet_id(walletId);
+   msgReq->set_address(address);
+   Envelope env{ 0, clientUser_, signerUser_, {}, {}, msg.SerializeAsString(), true };
+   queue_->pushFill(env);
+   settlWltMap_[env.id] = cb;
 }
 
 bs::signer::RequestId SignerClient::DeleteHDRoot(const std::string &rootWalletId)

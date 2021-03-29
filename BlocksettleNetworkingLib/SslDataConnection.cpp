@@ -52,6 +52,14 @@ SslDataConnection::~SslDataConnection()
    closeConnection();
 }
 
+bool SslDataConnection::openConnectionWithPath(const std::string& host, const std::string& port
+                               , const std::string& path
+                               , DataConnectionListener* listener)
+{
+   path_ = path;
+   return openConnection(host, port, listener);
+}
+
 bool SslDataConnection::openConnection(const std::string &host, const std::string &port
    , DataConnectionListener *listener)
 {
@@ -230,7 +238,8 @@ int SslDataConnection::callback(lws *wsi, int reason, void *user, void *in, size
          }
          auto packet = std::move(allPackets_.front());
          allPackets_.pop();
-         int rc = lws_write(wsi, packet.getPtr(), packet.getSize(), LWS_WRITE_BINARY);
+         int rc = lws_write(wsi, packet.getPtr(), packet.getSize()
+            , params_.sendAsText ? LWS_WRITE_TEXT : LWS_WRITE_BINARY);
          if (rc == -1) {
             SPDLOG_LOGGER_ERROR(logger_, "write failed");
             reportFatalError(DataConnectionListener::UndefinedSocketError);
@@ -258,6 +267,11 @@ int SslDataConnection::callback(lws *wsi, int reason, void *user, void *in, size
       }
 
       case LWS_CALLBACK_CLIENT_CONNECTION_ERROR: {
+         if (in) {
+            SPDLOG_LOGGER_ERROR(logger_, "Connection error: {}", (const char*)in);
+         } else {
+            SPDLOG_LOGGER_ERROR(logger_, "undefined socket connection error");
+         }
          reportFatalError(DataConnectionListener::UndefinedSocketError);
          break;
       }
@@ -274,7 +288,7 @@ void SslDataConnection::listenFunction()
    i.host = i.address;
    i.port = port_;
    i.origin = i.address;
-   i.path = "/";
+   i.path = path_.c_str();
    i.context = context_;
    i.protocol = kProtocolNameWs;
    i.userdata = this;

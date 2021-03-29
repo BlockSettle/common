@@ -376,8 +376,8 @@ void QuoteProvider::SubmitRFQ(const bs::network::RFQ& rfq)
    if (!assetManager_->HaveAssignedAccount()) {
       logger_->error("[QuoteProvider::SubmitRFQ] submitting RFQ with empty account name");
    }
-   auto sequence = std::make_shared<bs::celer::SubmitRFQSequence>(assetManager_->GetAssignedAccount()
-      , rfq, logger_, debugTraffic_);
+   const auto &sequence = std::make_shared<bs::celer::SubmitRFQSequence>(
+      assetManager_->GetAssignedAccount(), rfq, logger_, debugTraffic_);
    if (!celerClient_->ExecuteSequence(sequence)) {
       logger_->error("[QuoteProvider::SubmitRFQ] failed to execute CelerSubmitRFQSequence");
    } else {
@@ -391,6 +391,8 @@ void QuoteProvider::AcceptQuote(const QString &reqId, const Quote& quote, const 
    if (!assetManager_->HaveAssignedAccount()) {
       logger_->error("[QuoteProvider::AcceptQuote] accepting XBT quote with empty account name");
    }
+   assert(quote.assetType != bs::network::Asset::DeliverableFutures);
+
    auto sequence = std::make_shared<bs::celer::CreateOrderSequence>(assetManager_->GetAssignedAccount()
       , reqId, quote, payoutTx, logger_);
    if (!celerClient_->ExecuteSequence(sequence)) {
@@ -488,6 +490,8 @@ bool QuoteProvider::onBitcoinOrderSnapshot(const std::string& data)
    order.settlementId = BinaryData::fromString(response.settlementid());   // hex data passed as is here for compatibility with the old code
    order.reqTransaction = response.requestortransaction();
    order.dealerTransaction = response.dealertransaction();
+
+   assert(order.assetType != bs::network::Asset::SpotFX);
 
    order.status = mapBtcOrderStatus(response.orderstatus());
    order.pendingStatus = response.info();
@@ -654,8 +658,8 @@ bool QuoteProvider::onQuoteReqNotification(const std::string& data)
    qrn.quantity = legGroup.qty();
    qrn.product = respgrp.currency();
    qrn.party = respgrp.partyid();
-   qrn.reason = response.reason();
-   qrn.account = response.account();
+//   qrn.reason = response.reason();
+//   qrn.account = response.account();
    qrn.expirationTime = response.expiretimeinutcinmillis();
    qrn.timestamp = response.timestampinutcinmillis();
    qrn.timeSkewMs = QDateTime::fromMSecsSinceEpoch(qrn.timestamp).msecsTo(QDateTime::currentDateTime());

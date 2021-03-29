@@ -105,6 +105,12 @@ void BSMarketDataProvider::OnDisconnected()
 
 void BSMarketDataProvider::OnError(DataConnectionListener::DataConnectionError errorCode)
 {
+   // Can't stop connection from callback.
+   // FIXME: Do not use qApp here.
+   QMetaObject::invokeMethod(qApp, [this] {
+      mdConnection_ = nullptr;
+      callbacks_->disconnected();
+   });
 }
 
 bool BSMarketDataProvider::IsConnectionActive() const
@@ -142,16 +148,6 @@ bs::network::MDFields GetMDFields(const Blocksettle::Communication::BlocksettleM
    result.emplace_back( bs::network::MDField{ bs::network::MDField::DailyVolume, productInfo.volume(), QString()} );
 
    return result;
-}
-
-void BSMarketDataProvider::OnProductSnapshot(const bs::network::Asset::Type& assetType
-   , const Blocksettle::Communication::BlocksettleMarketData::ProductPriceInfo& productInfo
-   , double timestamp)
-{
-   callbacks_->onMDSecurityReceived(productInfo.product_name(), {assetType});
-   auto fields = GetMDFields(productInfo);
-   fields.emplace_back(bs::network::MDField{bs::network::MDField::MDTimestamp, timestamp, {}});
-   callbacks_->onMDUpdate(assetType, productInfo.product_name(), GetMDFields(productInfo));
 }
 
 void BSMarketDataProvider::OnFullSnapshot(const std::string& data)
@@ -193,6 +189,10 @@ void BSMarketDataProvider::OnFullSnapshot(const std::string& data)
    for (int i=0; i < snapshot.cc_products_size(); ++i) {
       OnProductSnapshot(bs::network::Asset::Type::PrivateMarket, snapshot.cc_products(i), timestamp);
    }
+
+   OnPriceBookSnapshot(bs::network::Asset::Type::DeliverableFutures, snapshot.deliverable(), timestamp);
+   OnPriceBookSnapshot(bs::network::Asset::Type::CashSettledFutures, snapshot.cash_settled(), timestamp);
+
    callbacks_->allSecuritiesReceived();
 }
 
@@ -205,6 +205,47 @@ void BSMarketDataProvider::OnProductUpdate(const bs::network::Asset::Type& asset
       fields.emplace_back(bs::network::MDField{bs::network::MDField::MDTimestamp, timestamp, {}});
       callbacks_->onMDUpdate(assetType, productInfo.product_name(), fields);
    }
+}
+
+void BSMarketDataProvider::OnProductSnapshot(const bs::network::Asset::Type& assetType
+   , const Blocksettle::Communication::BlocksettleMarketData::ProductPriceInfo& productInfo
+   , double timestamp)
+{
+   callbacks_->onMDSecurityReceived(productInfo.product_name(), {assetType});
+   auto fields = GetMDFields(productInfo);
+   fields.emplace_back(bs::network::MDField{bs::network::MDField::MDTimestamp, timestamp, {}});
+   callbacks_->onMDUpdate(assetType, productInfo.product_name(), GetMDFields(productInfo));
+}
+
+void BSMarketDataProvider::OnPriceBookSnapshot(const bs::network::Asset::Type& assetType
+      , const Blocksettle::Communication::BlocksettleMarketData::PriceBook& priceBookInfo
+      , double timestamp)
+{
+   callbacks_->onMDSecurityReceived(priceBookInfo.product_name(), {assetType});
+   OnPriceBookUpdate(assetType, priceBookInfo, timestamp);
+}
+
+void BSMarketDataProvider::OnPriceBookUpdate(const bs::network::Asset::Type& assetType
+   , const Blocksettle::Communication::BlocksettleMarketData::PriceBook& priceBookInfo
+   , double timestamp)
+{
+   // MD update
+   {
+      bs::network::MDFields mdFields;
+      for (const auto &price : priceBookInfo.prices()) {
+         mdFields.emplace_back( bs::network::MDField{ bs::network::MDField::PriceOffer, price.ask(), QString::fromStdString(price.volume())} );
+         mdFields.emplace_back( bs::network::MDField{ bs::network::MDField::PriceBid, price.bid(), QString::fromStdString(price.volume())} );
+      }
+
+      if (!qFuzzyIsNull(priceBookInfo.last_price())) {
+         mdFields.emplace_back( bs::network::MDField{ bs::network::MDField::PriceLast, priceBookInfo.last_price(), QString()} );
+      }
+
+      mdFields.emplace_back( bs::network::MDField{ bs::network::MDField::DailyVolume, priceBookInfo.volume(), QString()} );
+      callbacks_->onMDUpdate(assetType, priceBookInfo.product_name(), mdFields);
+   }
+
+   // price book update
 }
 
 void BSMarketDataProvider::OnIncrementalUpdate(const std::string& data)
@@ -246,6 +287,9 @@ void BSMarketDataProvider::OnIncrementalUpdate(const std::string& data)
    for (int i=0; i < update.cc_products_size(); ++i) {
       OnProductUpdate(bs::network::Asset::Type::PrivateMarket, update.cc_products(i), timestamp);
    }
+
+   OnPriceBookUpdate(bs::network::Asset::Type::DeliverableFutures, update.deliverable(), timestamp);
+   OnPriceBookUpdate(bs::network::Asset::Type::CashSettledFutures, update.cash_settled(), timestamp);
 }
 
 void BSMarketDataProvider::OnNewTradeUpdate(const std::string& data)

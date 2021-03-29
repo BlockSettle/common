@@ -1069,8 +1069,7 @@ std::shared_ptr<AddressEntry_P2WSH> hd::Wallet::getAddressPtrForSettlement(
       throw AssetException("settlement id " + settlementID.toHexStr()
          + " not found in " + leafPtr->walletId());
    }
-   auto myAssetPtr = leafPtr->accountPtr_->getAssetForID(index, true);
-   auto myAssetSingle = std::dynamic_pointer_cast<AssetEntry_Single>(myAssetPtr);
+   auto myAssetSingle = leafPtr->getAssetForId(index);
    if (myAssetSingle == nullptr) {
       throw AssetException("unexpected asset type");
    }

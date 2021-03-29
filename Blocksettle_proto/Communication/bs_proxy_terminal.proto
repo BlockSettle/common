@@ -78,6 +78,7 @@ message Request
         StartLogin      start_login          = 10;
         Empty           get_login_result     = 11;
         GetEmailHash    get_email_hash       = 14;
+        string          whitelist_address    = 15;
         Address         sign_auth_address    = 16;
         Address         confirm_auth_address = 17;
         SubmitCcAddress submit_cc_address    = 18;
@@ -145,6 +146,15 @@ message Response
       string hash    = 2;
    }
 
+   message WhitelistAddrs
+   {
+      message AddressStatus {
+         string address = 1;
+         int32  status = 2;
+      }
+      repeated AddressStatus addresses = 1;
+   }
+
    message Basic
    {
       bool     success     = 1;
@@ -199,6 +209,7 @@ message Response
    StartLogin           start_login          = 10;
    GetLoginResult       get_login_result     = 11;
    GetEmailHash         get_email_hash       = 14;
+   WhitelistAddrs       whitelist_addresses  = 15;
    Sign                 sign_auth_address    = 16;
    ConfirmAuthResponse  confirm_auth_submit  = 17;
    Basic                submit_cc_address    = 18;

@@ -54,6 +54,8 @@ struct SslDataConnectionParams
    // Callback should not block and useSsl must be set.
    using VerifyCallback = std::function<bool(const std::string &publicKey)>;
    VerifyCallback verifyCallback;
+
+   bool sendAsText{false};
 };
 
 class SslDataConnection : public DataConnection
@@ -66,6 +68,10 @@ public:
    SslDataConnection& operator = (const SslDataConnection&) = delete;
    SslDataConnection(SslDataConnection&&) = delete;
    SslDataConnection& operator = (SslDataConnection&&) = delete;
+
+   bool openConnectionWithPath(const std::string& host, const std::string& port
+                               , const std::string& path
+                               , DataConnectionListener* listener);
 
    bool openConnection(const std::string& host, const std::string& port
       , DataConnectionListener* listener) override;
@@ -91,6 +97,7 @@ private:
    lws_vhost *vhost_{};
 
    std::string host_;
+   std::string path_ = "/";
    int port_{};
    std::atomic_bool stopped_{};
 

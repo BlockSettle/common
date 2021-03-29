@@ -110,13 +110,15 @@ public:
    void createSettlementWallet(const bs::Address &authAddr
       , const std::function<void(const SecureBinaryData &)> &) override;
    void setSettlementID(const std::string &walletId, const SecureBinaryData &id
-      , const std::function<void(bool)> &) override;
+      , const std::function<void(bool, const SecureBinaryData&)> &) override;
    void getSettlementPayinAddress(const std::string &walletId
       , const bs::core::wallet::SettlementData &
       , const std::function<void(bool, bs::Address)> &) override;
    void getRootPubkey(const std::string &walletID
       , const std::function<void(bool, const SecureBinaryData &)> &) override;
-   void getChatNode(const std::string &walletID
+   void getAddressPubkey(const std::string& walletID
+      , const std::string& address, const std::function<void(const SecureBinaryData&)>&) override;
+   void getChatNode(const std::string& walletID
       , const std::function<void(const BIP32_Node &)> &) override;
 
    void setSettlAuthAddr(const std::string &walletId, const BinaryData &, const bs::Address &addr) override;

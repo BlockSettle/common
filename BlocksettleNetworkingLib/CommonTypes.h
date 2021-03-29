@@ -11,8 +11,8 @@
 #ifndef __BS_COMMON_TYPES_H__
 #define __BS_COMMON_TYPES_H__
 
-#include <QObject>
 #include <QDateTime>
+#include <QObject>
 #include <QString>
 #include "Address.h"
 
@@ -56,6 +56,7 @@ namespace bs {
 
          static const char *toString(Type side);
          static const char *responseToString(Type side);
+
          static Type invert(Type side);
       };
 
@@ -67,9 +68,15 @@ namespace bs {
             SpotFX = first,
             SpotXBT,
             PrivateMarket,
+            DeliverableFutures,
+            CashSettledFutures,
             last
          };
+
          static const char *toString(Type at);
+
+         static bool isSpotType(const Type type);
+         static bool isFuturesType(const Type type);
       };
 
 
@@ -159,6 +166,15 @@ namespace bs {
       };
 
 
+      struct FutureRequest
+      {
+         bs::XBTAmount amount;
+         double price{};
+         bs::network::Side::Type side{};
+         bs::network::Asset::Type type{};
+      };
+
+
       struct SecurityDef {
          Asset::Type assetType;
       };
@@ -173,8 +189,6 @@ namespace bs {
          std::string requestorAuthPublicKey;
          std::string sessionToken;
          std::string party;
-         std::string reason;
-         std::string account;
          std::string settlementId;
          std::string requestorRecvAddress;
 
@@ -208,7 +222,6 @@ namespace bs {
          std::string quoteRequestId;
          std::string security;
          std::string product;
-         std::string account;
          std::string transactionData;
          std::string receiptAddress;
          Asset::Type assetType;
@@ -262,10 +275,12 @@ namespace bs {
          };
          Type     type;
          double   value;
-         QString  desc;
+         QString  levelQuantity;
 
          static MDField get(const MDFields &fields, Type type);
          static MDInfo  get(const MDFields &fields);
+         // used for bid/offer only
+         bool           isIndicativeForFutures() const;
       };
 
 

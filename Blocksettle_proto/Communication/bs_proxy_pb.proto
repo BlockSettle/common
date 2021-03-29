@@ -98,11 +98,24 @@ message Request
       int64    internal_request_id  = 3;
    }
 
+   message WhitelistAddresses
+   {
+      message AddrStatus {
+         string address = 1;
+         int32  status = 2;
+      }
+      repeated AddrStatus addresses = 1;
+      string email = 2;
+      int64  internal_request_id = 3;
+      string error_text = 4;
+   }
+
    oneof data
    {
       // Messages
       Terminal                terminal                = 30;
       UserInfo                user_info               = 31;
+      WhitelistAddresses      whitelist_addresses     = 32;
       ConfirmReply            confirm_auth_address    = 33;
       TermRep                 submit_cc_address       = 34;
       TermRep                 confirm_cc_address      = 35;
@@ -176,6 +189,7 @@ message Response
       OnlineUsers online_users = 31;
       ClientConnected client_connected = 32;
       ClientDisconnected client_disconnected = 33;
+      TermReq whitelist_address = 34;
       TermReq confirm_auth_address = 35;
       TermReqCc submit_cc_address = 36;
       TermReqCc confirm_cc_address = 37;

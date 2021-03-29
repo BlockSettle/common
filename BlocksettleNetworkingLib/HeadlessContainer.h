@@ -131,12 +131,14 @@ public:
    void createSettlementWallet(const bs::Address &authAddr
       , const std::function<void(const SecureBinaryData &)> &) override;
    void setSettlementID(const std::string &walletId, const SecureBinaryData &id
-      , const std::function<void(bool)> &) override;
+      , const std::function<void(bool, const SecureBinaryData&)> &) override;
    void getSettlementPayinAddress(const std::string &walletId
       , const bs::core::wallet::SettlementData &
       , const std::function<void(bool, bs::Address)> &) override;
    void getRootPubkey(const std::string &walletID
       , const std::function<void(bool, const SecureBinaryData &)> &) override;
+   void getAddressPubkey(const std::string& walletID, const std::string& address
+      , const std::function<void(const SecureBinaryData&)>&) override;
    void getChatNode(const std::string &walletID
       , const std::function<void(const BIP32_Node &)> &) override;
 
@@ -175,6 +177,7 @@ protected:
    void ProcessSettlAuthResponse(unsigned int id, const std::string &data);
    void ProcessSettlCPResponse(unsigned int id, const std::string &data);
    void ProcessWindowStatus(unsigned int id, const std::string &data);
+   void ProcessAddrPubkeyResponse(unsigned int id, const std::string& data);
 
 protected:
    std::shared_ptr<HeadlessListener>   listener_;
@@ -187,10 +190,10 @@ protected:
    bs::ThreadSafeMap<bs::signer::RequestId, std::function<void(bs::sync::WalletData)>>    cbWalletMap_;
    bs::ThreadSafeMap<bs::signer::RequestId, std::function<void(bs::sync::SyncState)>>     cbSyncAddrsMap_;
    bs::ThreadSafeMap<bs::signer::RequestId, std::function<void(const std::vector<std::pair<bs::Address, std::string>> &)>> cbExtAddrsMap_;
+   bs::ThreadSafeMap<bs::signer::RequestId, std::function<void(const std::vector<std::pair<bs::Address, std::string>> &)>> cbNewAddrsMap_;
    bs::ThreadSafeMap<bs::signer::RequestId, SignTxCb> cbSettlementSignTxMap_;
    bs::ThreadSafeMap<bs::signer::RequestId, SignerStateCb>  cbSignerStateMap_;
    bs::ThreadSafeMap<bs::signer::RequestId, std::function<void(const SecureBinaryData &)>>   cbSettlWalletMap_;
-   bs::ThreadSafeMap<bs::signer::RequestId, std::function<void(bool)>>                       cbSettlIdMap_;
    bs::ThreadSafeMap<bs::signer::RequestId, std::function<void(bool, bs::Address)>>          cbPayinAddrMap_;
    bs::ThreadSafeMap<bs::signer::RequestId, std::function<void(bool, const SecureBinaryData &)>>   cbSettlPubkeyMap_;
    bs::ThreadSafeMap<bs::signer::RequestId, std::function<void(const BIP32_Node &)>>   cbChatNodeMap_;
@@ -212,17 +215,16 @@ public:
    void connected(const std::string& host) override { emit connected(); }
    void connError(SignContainer::ConnectionError err, const QString& desc) override { emit connectionError(err, desc); }
    void connTorn() override { emit disconnected(); }
-   void onError(bs::signer::RequestId reqId, const std::string& errMsg) override { emit Error(reqId, errMsg); }
+   void onError(bs::signer::RequestId reqId, const std::string& errMsg) override;
    void onAuthComplete() override { emit authenticated(); }
    void onReady() override { emit ready(); }
    void txSigned(bs::signer::RequestId reqId, const BinaryData& signedTX
-      , bs::error::ErrorCode errCode, const std::string& errMsg = {}) override { emit TXSigned(reqId, signedTX, errCode, errMsg); }
+      , bs::error::ErrorCode errCode, const std::string& errMsg = {}) override;
    void walletInfo(bs::signer::RequestId reqId
-      , const Blocksettle::Communication::headless::GetHDWalletInfoResponse& wi) override {
-      emit QWalletInfo(reqId, bs::hd::WalletInfo(wi)); }
+      , const Blocksettle::Communication::headless::GetHDWalletInfoResponse& wi) override;
    void autoSignStateChanged(bs::error::ErrorCode errCode
-      , const std::string& walletId) override { emit AutoSignStateChanged(errCode, walletId); }
-   void authLeafAdded(const std::string& walletId) override { emit AuthLeafAdded(walletId); }
+      , const std::string& walletId) override;
+   void authLeafAdded(const std::string& walletId);
    void newWalletPrompt() override { emit needNewWalletPrompt(); }
    void walletsReady() override { emit walletsReadyToSync(); }
    void walletsChanged() override { emit walletsListUpdated(); }

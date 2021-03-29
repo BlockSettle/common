@@ -41,6 +41,9 @@ namespace {
       return CryptoPRNG::generateRandom(32).toBinStr();
    }
 
+   // Do not disconnect banned clients immediately so they have chance to receive pending messages
+   const int kForcedDisconnectTimeSeconds = 1;
+
 } // namespace
 
 WsServerConnection::WsServerConnection(const std::shared_ptr<spdlog::logger>& logger, WsServerConnectionParams params)
@@ -148,7 +151,6 @@ int WsServerConnection::callback(lws *wsi, int reason, void *in, size_t len)
 
             auto clientIt = clients_.find(data.clientId);
             if (clientIt == clients_.end()) {
-               SPDLOG_LOGGER_DEBUG(logger_, "send failed, client {} already disconnected", bs::toHex(data.clientId));
                continue;
             }
             auto &client = clientIt->second;
@@ -161,7 +163,7 @@ int WsServerConnection::callback(lws *wsi, int reason, void *in, size_t len)
             shuttingDownReceived_ = true;
             for (const auto &connection : connections_) {
                lws_close_reason(connection.first, LWS_CLOSE_STATUS_NORMAL, nullptr, 0);
-               lws_set_timeout(connection.first, PENDING_TIMEOUT_USER_OK, LWS_TO_KILL_SYNC);
+               lws_set_timeout(connection.first, PENDING_TIMEOUT_USER_OK, kForcedDisconnectTimeSeconds);
             }
          }
 

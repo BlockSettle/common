@@ -25,6 +25,17 @@ namespace JsonTools
       }
    }
 
+   double GetDouble(const QJsonValue& value)
+   {
+      bool converted;
+      return GetDouble(value, converted);
+   }
+
+   int64_t GetInt64(const QJsonValue &value)
+   {
+      return static_cast<int64_t>(GetDouble(value));
+   }
+
    QString GetStringProperty(const QVariantMap& settingsMap, const QString& propertyName)
    {
       if (settingsMap.contains(propertyName)) {
@@ -143,4 +154,35 @@ namespace JsonTools
       return true;
    }
 
+#ifdef NLOHMANN_JSON
+   double GetDouble(const nlohmann::json& jsonObject, const std::string& propertyName, bool *converted)
+   {
+      return GetDoubleProperty(jsonObject, propertyName, converted);
+   }
+
+   double GetDoubleProperty(const nlohmann::json& jsonObject, const std::string& propertyName, bool *converted)
+   {
+      double result = 0;
+      bool convertResult = false;
+      auto it = jsonObject.find(propertyName);
+      if (it != jsonObject.end()) {
+         if (it->is_number()) {
+            result = it->get<double>();
+            convertResult = true;
+         } else if (it->is_string()) {
+            try {
+               result = std::stod(it->get<std::string>());
+               convertResult = true;
+            } catch (...) {
+            }
+         }
+      }
+
+      if (converted != nullptr) {
+         *converted = convertResult;
+      }
+
+      return result;
+   }
+#endif   //NLOHMANN_JSON
 }

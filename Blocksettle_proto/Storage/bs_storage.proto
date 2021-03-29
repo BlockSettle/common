@@ -54,6 +54,7 @@ enum ResponseEntryType
    CCDistributionTransactionType          = 5;
    AuthAddressVerificationRejectType      = 6;
    BSAuthRevokeTX                         = 8;
+   BSDeliveryTransactionType              = 9;
 }
 
 message ResponseEntry
@@ -126,4 +127,10 @@ message FundCCGenAddrTransaction
    repeated string   cc_product = 2;
    repeated uint32   amount = 3;
    repeated string   reference = 4;
+}
+
+message BSDeliveryTransaction
+{
+   required bytes    transaction = 1;
+   required string   request_id  = 2;
 }

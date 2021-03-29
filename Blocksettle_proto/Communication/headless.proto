@@ -24,6 +24,7 @@ enum RequestType
    SetUserIdType                 = 6;
    CreateSettlWalletType         = 7;
    CreateHDLeafRequestType       = 8;
+   AutoSignFullType              = 9;
    GetRootKeyRequestType         = 10;
    AutoSignActType               = 11;
    GetHDWalletInfoRequestType    = 12;
@@ -53,6 +54,7 @@ enum RequestType
    WindowStatusType              = 38;
    ResolvePublicSpendersType     = 39;
    PromoteWalletToPrimaryType    = 40;
+   AddressPubkeyRequestType      = 41;
 }
 
 message RequestPacket
@@ -186,6 +188,7 @@ message SetSettlementIdResponse
 {
    string wallet_id = 1;
    bool   success = 2;
+   bytes  public_key = 3;
 }
 
 message SettlementData
@@ -558,5 +561,16 @@ message InputSigs
 message WindowStatus
 {
    bool visible = 1;
+}
 
+message AddressPubKeyRequest
+{
+   string wallet_id = 1;
+   string address = 2;
+}
+
+message AddressPubKeyResponse
+{
+   string address = 1;
+   bytes  public_key = 2;
 }

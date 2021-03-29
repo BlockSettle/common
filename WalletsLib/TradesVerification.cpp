@@ -74,7 +74,7 @@ bs::Address bs::TradesVerification::constructSettlementAddress(const BinaryData 
 
 bs::PayoutSignatureType bs::TradesVerification::whichSignature(const Tx &tx, uint64_t value
    , const bs::Address &settlAddr, const BinaryData &buyAuthKey, const BinaryData &sellAuthKey
-   , std::string *errorMsg, const BinaryData& providedPayinHash)
+   , std::string *errorMsg, const BinaryData& providedPayinHash, const UTXO &payoutUtxo)
 {
    if (!tx.isInitialized() || buyAuthKey.empty() || sellAuthKey.empty()) {
       return bs::PayoutSignatureType::Failed;
@@ -133,8 +133,8 @@ bs::PayoutSignatureType bs::TradesVerification::whichSignature(const Tx &tx, uin
       return bs::PayoutSignatureType::Failed;
    }
 
-   UTXO utxo(value, UINT32_MAX, 0, txOutIndex, payinHash
-      , BtcUtils::getP2WSHOutputScript(settlAddr.unprefixed()));
+   UTXO utxo = payoutUtxo.isInitialized() ? payoutUtxo : UTXO(value, UINT32_MAX, 0
+      , txOutIndex, payinHash, BtcUtils::getP2WSHOutputScript(settlAddr.unprefixed()));
 
    //serialize signed tx
    auto txdata = tx.serialize();
@@ -329,7 +329,7 @@ std::shared_ptr<bs::TradesVerification::Result> bs::TradesVerification::verifyUn
 std::shared_ptr<bs::TradesVerification::Result> bs::TradesVerification::verifySignedPayout(const BinaryData &signedPayout
    , const std::string &buyAuthKeyHex, const std::string &sellAuthKeyHex
    , const BinaryData &payinHash, uint64_t tradeAmount, float feePerByte, const std::string &settlementId
-   , const std::string &settlementAddress)
+   , const std::string &settlementAddress, const UTXO &utxo)
 {
    if (signedPayout.empty()) {
       return Result::error("signed payout is not provided");
@@ -390,14 +390,20 @@ std::shared_ptr<bs::TradesVerification::Result> bs::TradesVerification::verifySi
       // xxx : add a check for fees that are too high
 
       // check that it is signed by buyer
-      const auto settlementIdBin = BinaryData::CreateFromHex(settlementId);
-
-      auto buySaltedKey = CryptoECDSA::PubKeyScalarMultiply(buyAuthKey, settlementIdBin);
-      auto sellSaltedKey = CryptoECDSA::PubKeyScalarMultiply(sellAuthKey, settlementIdBin);
-
+      SecureBinaryData buySaltedKey, sellSaltedKey;
+      if (settlementId.empty()) {   // easy settlement
+         buySaltedKey = buyAuthKey;
+         sellSaltedKey = sellAuthKey;
+      }
+      else {
+         const auto settlementIdBin = BinaryData::CreateFromHex(settlementId);
+         buySaltedKey = CryptoECDSA::PubKeyScalarMultiply(buyAuthKey, settlementIdBin);
+         sellSaltedKey = CryptoECDSA::PubKeyScalarMultiply(sellAuthKey, settlementIdBin);
+      }
       std::string errorMsg;
       const auto signedBy = whichSignature(payoutTx, tradeAmount
-         , bs::Address::fromAddressString(settlementAddress), buySaltedKey, sellSaltedKey, &errorMsg);
+         , bs::Address::fromAddressString(settlementAddress), buySaltedKey
+         , sellSaltedKey, &errorMsg, {}, utxo);
       if (signedBy != bs::PayoutSignatureType::ByBuyer) {
          return Result::error(fmt::format("payout signature status: {}, errorMsg: '{}'"
             , toString(signedBy), errorMsg));

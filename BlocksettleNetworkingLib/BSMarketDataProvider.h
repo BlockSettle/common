@@ -72,6 +72,13 @@ private:
       , const Blocksettle::Communication::BlocksettleMarketData::ProductPriceInfo& productInfo
       , double timestamp);
 
+   void OnPriceBookSnapshot(const bs::network::Asset::Type& assetType
+      , const Blocksettle::Communication::BlocksettleMarketData::PriceBook& priceBookInfo
+      , double timestamp);
+   void OnPriceBookUpdate(const bs::network::Asset::Type& assetType
+      , const Blocksettle::Communication::BlocksettleMarketData::PriceBook& priceBookInfo
+      , double timestamp);
+
 private:
    std::shared_ptr<ConnectionManager>  connectionManager_;
    std::shared_ptr<DataConnection> mdConnection_ = nullptr;

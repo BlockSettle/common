@@ -33,7 +33,7 @@ struct SslServerConnectionParams
 
    // If set, client's IP address will be read from x-forwarded-for header value if possible.
    // Last IP address in a list will be used - https://en.wikipedia.org/wiki/X-Forwarded-For#Format
-   bool trustForwardedForHeader{};
+   bool trustForwardedForHeader{false};
 
    // If set, clients connection must use client certificate
    bool requireClientCert{false};
@@ -49,6 +49,8 @@ struct SslServerConnectionParams
    // Callback should not block and useSsl must be set.
    using VerifyCallback = std::function<bool(const std::string &publicKey)>;
    VerifyCallback verifyCallback;
+
+   bool sendAsText{false};
 };
 
 class SslServerConnection : public ServerConnection
@@ -67,6 +69,8 @@ public:
 
    bool SendDataToClient(const std::string& clientId, const std::string& data) override;
    bool SendDataToAllClients(const std::string&) override;
+
+   bool closeClient(const std::string& clientId) override;
 
    static int callbackHelper(struct lws *wsi, int reason, void *user, void *in, size_t len);
 
@@ -101,8 +105,9 @@ private:
    std::atomic_bool stopped_{};
    lws_context *context_{};
 
-   std::recursive_mutex mutex_;
-   std::queue<WsServerDataToSend> packets_;
+   std::recursive_mutex             mutex_;
+   std::queue<WsServerDataToSend>   packets_;
+   std::queue<std::string>          forceClosingClients_;
 
    // Fields accessible from listener thread only
    std::map<std::string, WsServerClientData> clients_;

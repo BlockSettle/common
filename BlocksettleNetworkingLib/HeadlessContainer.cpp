@@ -234,7 +234,6 @@ bs::signer::RequestId HeadlessContainer::Send(const headless::RequestPacket &pac
 
 void HeadlessContainer::ProcessSignTXResponse(unsigned int id, const std::string &data)
 {
-   logger_->debug("[{}]", __func__);
    headless::SignTxReply response;
    if (!response.ParseFromString(data)) {
       logger_->error("[HeadlessContainer::ProcessSignTXResponse] Failed to parse SignTxReply");
@@ -258,7 +257,6 @@ void HeadlessContainer::ProcessSignTXResponse(unsigned int id, const std::string
 
 void HeadlessContainer::ProcessSettlementSignTXResponse(unsigned int id, const std::string &data)
 {
-   logger_->debug("[{}]", __func__);
    headless::SignTxReply response;
    if (!response.ParseFromString(data)) {
       logger_->error("[HeadlessContainer::ProcessSettlementSignTXResponse] Failed to parse reply");
@@ -459,6 +457,14 @@ bs::signer::RequestId HeadlessContainer::signTXRequest(const bs::core::wallet::T
    case TXSignMode::Partial:
       packet.set_type(headless::SignPartialTXRequestType);
       break;
+
+   case TXSignMode::AutoSign:
+      packet.set_type(headless::AutoSignFullType);
+      break;
+
+   default:
+      logger_->error("[{}] unknown sign mode {}", __func__, (int)mode);
+      break;
    }
    packet.set_data(request.SerializeAsString());
    const auto id = Send(packet);
@@ -486,6 +492,14 @@ void HeadlessContainer::signTXRequest(const bs::core::wallet::TXSignRequest& txR
 
    case TXSignMode::Partial:
       packet.set_type(headless::SignPartialTXRequestType);
+      break;
+
+   case TXSignMode::AutoSign:
+      packet.set_type(headless::AutoSignFullType);
+      break;
+
+   default:
+      logger_->error("[{}] unknown sign mode {}", __func__, (int)mode);
       break;
    }
    packet.set_data(request.SerializeAsString());
@@ -845,7 +859,7 @@ void HeadlessContainer::createSettlementWallet(const bs::Address &authAddr
 }
 
 void HeadlessContainer::setSettlementID(const std::string &walletId, const SecureBinaryData &id
-   , const std::function<void(bool)> &cb)
+   , const std::function<void(bool, const SecureBinaryData&)> &cb)
 {
    headless::SetSettlementIdRequest request;
    request.set_wallet_id(walletId);
@@ -855,7 +869,7 @@ void HeadlessContainer::setSettlementID(const std::string &walletId, const Secur
    packet.set_data(request.SerializeAsString());
    packet.set_type(headless::SetSettlementIdType);
    const auto reqId = Send(packet);
-   cbSettlIdMap_.put(reqId, cb);
+   cbSettlPubkeyMap_.put(reqId, cb);
 }
 
 void HeadlessContainer::getSettlementPayinAddress(const std::string &walletId
@@ -884,6 +898,20 @@ void HeadlessContainer::getRootPubkey(const std::string &walletID
    packet.set_type(headless::SettlGetRootPubkeyType);
    const auto reqId = Send(packet);
    cbSettlPubkeyMap_.put(reqId, cb);
+}
+
+void HeadlessContainer::getAddressPubkey(const std::string& walletID
+   , const std::string& address, const std::function<void(const SecureBinaryData&)>& cb)
+{
+   headless::AddressPubKeyRequest request;
+   request.set_wallet_id(walletID);
+   request.set_address(address);
+
+   headless::RequestPacket packet;
+   packet.set_data(request.SerializeAsString());
+   packet.set_type(headless::AddressPubkeyRequestType);
+   const auto reqId = Send(packet);
+   cbSettlWalletMap_.put(reqId, cb);
 }
 
 void HeadlessContainer::getChatNode(const std::string &walletID
@@ -1125,12 +1153,12 @@ void HeadlessContainer::ProcessSetSettlementId(unsigned int id, const std::strin
       sct_->onError(id, "failed to parse");
       return;
    }
-   const auto cb = cbSettlIdMap_.take(id);
+   const auto cb = cbSettlPubkeyMap_.take(id);
    if (!cb) {
       sct_->onError(id, "no callback found for id " + std::to_string(id));
       return;
    }
-   cb(response.success());
+   cb(response.success(), SecureBinaryData::fromString(response.public_key()));
 }
 
 void HeadlessContainer::ProcessGetPayinAddr(unsigned int id, const std::string &data)
@@ -1251,6 +1279,22 @@ void HeadlessContainer::ProcessWindowStatus(unsigned int id, const std::string &
    SPDLOG_LOGGER_DEBUG(logger_, "local signer visible: {}", message.visible());
    isWindowVisible_ = message.visible();
    sct_->windowIsVisible(isWindowVisible_);
+}
+
+void HeadlessContainer::ProcessAddrPubkeyResponse(unsigned int id, const std::string& data)
+{
+   headless::AddressPubKeyResponse response;
+   if (!response.ParseFromString(data)) {
+      logger_->error("[HeadlessContainer::ProcessSettlGetRootPubkey] Failed to parse reply");
+      sct_->onError(id, "failed to parse");
+      return;
+   }
+   const auto cb = cbSettlWalletMap_.take(id);
+   if (!cb) {
+      sct_->onError(id, "no callback found for id " + std::to_string(id));
+      return;
+   }
+   cb(SecureBinaryData::fromString(response.public_key()));
 }
 
 void HeadlessContainer::ProcessSyncWalletInfo(unsigned int id, const std::string &data)
@@ -1710,6 +1754,7 @@ void RemoteSigner::onPacketReceived(const headless::RequestPacket &packet)
 
    switch (packet.type()) {
    case headless::SignTxRequestType:
+   case headless::AutoSignFullType:
    case headless::SignPartialTXRequestType:
    case headless::SignSettlementPayoutTxType:
    case headless::SignAuthAddrRevokeType:
@@ -1763,6 +1808,10 @@ void RemoteSigner::onPacketReceived(const headless::RequestPacket &packet)
 
    case headless::SettlGetRootPubkeyType:
       ProcessSettlGetRootPubkey(packet.id(), packet.data());
+      break;
+
+   case headless::AddressPubkeyRequestType:
+      ProcessAddrPubkeyResponse(packet.id(), packet.data());
       break;
 
    case headless::SyncWalletInfoType:
@@ -1948,4 +1997,45 @@ bool HeadlessListener::addCookieKeyToKeyStore(
    }
 
    return bip15xConnection->addCookieKeyToKeyStore(path, name);
+}
+
+
+Q_DECLARE_METATYPE(bs::error::ErrorCode)
+Q_DECLARE_METATYPE(bs::signer::RequestId)
+
+void QtHCT::onError(bs::signer::RequestId reqId, const std::string& errMsg)
+{
+   QMetaObject::invokeMethod(this, [this, reqId, errMsg] {
+      emit Error(reqId, errMsg);
+   });
+}
+
+void QtHCT::txSigned(bs::signer::RequestId reqId, const BinaryData& signedTX
+   , bs::error::ErrorCode errCode, const std::string& errMsg)
+{
+   QMetaObject::invokeMethod(this, [this, reqId, signedTX, errCode, errMsg] {
+      emit TXSigned(reqId, signedTX, errCode, errMsg);
+   });
+}
+
+void QtHCT::walletInfo(bs::signer::RequestId reqId
+   , const Blocksettle::Communication::headless::GetHDWalletInfoResponse& wi)
+{
+   QMetaObject::invokeMethod(this, [this, reqId, wi] {
+      emit QWalletInfo(reqId, bs::hd::WalletInfo(wi));
+   });
+}
+
+void QtHCT::autoSignStateChanged(bs::error::ErrorCode errCode, const std::string& walletId)
+{
+   QMetaObject::invokeMethod(this, [this, errCode, walletId] {
+      emit AutoSignStateChanged(errCode, walletId);
+   });
+}
+
+void QtHCT::authLeafAdded(const std::string& walletId)
+{
+   QMetaObject::invokeMethod(this, [this, walletId] {
+      emit AuthLeafAdded(walletId);
+   });
 }

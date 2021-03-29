@@ -538,11 +538,24 @@ message SignerMessage
       bytes  settlement_id = 2;
    }
 
+   message SetSettlementIdResult
+   {
+      bool  success = 1;
+      bytes public_key = 2;
+   }
+
    message RootPubKey
    {
       string wallet_id = 1;
       bytes  pub_key = 2;
       bool   success = 3;
+   }
+
+   message AddressPubKey
+   {
+      string wallet_id = 1;
+      string address = 2;
+      bytes  pub_key = 3;
    }
 
    message SignTxRequest
@@ -638,23 +651,25 @@ message SignerMessage
       SyncAddressComment sync_addr_comment = 22;
       SyncTxComment      sync_tx_comment = 23;
       SetSettlementId    set_settl_id = 24;
-      bool               settl_id_set = 25;
+      SetSettlementIdResult settl_id_set = 25;
       string             get_root_pubkey = 26;
       RootPubKey         root_pubkey = 27;
-      string             del_hd_root = 28;
-      string             del_hd_leaf = 29;
-      SignTxRequest      sign_tx_request = 30;
-      SignTxResponse     sign_tx_response = 31;
-      SetUserId          set_user_id = 32;
-      string             create_settl_wallet = 33;
-      bytes              auth_pubkey = 34;
-      SignSettlementTx   sign_settlement_tx = 35;
-      GetSettlPayinAddr  get_settl_payin_addr = 36;
-      AddressResult      payin_address = 37;
-      Blocksettle.Communication.headless.SignTxRequest resolve_pub_spenders = 38;
-      SignerState        resolved_spenders = 39;
-      AutoSign           auto_sign = 40;
-      DialogRequest      dialog_request = 41;
+      AddressPubKey      get_addr_pubkey = 28;
+      AddressPubKey      addr_pubkey = 29;
+      string             del_hd_root = 30;
+      string             del_hd_leaf = 31;
+      SignTxRequest      sign_tx_request = 32;
+      SignTxResponse     sign_tx_response = 33;
+      SetUserId          set_user_id = 34;
+      string             create_settl_wallet = 35;
+      bytes              auth_pubkey = 36;
+      SignSettlementTx   sign_settlement_tx = 37;
+      GetSettlPayinAddr  get_settl_payin_addr = 38;
+      AddressResult      payin_address = 39;
+      Blocksettle.Communication.headless.SignTxRequest resolve_pub_spenders = 40;
+      SignerState        resolved_spenders = 41;
+      AutoSign           auto_sign = 42;
+      DialogRequest      dialog_request = 43;
    }
 }
 

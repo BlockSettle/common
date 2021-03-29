@@ -34,6 +34,9 @@ namespace {
 
    const std::string kAllClientsId = "<TO_ALL>";
 
+   // Do not disconnect banned clients immediately so they have chance to receive pending messages
+   const int kForcedDisconnectTimeSeconds = 1;
+
 } // namespace
 
 SslServerConnection::SslServerConnection(const std::shared_ptr<spdlog::logger>& logger, SslServerConnectionParams params)
@@ -155,10 +158,14 @@ int SslServerConnection::callback(lws *wsi, int reason, void *user, void *in, si
          return 0;
       }
       case LWS_CALLBACK_EVENT_WAIT_CANCELLED: {
-         std::queue<WsServerDataToSend> packets;
-         {  std::lock_guard<std::recursive_mutex> lock(mutex_);
+         decltype(packets_)               packets;
+         decltype(forceClosingClients_)   forceClosingClients;
+         {
+            std::lock_guard<std::recursive_mutex> lock(mutex_);
             std::swap(packets, packets_);
+            std::swap(forceClosingClients, forceClosingClients_);
          }
+
          while (!packets.empty()) {
             auto data = std::move(packets.front());
             packets.pop();
@@ -174,13 +181,26 @@ int SslServerConnection::callback(lws *wsi, int reason, void *user, void *in, si
 
             auto clientIt = clients_.find(data.clientId);
             if (clientIt == clients_.end()) {
-               SPDLOG_LOGGER_DEBUG(logger_, "send failed, client {} already disconnected", bs::toHex(data.clientId));
                continue;
             }
             auto &client = clientIt->second;
             client.packets.push(std::move(data.packet));
             lws_callback_on_writable(client.wsi);
          }
+
+         while (!forceClosingClients.empty()) {
+            auto clientId = std::move(forceClosingClients.front());
+            forceClosingClients.pop();
+
+            auto clientIt = clients_.find(clientId);
+            if (clientIt != clients_.end()) {
+               SPDLOG_LOGGER_DEBUG(logger_, "force close client {}", bs::toHex(clientId));
+               auto clientWsi = clientIt->second.wsi;
+               lws_close_reason(clientWsi, LWS_CLOSE_STATUS_PROTOCOL_ERR, nullptr, 0);
+               lws_set_timeout(clientWsi, PENDING_TIMEOUT_USER_OK, kForcedDisconnectTimeSeconds);
+            }
+         }
+
          break;
       }
 
@@ -241,7 +261,8 @@ int SslServerConnection::callback(lws *wsi, int reason, void *user, void *in, si
          auto packet = std::move(client.packets.front());
          client.packets.pop();
 
-         int rc = lws_write(wsi, packet.getPtr(), packet.getSize(), LWS_WRITE_BINARY);
+         int rc = lws_write(wsi, packet.getPtr(), packet.getSize()
+            , params_.sendAsText ? LWS_WRITE_TEXT : LWS_WRITE_BINARY);
          if (rc == -1) {
             SPDLOG_LOGGER_ERROR(logger_, "write failed");
             return -1;
@@ -272,7 +293,8 @@ std::string SslServerConnection::nextClientId()
 bool SslServerConnection::SendDataToClient(const std::string &clientId, const std::string &data)
 {
    WsServerDataToSend toSend{clientId, WsRawPacket(data)};
-   {  std::lock_guard<std::recursive_mutex> lock(mutex_);
+   {
+      std::lock_guard<std::recursive_mutex> lock(mutex_);
       packets_.push(std::move(toSend));
    }
    lws_cancel_service(context_);
@@ -289,4 +311,14 @@ int SslServerConnection::callbackHelper(lws *wsi, int reason, void *user, void *
    auto context = lws_get_context(wsi);
    auto server = static_cast<SslServerConnection*>(lws_context_user(context));
    return server->callback(wsi, reason, user, in, len);
+}
+
+bool SslServerConnection::closeClient(const std::string &clientId)
+{
+   {
+      std::lock_guard<std::recursive_mutex> lock(mutex_);
+      forceClosingClients_.push(clientId);
+   }
+   lws_cancel_service(context_);
+   return true;
 }

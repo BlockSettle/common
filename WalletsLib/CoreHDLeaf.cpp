@@ -836,6 +836,12 @@ unsigned hd::SettlementLeaf::getIndexForSettlementID(const SecureBinaryData& id)
    return UINT32_MAX;
 }
 
+std::shared_ptr<AssetEntry_Single> bs::core::hd::SettlementLeaf::getAssetForId(unsigned int index) const
+{
+   auto assetPtr = accountPtr_->getAssetForID(index, true);
+   return std::dynamic_pointer_cast<AssetEntry_Single>(assetPtr);
+}
+
 std::shared_ptr<hd::Leaf> hd::LeafArmoryWallet::getCopy(std::shared_ptr<AssetWallet_Single> wltPtr) const
 {
    if (wltPtr == nullptr) {

@@ -91,6 +91,7 @@ namespace bs {
          BlockSettle_CC = hardFlag + 0x4253, // 0x80000000 | "BS" in hex
          BlockSettle_Auth = hardFlag + 0x41757468,  // 0x80000000 | "Auth" in hex
          Blocksettle_Sign = hardFlag + 0x5369676e, // Sign in hex
+         Blocksettle_Trade = hardFlag + 0x01646179,
 
          //this is a place holder for the Group ctor, settlement accounts
          //are not deterministic
