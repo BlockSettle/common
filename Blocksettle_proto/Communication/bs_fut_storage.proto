@@ -167,6 +167,21 @@ message Message
       repeated string      reserve_id     = 2; // genoa ref ID
    }
 
+   message LoadTradeHistoryRequest
+   {
+      int64                entity_id      = 1;
+      uint32               limit          = 2;
+      uint32               offset         = 3;
+   }
+
+   message LoadTradeHistoryResponse
+   {
+      bool                  loaded         = 1;
+      repeated Position     positions      = 2;
+      uint32                count          = 3;
+      int64                 entity_id      = 4;
+   }
+
    oneof data {
       int32                            get_session                         = 1;  // bs::network::Asset::Type
       SessionInfo                      session_info                        = 2;
@@ -213,5 +228,8 @@ message Message
 
       LoadReservationIdsRequest        load_reservation_id_request               = 30;
       LoadReservationIdsResponse       load_reservation_id_response              = 31;
+
+      LoadTradeHistoryRequest          load_trade_history_request                = 32;
+      LoadTradeHistoryResponse         load_trade_history_response               = 33;
    }
 }

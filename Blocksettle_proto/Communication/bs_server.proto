@@ -612,6 +612,7 @@ message UserEntityInfo
 {
    string user_email    = 1;
    string entity_name   = 2;
+   int64 entity_id      = 3;
 }
 
 message AffectedEntities
