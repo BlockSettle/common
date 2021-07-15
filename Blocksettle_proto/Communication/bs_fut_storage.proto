@@ -12,98 +12,206 @@ syntax = "proto3";
 
 package Blocksettle.Server.FutStorage;
 
-import "bs_server.proto";
-
-
-message Position
-{
-   int64  id = 1;
-   bool   is_taker = 2;
-   int64  xbt_amount = 3;
-   double open_price = 4;
-   bool   is_rollover = 5;
-   uint64 timestamp = 6;
-   int64  entity_id = 7;
-   int32  prod_type = 8;
-   bool   opened = 9;
-   string reserve_id = 10;
-   int32  reserve_state = 11;
-}
-
+import "bs_types.proto";
 
 message Message
 {
+   message Position
+   {
+      int64                   id             = 1;
+      bool                    is_taker       = 2;
+      bs.types.XBTAmountValue xbt_amount     = 3;
+      bs.types.XBTPrice       open_price     = 4;
+      bool                    is_rollover    = 5;
+      uint64                  timestamp      = 6;
+      int64                   entity_id      = 7;
+      int32                   prod_type      = 8;  // bs::network::Asset::Type
+      bool                    opened         = 9;
+      string                  reserve_id     = 10; // genoa ref ID
+      int32                   reserve_state  = 11; // FuturesTradesStorage::PositionReservationState
+   }
+
+   message PositionReservationInfo
+   {
+      int64    position_id = 1;
+      string   reserve_id  = 2;
+   }
+
    message SessionInfo
    {
-      int32  load_status = 1;
-      int32  session_id = 2;
-      int32  state = 3;
-      uint64 timestamp_started = 4;
-      uint64 timestamp_closed = 5;
-      int32  product_type = 6;
-      double open_price = 7;
-      double close_price = 8;
-      float taker_fee = 9;
-      float maker_fee = 10;
-      float im_rate = 11;
-      float dm_rate = 12;
+      int32             load_status       = 1;  // FuturesTradesStorage::StatusCode
+
+      int64             session_id        = 2;
+      int32             session_state     = 3;  // FuturesTradesStorage::FuturesSessionState
+      uint64            timestamp_started = 4;
+      uint64            timestamp_closed  = 5;
+      int32             product_type      = 6;  // bs::network::Asset::Type
+      bs.types.XBTPrice open_price        = 7;
+      bs.types.XBTPrice close_price       = 8;
+      float             taker_fee         = 9;
+      float             maker_fee         = 10;
+      float             im_rate           = 11;
+      float             dm_rate           = 12;
    }
 
    message SessionRequest
    {
-      int32  session_id = 1;
-      int32  product_type = 2;
-      uint64 timestamp_start = 3;
-      uint64 timestamp_close = 4;
-      double open_price = 5;
-      double close_price = 6;
-      float  fee_taker = 7;
-      float  fee_maker = 8;
-      float  im_rate = 9;
-      float  dm_rate = 10;
+      int64             session_id        = 1;
+      int32             product_type      = 2;  // bs::network::Asset::Type
+      uint64            timestamp_start   = 3;
+      uint64            timestamp_close   = 4;
+      bs.types.XBTPrice open_price        = 5;
+      bs.types.XBTPrice close_price       = 6;
+      float             fee_taker         = 7;
+      float             fee_maker         = 8;
+      float             im_rate           = 9;
+      float             dm_rate           = 10;
    }
 
-   message SessionOrders
+   message ActivateSessionRequest
    {
-      int32 session_id = 1;
-      int32 load_status = 2;
-      repeated Position orders = 3;
+      int64             session_id        = 1;
    }
 
-   message RegisterTrade
+   message MarkSessionCompleted
    {
-      int64  taker_entity_id = 1;
-      int64  maker_entity_id = 2;
-      uint64 timestamp = 3;
-      int32  product_type = 4;
-      int64  xbt_amount = 5;
-      double price = 6;
-      string taker_res_id = 7;
-      string maker_res_id = 8;
+      int64             session_id        = 1;
    }
 
-   message RolloverTrade
+   message SessionPositions
    {
-      int64  entity_id = 1;
-      int32  product_type = 2;
-      int64  xbt_amount = 3;
-      string reservation_id = 4;
+      int64             session_id  = 1;
+      int32             load_status = 2;
+      repeated Position positions   = 3;
+   }
+
+   message RegisterTradePositions
+   {
+      int64                   taker_entity_id   = 1;
+      int64                   maker_entity_id   = 2;
+      uint64                  timestamp         = 3;
+      int32                   product_type      = 4; // bs::network::Asset::Type
+      bs.types.XBTAmountValue xbt_amount        = 5;
+      bs.types.XBTPrice       price             = 6;
+   }
+
+   message RegisterTradePositionsResponse
+   {
+      int32    register_result      = 1; // FuturesTradesStorage::StatusCode
+      Position taker_position_info  = 2;
+      Position maker_position_info  = 3;
+   }
+
+   message ConfirmTradePositions
+   {
+      bool success = 1;
+      PositionReservationInfo taker_reservation_info = 2;
+      PositionReservationInfo maker_reservation_info = 3;
+   }
+
+   message NewRolloverPositionInfo
+   {
+      int64                   entity_id      = 1;
+      int32                   product_type   = 2; // bs::network::Asset::Type
+      bs.types.XBTAmountValue xbt_amount     = 3;
+   }
+
+   message OpenRolloverPositionsRequest
+   {
+      repeated NewRolloverPositionInfo positions = 1;
+   }
+
+   message OpenRolloverPositionsResponse
+   {
+      int32             open_result      = 1; // FuturesTradesStorage::StatusCode
+      repeated Position opened_positions = 2;
+   }
+
+   message ConfirmRolloverPositionsRequest
+   {
+      repeated PositionReservationInfo positions_info = 1;
+   }
+
+   message NovationAccountInfo
+   {
+      int64 account_id  = 1;
+      int64 entity_id   = 2;
+      int32 state       = 3; // FuturesTradesStorage::NovationAccountState
+   }
+
+   message AddNovationAccountRequest
+   {
+      int64                session_id        = 1;
+      NovationAccountInfo  account_info      = 2;
+   }
+
+   message LoadNovationAccountRequest
+   {
+      int64             session_id        = 1;
+   }
+
+   message NovationAccountResponse
+   {
+      int32                load_status    = 1;
+      NovationAccountInfo  account_info   = 2;
+   }
+
+   message LoadReservationIdsRequest
+   {
+      int64             session_id        = 1;
+   }
+
+   message LoadReservationIdsResponse
+   {
+      int32                load_status    = 1; // FuturesTradesStorage::StatusCode
+      repeated string      reserve_id     = 2; // genoa ref ID
    }
 
    oneof data {
-      int32          get_session = 1;		 // prodType
-      SessionInfo    session_info = 2;
-      SessionRequest get_session_orders = 3;
-      SessionOrders  session_orders = 4;
-      SessionRequest session_open = 5;
-      SessionInfo    session_open_response = 6;
-      SessionRequest session_close = 7;
-      SessionRequest session_damaged = 8;
-      SessionRequest session_recovered = 9;
-      int32          session_result = 10;	// StatusCode
-      RegisterTrade  register_trade = 11;
-      int32          trade_result = 12;		// StatusCode
-      RolloverTrade  rollover_trade = 13;
-      int32          rollover_result = 14;	// StatusCode
+      int32                            get_session                         = 1;  // bs::network::Asset::Type
+      SessionInfo                      session_info                        = 2;
+
+      SessionRequest                   get_session_positions               = 3;
+      SessionPositions                 session_positions                   = 4;
+
+      SessionRequest                   session_open                        = 5;
+      SessionInfo                      session_open_response               = 6;
+
+      ActivateSessionRequest           activate_session                    = 7;
+      SessionInfo                      activate_session_response           = 8;
+
+      SessionRequest                   session_close                       = 9;
+      int32                            session_close_result                = 10;  // FuturesTradesStorage::StatusCode
+
+      MarkSessionCompleted             mark_session_completed_request      = 11;
+      int32                            mark_session_completed_response     = 12; // FuturesTradesStorage::StatusCode
+
+      SessionRequest                   session_damaged                     = 13;
+      SessionRequest                   session_recovered                   = 14;
+      int32                            session_result                      = 15; // FuturesTradesStorage::StatusCode
+
+      RegisterTradePositions           open_positions_for_trade            = 16;
+      RegisterTradePositionsResponse   open_positions_for_trade_response   = 17;
+
+      ConfirmTradePositions            confirm_trade_positions             = 18;
+      int32                            confirm_trade_positions_response    = 19; // FuturesTradesStorage::StatusCode
+
+      OpenRolloverPositionsRequest     open_rollover_positions_request     = 20;
+      OpenRolloverPositionsResponse    open_rollover_positions_response    = 21;
+
+      ConfirmRolloverPositionsRequest  confirm_rollover_positions_request  = 22;
+      int32                            confirm_rollover_positions_result   = 23;  // FuturesTradesStorage::StatusCode
+
+      AddNovationAccountRequest        add_novation_account_request        = 24;
+      NovationAccountResponse          add_novation_account_response       = 25;  // FuturesTradesStorage::StatusCode
+
+      int64                            mark_novation_account_disposed_request    = 26; // account id
+      int32                            mark_novation_account_disposed_response   = 27; // FuturesTradesStorage::StatusCode
+
+      LoadNovationAccountRequest       load_novation_account_request             = 28;
+      NovationAccountResponse          load_novation_account_response            = 29;
+
+      LoadReservationIdsRequest        load_reservation_id_request               = 30;
+      LoadReservationIdsResponse       load_reservation_id_response              = 31;
    }
 }

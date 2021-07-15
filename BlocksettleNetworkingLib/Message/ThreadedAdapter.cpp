@@ -49,6 +49,8 @@ void ThreadedAdapter::stop()
 
 void ThreadedAdapter::processingRoutine()
 {
+   decltype(pendingEnvelopes_) defferedEnvelopes;
+   bool lastEnvelope = false;
    while (continueExecution_) {
       pendingEnvelopesEvent_.WaitForEvent();
 
@@ -63,20 +65,34 @@ void ThreadedAdapter::processingRoutine()
 
          if (!pendingEnvelopes_.empty()) {
             envelope = pendingEnvelopes_.front();
-            pendingEnvelopes_.pop();
+            pendingEnvelopes_.pop_front();
          }
 
          if (pendingEnvelopes_.empty()) {
             pendingEnvelopesEvent_.ResetEvent();
+            lastEnvelope = true;
          }
       }
 
       if (envelope == nullptr) {
          continue;
       }
+
       if (!processEnvelope(*envelope)) {
-         FastLock locker{ pendingEnvelopesLock_ };
-         pendingEnvelopes_.emplace(envelope);
+         defferedEnvelopes.emplace_back(envelope);
+      }
+      if (lastEnvelope) {
+         if (!defferedEnvelopes.empty()) {
+            decltype(defferedEnvelopes) tempQ;
+            tempQ.swap(defferedEnvelopes);
+
+            for (const auto& env : tempQ) {
+               if (!processEnvelope(*env)) {
+                  defferedEnvelopes.emplace_back(env);
+               }
+            }
+         }
+         lastEnvelope = false;
       }
    }
 }
@@ -84,6 +100,6 @@ void ThreadedAdapter::processingRoutine()
 void ThreadedAdapter::SendEnvelopeToThread(const Envelope &envelope)
 {
    FastLock locker{pendingEnvelopesLock_};
-   pendingEnvelopes_.emplace(std::make_shared<Envelope>(envelope));
+   pendingEnvelopes_.emplace_back(std::make_shared<Envelope>(envelope));
    pendingEnvelopesEvent_.SetEvent();
 }

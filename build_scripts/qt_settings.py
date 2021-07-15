@@ -90,8 +90,10 @@ class QtSettings(Configurator):
         command.append('-qt-pcre')
         command.append('-qt-harfbuzz')
         command.append('-sql-sqlite')
-        if self._project_settings.is_server_build():
+        if self._project_settings.is_server_build() and not self._project_settings.on_windows():
            command.append('-sql-mysql')
+        else:
+            sql_drivers_to_skip.append('mysql')
         command.append('-no-feature-vulkan')
         command.append('-silent')
 

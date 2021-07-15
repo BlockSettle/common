@@ -34,17 +34,18 @@ enum ErrorCode {
 
 message Order
 {
-   string id = 1;
-   bs.types.OrderStatus status = 2;
-   string status_text = 3;
-   double timestamp = 4;
-   string product_type = 5;
-   bs.types.Side side = 6;
-   string quantity = 8;
-   string price = 9;
-   string cut_off_price = 10;
-   string trade_im = 11;
-   bool   is_rollover = 12;
+   // order_id is set from FS position ID
+   string               id             = 1;
+   bs.types.OrderStatus status         = 2;
+   string               status_text    = 3;
+   double               timestamp      = 4;
+   string               product_type   = 5;
+   bs.types.Side        side           = 6;
+   string               quantity       = 7;
+   string               price          = 8;
+   string               cut_off_price  = 9;
+   string               trade_im       = 10;
+   bool                 is_rollover    = 11;
 }
 
 message ApiKey
@@ -96,11 +97,11 @@ message Request
 
     message MarketOrder
     {
-        double amount = 1;
-        bs.types.Side side = 2;
-        string product_type = 3;
-        double user_expected_price = 4;
-        bool max_amount = 5;
+        string          amount               = 1;
+        bs.types.Side   side                 = 2;
+        string          product_type         = 3;
+        string          user_expected_price  = 4;
+        bool            max_amount           = 5;
     }
 
     message LoadOrders
@@ -126,7 +127,7 @@ message Request
     message EstimateIm
     {
         string product_type = 1;
-        double qty = 2;
+        string qty = 2;
         bs.types.Side side = 3;
     }
 
@@ -334,10 +335,11 @@ message Response
 
     message MarketOrder
     {
-        bool success = 1;
-        string order_id = 2;
-        string error_msg = 3;
-        double price = 4;
+        bool   success     = 1;
+        // id is FS position ID
+        string id          = 2;
+        string error_msg   = 3;
+        string price       = 4;
     }
 
     message LoadOrders
@@ -369,7 +371,7 @@ message Response
         string product_type = 1;
         double time_to_cut_off = 2;
         double cut_off_at = 3;
-        double last_cut_off_price = 4;
+        string last_cut_off_price = 4;
     }
 
     message EstimateIm
@@ -377,8 +379,8 @@ message Response
         bool success = 1;
         string error_msg = 2;
 
-        double expected_im_reservation = 10;
-        double fee_amount = 12;
+        string expected_im_reservation = 10;
+        string fee_amount = 12;
         string product_type = 14;
     }
 
@@ -387,24 +389,24 @@ message Response
         bool   success        = 1;
         string error_msg      = 2;
         string product_type   = 3;
-        double fee            = 4;
+        string fee            = 4;
         string fee_ccy        = 5;
-        double im             = 6;
+        string im             = 6;
     }
 
     message MaxTradeAmount
     {
         string product_type = 1;
         bs.types.Side side = 2;
-        double qty = 3;
-        double fee = 4;
+        string qty = 3;
+        string fee = 4;
     }
 
     message TradingStats
     {
-        string product_type = 2;
-        double daily_volume = 4;
-        double open_interest = 5;
+        string product_type   = 1;
+        string daily_volume   = 2;
+        string open_interest  = 3;
     }
 
     message CreateIbanAgreementUrl

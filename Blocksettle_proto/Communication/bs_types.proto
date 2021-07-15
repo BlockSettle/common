@@ -71,19 +71,19 @@ message PullPricesData
 
 message Order
 {
-   string      id                = 1;
-   OrderStatus status            = 2;
-   string      status_text       = 3;
-   int64       timestamp_ms      = 4;
-   string      product           = 5; // for example "XBT"
-   string      product_against   = 6; // for example "EUR"
-   Side        side              = 7;
-   double      quantity          = 8;
-   double      price             = 9;
-   int32       trade_type        = 10;
-   double      cut_off_price     = 11;
-   double      trade_im          = 12;
-   bool        is_rollover       = 13;
+   string         id                = 1;
+   OrderStatus    status            = 2;
+   string         status_text       = 3;
+   int64          timestamp_ms      = 4;
+   string         product           = 5; // for example "XBT"
+   string         product_against   = 6; // for example "EUR"
+   Side           side              = 7;
+   XBTAmountValue quantity          = 8;
+   XBTPrice       price             = 9;
+   int32          trade_type        = 10; // bs::network::Asset::Type
+   XBTPrice       cut_off_price     = 11;
+   FXAmountValue  trade_im          = 12;
+   bool           is_rollover       = 13;
 }
 
 message ChatToken
@@ -99,7 +99,7 @@ message ChatToken
 message Balance
 {
     string currency = 1;
-    double balance = 2;
+    string balance = 2;
 }
 
 message TradeSettings

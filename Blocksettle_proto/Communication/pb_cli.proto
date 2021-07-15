@@ -93,30 +93,24 @@ message CLIResponsePacket
 message PBStatusResponse
 {
    bool ConnectedToCeler         = 1;
-   bool ConnectedToGenoa         = 2;
-   bool CelerMerchantConnected   = 3;
-   bool CelerPiggyBankConnected  = 4;
-   bool CelerStaticDataConnected = 5;
+   bool CelerMerchantConnected   = 2;
+   bool CelerPiggyBankConnected  = 3;
+   bool CelerStaticDataConnected = 4;
 
-   string PBVersion              = 6;
+   string PBVersion              = 5;
 
-   string GenoaVersion           = 7;
-   string BlocksettleVersion     = 8;
-   string UnifyVersion           = 9;
-   string LandfallVersion        = 10;
+   ArmoryConnectionState   armoryConnectionState   = 6;
+   int32                   currentBlock            = 7;
+   ArmoryNodeStatus        nodeStatus              = 8;
+   bool                    segwitEnabled           = 9;
+   ArmoryNodeRpcStatus     armoryRpcStatus         = 10;
 
-   ArmoryConnectionState   armoryConnectionState   = 12;
-   int32                   currentBlock            = 13;
-   ArmoryNodeStatus        nodeStatus              = 14;
-   bool                    segwitEnabled           = 15;
-   ArmoryNodeRpcStatus     armoryRpcStatus         = 16;
+   string uptime           = 11;
+   uint64 uptime_seconds   = 12;
 
-   string uptime           = 17;
-   uint64 uptime_seconds   = 18;
-
-   bool ConnectedToMD      = 19;
-   bool ConnectedToProxy   = 20;
-   bool connected_to_dealer = 21;
+   bool ConnectedToMD      = 13;
+   bool ConnectedToProxy   = 14;
+   bool connected_to_dealer = 15;
 }
 
 message ErrorMessage

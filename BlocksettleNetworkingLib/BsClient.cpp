@@ -11,8 +11,6 @@
 #include "BsClient.h"
 
 #include <spdlog/spdlog.h>
-#include <QTimer>
-
 #include "FutureValue.h"
 #include "MessageUtils.h"
 #include "ProtobufUtils.h"
@@ -629,7 +627,7 @@ void BsClient::processUpdateFeeRate(const Response_UpdateFeeRate &response)
 void BsClient::processBalanceUpdate(const Response_UpdateBalance &response)
 {
    for (const auto &balance : response.balances()) {
-      bct_->onBalanceUpdated(balance.currency(), balance.balance());
+      bct_->onBalanceUpdated(balance.currency(), std::stod(balance.balance()));
    }
    if (!balanceLoaded_) {
       balanceLoaded_ = true;
@@ -658,6 +656,8 @@ BsClientQt::BsClientQt(const std::shared_ptr<spdlog::logger>& logger
    qRegisterMetaType<Blocksettle::Communication::ProxyTerminalPb::Response>();
 }
 
+#include <QTimer>
+//TODO: remove QTimer usage
 void BsClientQt::startTimer(std::chrono::milliseconds timeout
    , const std::function<void()>& cb)
 {

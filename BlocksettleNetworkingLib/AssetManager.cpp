@@ -436,7 +436,6 @@ void AssetManager::processUpdateOrders(const ProxyTerminalPb::Response_UpdateOrd
    for (const auto &order : msg.orders()) {
       orders_.insert({order.id(), order});
    }
-   updateFuturesBalances();
 }
 
 void AssetManager::processUpdateOrder(const ProxyTerminalPb::Response_UpdateOrder &msg)
@@ -451,38 +450,5 @@ void AssetManager::processUpdateOrder(const ProxyTerminalPb::Response_UpdateOrde
          break;
       default:
          break;
-   }
-   updateFuturesBalances();
-}
-
-void AssetManager::updateFuturesBalances()
-{
-   int64_t futuresXbtAmountDeliverable = 0;
-   int64_t futuresXbtAmountCashSettled = 0;
-   futuresBalanceDeliverable_ = 0;
-   futuresBalanceCashSettled_ = 0;
-   for (const auto &item : orders_) {
-      const auto &order = item.second;
-      if ((order.trade_type() == bs::network::Asset::DeliverableFutures || order.trade_type() == bs::network::Asset::CashSettledFutures)
-         && order.status() == bs::types::ORDER_STATUS_PENDING) {
-         auto sign = order.quantity() > 0 ? 1 : -1;
-         auto amount = bs::XBTAmount(std::abs(order.quantity()));
-         auto amountXbt = sign * amount.GetValueBitcoin();
-         auto amountSat = sign * static_cast<int64_t>(amount.GetValue());
-         auto balanceChange = amountXbt * order.price();
-         if (order.trade_type() == bs::network::Asset::DeliverableFutures) {
-            futuresXbtAmountDeliverable += amountSat;
-            futuresBalanceDeliverable_ += balanceChange;
-         } else {
-            futuresXbtAmountCashSettled += amountSat;
-            futuresBalanceCashSettled_ += balanceChange;
-         }
-      }
-   }
-   if (futuresXbtAmountDeliverable != futuresXbtAmountDeliverable_
-      || futuresXbtAmountCashSettled != futuresXbtAmountCashSettled_) {
-      futuresXbtAmountDeliverable_ = futuresXbtAmountDeliverable;
-      futuresXbtAmountCashSettled_ = futuresXbtAmountCashSettled;
-      emit netDeliverableBalanceChanged();
    }
 }

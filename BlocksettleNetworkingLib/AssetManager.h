@@ -143,8 +143,6 @@ private:
   void onTotalChanged() override { emit totalChanged(); }
   void onSecuritiesChanged() override { emit securitiesChanged(); }
 
-  void updateFuturesBalances();
-
 protected:
    std::shared_ptr<spdlog::logger>        logger_;
    std::shared_ptr<bs::sync::WalletsManager> walletsManager_;

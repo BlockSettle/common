@@ -26,8 +26,11 @@ SeqId Adapter::pushRequest(const std::shared_ptr<User>& sender
    , const std::string& msg, const TimeStamp& execAt)
 {
    auto env = Envelope::makeRequest(sender, receiver, msg, execAt);
-   pushFill(env);
-   return env.id();
+   if (pushFill(env)) {
+      return env.id();
+   }
+
+   return 0;
 }
 
 SeqId Adapter::pushResponse(const std::shared_ptr<User>& sender
@@ -35,24 +38,30 @@ SeqId Adapter::pushResponse(const std::shared_ptr<User>& sender
    , const std::string& msg, SeqId respId)
 {
    auto env = Envelope::makeResponse(sender, receiver, msg, respId);
-   pushFill(env);
-   return env.id();
+   if (pushFill(env)) {
+      return env.id();
+   }
+   return 0;
 }
 
 SeqId Adapter::pushResponse(const std::shared_ptr<User>& sender
    , const bs::message::Envelope& envReq, const std::string& msg)
 {
    auto env = Envelope::makeResponse(sender, envReq.sender, msg, envReq.foreignId());
-   pushFill(env);
-   return env.id();
+   if (pushFill(env)) {
+      return env.id();
+   }
+   return 0;
 }
 
 SeqId Adapter::pushBroadcast(const std::shared_ptr<User>& sender
    , const std::string& msg, bool global)
 {
    auto env = Envelope::makeBroadcast(sender, msg, global);
-   pushFill(env);
-   return env.id();
+   if (pushFill(env)) {
+      return env.id();
+   }
+   return 0;
 }
 
 
@@ -87,7 +96,7 @@ Adapter::Users RelayAdapter::supportedReceivers() const
 void RelayAdapter::setQueue(const std::shared_ptr<QueueInterface>& queue)
 {
    if (!queue_) {
-      Adapter::setQueue(queue_);
+      Adapter::setQueue(queue);
    }
    queues_.insert(queue);
    for (const auto& user : queue->supportedReceivers()) {
@@ -105,17 +114,20 @@ bool RelayAdapter::process(const Envelope& env)
 
 bool RelayAdapter::processBroadcast(const Envelope& env)
 {
+   if (env.envelopeType() == EnvelopeType::Processed) {
+      return false;
+   }
    if (!isInitialized()) {
       throw std::runtime_error("invalid initialization");
    }
-   if ((env.id() != env.foreignId()) && (env.flags() != EnvelopeFlags::GlobalBroadcast)) {
-      return false;
+   if ((env.id() != env.foreignId()) && (env.envelopeType() == EnvelopeType::GlobalBroadcast)) {
+      return false;  // global broadcasts are processed elsewhere (external relayer like AMQP)
    }
    for (const auto& queue : queues_) {
       if (!queue->isCurrentlyProcessing(env)) {
          auto envCopy = env;
          envCopy.setId(0);
-         envCopy.resetFlags();
+         envCopy.setEnvelopeType(EnvelopeType::Processed);
          queue->pushFill(envCopy);
       }
    }

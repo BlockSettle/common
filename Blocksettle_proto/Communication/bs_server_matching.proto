@@ -22,11 +22,11 @@ message XbtMatchedRequest
    string   requestor_entity_name            = 3;
    string   dealer_entity_name               = 4;
    bool     requestor_sell                   = 5;
-   double   price                            = 6;
+   bs.types.XBTPrice   price                 = 6;
    string   security_id                      = 7;
    string   currency                         = 8;
-   double   qty                              = 9;
-   double   contra_qty                       = 10;
+   bs.types.XBTAmountValue   qty             = 9;
+   bs.types.FXAmountValue   contra_qty      = 10;
    int32    subsystem                        = 11;
    string   requestor_auth_addr_pubkey_hex   = 12;
    string   dealer_auth_addr_pubkey_hex      = 13;
@@ -177,28 +177,27 @@ message UserPropertiesSet
 
 message RFSMarketOrder
 {
-   string entity_name                 = 1;
+   string                  entity_name         = 1;
    // XBT/EUR
-   uint64         xbt_amount          = 2;
-   bs.types.Side  side                = 3;
+   bs.types.XBTAmountValue xbt_amount          = 2;
+   bs.types.Side           side                = 3;
 
-   double         user_expected_price = 4;
-   int32          type                = 5;
-   bool           max_amount          = 6;
+   bs.types.XBTPrice       user_expected_price = 4;
+   int32                   type                = 5;
+   bool                    max_amount          = 6;
 }
 
 message RFSMarketOrderResponse
 {
-   string entity_name            = 1;
-   // XBT/EUR
-   uint64         xbt_amount     = 2;
-   bs.types.Side  side           = 3;
-   double         order_price    = 4;
-   bool           matched        = 5;
-   string         error_message  = 6;
-   string         product        = 7;
+   string                  entity_name       = 1;
+   bs.types.XBTAmountValue xbt_amount        = 2;
+   bs.types.Side           side              = 3;
+   bs.types.XBTPrice       order_price       = 4;
+   bool                    matched           = 5;
+   string                  error_message     = 6;
+   string                  product           = 7;
+   int64                   taker_position_id = 8;
 }
-
 
 message MatchingMessage
 {

@@ -216,11 +216,12 @@ bool Queue_Locking::pushFill(Envelope &env)
          msgBody += "...";
       }
    }
-   logger_->debug("[Queue::push] {}: #{}/{} {}({}) -> {}({}) #{} [{}] {}"
+   logger_->debug("[Queue::push] {}: #{}/{} {}({}) -> {}({}) r#{} f:{} [{}] {}"
       , name_, env.id(), env.foreignId()
       , env.sender->name(), env.sender->value()
       , env.receiver ? env.receiver->name() : "null"
-      , env.receiver ? env.receiver->value() : 0, env.responseId(), env.message.size()
+      , env.receiver ? env.receiver->value() : 0, env.responseId()
+      , (bs::message::SeqId)env.envelopeType(), env.message.size()
       , msgBody.empty() ? msgBody : "'" + msgBody + "'");
 #endif   //MSG_DEBUGGING
 
@@ -311,8 +312,9 @@ void Queue_Locking::process()
                }
                for (const auto& adapter : adapters) {
 #ifdef MSG_DEBUGGING
-                  logger_->debug("[Queue::process] {}: #{} by {}", name_, env.id()
-                     , adapter->name());
+                  logger_->debug("[Queue::process] {}: #{}/{} r#{} f:{} by {}"
+                     , name_, env.id(), env.foreignId(), env.responseId()
+                     , (bs::message::SeqId)env.envelopeType(), adapter->name());
 #endif
                   process(adapter);
                }
